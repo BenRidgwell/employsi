@@ -145,6 +145,24 @@ const SUPPORT_TO =
 const NOT_A_JOB =
   /\bpaid (?:market research|research|survey|study|interview)\b|\bmarket research study\b|\bsign up and start earning\b|\bget paid daily\b/;
 
+/**
+ * Support roles that carry a clinical or scientific DOMAIN word but are on the
+ * admin, logistics or IT ladder: "Administration Officer – Medical Imaging",
+ * "Pharmacy Delivery Driver", "Laboratory Warehouse Assistant". The families
+ * in DOMAIN_FAMILIES skip them, rather than claim them by the domain word and
+ * then fail (or worse) to rung them. Measured 2026-09-25: "Administration
+ * Officer – GP Plus" was a rung-4 doctor.
+ */
+const DOMAIN_SUPPORT =
+  /\badministrat\w*\b|\badmin\b|\breceptionist\b|\bfront desk\b|\bclerk\b|\bstore ?keeper\b|\bstore ?person\b|(?<!chemist )\bwarehouse\b|\bdrivers?\b|\bdelivery\b|\bpacker\b|\bbusiness support\b|\boffice (?:manager|reception|coordinator|assistant)\b|\breception\b/;
+const DOMAIN_FAMILIES: ReadonlySet<string> = new Set([
+  "medical",
+  "allied",
+  "dental",
+  "care",
+  "science",
+]);
+
 /** The support roles the admin ladder places: assistants, not advisers. */
 const EA_PA =
   /\bexecutive assistant\b|\bpersonal assistant\b|\b(?:assistant|pa|ea) to\b|\bexecutive (?:support officer|business partner)\b/;
@@ -157,7 +175,7 @@ const EA_PA =
  * "Registered or Enrolled Nurse" is the nursing form of the same thing.
  */
 const MULTI_LEVEL =
-  /\b(?:lecturer|professor)\s+(?:or\s+)?(?:associate |senior )?(?:lecturer|professor)\b|\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bentry level to experienced\b|\blecturer (?:or )?senior lecturer\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
+  /\b(?:senior )?staff specialist (?:or )?(?:senior )?staff specialist\b|\b(?:lecturer|professor)\s+(?:or\s+)?(?:associate |senior )?(?:lecturer|professor)\b|\b(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|executive|specialist)\s+(?:or|to)\s+(?:(?:senior|associate|assistant)\s+)?(?:manager|director|consultant|analyst|associate|advis[oe]r|officer|specialist)\b|\bmanager (?:(?:senior|assistant|associate) (?:(?:project|program|programme) )?|(?:project|program|programme) )manager\b|\bsenior manager director\b|\bentry level to experienced\b|\blecturer (?:or )?senior lecturer\b|\bregistered(?: nurse)? (?:and |or )+enrolled\b|\benrolled(?: nurse)? (?:and |or )+registered\b/;
 
 /**
  * Words that name a rung BELOW the executive. A C-suite word or a bank grade
@@ -209,7 +227,7 @@ export function cleanTitle(title: string): string {
 
 /** "Registered Nurses", "HSE Advisors": one rule per noun, not two. */
 const PLURAL_ROLE =
-  /\b(nurse|advis[oe]r|officer|manager|coordinator|engineer|developer|consultant|assistant|accountant|recruiter|specialist|analyst|representative|executive|associate|driver|member|planner|salesperson)s\b/g;
+  /\b(nurse|advis[oe]r|officer|manager|coordinator|engineer|developer|consultant|assistant|accountant|recruiter|specialist|analyst|representative|executive|associate|driver|member|planner|salesperson|educator)s\b/g;
 
 /**
  * Recruiting copy that lands in the title and names a track it is not.
@@ -225,6 +243,8 @@ const AD_BOILERPLATE =
  * before `manager` (4) and before `assistant` (1).
  */
 const GENERIC_RUNGS: [RegExp, Rung][] = [
+  // A deputy chief sits a band below the chief, whatever the chief is.
+  [/\bdeputy chief\b/, 5],
   // Executive. "Chief … Officer" and the C-suite acronyms; a bare "chief"
   // (Chief Engineer, Chief Steward) is a senior practitioner, not the board.
   [
@@ -1053,7 +1073,7 @@ export const FAMILIES: FamilyDef[] = [
     // and enterprise applications (SAP, Salesforce, ServiceNow) are tracks.
     // After software, which keeps developers, DevOps and SRE.
     match:
-      /\bnetwork (?:engineer|administrator|analyst|architect|technician|specialist|manager|security)\b|\bsystems? (?:administrator|engineer|architect)\b|\bservice desk\b|\bhelp ?desk\b|\bit (?:support|manager|director|engineer|technician|officer|specialist|analyst|operations|infrastructure|security|service)\b|\bict (?:support|technician|officer|manager|specialist|engineer)\b|\bdesktop support\b|\beuc\b|\binfrastructure (?:engineer|architect|manager|lead|specialist|analyst)\b|\bcloud (?:engineer|architect|consultant|lead|specialist|operations|infrastructure|systems)\b|\bdatabase administrator\b|\bdba\b|\b(?:solutions?|enterprise|technical|domain|security|integration|cloud|application|servicenow|salesforce|hpc and storage) architect\b|\bcyber\w*\b|\binformation security\b|\bsecurity (?:engineer|analyst|architect|operations|specialist|consultant)\b|\bsoc analyst\b|\bincident responder\b|\bpenetration tester\b|\bidentity (?:and access|governance)\b|\biam\b|\bsap\b|\bservicenow\b|\bsalesforce (?:administrator|consultant|architect|analyst|developer)\b|\bdynamics 365\b|\berp\b|\b(?:sharepoint|m365|citrix|vmware|linux|windows|oracle) (?:administrator|engineer|consultant)\b|\bchief information (?:security )?officer\b|\bcio\b|\bciso\b|\bhead of (?:it|technology|cyber|information security|infrastructure)\b/,
+      /\bnetwork (?:engineer|administrator|analyst|architect|technician|specialist|manager|security)\b|\bsystems? (?:administrator|engineer|architect)\b|\bservice desk\b|\bhelp ?desk\b|\bit (?:support|manager|director|engineer|technician|officer|specialist|analyst|operations|infrastructure|security|service)\b|\bict (?:support|technician|officer|manager|specialist|engineer)\b|\bdesktop support\b|\beuc\b|\binfrastructure (?:engineer|architect|manager|lead|specialist|analyst)\b|\bcloud (?:engineer|architect|consultant|lead|specialist|operations|infrastructure|systems)\b|\bdatabase administrator\b|\bdba\b|\b(?:solutions?|enterprise|technical|domain|security|integration|cloud|application|servicenow|salesforce|hpc and storage) architect\b|\bcyber\w*\b|\binformation security\b|\bsecurity (?:engineer|analyst|architect|operations|specialist|consultant)\b|\bsoc analyst\b|\bincident responder\b|\bpenetration tester\b|\bidentity (?:and access|governance)\b|\biam\b|\bsap\b|\bservicenow\b|\bsalesforce (?:administrator|consultant|architect|analyst|developer)\b|\bdynamics 365\b|\berp\b|\b(?:sharepoint|m365|citrix|vmware|linux|windows|oracle|applications?) (?:administrator|engineer|consultant)\b|\bchief information (?:security )?officer\b|\bcio\b|\bciso\b|\bhead of (?:it|technology|cyber|information security|infrastructure)\b/,
     skills: ["IT & Systems", "Cybersecurity", "Cloud & DevOps"],
     exclude:
       /\bsales\b|\baccount (?:manager|executive)\b|\brecruit|\bnurse\b|\bteacher\b|\bdata (?:engineer|scientist|analyst|architect)\b|\blandscape architect\b|\bbuilding\b|\bpresales\b|\bpayroll\b|\bpower systems?\b|\bwater\b|\bcivil\b|\bstructural\b|\bmechanical\b|\bsubstation\b|\bprotection\b|\brail\b|\blecturer\b|\bprofessor\b|\bteach\w*\b/,
@@ -1080,12 +1100,15 @@ export const FAMILIES: FamilyDef[] = [
     ],
     rungs: [
       [/\barchitect\b/, 4],
+      // An IT administrator is a practitioner, so a senior one is rung 3 — the
+      // generic rubric reads "senior … administrator" as a senior SUPPORT role.
+      [/\bsenior (?:\w+ ){0,2}administrator\b/, 3],
       [
         /^(?!.*\bsenior\b).*(?:\bservice desk (?:analyst|officer|technician|agent)\b|\bhelp ?desk\b|\b(?:it|ict|euc|desktop) (?:support )?(?:technician|officer|analyst|specialist|agent)\b|\btechnician\b|\bit support$)/,
         1,
       ],
       [
-        /\b(?:systems?|network|database|salesforce|servicenow|sharepoint|m365|citrix|vmware|linux|windows|oracle) administrator\b|\bdba\b/,
+        /\b(?:systems?|network|database|salesforce|servicenow|sharepoint|m365|citrix|vmware|linux|windows|oracle|applications?) administrator\b|\bdba\b/,
         2,
       ],
     ],
@@ -1182,6 +1205,276 @@ export const FAMILIES: FamilyDef[] = [
       [/\b(?:junior|graduate|trainee|intern|assistant)\b/, 1],
       [
         /\bdesigner\b|\bgraphic artist\b|\bwriter\b|\bjournalist\b|\beditor\b|\bphotographer\b|\bvideographer\b|\banimator\b|\bperformers?\b|\bperforming artiste?\b|\bartiste\b|\bdancers?\b|\bsinger\b|\bactor\b|\bmusician\b|\bstage manager\b|\bpresenter\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "medical",
+    label: "Medical practitioners",
+    // intern → resident (RMO) → registrar / career medical officer → specialist
+    // (staff specialist, consultant, VMO, GP) → senior staff specialist /
+    // director → executive director of medical services.
+    //
+    // "Registrar" is a court and a university officer too; "surgeon" is also
+    // an arborist; a US physician ASSISTANT is its own licence.
+    match:
+      /\bmedical officer\b|\bresident medical\b|\brmo\b|\bregistrar\b|\bstaff specialist\b|\bphysicians?\b|\bpsychiatrist\b|\bsurgeon\b|\banaesthetist\b|\banesthesiologist\b|\bgeneral practitioner\b|\bgp\b|\bmedical practitioner\b|\bdoctors?\b|\bobstetrician\b|\bp(?:a)?ediatrician\b|\b(?:cardio|dermato|endocrino|gastroentero|haemato|hemato|nephro|neuro|onco|ophthalmo|patho|radio|rheumato|uro|gynaeco|gyneco)logist\b|\bintensivist\b|\bhospitalist\b|\bmedical (?:director|services|intern)\b|\bcmo\b.*\b(?:hospital|icu|ed|emergency|intensive care|medical|psychiatry)\b|\bbasic physician trainee\b/,
+    skills: ["Medical Practice"],
+    exclude:
+      /\bspeech (?:language )?patholog\w*\b|\bpathologists? assistant\b|\bdeputy registrar\b|\bphysician (?:assistant|associate)\b|\btree surgeon\b|\bjudicial\b|\bacademic registrar\b|\bcourt\b|\bregistrar of\b|\bbusiness names\b|\bland registrar\b|\bsales\b|\brecruit|\bnurse\b|\bdental\b|\boral surgeon\b|\bveterinar|\bpractice manager\b|\breceptionist\b|\bschool\b|\blecturer\b|\bprofessor\b/,
+    generic: false,
+    rungs: [
+      [/\bdeputy chief\b/, 5],
+      [
+        /\bexecutive director (?:of )?medical services\b|\bchief medical officer\b(?!.*\b(?:hospital|icu|ed)\b)/,
+        6,
+      ],
+      [/\bdirector\b|\bsenior staff specialist\b|\bhead of (?:department|unit)\b/, 5],
+      [
+        /\b(?:basic|advanced) (?:physician )?trainee\b|\btrainee registrar\b|\bregistrar trainee\b/,
+        3,
+      ],
+      [/\bintern\b|\bmedical student\b|\bpgy ?1\b/, 1],
+      [
+        /\bregistrar\b|\bcareer medical officer\b|\bcmo\b|\bsenior (?:hospital|house) officer\b|\bfellow\b|\bprincipal house officer\b|\bpho\b/,
+        3,
+      ],
+      [
+        /\bstaff specialist\b|\bconsultant\b|\bvisiting medical officer\b|\bvmo\b|\bgeneral practitioner\b|\bgp\b|\bphysicians?\b|\bpsychiatrist\b|\bsurgeon\b|\banaesthetist\b|\banesthesiologist\b|\bspecialist\b|\b(?:cardio|dermato|endocrino|gastroentero|haemato|hemato|nephro|neuro|onco|ophthalmo|patho|radio|rheumato|uro|gynaeco|gyneco)logist\b|\bobstetrician\b|\bp(?:a)?ediatrician\b|\bintensivist\b|\bhospitalist\b|\bsenior medical officer\b/,
+        4,
+      ],
+      [
+        /\bresident\b|\brmo\b|\bhouse (?:officer|medical officer)\b|\bjunior medical officer\b|\bmedical officer\b|\bmedical practitioner\b|\bdoctors?\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "allied",
+    label: "Allied health, pharmacy & diagnostics",
+    // assistant → clinician (grade 1–2) → senior → team leader / chief →
+    // manager → director. Pharmacy: assistant / intern → pharmacist → senior
+    // → pharmacist in charge → director. Imaging and pathology run the same
+    // bands, collectors and assistants at the bottom.
+    match:
+      /\boccupational therap\w*\b|\bphysio\w*\b|\bphysical therap\w*\b|\bspeech (?:language )?(?:patholog\w*|therap\w*)\b|\bdietitians?\b|\bdieticians?\b|\bnutritionist\b|\bpodiatrist\b|\bexercise physiologist\b|\baudiologist\b|\borthoptist\b|\bprosthetist\b|\borthotist\b|\bsonographer\b|\bradiograph\w*\b|\bmedical imaging\b|\bimaging technologist\b|\bnuclear medicine\b|\bradiation therap\w*\b|\bradiologic\w* technologist\b|\bpharmac(?:ist|y)\b|\bphlebotom\w*\b|\bpathology (?:collector|assistant|technician|specimen collector)\b|\bspecimen collector\b|\bmedical laborator\w*\b|\bmedical scientist\b|\ballied health\b|\btherapy assistant\b|\bchiropractor\b|\bosteopath\b|\bmassage therapist\b|\bsupervising scientist\b/,
+    skills: ["Allied Health", "Pharmacy", "Medical Imaging & Pathology", "Radiation Safety"],
+    exclude:
+      /\blecturer\b|\bprofessor\b|\bteach\w*\b|\bsales\b|\bengineer\b|\bsoftware\b|\bdental\b|\bveterinar\w*\b|\bnurse\b|\bdeveloper\b|\brecruit/,
+    tracks: [
+      { id: "pharmacy", label: "Pharmacy", match: /\bpharmac/ },
+      {
+        id: "imaging",
+        label: "Medical imaging & radiation therapy",
+        match:
+          /\bradiograph|\bimaging\b|\bsonograph|\bnuclear medicine\b|\bradiation therap|\bradiologic|\bmri\b|\bx ?ray\b/,
+      },
+      {
+        id: "pathology",
+        label: "Pathology & laboratory medicine",
+        match:
+          /\bphlebotom|(?<!speech |speech language )\bpathology\b|\bmedical laborator|\bmedical scientist\b|\bspecimen\b|\bsupervising scientist\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [DEPUTY, 4],
+      [/\bdirector\b|\bhead of\b/, 5],
+      [
+        /\bmanager\b|\bpharmacist in charge\b|\bchief (?:pharmacist|radiographer|physiotherapist|occupational therapist|dietitian|scientist)\b|\bsupervising scientist\b/,
+        4,
+      ],
+      [/\bsenior\b|\bteam lead(?:er)?\b|\bclinical specialist\b|\badvanced\b|\blead\b/, 3],
+      [
+        /\bassistants?\b|\btechnicians?\b|\bphlebotom\w*\b|\bcollector\b|\bintern\b|\bstudent\b|\bgraduate\b|\baide\b|\btrainee\b/,
+        1,
+      ],
+      [
+        /\boccupational therapist\b|\bphysio\w*\b|\bphysical therapist\b|\bspeech (?:language )?(?:pathologist|therapist)\b|\bdietitian\b|\bdietician\b|\bnutritionist\b|\bpodiatrist\b|\bexercise physiologist\b|\baudiologist\b|\borthoptist\b|\bprosthetist\b|\borthotist\b|\bsonographer\b|\bradiographer\b|\bimaging technologist\b|\bradiation therapist\b|\bradiologic\w* technologist\b|\bpharmacist\b|\bmedical (?:laboratory )?scientist\b|\bchiropractor\b|\bosteopath\b|\bmassage therapist\b|\btherapist\b|\btechnologist\b|\beducator\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "dental",
+    label: "Dental",
+    // dental assistant → hygienist / oral health therapist → dentist →
+    // senior dentist / specialist → clinical director.
+    match:
+      /\bdental\b|\bdentists?\b|\bdentistry\b|\boral (?:health|surgeon)\b|\borthodontist\b|\bendodontist\b|\bperiodontist\b|\bprosthodontist\b|\bchirurgien dentiste\b/,
+    skills: ["Dental"],
+    // A dental receptionist or practice manager is admin; dental schools are
+    // academia.
+    exclude:
+      /\blecturer\b|\bacademics?\b|\bprofessor\b|\bsales\b|\breceptionist\b|\bpractice manager\b|\binsurance\b|\boperations manager\b/,
+    generic: false,
+    rungs: [
+      [/\bhead of dentistry\b|\bclinical director\b|\bdirector\b/, 5],
+      [
+        /\bsenior dentist\b|\bprincipal dentist\b|\borthodontist\b|\boral surgeon\b|\bendodontist\b|\bperiodontist\b|\bprosthodontist\b/,
+        4,
+      ],
+      [/\bdentists?\b|\bdental officer\b|\bchirurgien dentiste\b/, 3],
+      [
+        /\bsenior dental assistant\b|\bhygienist\b|\boral health therapist\b|\bdental therapist\b|\bdental prosthetist\b|\bdental technician\b|\bdental resident\b/,
+        2,
+      ],
+      [/\bdental (?:assistant|nurse|surgery assistant)\b|\btrainee\b|\bsterilising\b/, 1],
+    ],
+  },
+  {
+    id: "care",
+    label: "Care, social work & mental health",
+    // Aged and disability care: care worker → senior carer / team leader →
+    // care coordinator → facility / service manager → regional manager.
+    // Social work: social worker / case manager / youth worker → senior →
+    // team leader → manager. Mental health: counsellor / psychologist /
+    // clinician → senior → principal → manager.
+    //
+    // A CASE MANAGER holds a caseload, not a team: the practitioner rung, the
+    // way a project manager is not a people manager.
+    match:
+      /\bpersonal care (?:worker|assistant|attendant|aide)\b|\bpersonal carers?\b|\bcarers?\b|\bcare (?:worker|partner|assistant|attendant|coordinator|manager|team leader|supervisor)\b|\bsupport worker\b|\bdisability (?:support|advis[oe]r|services|supporter)\b|\bhome care\b|\bcommunity care\b|\baged care (?:worker|assistant|manager)\b|\bresidential (?:care|services manager|manager)\b|\bsocial work(?:er|ers)?\b|\bcase ?(?:manager|worker|management)\b|\bcaseworker\b|\byouth workers?\b|\bhousing officer\b|\bchild protection\b|\bchild safety (?:officer|practitioner|support officer)\b|\bfamily (?:support|violence) (?:worker|practitioner)\b|\bwelfare officer\b|\bpsycholog(?:ist|y officer)\b|\bneuropsychologist\b|\bcounsell?ors?\b|\bmental health (?:clinician|worker|therapist|counsell?or|practitioner|support worker)\b|\bmarriage and family therapist\b|\blicensed (?:clinical|professional|mental health|marriage|independent clinical)\b|\blcsw\b|\blifestyle (?:coordinator|assistant)\b|\bdiversional therap\w*\b/,
+    skills: [
+      "Aged & Disability Care",
+      "Social & Community Services",
+      "Mental Health & Counselling",
+    ],
+    // Other people's "case managers" and "counsellors": insurance claims,
+    // superannuation, money; cleaners and cooks in aged care are their own
+    // ladders; nurses are nursing's.
+    exclude:
+      /\bchild ?care\b|\bteach\w*\b|\bcleaner\b|\bcleaning\b|\bcook\b|\bchef\b|\bkitchen\b|\bcall centre\b|\bcustomer (?:support|care)\b|\brostering\b|\bworkers compensation\b|\binjury management\b|\bsuperannuation\b|\binvestigations\b|\bclaims\b|\bfinancial counsell?or\b|\bgenetic counsell?or\b|\bnurse\b|\brn\b|\blpn\b|\binsurance\b|\bsales\b|\blecturer\b|\bprofessor\b|\bhead of school\b|\bdisaster recovery\b|\bhealth care worker\b/,
+    tracks: [
+      {
+        id: "social-work",
+        label: "Social work & case management",
+        match:
+          /\bsocial work|\bcase ?(?:manager|worker|management)\b|\bcaseworker\b|\byouth worker|\bhousing officer\b|\bchild (?:protection|safety)\b|\bfamily (?:support|violence)\b|\bwelfare\b/,
+      },
+      {
+        id: "mental-health",
+        label: "Mental health & counselling",
+        match:
+          /psycholog|\bcounsell?or|\bmental health\b|\btherapist\b|\blcsw\b|\blicensed (?:clinical|professional|mental health|marriage|independent clinical)\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [/\bhead of\b|\bdirector\b|\b(?:area|regional|state|general|operations) manager\b/, 5],
+      [/(?<!\bcase )\bmanager\b/, 4],
+      [
+        /\bsenior (?:personal |residential |disability |home |community |aged )?(?:care ?(?:worker|carer|assistant|partner)|carer|support worker)\b|\bsenior (?:personal )?carer\b/,
+        2,
+      ],
+      [/\bsenior\b|\bteam lead(?:er)?\b|\bcoordinator\b|\bsupervisor\b|\bprincipal\b/, 3],
+      [
+        /\b(?:personal care|care|support|home care|community care|disability support|aged care|residential care|therapeutic (?:residential )?care|lifestyle) (?:worker|assistant|attendant|aide|partner)\b|\bpersonal carers?\b|\bcarers?\b|\btrainee\b|\bstudent\b|\bprovisional psychologist\b|\bdisability supporter\b/,
+        1,
+      ],
+      [
+        /\bsocial workers?\b|\bcase ?(?:manager|worker)\b|\bcaseworker\b|\byouth workers?\b|\bpsychologist\b|\bneuropsychologist\b|\bcounsell?ors?\b|\bclinician\b|\btherapist\b|\bpractitioner\b|\bofficer\b|\badvis[oe]r\b|\bspecialist\b|\blicensed\b|\blcsw\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "emergency",
+    label: "Emergency services, security & justice",
+    // Security: officer → senior → supervisor → security manager. Paramedics
+    // and site emergency-services officers: paramedic → intensive care /
+    // team leader → manager. Policing: officer → senior constable / sergeant
+    // → inspector → superintendent. Justice: correctional / youth justice /
+    // court officer → senior → supervisor → manager → director.
+    //
+    // "Security clearance required" names a clearance, not a guard's job.
+    match:
+      /\bsecurity (?:officers?|guards?|supervisor|manager|consultant|patrol|controller|screening officer|screener|team leader)\b|\bguards?\b|\bcrowd controller\b|\bparamedic\w*\b|\bemergency (?:services? officer|medical technician|response officer|management officer|communicator)\b|\bemt\b|\bmedic\b|\bfire ?fighter\b|\bpolice\b|\bconstable\b|\bsergeant\b|\bcorrection(?:al|s)\b|\bcustodial\b|\byouth justice\b|\bjustice officer\b|\bcourt services\b|\bbailiff\b|\bsheriff\b|\bprobation\b|\bparole\b|\bprison\b|\blife ?guard\b|\bmesso\b/,
+    skills: ["Emergency & Public Safety", "Corrections & Justice"],
+    exclude:
+      /\badministrat\w*\b|\badmin\b|\bclerk\b|\bfront desk\b|\bcyber\b|\bclearance\b|\bnv[12]\b|\bbaseline\b|\bvetting\b|\bmedical staff associate\b|\blpn\b|\blvn\b|\bnurse\b|\bsoftware\b|\bengineer\b|\bsocial security\b|\b(?:information|network) security\b|\bsecurity (?:analyst|architect|engineer|specialist)\b|\bdata security\b|\bred team\b|\blecturer\b|\bteach\w*\b|\bcleaner\b|\bwelder\b|\bspray painter\b|\bguardian\b|\bparole board\b/,
+    tracks: [
+      { id: "security", label: "Security", match: /\bsecurity\b|\bguards?\b|\bcrowd controller\b/ },
+      {
+        id: "policing",
+        label: "Policing",
+        match: /\bpolice\b|\bconstable\b|\bsergeant\b|\bsheriff\b/,
+      },
+      {
+        id: "justice",
+        label: "Corrections & justice",
+        match:
+          /\bcorrection|\bcustodial\b|\byouth justice\b|\bjustice officer\b|\bcourt services\b|\bbailiff\b|\bprobation\b|\bparole\b|\bprison\b/,
+      },
+    ],
+    generic: false,
+    rungs: [
+      [
+        /\bcommander\b|\bdirector\b|\bhead of\b|\bgeneral manager\b|\bassistant commissioner\b|\bsuperintendent\b(?=.*\b(?:correctional|prison|police)\b)(?!.*\bassistant superintendent\b)/,
+        5,
+      ],
+      [
+        /\bmanager\b|\binspector\b|\bsenior sergeant\b|\bassistant superintendent\b|\bsuperintendent\b|\bstation officer\b/,
+        4,
+      ],
+      [/\bsenior security (?:officer|guard)\b/, 2],
+      [
+        /\bsupervisor\b|\bteam leader\b|\bsergeant\b|\bsenior\b|\b(?:intensive|critical|advanced) care paramedic\b/,
+        3,
+      ],
+      [
+        /\btrainee\b|\brecruits?\b(?! incentive)|\bsecurity (?:officer|guard)s?\b|\bguards?\b|\bcrowd controller\b|\bemt\b|\bemergency medical technician\b|\blife ?guard\b|\bstudent\b|\bgraduate paramedic\b|\bauxiliary\b/,
+        1,
+      ],
+      [
+        /\bparamedic\b|\bofficer\b|\bconstable\b|\bmedic\b|\bfire ?fighter\b|\bworker\b|\bpractitioner\b|\bbailiff\b|\bsheriff\b|\bcommunicator\b/,
+        2,
+      ],
+    ],
+  },
+  {
+    id: "science",
+    label: "Science, research & environment",
+    // Laboratory: assistant / technician → scientist / chemist / analyst →
+    // senior → laboratory manager. Research: research assistant → postdoc /
+    // research fellow → senior research fellow → principal research fellow.
+    // Veterinary: vet nurse → veterinarian → senior. Environmental: officer /
+    // scientist → senior → environmental manager.
+    //
+    // After data (data scientists are data's) and allied health (medical
+    // laboratory scientists are pathology's). Geoscience is the mining
+    // family's, and "Chemist Warehouse" is a pharmacy chain.
+    match:
+      /\blaborator(?:y|ies)\b|\blab (?:technician|assistant|manager|analyst|supervisor|coordinator|attendant)\b|\bscientists?\b|\bchemists?\b|\bmicrobiologist\b|\bbiologist\b|\becologist\b|\bhydrologist\b|\bresearch (?:fellow|associate|assistant|officer|scientist|technician)\b|\bpost ?doc\w*\b|\bpostdoctoral\b|\bveterinar\w*\b|\bvet (?:nurse|technician|assistant)\b|\benvironmental (?:scientist|advis[oe]r|officer|consultant|specialist|manager|coordinator|superintendent|lead|approvals|compliance)\b|\bclinical research (?:associate|coordinator|manager)\b|\bclinical trials? (?:coordinator|manager|associate|assistant)\b/,
+    skills: ["Science & Laboratory", "Environmental"],
+    exclude:
+      /\bdata scientists?\b|\bdecision scientist\b|\bchemist warehouse\b|\bcwh\b|\bgeolog\w*\b|\bgeochem\w*\b|\bgeophysic\w*\b|\bhydrogeolog\w*\b|\bpharmacist\b|\bsales\b|\bsoftware\b|\bteach\w*\b|\blecturer\b|\bprofessor\b|\b(?:registered|enrolled|clinical) nurse\b|\bmetallurg\w*\b|\bmedical (?:laboratory )?scientist\b/,
+    tracks: [
+      { id: "veterinary", label: "Veterinary", match: /\bveterinar|\bvet\b/ },
+      {
+        id: "environmental",
+        label: "Environmental",
+        match: /\benvironmental\b|\becolog|\bhydrolog|\bcontaminat|\bbiodiversity\b/,
+      },
+      {
+        id: "research",
+        label: "Research",
+        // A clinical research associate monitors drug trials — industry, not
+        // the academic research ladder.
+        match:
+          /(?<!clinical )\bresearch (?:fellow|associate|assistant|officer)\b|\bpost ?doc|\bpostdoctoral\b/,
+      },
+    ],
+    rungs: [
+      [/\bprincipal\b|\blab(?:oratory)? manager\b/, 4],
+      [/\bsenior\b|\blead\b|\bsupervisor\b/, 3],
+      [
+        /\bresearch assistant\b|\blab(?:oratory)? (?:assistant|technician|attendant|worker|technicians)\b|\btechnician\b|\bvet(?:erinary)? (?:nurse|assistant)\b|\bgraduate\b|\bintern\b/,
+        1,
+      ],
+      [
+        /\bresearch (?:fellow|associate|officer|scientist)\b|\bpost ?doc\w*\b|\bpostdoctoral\b|\bscientists?\b|\bchemists?\b|\bmicrobiologist\b|\bbiologist\b|\becologist\b|\bhydrologist\b|\bveterinarian\b|\bclinical research associate\b/,
         2,
       ],
     ],
@@ -1441,7 +1734,7 @@ export const FAMILIES: FamilyDef[] = [
     // legal; a chief of staff is on none of these.
     // A hotel's "Executive Assistant Manager" is its deputy GM, not an EA.
     exclude:
-      /\bexecutive assistant manager\b|\bidentity governance\b|\bcyber\b|\bcontracts? administrat|\bcompany secretar|\bchief of staff\b|\b(?:system|systems|network|database|sharepoint|salesforce|servicenow|platform|cloud|m365|it|ict|lms|crm|erp|sap|citrix|vmware|linux|windows|oracle|workday|jira|atlassian|security) administrator\b|\blaw clerk\b|\bsales\b|\bnurse\b|\bdriver\b|\bpayroll\b|\baccounts? (?:payable|receivable)\b|\bhospitality assistant\b/,
+      /\bexecutive assistant manager\b|\bidentity governance\b|\bcyber\b|\bcontracts? administrat|\bcompany secretar|\bchief of staff\b|\b(?:system|systems|network|database|sharepoint|salesforce|servicenow|platform|cloud|m365|it|ict|lms|crm|erp|sap|citrix|vmware|linux|windows|oracle|workday|jira|atlassian|security|applications?) administrator\b|\blaw clerk\b|\bsales\b|\bnurse\b|\bdriver\b|\bpayroll\b|\baccounts? (?:payable|receivable)\b|\bhospitality assistant\b/,
     tracks: [{ id: "executive-assistant", label: "Executive assistants", match: EA_PA }],
     generic: false,
     rungs: [
@@ -1496,28 +1789,17 @@ export const NOT_A_LADDER: Record<string, string> = {
  * Empty is the finished state.
  */
 export const PATHWAYS_PLANNED: string[] = [
-  "Allied Health",
-  "Science & Laboratory",
   "Cleaning & Facilities",
-  "Mental Health & Counselling",
   "Architecture & Planning",
-  "Social & Community Services",
   "Civil Engineering",
   "Electrical Engineering",
-  "Medical Practice",
   "Automation & Robotics",
   "Mechanical Engineering",
-  "Aged & Disability Care",
-  "Pharmacy",
   "Construction Management",
-  "Environmental",
   "Electrical Trade",
-  "Medical Imaging & Pathology",
   "Fixed Plant Maintenance",
   "Instrumentation & Control",
-  "Emergency & Public Safety",
   "Surveying",
-  "Dental",
   "Geology",
   "Welding & Fabrication",
   "Plant & Equipment Operation",
@@ -1530,7 +1812,6 @@ export const PATHWAYS_PLANNED: string[] = [
   "Automotive Trade",
   "Mining Engineering",
   "Geotechnical",
-  "Corrections & Justice",
   "Agriculture & Farming",
   "Painting & Plastering",
   "Personal Services & Beauty",
@@ -1539,7 +1820,6 @@ export const PATHWAYS_PLANNED: string[] = [
   "HVAC & Refrigeration",
   "Carpentry & Joinery",
   "Metallurgy",
-  "Radiation Safety",
   "Drilling & Wells",
   "Drill & Blast",
   "Sport & Recreation",
@@ -1578,6 +1858,7 @@ function placeClean(t: string, ctx: PlaceContext | undefined): Placed | null {
   const support = SUPPORT_TO.test(t);
   for (const f of FAMILIES) {
     if (support && !f.supportRoles?.test(t)) continue;
+    if (DOMAIN_FAMILIES.has(f.id) && DOMAIN_SUPPORT.test(t)) continue;
     const byTitle = f.match.test(t);
     const byEmployer =
       !byTitle &&
@@ -1627,7 +1908,11 @@ export function familyHint(title: string): string | null {
   const support = SUPPORT_TO.test(t);
   return (
     FAMILIES.find(
-      (f) => (!support || !!f.supportRoles?.test(t)) && f.match.test(t) && !f.exclude?.test(t),
+      (f) =>
+        (!support || !!f.supportRoles?.test(t)) &&
+        !(DOMAIN_FAMILIES.has(f.id) && DOMAIN_SUPPORT.test(t)) &&
+        f.match.test(t) &&
+        !f.exclude?.test(t),
     )?.id ?? null
   );
 }

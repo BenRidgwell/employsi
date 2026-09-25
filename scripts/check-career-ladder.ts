@@ -177,7 +177,7 @@ const FIXTURES: [string, Want][] = [
   ["Registered Midwife", ["nursing", "midwifery", 2]],
   // Nursing traps.
   ["Cook - Nursing Home", ["hospitality", "kitchen", 2]], // a cook, not a nurse
-  ["Veterinary Nurse", null],
+  ["Veterinary Nurse", ["science", "veterinary", 1]], // animals: not the nursing ladder
   // Nursing, from the 2026-09-24 audit.
   ["Registered Nurses - Anaesthetics", ["nursing", "generalist", 2]], // plural
   ["Licensed Practical Nurse", ["nursing", "generalist", 1]], // the US enrolled nurse
@@ -280,7 +280,7 @@ const FIXTURES: [string, Want][] = [
   // Retail traps.
   ["Storeperson", ["logistics", "generalist", 1]], // warehousing, not retail
   ["Stores Officer - Mine Site", null],
-  ["Retail Pharmacist", null],
+  ["Retail Pharmacist", ["allied", "pharmacy", 2]], // a pharmacist, not a store rung
   ["Shopfitter", null],
   ["Butcher - Supermarket", ["hospitality", "food-trades", 2]], // a trade, not a store rung
   ["Retail Buyer", ["procurement", "buying", 2]], // head-office buying, not a store rung
@@ -805,7 +805,7 @@ const FIXTURES: [string, Want][] = [
   ["Senior Specialist Legal Editor (Banking & Finance)", ["creative", "media", 3]], // publishing, not banking
   ["Tax Support Associate – Retail", ["finance", "tax", 1]],
   ["Fixed Term Associate - HR Coordinator (Pre-Onboarding)", ["hr", "generalist", 1]],
-  ["CMO - Intensive Care Unit, Maitland Hospital", null], // a Career Medical Officer
+  ["CMO - Intensive Care Unit, Maitland Hospital", ["medical", "generalist", 3]], // Career Medical Officer
   ["Chief Marketing Officer (CMO)", ["marketing", "generalist", 6]],
   ["Talent Partner - Corporate Services", ["hr", "talent-acquisition", 2]], // not a law partner
   ["Customer Partner - Insurance", ["insurance", "generalist", 2]], // an insurer, not a law firm
@@ -828,6 +828,142 @@ const FIXTURES: [string, Want][] = [
   ["Teacher of Supply Chain and Logistics", ["education", "generalist", 2]],
   ["Teacher - Library - Canterbury Girls High School", ["education", "generalist", 2]],
   ["Banking Operations Clerk", ["banking", "generalist", 1]],
+
+  // ---- Wave 3: health, care, emergency services, science (2026-09-25) -----
+  // Medical: intern / RMO → registrar / CMO → specialist / GP → senior
+  // specialist / director → executive director of medical services.
+  ["Intern Medical Officer", ["medical", "generalist", 1]],
+  ["Resident Medical Officer", ["medical", "generalist", 2]],
+  ["Senior Resident Medical Officer", ["medical", "generalist", 2]],
+  ["Career Medical Officer", ["medical", "generalist", 3]],
+  ["Advanced Trainee Registrar - Cardiology", ["medical", "generalist", 3]],
+  ["General Practitioner", ["medical", "generalist", 4]],
+  ["Consultant Psychiatrist", ["medical", "generalist", 4]],
+  ["Staff Specialist - Emergency Medicine", ["medical", "generalist", 4]],
+  ["Visiting Medical Officer - Urologist", ["medical", "generalist", 4]],
+  ["Senior Staff Specialist - Anaesthetics", ["medical", "generalist", 5]],
+  ["Director of Medical Services", ["medical", "generalist", 5]],
+  ["Executive Director Medical Services", ["medical", "generalist", 6]],
+  ["Tree Surgeon", null], // an arborist
+  ["Judicial Registrar", null], // a court officer
+  ["Physician Assistant", null], // a US licence, not the doctors' ladder
+
+  // Allied health: assistant → clinician → senior → team leader / manager.
+  ["Allied Health Assistant", ["allied", "generalist", 1]],
+  ["Occupational Therapist", ["allied", "generalist", 2]],
+  ["Physiotherapist", ["allied", "generalist", 2]],
+  ["Speech Pathologist", ["allied", "generalist", 2]],
+  ["Clinical Dietitian", ["allied", "generalist", 2]],
+  ["Podiatrist", ["allied", "generalist", 2]],
+  ["Senior Occupational Therapist", ["allied", "generalist", 3]],
+  ["Physical Therapy Team Leader", ["allied", "generalist", 3]],
+  ["Allied Health Manager", ["allied", "generalist", 4]],
+  ["Director of Allied Health", ["allied", "generalist", 5]],
+  ["Pharmacy Assistant", ["allied", "pharmacy", 1]],
+  ["Intern Pharmacist", ["allied", "pharmacy", 1]],
+  ["Pharmacist", ["allied", "pharmacy", 2]],
+  ["Senior Clinical Pharmacist", ["allied", "pharmacy", 3]],
+  ["Pharmacist in Charge", ["allied", "pharmacy", 4]],
+  ["Director of Pharmacy", ["allied", "pharmacy", 5]],
+  ["Retail Pharmacy Assistant - CWH Nerang QLD", ["allied", "pharmacy", 1]],
+  ["Pharmacist - Chemist Warehouse Bathurst", ["allied", "pharmacy", 2]],
+  ["Phlebotomist", ["allied", "pathology", 1]],
+  ["Medical Laboratory Scientist - Microbiology", ["allied", "pathology", 2]],
+  ["Senior Medical Laboratory Scientist", ["allied", "pathology", 3]],
+  ["Radiographer", ["allied", "imaging", 2]],
+  ["Senior Medical Imaging Technologist", ["allied", "imaging", 3]],
+  ["Radiation Therapist", ["allied", "imaging", 2]],
+
+  // Dental: assistant → hygienist / therapist → dentist → senior → director.
+  ["Dental Assistant", ["dental", "generalist", 1]],
+  ["Dental Hygienist", ["dental", "generalist", 2]],
+  ["Oral Health Therapist", ["dental", "generalist", 2]],
+  ["General Dentist", ["dental", "generalist", 3]],
+  ["Senior Dentist", ["dental", "generalist", 4]],
+  ["Head of Dentistry", ["dental", "generalist", 5]],
+  ["Oral Surgeon", ["dental", "generalist", 4]],
+
+  // Care: aged and disability; social work; mental health.
+  ["Personal Care Worker", ["care", "generalist", 1]],
+  ["Disability Support Worker", ["care", "generalist", 1]],
+  ["Home Care Worker - Casual", ["care", "generalist", 1]],
+  ["Senior Personal Carer", ["care", "generalist", 2]],
+  ["Care Coordinator - Aged Care", ["care", "generalist", 3]],
+  ["Residential Services Manager", ["care", "generalist", 4]],
+  ["Aged Care Facility Cleaner", null], // cleaning (wave 4)
+  ["Social Worker", ["care", "social-work", 2]],
+  ["Case Manager", ["care", "social-work", 2]], // a caseload, not a team
+  ["Youth Worker", ["care", "social-work", 2]],
+  ["Senior Case Manager", ["care", "social-work", 3]],
+  ["Senior Child Protection Practitioner", ["care", "social-work", 3]],
+  ["Case Manager - Workers Compensation", null], // insurance claims
+  ["Psychologist", ["care", "mental-health", 2]],
+  ["Mental Health Clinician", ["care", "mental-health", 2]],
+  ["Licensed Professional Counselor", ["care", "mental-health", 2]],
+  ["Senior Clinical Psychologist", ["care", "mental-health", 3]],
+  ["School Psychologist", ["care", "mental-health", 2]],
+  ["Financial Counsellor", null], // money, not mental health
+
+  // Emergency services, security & justice.
+  ["Security Officer", ["emergency", "security", 1]],
+  ["Senior Security Officer", ["emergency", "security", 2]],
+  ["Security Manager", ["emergency", "security", 4]],
+  ["Retail Security Officer", ["emergency", "security", 1]], // retail excludes it
+  ["Paramedic", ["emergency", "generalist", 2]],
+  ["Emergency Services Officer", ["emergency", "generalist", 2]],
+  ["Intensive Care Paramedic", ["emergency", "generalist", 3]],
+  ["Police Officer", ["emergency", "policing", 2]],
+  ["Correctional Officer", ["emergency", "justice", 2]],
+  ["Trainee Correctional Officer", ["emergency", "justice", 1]],
+  ["Community Corrections Officer", ["emergency", "justice", 2]],
+  ["Senior Youth Justice Officer", ["emergency", "justice", 3]],
+  ["Court Services Officer", ["emergency", "justice", 2]],
+  ["Administration Officer - Baseline Security Clearance", ["admin", "generalist", 2]],
+  ["Medical Staff Associate - LPN, LVN, EMT or Paramedic", null], // four licences
+
+  // Science & research.
+  ["Laboratory Assistant", ["science", "generalist", 1]],
+  ["Laboratory Technician", ["science", "generalist", 1]],
+  ["Chemist", ["science", "generalist", 2]],
+  ["Microbiologist", ["science", "generalist", 2]],
+  ["Research Scientist", ["science", "generalist", 2]],
+  ["Laboratory Manager", ["science", "generalist", 4]],
+  ["Research Assistant", ["science", "research", 1]],
+  ["Postdoctoral Research Fellow", ["science", "research", 2]],
+  ["Senior Research Fellow", ["science", "research", 3]],
+  ["Principal Research Fellow", ["science", "research", 4]],
+  ["Clinical Research Associate", ["science", "generalist", 2]],
+  ["Senior Clinical Research Associate", ["science", "generalist", 3]],
+  ["Veterinarian", ["science", "veterinary", 2]],
+  ["Environmental Scientist", ["science", "environmental", 2]],
+  ["Senior Environmental Advisor", ["science", "environmental", 3]],
+  ["Environmental Manager", ["science", "environmental", 4]],
+  ["Principal Geochemist", null], // geoscience (wave 4)
+  ["Senior Data Scientist - Geotechnical", ["data", "science", 3]], // data first
+  // Health-context support roles stay on their own ladders (found by the diff).
+  ["Administration Officer - GP Plus", ["admin", "generalist", 2]], // not a GP
+  ["Administration Officer - Medical Imaging", ["admin", "generalist", 2]],
+  ["Dental Administrator and Treatment Coordinator", ["admin", "generalist", 1]],
+  ["Sr Applications Administrator (Laboratory Systems)", ["technology", "generalist", 3]], // IT
+  ["CleanPack Chemist (CDL) Class B CDL Route Driver", ["logistics", "driving", 2]],
+  ["Pharmacy Delivery Driver", ["logistics", "driving", 1]],
+  ["Laboratory Warehouse Assistant (General Labour)", ["logistics", "generalist", 1]],
+  ["Evening Residence Counsellor - Front Desk", ["admin", "generalist", 1]],
+  ["Child Care Worker", ["education", "early-childhood", 1]],
+  ["Pharmacy Educator", ["allied", "pharmacy", 2]],
+  ["Travel Speech Language Pathologist", ["allied", "generalist", 2]], // not a pathologist
+  ["Speech Pathology Manager", ["allied", "generalist", 4]], // not the lab track
+  ["Deputy Director of Pharmacy", ["allied", "pharmacy", 4]],
+  ["Assistant Director Medical Imaging Technology", ["allied", "imaging", 4]],
+  ["Deputy Chief Veterinary Officer", ["science", "veterinary", 5]],
+  ["Deputy Chief Medical Officer", ["medical", "generalist", 5]],
+  ["Principal Ecologist", ["science", "environmental", 4]],
+  ["Principal Environmental Scientist", ["science", "environmental", 4]],
+  ["Senior Staff Specialist or Staff Specialist", null], // two grades
+  ["Deputy Registrar", null], // a university officer
+  ["Senior Data Security Manager", null],
+  ["Red Team and Security Manager", null],
+  ["Clinical Neuropsychologist", ["care", "mental-health", 2]],
   // HSE, from the 2026-09-24 audit.
   [
     "Work Health and Safety Advisor APS Level 5 - Chief Operating Officer",
