@@ -4,16 +4,16 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-25
+//   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-25
+//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
+//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
+//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-25
+//   Tasmania: 13 agencies published as at Dec 2023 — refreshed 2026-09-25
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-25
-//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
-//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
-//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
-//   Tasmania: 14 agencies published as at Dec 2023 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which
@@ -224,6 +224,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-alinytjara-wilurara-landscape-board": { now: 16, prev: 17, yoy: -5.9, asof: "Jun 2025", span: 1 },
   "sa-gov-attorney-general-s-department": { now: 1688, prev: 1599, yoy: 5.6, asof: "Jun 2025", span: 1 },
   "sa-gov-audit-office-of-south-australia": { now: 132, prev: 128, yoy: 3.1, asof: "Jun 2025", span: 1 },
+  "sa-gov-carclew-youth-arts-centre": { now: 20, prev: 20, yoy: 0.0, asof: "Jun 2025", span: 1 },
   "sa-gov-country-arts-sa": { now: 98, prev: 109, yoy: -10.1, asof: "Jun 2025", span: 1 },
   "sa-gov-courts-administration-authority": { now: 663, prev: 647, yoy: 2.5, asof: "Jun 2025", span: 1 },
   "sa-gov-dairysafe": { now: 3, prev: 5, yoy: -40.0, asof: "Jun 2025", span: 1 },
@@ -239,7 +240,9 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-department-of-the-premier-and-cabinet": { now: 407, prev: 539, yoy: -24.5, asof: "Jun 2025", span: 1 },
   "sa-gov-department-of-treasury-and-finance": { now: 1465, prev: 1264, yoy: 15.9, asof: "Jun 2025", span: 1 },
   "sa-gov-education-standards-board": { now: 62, prev: 51, yoy: 21.6, asof: "Jun 2025", span: 1 },
+  "sa-gov-electoral-commission-of-sa": { now: 42, prev: 27, yoy: 55.6, asof: "Jun 2025", span: 1 },
   "sa-gov-environment-protection-authority": { now: 210, prev: 212, yoy: -0.9, asof: "Jun 2025", span: 1 },
+  "sa-gov-essential-services-commission-of-sa": { now: 47, prev: 46, yoy: 2.2, asof: "Jun 2025", span: 1 },
   "sa-gov-eyre-peninsula-landscape-board": { now: 26, prev: 26, yoy: 0.0, asof: "Jun 2025", span: 1 },
   "sa-gov-forestrysa": { now: 40, prev: 29, yoy: 37.9, asof: "Jun 2025", span: 1 },
   "sa-gov-funds-sa": { now: 74, prev: 73, yoy: 1.4, asof: "Jun 2025", span: 1 },
@@ -250,16 +253,31 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-independent-commission-against-corruption": { now: 60, prev: 51, yoy: 17.6, asof: "Jun 2025", span: 1 },
   "sa-gov-infrastructure-sa": { now: 14, prev: 35, yoy: -60.0, asof: "Jun 2025", span: 1 },
   "sa-gov-kangaroo-island-landscape-board": { now: 34, prev: 36, yoy: -5.6, asof: "Jun 2025", span: 1 },
+  "sa-gov-legal-profession-conduct-commissioner": { now: 18, prev: 18, yoy: 0.0, asof: "Jun 2025", span: 1 },
   "sa-gov-legal-services-commission": { now: 256, prev: 241, yoy: 6.2, asof: "Jun 2025", span: 1 },
+  "sa-gov-lifetime-support-authority-of-sa": { now: 109, prev: 106, yoy: 2.8, asof: "Jun 2025", span: 1 },
   "sa-gov-limestone-coast-landscape-board": { now: 43, prev: 49, yoy: -12.2, asof: "Jun 2025", span: 1 },
   "sa-gov-murraylands-and-riverland-landscape-board": { now: 78, prev: 81, yoy: -3.7, asof: "Jun 2025", span: 1 },
   "sa-gov-northern-and-yorke-landscape-board": { now: 42, prev: 40, yoy: 5.0, asof: "Jun 2025", span: 1 },
   "sa-gov-office-for-recreation-sport-and-racing": { now: 105, prev: 90, yoy: 16.7, asof: "Jun 2025", span: 1 },
   "sa-gov-office-of-the-commissioner-for-public-sector-employment": { now: 50, prev: 54, yoy: -7.4, asof: "Jun 2025", span: 1 },
+  "sa-gov-office-of-the-sa-productivity-commission": { now: 12, prev: 13, yoy: -7.7, asof: "Jun 2025", span: 1 },
   "sa-gov-preventive-health-sa": { now: 104, prev: 104, yoy: 0.0, asof: "Jun 2025", span: 1 },
   "sa-gov-renewal-sa": { now: 183, prev: 172, yoy: 6.4, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-arid-lands-landscape-board": { now: 29, prev: 29, yoy: 0.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-country-fire-service": { now: 221, prev: 201, yoy: 10.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-film-corporation": { now: 20, prev: 21, yoy: -4.8, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-fire-and-emergency-services-commission": { now: 88, prev: 95, yoy: -7.4, asof: "Jun 2025", span: 1 },
   "sa-gov-sa-health": { now: 51488, prev: 49033, yoy: 5.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-housing-trust": { now: 848, prev: 826, yoy: 2.7, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-metropolitan-fire-service": { now: 1278, prev: 1272, yoy: 0.5, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-motor-sport-board": { now: 21, prev: 19, yoy: 10.5, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-state-emergency-service": { now: 79, prev: 73, yoy: 8.2, asof: "Jun 2025", span: 1 },
+  "sa-gov-sa-tourism-commission": { now: 147, prev: 149, yoy: -1.3, asof: "Jun 2025", span: 1 },
+  "sa-gov-sace-board-of-sa": { now: 105, prev: 98, yoy: 7.1, asof: "Jun 2025", span: 1 },
   "sa-gov-south-australia-police": { now: 6323, prev: 6209, yoy: 1.8, asof: "Jun 2025", span: 1 },
+  "sa-gov-state-opera-sa": { now: 18, prev: 12, yoy: 50.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-state-theatre-company-of-sa": { now: 43, prev: 41, yoy: 4.9, asof: "Jun 2025", span: 1 },
   "sa-gov-study-adelaide": { now: 18, prev: 19, yoy: -5.3, asof: "Jun 2025", span: 1 },
   "sa-gov-teachers-registration-board": { now: 43, prev: 33, yoy: 30.3, asof: "Jun 2025", span: 1 },
   "sa-gov-west-beach-parks": { now: 185, prev: 172, yoy: 7.6, asof: "Jun 2025", span: 1 },
