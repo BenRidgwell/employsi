@@ -2535,3 +2535,132 @@ export const getSkillMarket = createServerFn({ method: "GET" })
       return { ...NO_MARKET, scope };
     }
   });
+
+/**
+ * Which employers were advertising a skill, month by month.
+ *
+ * WHAT THIS IS FOR. The skill card's timeline scrubs 245 months, and the map
+ * follows it — but only at city level, from the agencies' own series. The
+ * company pins on the LOCAL map were a single snapshot of what is advertised
+ * today, so scrubbing to 2014 relit exactly the employers hiring this morning.
+ *
+ * AND WHY IT COVERS ALMOST NONE OF THAT TIMELINE, which is the honest part.
+ * Measured 2026-09-25: outside the Wayback corpus the archive holds ads from
+ * 2026-07 onward and nothing before — 2019 to 2025 is empty, and every row
+ * older than that is one employer's career page from a single source, which
+ * LIVE_FEEDS_ONLY_SQL excludes here for the reason jobArchive.ts gives. So this
+ * returns the months it can actually answer and no others, and the caller is
+ * expected to say so rather than to draw an empty map for the rest. An empty
+ * map reads as a market nobody was hiring in, which is the single most
+ * expensive misreading this codebase has produced.
+ *
+ * It returns EVERY covered month in one call rather than answering per scrub:
+ * the span is three months today and grows by one a month, so the whole thing
+ * is a few hundred rows of JSON, and scrubbing has to feel instant.
+ */
+export interface SkillCompanyMonths {
+  /** Covered months, oldest → newest, "YYYY-MM". Empty when the archive cannot
+   *  answer per-company at all. */
+  months: string[];
+  /** month → company id → ads naming the skill that were live in that month. */
+  byMonth: Record<string, Record<string, number>>;
+}
+
+const NO_SKILL_MONTHS: SkillCompanyMonths = { months: [], byMonth: {} };
+
+/** "2026-07-16" → "2026-07". */
+const monthOf = (iso: string) => iso.slice(0, 7);
+
+/** Every month from a to b inclusive, as "YYYY-MM". Exported for the check
+ *  script: the rollover and the bound are the sort of thing that is right until
+ *  it is December. */
+export function monthsBetween(a: string, b: string): string[] {
+  const out: string[] = [];
+  let [y, m] = [Number(a.slice(0, 4)), Number(a.slice(5, 7))];
+  const [ey, em] = [Number(b.slice(0, 4)), Number(b.slice(5, 7))];
+  if (!y || !m || !ey || !em) return out;
+  // Bounded rather than while(true): a malformed pair must not spin, and no
+  // real answer here is longer than a couple of decades.
+  for (let i = 0; i < 600 && (y < ey || (y === ey && m <= em)); i++) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    if (++m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+
+export const getSkillCompanyMonths = createServerFn({ method: "GET" })
+  .validator((data: { skill: string }) => data)
+  .handler(async ({ data }): Promise<SkillCompanyMonths> => {
+    const skill = (data.skill || "").trim();
+    // An allowlist of exact taxonomy names, as getSkillTrend does: the LIKE
+    // patterns below are built from this string.
+    if (!skill || !(skill in SKILL_CATEGORY)) return NO_SKILL_MONTHS;
+    const db = await getArchiveDb();
+    if (!db) return NO_SKILL_MONTHS;
+    try {
+      // The archive's own per-company span, asked WITHOUT the skill: a rare
+      // skill present in one month must not make the card claim the archive
+      // only reaches one month. What is marked on the timeline is the evidence
+      // that exists, not the evidence this skill happens to use.
+      const span = await db
+        .prepare(
+          `SELECT MIN(first_seen) AS mn, MAX(last_seen) AS mx FROM jobs
+            WHERE company_id IS NOT NULL AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
+        .first();
+      const from = String(span?.mn || "");
+      const to = String(span?.mx || "");
+      if (!from || !to) return NO_SKILL_MONTHS;
+      const months = monthsBetween(monthOf(from), monthOf(to));
+      if (!months.length) return NO_SKILL_MONTHS;
+
+      const names = archivedNamesFor(skill);
+      // Quoted on both sides so `%"Audit"%` cannot match "Internal Audit" —
+      // the same exactness getSkillTrend relies on.
+      const likes = names.map((_, i) => `skills LIKE ?${i + 2}`).join(" OR ");
+      const res = await db
+        .prepare(
+          `SELECT company_id, hub, first_seen, last_seen FROM jobs
+            WHERE (${likes})
+              AND company_id IS NOT NULL
+              AND last_seen >= ?1
+              AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
+        .bind(from, ...names.map((n) => `%"${n}"%`))
+        .all();
+      let rows = (res?.results ?? []) as {
+        company_id: string | null;
+        hub: string | null;
+        first_seen: string | null;
+        last_seen: string | null;
+      }[];
+      if (!rows.length) return { months, byMonth: {} };
+
+      // The same release gate every other per-company reader here applies.
+      if ((await callerRole()) !== "admin") {
+        rows = rows.filter((r) => isReleasedRow(r.hub, r.company_id));
+      }
+
+      const byMonth: Record<string, Record<string, number>> = {};
+      const known = new Set(months);
+      for (const r of rows) {
+        const id = (r.company_id || "").trim();
+        const fs = String(r.first_seen || "");
+        const ls = String(r.last_seen || "");
+        if (!id || !fs || !ls) continue;
+        // An ad counts in EVERY month it was up, not only the one it appeared
+        // in — the question is who was advertising then, and a role posted in
+        // July and still open in September was being advertised in August.
+        for (const m of monthsBetween(monthOf(fs), monthOf(ls))) {
+          if (!known.has(m)) continue;
+          (byMonth[m] ||= {})[id] = (byMonth[m][id] || 0) + 1;
+        }
+      }
+      return { months, byMonth };
+    } catch {
+      return NO_SKILL_MONTHS;
+    }
+  });

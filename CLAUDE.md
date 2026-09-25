@@ -545,6 +545,20 @@ only cheap way back.
 Do **not** pass `--noproxy '*'` to Cloudflare API calls in this sandbox; it breaks
 them.
 
+**`pdfplumber` works in this sandbox after `pip install cffi`, and the failure
+without it is badly misleading.** The import dies with a pyo3
+`PanicException: Python API call failed` several frames above the real cause,
+`ModuleNotFoundError: No module named '_cffi_backend'` — so it reads as a broken
+Rust binding rather than one absent pure-Python package. `pypdf` fails the same
+way for the same reason. Measured 2026-09-25: one `pip install cffi` and both
+open a 64-page PDF.
+
+This is worth knowing because it was taken as a property of the environment, and
+`.github/workflows/gov-workforce.yml` still says South Australia runs there
+partly because of it. A scheduled refresh does belong on a runner — but a parser
+should be written against a document you can open, and Queensland's first
+version was wrong in twelve rows of twenty-eight for want of that.
+
 ### Firing a cron by hand
 
 ```bash
@@ -641,6 +655,30 @@ string → group index) → `crons` in `workers/jobs-cron/wrangler.jsonc`.
 Worker, the scripts and the app, so a role maps identically wherever it enters. Read stored
 skills with `parseStoredSkills` — it applies `SKILL_ALIAS` and drops names no longer in the
 taxonomy, which is why legacy values in old archive rows don't need a migration.
+
+**A RENAME needs no migration; a NEW SKILL OR A NEW TERM does.** Each row freezes its
+skills as JSON at scrape time, so widening the taxonomy reaches new rows only — the
+skill exists, matches nothing already stored, and reads as a market nobody is hiring in
+until the archive refills. `scripts/remap-skills.py --like '%term%'` recomputes
+`skillsForText` over the row's own title and writes that; it invents nothing, and a row
+whose skills do not change is not written. Measured 2026-09-25: adding Strategy and
+widening Business Intelligence needed 660 and 163 rows remapped respectively, and
+without it both skills would have ranked near zero while being correctly defined.
+
+**A CHILD CANNOT MATCH UNLESS ITS PARENT ALREADY HAS**, and the failure mode is a
+speciality quietly starving. Business Intelligence fell from 59 titles to 39 not because
+employers changed their wording but because `Data Analytics` — its parent — had no BI
+vocabulary at all, so "business intelligence analyst" matched NOTHING in the whole
+taxonomy and 217 of 256 BI-shaped titles failed at the gate rather than at the child's
+own terms. When a speciality drifts under the floor, check the parent's terms before
+rewriting the child's.
+
+**The archive-backed sections of `check-skills.ts` need D1 credentials** —
+`CLOUDFLARE_ACCOUNT_ID`, `JOBS_ARCHIVE_DB_ID`, `CLOUDFLARE_API_TOKEN` — and skip with a
+`·` line without them. `skills-check.yml` passes all three from secrets, but its step
+completed in under a second through 2026-09-24, which is far too fast for those queries:
+the evidence floor and the stale-`Principal` check were not running in CI, and two real
+drifts sat unreported until they were run by hand. A `·` in that output is not a pass.
 
 ### Map layers
 

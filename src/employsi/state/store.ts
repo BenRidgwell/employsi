@@ -13,6 +13,7 @@ import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
 import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
 import type { HeatMetric } from "../lib/heat";
 import type { SkillIndex } from "../lib/skillsFn";
+import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import type { DemandMode } from "../lib/skillHeat";
 import type { FlowView } from "../lib/flows";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
@@ -65,6 +66,14 @@ export interface AppState {
   // Live skill-demand index from the jobs pipeline (loaded from KV). Drives the
   // real skill-demand heat map when a skill is the active search.
   skillIndex: SkillIndex | null;
+  /**
+   * Per-month, per-company demand for the skill on the search card, so the
+   * LOCAL map's pins can follow the timeline instead of showing today's
+   * employers under every month. Null until the card asks for it, and null
+   * again when the card closes — a stale one would light the wrong skill's
+   * employers.
+   */
+  skillMonths: SkillCompanyMonths | null;
   // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
   // latest month). Lets the user scrub the skill heat map back to 2006.
   heatMonth: number;
@@ -91,6 +100,20 @@ export interface AppState {
   compareOpen: boolean;
   compareA: string | null;
   compareB: string | null;
+  /**
+   * Which side of the market the app is being read from.
+   *
+   * "demand" is everything this product was until now — vacancies, employers,
+   * who is hiring — so it is the default, and the demand surfaces are simply
+   * what the components already did.
+   *
+   * TODAY IT REACHES EXACTLY ONE THING: the top two buttons of the action rail.
+   * Nothing else in the app reads it. That is deliberate rather than
+   * unfinished — the supply surfaces are being added one at a time, and a flag
+   * that silently changed several of them at once would be impossible to check
+   * against any of them.
+   */
+  marketMode: "supply" | "demand";
   trendingOpen: boolean;
   // "Ask an analyst": a scoped Q&A over the live vacancy archive.
   analystOpen: boolean;
@@ -183,6 +206,7 @@ export interface AppState {
   setSearchQuery: (q: string) => void;
   clearSearch: () => void;
   setSkillIndex: (idx: SkillIndex | null) => void;
+  setSkillMonths: (m: SkillCompanyMonths | null) => void;
   setHeatMonth: (i: number) => void;
   setDemandMode: (m: DemandMode) => void;
   toggleSector: (cat: string) => void;
@@ -214,6 +238,7 @@ export interface AppState {
   setCompareA: (id: string) => void;
   setCompareB: (id: string) => void;
 
+  setMarketMode: (m: "supply" | "demand") => void;
   toggleTrending: () => void;
   closeTrending: () => void;
   toggleAnalyst: () => void;
@@ -448,6 +473,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   heatOpen: false,
   searchQuery: "",
   skillIndex: null,
+  skillMonths: null,
   heatMonth: Math.max(0, IVI_MONTHS.length - 1),
   demandMode: "volume",
   activeSectors: [],
@@ -465,6 +491,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   compareOpen: false,
   compareA: null,
   compareB: null,
+  marketMode: "demand",
   trendingOpen: false,
   analystOpen: false,
   dataQualityOpen: false,
@@ -704,6 +731,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
   clearSearch: () => set({ searchQuery: "" }),
   setSkillIndex: (idx) => set({ skillIndex: idx }),
+  setSkillMonths: (m) => set({ skillMonths: m }),
   setHeatMonth: (i) =>
     set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
   setDemandMode: (m) => set({ demandMode: m }),
@@ -869,6 +897,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCompareA: (id) => set({ compareA: id }),
   setCompareB: (id) => set({ compareB: id }),
 
+  /**
+   * Switching side closes the two panes the rail's top pair opens.
+   *
+   * Those are the only buttons the mode changes, and in supply mode neither is
+   * on the rail — so an open "What's trending" would be left on screen with
+   * nothing to close it but its own X, anchored to a button that is no longer
+   * there. Closing both on the way through costs nothing when they are already
+   * shut.
+   */
+  setMarketMode: (m) => set({ marketMode: m, trendingOpen: false, analystOpen: false }),
   toggleTrending: () => set((s) => solo("trendingOpen", !s.trendingOpen)),
   closeTrending: () => set({ trendingOpen: false }),
   toggleAnalyst: () => set((s) => solo("analystOpen", !s.analystOpen)),

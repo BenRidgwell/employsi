@@ -2,7 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { smoothPath } from "../../lib/chart";
 import { HUB_LNGLAT, AU_CITY_LNGLAT } from "../../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../../data/geo";
-import { WORLD_OUTLINE, WORLD_W, WORLD_H, worldProject } from "../../data/worldOutline";
+import { WORLD_OUTLINE, worldProject } from "../../data/worldOutline";
+import {
+  centreOf,
+  FRAME_ASPECT,
+  frameFor,
+  maxZoomFor,
+  ZOOM_STEP,
+  zoomFrame,
+  type Spot,
+} from "../../lib/hotspotFrame";
 import { SKILL_PARENT } from "../../data/skillsTaxonomy";
 import type { CompanySkillDemand, CompanySkillTrends, SkillRanks } from "../../lib/jobHistoryFn";
 
@@ -28,6 +37,72 @@ const ROWS_SHOWN = 8;
 
 const HUB_COORD: Record<string, [number, number]> = { ...HUB_LNGLAT, ...AU_CITY_LNGLAT };
 const hubLabel = (hub: string) => CITY_LABEL[hub] || GLOBAL_HUB_LABEL[hub] || hub;
+
+/**
+ * How hot a hub is, from 0 to 1, driving its colour, its blob and its opacity.
+ *
+ * THE DESIGN USES SHARE OF THE BUSIEST HUB ALONE, and on this data that paints
+ * a single advertised role bright red. Measured over the live archive on
+ * 2026-09-25, across the 15,941 company·skill·hub spots this map actually
+ * plots: the MEDIAN spot is one ad, 78% of company·skill maps have a single
+ * hub, and 56% of those hold exactly one ad. So the design's rule would show
+ * the top of a LOW→HIGH ramp on roughly 44% of all maps, for one vacancy.
+ * That is not a rare edge, it is the common case.
+ *
+ * So a hub has to be big BOTH ways: `min` of its share of the busiest hub and
+ * of its own absolute volume. A lone hub can no longer carry the ramp on
+ * relative share, because with one hub that share is always 1 and says
+ * nothing; and a hub in a busy map still cools down if the whole map is thin.
+ *
+ * The absolute scale is the measured distribution, not a guess — the anchors
+ * are its own percentiles, so each colour means roughly the same rarity
+ * wherever it appears:
+ *
+ *     1 ad   0.00   green    the median spot
+ *     4      0.12   yellow   p75 is 3
+ *    10      0.33   orange   p95
+ *    30      0.66   red      p99 is 29
+ *   120      1.00            the top of the ramp; the busiest spot is 696
+ */
+const HEAT_ANCHORS: [number, number][] = [
+  [1, 0],
+  [4, 0.12],
+  [10, 0.33],
+  [30, 0.66],
+  [120, 1],
+];
+function absoluteHeat(n: number): number {
+  if (n <= 1) return 0;
+  const last = HEAT_ANCHORS[HEAT_ANCHORS.length - 1];
+  if (n >= last[0]) return 1;
+  for (let i = 1; i < HEAT_ANCHORS.length; i++) {
+    const [x0, y0] = HEAT_ANCHORS[i - 1];
+    const [x1, y1] = HEAT_ANCHORS[i];
+    if (n <= x1) {
+      // Interpolated in LOG space: the anchors are percentiles of a very
+      // skewed distribution, and a linear read between 30 and 120 would make
+      // every spot in that range look nearly identical.
+      const f = (Math.log(n) - Math.log(x0)) / (Math.log(x1) - Math.log(x0));
+      return y0 + f * (y1 - y0);
+    }
+  }
+  return 1;
+}
+/** A hub is only hot if it leads its map AND has the volume to mean it. */
+const heatOf = (n: number, max: number) => Math.min(n / max, absoluteHeat(n));
+
+/**
+ * The heat ramp, from the design: green below an eighth of the scale, then
+ * yellow, orange and red.
+ */
+const heatColor = (t: number) =>
+  t > 0.66
+    ? "rgb(204,56,51)"
+    : t > 0.33
+      ? "rgb(242,140,46)"
+      : t > 0.12
+        ? "rgb(235,190,56)"
+        : "rgb(56,160,110)";
 
 const pctText = (pct: number) => {
   const abs = Math.abs(pct);
@@ -293,72 +368,6 @@ function TopSkill({
 
 // ── hot spots ───────────────────────────────────────────────────────────────
 
-interface Spot {
-  hub: string;
-  label: string;
-  n: number;
-  x: number;
-  y: number;
-}
-
-/** Smallest span the frame will zoom to, in viewBox units. One hub has no
- *  extent of its own, and without a floor the frame collapses onto it and the
- *  coastline behind becomes an unreadable smear. ~40 units is a country. */
-const FRAME_MIN = 40;
-/** Breathing room around the spots, as a share of the framed span. Labels sit
- *  beside their dot and need somewhere to go. */
-const FRAME_PAD = 0.38;
-/** The frame's shape. Fixed so the card does not change height when the picker
- *  moves between a one-city skill and a worldwide one. */
-const FRAME_ASPECT = 1.5;
-
-/**
- * Frame the map on the data.
- *
- * The whole world is the wrong view for most employers: BHP's placeable ads sit
- * in four Australian cities and Manila, so a global projection spends nearly
- * all of its area on empty ocean. The path and the projection are unchanged —
- * only the viewBox moves, which costs nothing and keeps every coordinate
- * comparable with the app's other maps.
- */
-function frameFor(spots: Spot[]): { x: number; y: number; w: number; h: number } {
-  const xs = spots.map((s) => s.x);
-  const ys = spots.map((s) => s.y);
-  let minX = Math.min(...xs);
-  let maxX = Math.max(...xs);
-  let minY = Math.min(...ys);
-  let maxY = Math.max(...ys);
-  const padX = Math.max((maxX - minX) * FRAME_PAD, FRAME_MIN / 2);
-  const padY = Math.max((maxY - minY) * FRAME_PAD, FRAME_MIN / 2);
-  minX -= padX;
-  maxX += padX;
-  minY -= padY;
-  maxY += padY;
-  let w = maxX - minX;
-  let h = maxY - minY;
-  // Grow the short side rather than the long one, so framing never crops a hub.
-  if (w / h < FRAME_ASPECT) {
-    const want = h * FRAME_ASPECT;
-    minX -= (want - w) / 2;
-    w = want;
-  } else {
-    const want = w / FRAME_ASPECT;
-    minY -= (want - h) / 2;
-    h = want;
-  }
-  // Keep the frame on the map. Shift before clamping, so a frame that runs off
-  // an edge slides back in at full size instead of being squashed against it.
-  if (w > WORLD_W) {
-    minX = 0;
-    w = WORLD_W;
-  } else minX = Math.max(0, Math.min(minX, WORLD_W - w));
-  if (h > WORLD_H) {
-    minY = 0;
-    h = WORLD_H;
-  } else minY = Math.max(0, Math.min(minY, WORLD_H - h));
-  return { x: minX, y: minY, w, h };
-}
-
 function HotSpots({
   skills,
   liveAds,
@@ -370,7 +379,15 @@ function HotSpots({
 }) {
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
+  const [hub, setHub] = useState<string | null>(null);
   const pickRef = useRef<HTMLDivElement | null>(null);
+  // Zoom state is a multiple and a CENTRE, both in the base frame's own units,
+  // rather than a second frame. One number and one point cannot fall out of
+  // aspect with the container; a stored frame could.
+  const [zoom, setZoom] = useState(1);
+  const [centre, setCentre] = useState<{ x: number; y: number } | null>(null);
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{ id: number; x: number; y: number; panning: boolean } | null>(null);
 
   // Only skills with somewhere to plot. A skill whose ads all carry a country
   // rather than a city has nothing to put on a map, and offering it would open
@@ -414,18 +431,114 @@ function HotSpots({
   const sel = Math.min(i, Math.max(0, plottable.length - 1));
   const entry = plottable[sel];
   const frame = useMemo(() => (entry ? frameFor(entry.spots) : null), [entry]);
+  // A zoom belongs to the map it was made on. Switching skill in the picker, or
+  // opening a different company's card, reframes on different hubs entirely, so
+  // a carried-over centre would land on whatever happens to be at those
+  // coordinates now — usually ocean, with the hubs off-screen and no sign of
+  // why.
+  useEffect(() => {
+    setZoom(1);
+    setCentre(null);
+  }, [sel, plottable]);
   if (!entry || !frame) return null;
 
   const { skill, spots } = entry;
   const placed = spots.reduce((t, s) => t + s.n, 0);
   const max = Math.max(...spots.map((s) => s.n));
-  // Percentages are relative to the FRAME, not the world, so the overlays track
+  const hovered = spots.find((sp) => sp.hub === hub) ?? null;
+  // The blobs breathe via SMIL <animate>, which is how the design does it and
+  // which CSS prefers-reduced-motion cannot switch off — the old halo was a CSS
+  // animation and had a media query for exactly this. So the preference is read
+  // here and the <animate> element is simply not rendered. Read on each render
+  // rather than cached: this is cheap, and a setting changed mid-session should
+  // take effect the next time the card opens.
+  const stillness =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  // What is actually drawn. `frame` is where the map opens and how far a pan may
+  // go; `view` is the window on it. At zoom 1 they are the same box.
+  const zMax = maxZoomFor(frame);
+  const view = zoomFrame(frame, zoom, centre ?? centreOf(frame));
+  // The design's radii and stroke are drawn against a 300-wide viewBox. This
+  // one's viewBox is the view, which is whatever the hubs needed and then
+  // whatever the user zoomed to, so every size taken from the design is
+  // multiplied by this to arrive at the same apparent size on screen.
+  //
+  // IT IS THE VIEW'S WIDTH AND NOT THE FRAME'S, so the blobs hold their size in
+  // PIXELS as the map zooms rather than in degrees. That is the behaviour a heat
+  // layer has everywhere else — Mapbox's own heatmap-radius is in screen px —
+  // and it is the whole point of the feature here: two hubs a hundred miles
+  // apart share one blob at the default framing, and zooming in has to separate
+  // them. Scaling the radius geographically would keep them welded together and
+  // merely make the weld bigger.
+  const k = view.w / 300;
+  // Percentages are relative to the VIEW, not the world, so the overlays track
   // the zoom. The container is given the frame's aspect so `meet` fills it
-  // exactly and there is no letterbox to correct for.
+  // exactly and there is no letterbox to correct for — and zoomFrame divides
+  // both sides by the same number, so that aspect survives every zoom.
   const posOf = (sp: Spot) => ({
-    left: `${((sp.x - frame.x) / frame.w) * 100}%`,
-    top: `${((sp.y - frame.y) / frame.h) * 100}%`,
+    left: `${((sp.x - view.x) / view.w) * 100}%`,
+    top: `${((sp.y - view.y) / view.h) * 100}%`,
   });
+  /** Move to a zoom about a point, keeping the result inside the base frame. */
+  const zoomTo = (z: number, at?: { x: number; y: number }) => {
+    const next = Math.max(1, Math.min(zMax, z));
+    setZoom(next);
+    // Storing the CLAMPED centre rather than the requested one is what makes a
+    // pan reverse cleanly: without it, dragging into the edge banks up an offset
+    // the map is ignoring, and the first drag back does nothing visible until
+    // that debt is paid off.
+    setCentre(next <= 1 ? null : centreOf(zoomFrame(frame, next, at ?? centre ?? centreOf(frame))));
+  };
+  /** A hub, brought close enough to read. Used by the dots and the ranked rows —
+   *  the rows are the keyboard-reachable half of the same gesture. */
+  const focusHub = (sp: Spot) => {
+    setHub(sp.hub);
+    zoomTo(Math.max(zoom, Math.min(zMax, 3)), { x: sp.x, y: sp.y });
+  };
+  /**
+   * Drag to pan, in the view's units so a drag tracks the pointer exactly.
+   *
+   * Only while zoomed, and `touch-action` is left alone (see the CSS): a finger
+   * on this map scrolls the card as it did before, because the map is 300px of
+   * a card that scrolls and trapping the gesture there would be a worse bug than
+   * the one this fixes. Touch reaches a hub by TAPPING it instead, which is the
+   * same path as the click and also the only way to raise a tooltip without a
+   * hover.
+   */
+  const onDragStart = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (zoom <= 1 || e.pointerType === "touch") return;
+    dragRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, panning: false };
+  };
+  const onDragMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    const rect = mapRef.current?.getBoundingClientRect();
+    if (!d || d.id !== e.pointerId || !rect) return;
+    // THE CAPTURE IS TAKEN ON THE FIRST REAL MOVEMENT, NOT ON POINTERDOWN, and
+    // the ordering is the whole reason clicking a hub still works while zoomed.
+    // A pointer captured by this div retargets the pointerup to it, so the click
+    // that follows is dispatched at the div rather than at the dot under the
+    // finger — capturing up front would silently swallow every dot click on a
+    // zoomed map. Taking it late also does the other half of the job: a drag
+    // that ends over a dot does not click it.
+    if (!d.panning) {
+      if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < 3) return;
+      d.panning = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    const dx = ((e.clientX - d.x) / rect.width) * view.w;
+    const dy = ((e.clientY - d.y) / rect.height) * view.h;
+    d.x = e.clientX;
+    d.y = e.clientY;
+    const cur = centre ?? centreOf(frame);
+    setCentre(centreOf(zoomFrame(frame, zoom, { x: cur.x - dx, y: cur.y - dy })));
+  };
+  const onDragEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.id !== e.pointerId) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    dragRef.current = null;
+  };
 
   return (
     <section className="hsp">
@@ -469,36 +582,204 @@ function HotSpots({
         )}
       </div>
 
-      <div className="hspmap" style={{ aspectRatio: `${FRAME_ASPECT}` }}>
-        <svg viewBox={`${frame.x} ${frame.y} ${frame.w} ${frame.h}`} aria-hidden>
-          <path className="hspland" d={WORLD_OUTLINE} />
+      {/* The map, from the Hiring Hotspots design. The visual layer is the
+          design's verbatim — ocean and land fills, the radial heat blobs under
+          a colour-matrix filter, the white-ringed dots, the code badges, the
+          hover card and the LOW/HIGH legend. What is NOT taken from it is the
+          framing: the design hardcodes an Australia/New Zealand mercator, and
+          this section has to frame whatever hubs the employer actually has,
+          which can be Houston or Singapore. So the existing frame is kept and
+          the design's sizes are scaled into it — see `k` below. */}
+      <div
+        className={`hspmap${zoom > 1 ? " hspmapz" : ""}`}
+        ref={mapRef}
+        onPointerDown={onDragStart}
+        onPointerMove={onDragMove}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
+      >
+        <svg viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`} aria-hidden>
+          <defs>
+            <radialGradient id="hspheatdot">
+              <stop offset="0" stopColor="#000" stopOpacity="1" />
+              <stop offset="0.45" stopColor="#000" stopOpacity="0.55" />
+              <stop offset="1" stopColor="#000" stopOpacity="0" />
+            </radialGradient>
+            {/* Flattens each blob to its alpha, then reads that alpha through
+                the ramp — so one grey gradient becomes green→yellow→orange→red
+                and overlapping hubs compound into a hotter colour rather than
+                a darker one. */}
+            <filter
+              id="hspheatcolor"
+              x="-20%"
+              y="-20%"
+              width="140%"
+              height="140%"
+              colorInterpolationFilters="sRGB"
+            >
+              <feColorMatrix type="matrix" values="0 0 0 1 0  0 0 0 1 0  0 0 0 1 0  0 0 0 1 0" />
+              <feComponentTransfer>
+                <feFuncR type="table" tableValues="0.20 0.30 0.62 0.98 0.95 0.80" />
+                <feFuncG type="table" tableValues="0.70 0.75 0.82 0.78 0.45 0.22" />
+                <feFuncB type="table" tableValues="0.50 0.45 0.35 0.22 0.18 0.20" />
+                <feFuncA type="table" tableValues="0 0.42 0.58 0.68 0.76 0.82" />
+              </feComponentTransfer>
+            </filter>
+          </defs>
+          <rect x={view.x} y={view.y} width={view.w} height={view.h} className="hspsea" />
+          <path className="hspland" d={WORLD_OUTLINE} strokeWidth={0.5 * k} />
+          <g filter="url(#hspheatcolor)">
+            {spots.map((sp, n) => {
+              const t = heatOf(sp.n, max);
+              const r = (12 + Math.sqrt(t) * 26) * k;
+              return (
+                <circle
+                  key={sp.hub}
+                  cx={sp.x}
+                  cy={sp.y}
+                  r={r}
+                  fill="url(#hspheatdot)"
+                  opacity={(0.35 + 0.65 * Math.sqrt(t)).toFixed(2)}
+                >
+                  {!stillness && (
+                    // KEYED ON THE RADIUS. A running <animate> keeps driving `r`
+                    // from the `values` it started with, so on a zoom the circle
+                    // would settle back to its pre-zoom size the moment the
+                    // animation looped. Keying it makes React replace the
+                    // element, which restarts the animation at the new size.
+                    <animate
+                      key={r.toFixed(2)}
+                      attributeName="r"
+                      values={`${(r * 0.92).toFixed(2)};${(r * 1.12).toFixed(2)};${(r * 0.92).toFixed(2)}`}
+                      dur={`${(3.4 - 1.2 * t).toFixed(2)}s`}
+                      begin={`${(n * 0.3).toFixed(2)}s`}
+                      repeatCount="indefinite"
+                      calcMode="spline"
+                      keyTimes="0;0.5;1"
+                      keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
+                    />
+                  )}
+                </circle>
+              );
+            })}
+          </g>
         </svg>
-        {/* Markers and labels are HTML: text placed in SVG under a moving
-            viewBox scales with the zoom, so a tightly framed map would render
-            its labels at several times the size of a wide one. */}
+
+        {/* The dots are HTML, not SVG: anything under a moving viewBox scales
+            with the zoom, so a tightly framed map would draw them several times
+            the size of a wide one.
+            THE DESIGN'S CODE BADGES ARE GONE, removed on request. They were
+            drawn for the busiest four, and four is arbitrary in a way that
+            shows: CSL's Melbourne carried one and its Hobart did not, which
+            reads as a distinction the data is not making. A hub is now named by
+            hovering it, and the three busiest are named again in the list
+            below — so nothing is lost except the implication. */}
         {spots.map((sp) => {
-          // AREA tracks the count. Scaling the radius would exaggerate a busy
-          // hub by its square.
-          const size = 22 + Math.sqrt(sp.n / max) * 22;
-          // Labels sit right of the dot, and flip to the left in the right-hand
-          // third where they would otherwise run off the card.
-          const right = (sp.x - frame.x) / frame.w > 0.62;
+          const t = heatOf(sp.n, max);
           return (
-            <span key={sp.hub} className="hspspot" style={posOf(sp)}>
-              <span className="hsphalo" style={{ width: size, height: size }} />
-              <span className="hspcore" />
-              <span
-                className={`hsplabel ${right ? "left" : ""}`}
-                style={{ [right ? "right" : "left"]: size / 2 + 8 }}
-              >
-                <b>{sp.label}</b>
-                <em>
-                  {sp.n} {sp.n === 1 ? "ad" : "ads"}
-                </em>
-              </span>
-            </span>
+            <span
+              key={sp.hub}
+              className="hspdot"
+              style={{ ...posOf(sp), background: heatColor(t), opacity: t < 0.08 ? 0.55 : 1 }}
+              onMouseEnter={() => setHub(sp.hub)}
+              onClick={() => focusHub(sp)}
+            />
           );
         })}
+        {hovered && (
+          /* The design centres the card on the dot and stops there, which
+             clips it against the card's edge on a hub near the frame's left or
+             right. Rendered locally at three framings to check: London at 0.82
+             across ran off. So the centring holds through the middle and gives
+             way at the edges — the same flip the labels this replaced used. */
+          <span
+            className="hsptip"
+            style={{
+              ...posOf(hovered),
+              transform: (() => {
+                const f = (hovered.x - view.x) / view.w;
+                if (f > 0.78) return "translate(-100%, 10px)";
+                if (f < 0.22) return "translate(0, 10px)";
+                return "translate(-50%, 10px)";
+              })(),
+            }}
+          >
+            <b>{hovered.label}</b>
+            <em>
+              {hovered.n.toLocaleString("en-US")} {hovered.n === 1 ? "AD" : "ADS"} ·{" "}
+              {Math.round((hovered.n / placed) * 100)}%
+            </em>
+          </span>
+        )}
+        <span className="hspkey">
+          <em>LOW</em>
+          <i />
+          <em>HIGH</em>
+        </span>
+        {/* Zoom. The default frame has to hold every hub an employer has, which
+            for CSL is most of a hemisphere, and at that width two cities in the
+            same state are one blob — so the map is honest about where the work
+            is and useless for telling one hub from another. These, the hub
+            clicks and the drag are the way out of that, and they are all one
+            mechanism: they move the view within the frame the map opened on, so
+            there is nowhere to get lost and the reset is always one press. */}
+        {zMax > 1 && (
+          <span className="hspzoom">
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={zoom >= zMax - 0.001}
+              onClick={() => zoomTo(zoom * ZOOM_STEP)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                <path d="M12 6v12M6 12h12" strokeLinecap="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={zoom <= 1.001}
+              onClick={() => zoomTo(zoom / ZOOM_STEP)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                <path d="M6 12h12" strokeLinecap="round" />
+              </svg>
+            </button>
+            {zoom > 1.001 && (
+              <button type="button" className="hspreset" onClick={() => zoomTo(1)}>
+                RESET
+              </button>
+            )}
+          </span>
+        )}
+      </div>
+
+      {/* The design's ranked hubs. Three, because past that it stops being a
+          reading of where the work is and becomes the same list the rows below
+          already give. The percentage is of the ads ON THE MAP, which is what
+          the coverage bar underneath then puts in proportion. */}
+      <div className="hsprank">
+        {/* A button, not a row: it zooms the map to its hub. That is the
+            keyboard-reachable half of clicking a dot — a 9px dot is not a
+            focusable target, and without this the zoom would be operable by
+            mouse only past the first press of +. */}
+        {spots.slice(0, 3).map((sp) => (
+          <button
+            key={sp.hub}
+            type="button"
+            className="hsprow"
+            title={`Zoom to ${sp.label}`}
+            onMouseEnter={() => setHub(sp.hub)}
+            onMouseLeave={() => setHub(null)}
+            onClick={() => focusHub(sp)}
+          >
+            <span className="hsprowname">{sp.label}</span>
+            <span className="hsprowbar">
+              <span style={{ width: `${Math.round((sp.n / max) * 100)}%` }} />
+            </span>
+            <span className="hsprowpct">{Math.round((sp.n / placed) * 100)}%</span>
+          </button>
+        ))}
       </div>
 
       <div className="hspfoot">
@@ -506,8 +787,10 @@ function HotSpots({
           <b>{placed}</b> {placed === 1 ? "ad" : "ads"} <i>/</i> <b>{spots.length}</b>{" "}
           {spots.length === 1 ? "hub" : "hubs"}
         </span>
-        {/* Most archived ads record a country, or nothing. The bar is the point:
-            without it the cluster reads as the whole employer. */}
+        {/* KEPT, though the design has no equivalent. Most archived ads record a
+            country, or nothing. Without this bar the cluster reads as the whole
+            employer, and the design's ranked percentages — which are shares of
+            what is ON the map — would read as shares of everything. */}
         {liveAds > 0 && (
           <span className="hspcov">
             <span className="hspbar">

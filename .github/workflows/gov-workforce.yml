@@ -22,10 +22,24 @@
 # Queensland loads alongside APS and Victoria, then prints the generated data
 # file to the job log and uploads it as an artifact.
 #
-# SOUTH AUSTRALIA IS HERE TOO. Its Workforce Information Report is a PDF and
-# nothing else — every edition from 2012 to 2025 — so it needs pdfplumber,
-# whose cryptography binding panics in the authoring sandbox. Reachable from
-# both networks otherwise; it is the sandbox that cannot read it.
+# SOUTH AUSTRALIA IS HERE TOO, though no longer because it has to be. Its
+# Workforce Information Report is a PDF and nothing else — every edition from
+# 2012 to 2025 — so it needs pdfplumber, which this repo recorded as unusable
+# in the authoring sandbox because its cryptography binding panics there.
+#
+# THAT PANIC IS A MISSING PACKAGE, NOT A BROKEN SANDBOX. Measured 2026-09-25:
+# the import fails on `ModuleNotFoundError: No module named '_cffi_backend'`
+# several frames beneath a pyo3 PanicException, and `pip install cffi` fixes
+# it outright — pdfplumber and pypdf both import and read a 64-page PDF
+# immediately afterwards. The panic is loud and unhelpful enough that it read
+# as an environment that could not run the library at all, and three
+# jurisdictions were routed through this workflow partly on that basis.
+#
+# South Australia stays here regardless, because a scheduled refresh belongs on
+# a runner. But a PDF can now be opened where the parser is being written,
+# which is where it is most useful: Queensland cost twelve wrong rows out of
+# twenty-eight, and the Northern Territory took six round trips through CI to
+# learn its table had three columns and not five.
 #
 # VICTORIA IS NOT FETCHED HERE and that is not an oversight: vpsc.vic.gov.au
 # answers HTTP 403 to this runner, through a browser as well as plainly. The
@@ -102,8 +116,18 @@ jobs:
       # that only a WARMED browser clears — the origin is visited first, once
       # per context, and the clearance cookie makes the rest cheap. Neither is
       # reachable from a developer machine without that.
+      # Output is captured as well as shown, because stderr carries the whole
+      # diagnosis — which roster agency matched nothing and which source rows
+      # matched nothing back — and the last step reprints it. See that step
+      # for why. `2>&1 | tee` rather than a process substitution: the latter
+      # can still be flushing when the step ends, and a diagnosis that is
+      # sometimes empty is worse than no diagnosis at all. pipefail keeps the
+      # generator's exit status.
       - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
-        run: python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas
+        run: |
+          set -o pipefail
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas \
+            2>&1 | tee /tmp/gov-diagnosis.txt
 
       - name: Show the generated file
         run: |
@@ -155,3 +179,26 @@ jobs:
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
           python scripts/sa-workforce-probe.py \
             https://www.health.nsw.gov.au/annualreport/Publications/2025/appendix.pdf
+
+      # THE DIAGNOSIS IS REPRINTED LAST, AND THAT IS THE POINT. It is produced
+      # by the FIRST step, and everything after it — the whole generated data
+      # file, three probes and a 59-page PDF dump — buries it about two
+      # thousand lines deep. The two lists it holds (roster agencies with no
+      # figure, and source rows that matched nothing) are the entire working
+      # material for an ALIAS entry: Victoria's gap closed from 38 cards to 20
+      # by reading exactly these two lists, with no new source involved.
+      #
+      # Printing it again at the end costs nothing and puts it where a log tail
+      # can reach it.
+      - name: Diagnosis (reprinted last so the log tail reaches it)
+        if: always()
+        run: |
+          echo "=== unmatched roster agencies, and unmatched source rows ==="
+          sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
+          {
+            echo '## gov-workforce diagnosis'
+            echo
+            echo '```'
+            sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

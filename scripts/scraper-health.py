@@ -118,7 +118,11 @@ STALE_DAYS = {
     # entry is already correct; mute it here and the outage disappears from the
     # only place that reports it.
     'indeed': 22,
-    'linkedin': 22,
+    # WEEKLY since 2026-09-25, via linkedin-archive.yml's direct transport — no
+    # longer the fortnightly Bright Data sweep the note above describes. Ten is
+    # one week plus the same three days of slack a daily feed gets, so one late
+    # or failed Monday is what trips it, not the calendar.
+    'linkedin': 10,
 }
 
 # Sources that are NOT scheduled, so silence means nothing. TheirStack is an

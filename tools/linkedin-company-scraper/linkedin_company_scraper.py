@@ -103,10 +103,14 @@ def parse_search_html(html: str) -> list:
         # Posted date from the <time datetime="YYYY-MM-DD"> element.
         dm = re.search(r'datetime="(\d{4}-\d{2}-\d{2})', card)
         date = dm.group(1) if dm else ''
+        # The advertised range, exactly as the card prints it ("A$120,000.00 -
+        # A$150,000.00"). Kept as text: the card carries no interval, and the
+        # currency is whatever the advertiser typed. '' on most cards.
+        salary = _field(card, r'class="[^"]*job-search-card__salary-info[^"]*"[^>]*>(.*?)</span>')
         key = (title.lower(), (location or '').lower())
         if key in seen:
             continue
         seen.add(key)
         out.append({'title': title, 'company': company, 'location': location,
-                    'url': url, 'date': date})
+                    'url': url, 'date': date, 'salary': salary})
     return out

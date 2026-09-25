@@ -28,20 +28,6 @@ export function IconTrending() {
   );
 }
 
-/** Talent flows: the design's two opposed arrows (people moving both ways). */
-export function IconFlows() {
-  return (
-    <svg {...BOX} width={20} height={20} aria-hidden>
-      <g className="ai-lift">
-        <path d="m16 3 4 4-4 4" />
-        <path d="M20 7H4" />
-        <path d="m8 21-4-4 4-4" />
-        <path d="M4 17h16" />
-      </g>
-    </svg>
-  );
-}
-
 export function IconGlobal() {
   return (
     <svg {...BOX} width={20} height={20} aria-hidden>
@@ -97,6 +83,39 @@ export function IconAnalyst() {
       <path d="M9.5 9 6.4 10.3A4.4 4.4 0 0 0 3.8 14.4V20h6.1" />
       <path d="M14.5 9l3.1 1.3a4.4 4.4 0 0 1 2.6 4.1V20h-6.1" />
       <path className="ai-dot ai-lift-sm ai-d1b" d="M10.6 12.9h2.8l-.7 3.1.9 3.9h-3.2l.9-3.9Z" />
+    </svg>
+  );
+}
+
+/**
+ * Career pathways (supply rail, first): a spine with a branch leaving to the
+ * right and one joining from the left, which separate on hover.
+ */
+export function IconPathways() {
+  return (
+    <svg {...BOX} width={20} height={20} aria-hidden>
+      <path d="M12 3v18" />
+      <path d="M9 21h6" />
+      <path className="ai-slide-r" d="M12 5h6.5l2 2.25-2 2.25H12" />
+      <path className="ai-slide-l ai-d1b" d="M12 11.5H5.5l-2 2.25 2 2.25H12" />
+    </svg>
+  );
+}
+
+/**
+ * Talent flows (supply rail, second): two columns with a curve arcing between
+ * them, the whole arc lifting and its arrowhead running on ahead of it.
+ */
+export function IconTalentFlows() {
+  return (
+    <svg {...BOX} width={20} height={20} aria-hidden>
+      <path d="M2.5 21h19" />
+      <path d="M4 21v-6.5h5V21" />
+      <path d="M15 21V12h5v9" />
+      <g className="ai-lift-md">
+        <path d="M6.5 11.5C7.5 5.5 15 4 17.5 8.5" />
+        <path className="ai-tipnudge ai-d1b" d="m17.9 5.3-.4 3.2-3.1-.8" />
+      </g>
     </svg>
   );
 }

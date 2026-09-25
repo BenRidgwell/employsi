@@ -42,7 +42,8 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
-import collections, csv, io, json, re, sys, urllib.error, urllib.request
+import collections
+import glob, csv, io, json, re, sys, urllib.error, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/govWorkforceAu.ts'
@@ -130,6 +131,135 @@ ALIAS = {
     # 116,540 and "Public Non-Financial Corporations Sector" 4,750 — and any
     # rule loose enough to gather the health networks could gather one of
     # those. A total is not an agency, and nothing here may ever sum one.
+    # ── South Australia ────────────────────────────────────────────────
+    # ONE SYSTEMATIC MISMATCH, NOT EIGHTEEN SEPARATE ONES: the roster writes
+    # "SA" and the Workforce Information Report spells out "South Australian".
+    # That is the whole of it for these, which is why they are grouped rather
+    # than scattered through the table alphabetically.
+    #
+    # These were read off the RUNNER's own spare-row list, because South
+    # Australia cannot be loaded from the authoring sandbox — its report is a
+    # PDF behind a host that refuses this network, so the strings below are the
+    # source's own output rather than anything guessed here. They are verified
+    # by the next gov-workforce run: any one that is wrong reappears in that
+    # list instead of matching, and the roster card stays blank rather than
+    # taking a wrong figure.
+    #
+    # The four SECTOR TOTALS in that list — General Government Sector at
+    # 116,540, Public Non-Financial Corporations, Public Financial
+    # Corporations, Non-Budget Entity — are aggregates and must never be
+    # matched to an agency. They stay unconsumed on purpose; the run printing
+    # them is the check working, not a gap.
+    'sa:SA Metropolitan Fire Service': 'South Australian Metropolitan Fire Service',
+    'sa:SA Housing Trust': 'South Australian Housing Trust',
+    'sa:SA Country Fire Service': 'South Australian Country Fire Service',
+    'sa:SA Tourism Commission': 'South Australian Tourism Commission',
+    'sa:Lifetime Support Authority of SA': 'Lifetime Support Authority of South Australia',
+    'sa:SACE Board of SA': 'SACE Board of South Australia',
+    'sa:SA Fire and Emergency Services Commission':
+        'South Australian Fire and Emergency Services Commission',
+    # "Services" plural in the source, singular on the card.
+    'sa:SA State Emergency Service': 'South Australian State Emergency Services',
+    'sa:Essential Services Commission of SA': 'Essential Services Commission of South Australia',
+    'sa:State Theatre Company of SA': 'State Theatre Company of South Australia',
+    'sa:Electoral Commission of SA': 'Electoral Commission of South Australia',
+    # "South Australia", not "South Australian", in this one row.
+    'sa:SA Arid Lands Landscape Board': 'South Australia Arid Lands Landscape Board',
+    'sa:SA Motor Sport Board': 'South Australian Motor Sport Board',
+    'sa:Carclew Youth Arts Centre': 'Carclew Youth Arts Centre Incorporated',
+    'sa:SA Film Corporation': 'South Australian Film Corporation',
+    'sa:State Opera SA': 'State Opera of South Australia',
+    'sa:Office of the SA Productivity Commission':
+        'Office of the South Australian Productivity Commission',
+    # THE ONE HERE THAT IS NOT JUST AN ABBREVIATION. The card names the
+    # Commissioner — the office-holder — and the source row is "Commission".
+    # In South Australia that is one body under two spellings, and there is no
+    # second candidate anywhere in the file, so this is a rename rather than
+    # the near-name trap. Worth the note because it is the only one of the
+    # eighteen a reader could not confirm from the two strings alone.
+    'sa:Legal Profession Conduct Commissioner': 'Legal Profession Conduct Commission',
+
+    # ── Victoria ───────────────────────────────────────────────────────
+    # THE VICTORIAN SOURCE HAD 208 SPARE ROWS AGAINST 38 UNFILLED CARDS, which
+    # is not a jurisdiction missing a source — it is a jurisdiction whose rows
+    # are named differently from the roster's. VPSC publishes the EMPLOYING
+    # ENTITY: Bendigo Health files as Bendigo Health Care Group, WorkSafe as
+    # the Victorian WorkCover Authority (its legal name), VicScreen as Film
+    # Victoria (VicScreen is the trading name), the Ombudsman as the Office of
+    # the Ombudsman Victoria.
+    #
+    # The portal was checked for a newer or finer file before any of this was
+    # written, since that would have been the cheaper fix: VPSC Workforce Data
+    # runs 2022, 2023, 2024 and stops. Jun 2024 IS the newest whole-of-sector
+    # edition, so the loader was already reading the best available and the
+    # remaining gap was never going to close by fetching something else.
+    #
+    # A DEPARTMENT ROW CARRIES ITS OWN DISCLOSURE IN BRACKETS, and the brackets
+    # are part of the name — norm() keeps parentheses, so the roster's bare
+    # "Department of Premier and Cabinet" cannot reach a row that spells out
+    # what it includes. Those four are matched to the full string.
+    #
+    # THE (CEO) SPLIT IS A SOURCE CONVENTION, NOT A SECOND BODY. Several
+    # agencies file as "X (excluding CEO)" plus "X (CEO)" at 1. Taking only
+    # the first would report an agency one person short forever, so they are
+    # summed like SA Health, under the same guard requiring both members in
+    # both years. Victoria Police is the same shape at a different scale:
+    # sworn officers and public servants are two rows of one force.
+    'vic:Bendigo Health': 'Bendigo Health Care Group',  # 4,756
+    'vic:Latrobe Regional Health': 'Latrobe Regional Hospital',  # 2,675
+    'vic:Portable Long Service Authority': 'Portable Long Service Benefits Authority',  # 63
+    'vic:Royal Botanic Gardens Victoria': 'Royal Botanic Gardens Board',  # 246
+    'vic:Victorian Electoral Commission': 'Office of the Victorian Electoral Commissioner',  # 324
+    'vic:Victorian Ombudsman': 'Office of the Ombudsman Victoria',  # 92
+    'vic:WorkSafe': 'Victorian WorkCover Authority',  # 1,903
+    'vic:Parliament of Victoria': 'Departments of Parliament',  # 357
+    'vic:VicScreen': 'Film Victoria',  # 65
+    'vic:Victorian Legal Services Board and Commissioner': 'Office of the Legal Services Commissioner',  # 201
+    'vic:Department of Energy, Environment and Climate Action':
+        'Department of Energy, Environment and Climate Action (includes Sustainability Victoria excluding CEO, Solar Victoria and the Office of the Commissioner for Environmental Sustainability)',  # 6,226
+    'vic:Department of Justice and Community Safety':
+        'Department of Justice and Community Safety (includes non-executive and non-forensic employees from Victorian Institute of Forensic Medicine)',  # 9,852
+    'vic:Department of Premier and Cabinet':
+        'Department of Premier and Cabinet (includes Yoorrook Justice Commission)',  # 651
+    'vic:Department of Treasury and Finance':
+        'Department of Treasury and Finance (includes State Revenue Office and Commission for Better Regulation)',  # 1,612
+    'vic:Environment Protection Authority': [  # 752
+        'Environment Protection Authority (excluding CEO)',  # 751
+        'Environment Protection Authority (CEO)',  # 1
+    ],
+    'vic:Game Management Authority': [  # 30
+        'Game Management Authority (excluding CEO)',  # 29
+        'Game Management Authority (CEO)',  # 1
+    ],
+    'vic:Victorian Gambling and Casino Control Commission': [  # 198
+        'Victorian Gambling and Casino Control Commission (excluding CEO)',  # 197
+        'Victorian Gambling and Casino Control Commission (CEO)',  # 1
+    ],
+    'vic:Victoria Police': [  # 22,380
+        'Victoria Police (Sworn Police and Protective Services Officers)',  # 18,031
+        'Victoria Police (Public Service employees)',  # 4,349
+    ],
+    # ── Health New Zealand districts ───────────────────────────────────
+    # The roster carries the district's full Te Whatu Ora name; Table 1 of the
+    # quarterly report carries the bare district. Qualified with `nzhealth:`
+    # because district names are ordinary words that recur — "Auckland" alone
+    # would be reachable from any jurisdiction added later.
+    'nzhealth:Health New Zealand - Te Whatu Ora Te Toka Tumai Auckland': 'Auckland',
+    'nzhealth:Health New Zealand - Te Whatu Ora Counties Manukau': 'Counties Manukau',
+    'nzhealth:Health New Zealand - Te Whatu Ora Waitemat\u0101': 'Waitemata',
+    # ONE ROSTER CARD, TWO SOURCE ROWS. Health NZ runs Capital & Coast and Hutt
+    # Valley as a single combined district and the roster names it that way;
+    # the workforce table still reports the two payrolls separately. Summed, as
+    # SA Health is, and the summing guard requires BOTH members present in BOTH
+    # years, so a rename cannot silently halve it.
+    #
+    # The pair is also the evidence that the sum is the right unit: separately
+    # the two read -9.5% and +4.6% over the year, which is staff moving between
+    # them inside one district; together they are +1.3%.
+    'nzhealth:Health New Zealand - Te Whatu Ora Capital, Coast & Hutt Valley': [
+        'Capital & Coast',
+        'Hutt Valley',
+    ],
     'sa:SA Health': [
         'Department for Health and Wellbeing',
         'Central Adelaide Local Health Network',
@@ -169,7 +299,34 @@ def _browser_ctx():
         pw = sync_playwright().start()
         _BROWSER['stop'] = pw.stop
         try:
-            b = pw.chromium.launch(args=['--no-sandbox'])
+            # PIN THE BROWSER PATH, because the pip playwright in the
+            # authoring sandbox expects a NEWER build number than the image
+            # carries and dies with "Executable doesn't exist ...
+            # chromium_headless_shell-1243", telling you to run
+            # `playwright install`. Do not: the environment sets
+            # PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD and the browser is already
+            # there. Until this was pinned, Queensland, South Australia, the
+            # NT and Tasmania all failed here with a message about a missing
+            # browser, which reads as four blocked jurisdictions rather than
+            # one wrong path.
+            #
+            # THIS DOES NOT MAKE THEM RUNNABLE IN THE SANDBOX, and it was
+            # briefly written up as if it did. With the path pinned the browser
+            # launches and the failure moves to the NEXT one:
+            # ERR_CERT_AUTHORITY_INVALID, because the sandbox reaches the
+            # network through a proxy whose CA Chromium does not trust. That is
+            # not worked around here — launching with certificate errors
+            # ignored would turn off verification for every page the scraper
+            # reads. These four stay runner-only, as gov-workforce.yml already
+            # has them; what changes is that the error now names the real
+            # blocker. On a runner the glob finds whatever playwright installed,
+            # and an empty glob falls through to the default launch.
+            exe = next(iter(sorted(glob.glob(
+                '/opt/pw-browsers/chromium-*/chrome-linux/chrome') + glob.glob(
+                '/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell'),
+                reverse=True)), None)
+            b = pw.chromium.launch(args=['--no-sandbox'],
+                                   **({'executable_path': exe} if exe else {}))
             _BROWSER['ctx'] = b.new_context(user_agent=UA, locale='en-AU')
         except Exception:
             # Leaving a half-started Playwright behind turns the next
@@ -327,6 +484,81 @@ def ckan_resource(api, dataset, match):
         if match.lower() in r['name'].lower():
             return r['url']
     return None
+
+
+# Roster agencies the source CANNOT fill, with the measured reason.
+#
+# WHY THIS EXISTS. The unmatched list is a worklist, and a worklist that never
+# shrinks stops being read. Every entry below was checked against the source
+# rows by hand and cannot be closed by an alias, so leaving them printed as
+# "no source row" invites the next pass to do the same search again and reach
+# the same answer. A refusal is a claim and gets the same evidence as a match —
+# the WGEA generator learned that when three of its refusals turned out to be
+# wrong.
+#
+# Keyed like ALIAS, `jurisdiction:Roster Name`.
+NOT_IN_SOURCE = {
+    # ── Victoria: inside a parent's row, and not separable ─────────────────
+    # The source says so itself, in the parent row's own brackets.
+    'vic:State Revenue Office':
+        "inside 'Department of Treasury and Finance (includes State Revenue "
+        "Office and Commission for Better Regulation)' — 1,612 covers both, and "
+        "filing it here too would be the same people on two cards",
+    'vic:Victorian Institute of Forensic Medicine':
+        "split in two and only half is reachable: 47 executive and forensic "
+        "employees have their own row, the rest are inside DJCS's 9,852 by that "
+        "row's own wording. 47 would understate it, 9,852 is the department",
+    'vic:Homes Victoria':
+        'inside the Department of Families, Fairness and Housing (7,172); no row '
+        'names Homes Victoria',
+    'vic:VicGrid': 'inside DEECA (6,226); no row names VicGrid',
+    'vic:Victorian School Building Authority':
+        'inside the Department of Education; no row names the VSBA. The near '
+        'name in the source, Victorian Building Authority (490), is the '
+        'building-practitioner regulator and a different body entirely',
+
+    # ── Victoria: one employer for many roster cards ───────────────────────
+    # COURT SERVICES VICTORIA EMPLOYS EVERY VICTORIAN COURT'S STAFF — 3,072
+    # plus 6 court CEOs — and no row separates the jurisdictions. The roster
+    # holds five courts as five cards, so filing 3,078 would put one number on
+    # five different cards. That is the double count already declined for NSW
+    # Health's portfolios.
+    'vic:Supreme Court': 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:County Court': 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:Magistrates Court': 'employed by Court Services Victoria (3,078); no row per court',
+    "vic:Children's Court": 'employed by Court Services Victoria (3,078); no row per court',
+    'vic:Victorian Civil and Administrative Tribunal (VCAT)':
+        'employed by Court Services Victoria (3,078); no row per jurisdiction',
+
+    # ── Victoria: did not exist when the file was measured ─────────────────
+    # The newest VPSC edition is Jun 2024 and these are 2024-25 creations, so
+    # their absence is a date, not a gap in coverage. They should appear of
+    # their own accord in the first edition that postdates them.
+    'vic:Social Services Regulator': 'created after Jun 2024, the newest VPSC edition',
+    'vic:Building and Plumbing Commission': 'created after Jun 2024 (from the VBA)',
+    'vic:Workplace Injury Commission': 'created after Jun 2024',
+    'vic:Triple Zero Victoria':
+        'created after Jun 2024; its predecessor ESTA has no row in the file either',
+    'vic:Victorian Infrastructure Delivery Authority':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Health':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Rail':
+        'created after Jun 2024',
+    'vic:Victorian Infrastructure Delivery Authority | Roads':
+        'created after Jun 2024',
+
+    # ── Victoria: a near name that is NOT this body ────────────────────────
+    'vic:Workforce Inspectorate Victoria':
+        "the source has 'Wage Inspectorate Victoria' (66) and nothing named "
+        'Workforce Inspectorate. Whether that is a rename is not established '
+        'here, and a score would have taken it — the AFL/AFL Sports Ready trap',
+    'vic:Royal Melbourne Hospital':
+        "the source's unit is 'Melbourne Health' (9,983), the health service "
+        'that operates the hospital AND NorthWestern Mental Health. The roster '
+        'card names the hospital, so this is the group-for-an-entity swap the '
+        'WGEA generator refuses: the group is used only when the roster names it',
+}
 
 
 def norm(s):
@@ -633,12 +865,51 @@ def load_sa():
 def load_nsw():
     """NSW Health annual report appendix — staffing by health organisation.
 
-    NEW SOUTH WALES PUBLISHES NO PER-AGENCY WORKFORCE PROFILE ANY MORE. The
-    Public Service Commission's workforce-profile page carries no data even
-    rendered in a browser (its links are drawn by JavaScript, so a plain fetch
-    sees an empty shell and reports a false negative); its reports page carries
-    only annual reports. data.nsw.gov.au holds the PSC's gender and diversity
-    extract for 2006-2015 and nothing else per agency.
+    NEW SOUTH WALES PUBLISHES A WORKFORCE PROFILE AND IT HAS NO AGENCY IN IT.
+    That distinction matters, because this docstring used to say the profile was
+    no longer published and gave the wrong reason — that the PSC's page carried
+    no data and its links were drawn in JavaScript. The page is real, reachable
+    and machine-readable. It is at
+
+        nsw.gov.au/departments-and-agencies/premiers-department/
+                   reports-and-data/workforce-profile-reports
+
+    which is under the Premier's Department rather than the Public Service
+    Commission, and no path I guessed reached it — nsw.gov.au's sitemap index
+    did, in one request, out of 33,017 URLs. Same lesson as the Northern
+    Territory: ask a site for its map before inventing paths.
+
+    It serves a PDF report and an "additional data" workbook for every year from
+    2020 to 2025, and the 2025 workbook has 34 sheets. Measured 2026-09-25,
+    reading all of them and all 64 pages of the report: THE FINEST GRANULARITY
+    IS PORTFOLIO.
+
+        Table 2.2  by SERVICE   Public Service 84,780 · NSW Health Service
+                                140,998 · NSW Police Force 19,513 · Teaching ·
+                                Transport · Other Crown · State-owned
+        Table 2.3  by PORTFOLIO Communities and Justice 55,041 · Education
+                                120,111 · Customer Service 11,237 · Planning
+                                4,613 · Premier and Cabinet 3,091 · …
+
+    Neither is an agency. A portfolio is a group of departments and agencies
+    under one Secretary, and the roster holds the sub-agencies as their own
+    cards — Corrective Services, Youth Justice and Legal Aid all sit inside
+    Communities and Justice. Filing 55,041 against the Department of Communities
+    and Justice would attribute its whole portfolio to it while its children
+    carry their own rows, which is the double count declined for NSW Health.
+
+    INDIVIDUAL ENTITIES APPEAR ONLY IN PROSE, AND ONLY AS CHANGES: "Sydney Water
+    Corporation increased by 361 FTE (+10.5%)". A level can be derived from
+    those two numbers, and deliberately is not. 361/0.105 is arithmetic over a
+    percentage rounded to one decimal place, which puts the answer inside a band
+    about forty FTE wide, and the result would be a figure no row anywhere
+    states. The rule in CLAUDE.md is that a number on a card came from a row.
+
+    So the 64 non-health NSW agencies need 64 annual reports, and that is the
+    honest size of the remaining job rather than a source waiting to be found.
+    data.nsw.gov.au is not it either: its per-agency workforce extract is the
+    PSC's 2006-2015 gender and diversity file, and every dataset it returns for
+    "full time equivalent" is school ENROLMENTS.
 
     What IS published is the health side, which is where the value was anyway:
     13 Local Health Districts carry 1,667 of New South Wales' 2,561 live ads.
@@ -652,24 +923,49 @@ def load_nsw():
 
     — four consecutive Junes, so the last two are a year apart.
 
-    FIVE ROWS COME OUT NAMED AFTER A PAGE, not an organisation: "NSW Health
-    Annual Report 2024-25 Page 372" and four like it, carrying real figures
-    (12,965, 7,509, 7,336, 6,042, 322). The appendix repeats a running header
-    on some pages and the name-capture takes it when the organisation heading
-    sits above the page break. It costs nothing today — every one of them is a
-    Local Health District the roster does not carry, so the rows go unmatched
-    and unused, and the twelve health organisations the roster DOES carry all
-    parse correctly. It is written down because the failure is silent in the
-    wrong direction: add one of those districts to the roster and it would
-    quietly never match, looking like a source that does not report it rather
-    than a name this parser dropped. The two-sided unmatched report in main()
-    is what makes these visible at all.
+    FIVE ROWS USED TO COME OUT NAMED AFTER A PAGE, not an organisation: "NSW
+    Health Annual Report 2024-25 Page 372" and four like it, carrying real
+    figures. This docstring said it cost nothing — "every one of them is a
+    Local Health District the roster does not carry ... the twelve health
+    organisations the roster DOES carry all parse correctly". THAT WAS WRONG,
+    and wrong in the most expensive way available here.
 
-    IT IS FTE, NOT HEADCOUNT, and the data says so rather than the document:
+    The appendix has TWO sections over the same organisations, and they are
+    not the same measurement:
+
+        Appendix 2, "Workforce statistics / Full time equivalent" — 4 years,
+            June 2022-2025, the FTE tables, from p16.
+        "Headcount / Number of staff in headcount employed in the NSW public
+            health system." — 2 years, June 2024-2025, from p30.
+
+    A table crossing a page break repeats its "Treasury group ..." header at
+    the top of the next page, where the line before it is the page footer
+    rather than a name. So that table's FTE total was filed under a page
+    number — and the organisation's real name was then still free when the
+    HEADCOUNT section reached it, and took the head count instead. The parser
+    walks both sections and keeps the first hit per name, so the two bugs
+    combined to swap the MEASURE on exactly those organisations whose FTE
+    table happened to straddle a page.
+
+    Measured 2026-09-25, that reached two live roster cards:
+
+        South Western Sydney LHD   15,233 head count where the FTE is 12,965
+                                   — an 18% overstatement
+        NSW Ambulance               7,677 head count where the FTE is 7,509
+
+    Both read "Workforce FTE". Fixed on both sides: a repeated header carries
+    the organisation across the break instead of naming the table after the
+    page, and only the FTE section is recorded, because `fte` is what this
+    loader returns. 33 parsed rows become 27 — five page names and one
+    head-count-only spelling of Health Education Training Institute go, and
+    nothing the roster carries is lost.
+
+    IT IS FTE, NOT HEADCOUNT, and the data says so as well as the document:
     small organisations report "Medical 0.6 0.6 0.6 0.6" and "Nursing 1.0 0.3
     1.0 1.0". You cannot have 0.6 of a person. Marked `fte` accordingly, so
     these tiles read "Workforce FTE" like Queensland's and are never added to
-    or compared with a head count.
+    or compared with a head count — which is precisely the guarantee the bug
+    above was quietly breaking.
 
     The FIRST pages a search finds are activity statistics — admitted
     episodes, occupancy, emergency presentations — which name the same
@@ -695,19 +991,43 @@ def load_nsw():
 
     HEADER = re.compile(r'^Treasury group((?:\s+\w+\s+20\d\d)+)\s*$')
     TOTAL = re.compile(r'^Total\s+((?:[\d,.]+\s+){2,})?([\d,.]+)\s+([\d,.]+)\s*$')
+    # The running header/footer the appendix repeats on every page. It is the
+    # line that used to be taken for an organisation name.
+    RUNNING = re.compile(r'Annual Report|^Page\s+\d+$|^\d+$')
+
+    def is_heading(t):
+        return bool(t) and len(t) > 8 and not RUNNING.search(t)
+
     out, asof = {}, None
     with pdfplumber.open(io.BytesIO(raw)) as pdf:
-        pending = None            # the heading seen just before a Treasury row
+        pending = None            # the organisation this table belongs to
+        last_org = None           # the last real heading, for continuations
         prev_line = ''
+        in_fte = False
         for page in pdf.pages:
             for line in (page.extract_text() or '').splitlines():
                 line = line.strip()
+                # WHICH OF THE TWO SECTIONS ARE WE IN. Appendix 2 opens with
+                # "Full time equivalent" and the head-count section with
+                # "Headcount", each on a line of its own.
+                if line == 'Full time equivalent':
+                    in_fte = True
+                elif line == 'Headcount':
+                    in_fte = False
                 m = HEADER.match(line)
                 if m:
                     years = re.findall(r'(\w+)\s+(20\d\d)', m.group(1))
-                    if len(years) >= 2 and prev_line and len(prev_line) > 8:
-                        pending = prev_line
-                        asof = f'{years[-1][0][:3]} {years[-1][1]}'
+                    if len(years) >= 2:
+                        # A TABLE THAT CROSSES A PAGE BREAK REPEATS THIS
+                        # HEADER, and the line before it is then the page
+                        # footer rather than a name. Carry the organisation
+                        # across instead of naming the table after the page.
+                        if is_heading(prev_line):
+                            pending = last_org = prev_line
+                        else:
+                            pending = last_org
+                        if pending:
+                            asof = f'{years[-1][0][:3]} {years[-1][1]}'
                     prev_line = line
                     continue
                 t = TOTAL.match(line)
@@ -718,10 +1038,29 @@ def load_nsw():
                     except ValueError:
                         pending, prev_line = None, line
                         continue
-                    if now > 0 and prev > 0:
+                    if in_fte and now > 0 and prev > 0:
                         out.setdefault(pending, (round(now), round(prev)))
                     pending = None
                 prev_line = line
+
+    # TWO GUARDS, BOTH FOR FAILURES THAT ARE SILENT IN THE WRONG DIRECTION.
+    #
+    # A page name among the keys means the continuation handling has stopped
+    # working. That never produces an error on its own — the row simply goes
+    # unmatched, and the organisation it belonged to then takes whatever the
+    # HEADCOUNT section offers, which is how an 18% overstatement sat on South
+    # Western Sydney's card reading "Workforce FTE".
+    stray = [k for k in out if RUNNING.search(k)]
+    if stray:
+        raise RuntimeError(f'NSW: {len(stray)} tables named after a page, not an '
+                           f'organisation: {stray[:3]}')
+    # And if the "Full time equivalent" caption is ever reworded, in_fte stays
+    # False for the whole document and this returns nothing. Empty is handled
+    # safely upstream (previous rows are kept and the run says so), but it
+    # would read as an unreachable source rather than a renamed heading.
+    if not out:
+        raise RuntimeError('NSW: no FTE rows — has the "Full time equivalent" '
+                           'section caption changed?')
     return out, asof, 'fte'
 
 
@@ -1077,6 +1416,114 @@ def load_tas():
 
 # key -> (label, loader, span in years). The loader returns (rows, asof, unit);
 # `unit` is "headcount" everywhere but Queensland, which publishes only FTE.
+def load_healthnz():
+    """Health New Zealand — employed headcount by District.
+
+    HEALTH NZ IS NOT IN THE PUBLIC SERVICE COMMISSION DATA, and could never
+    have been: it is a Crown entity, and its DISTRICTS are operational units
+    inside it rather than public-service departments, so no PSC workforce row
+    names one under any spelling. load_nz() closing 26 NZ agencies therefore
+    said nothing about these five, and reading their absence there as "no
+    source" would have been the same mistake this file has already made about
+    three whole jurisdictions.
+
+    THE SECOND HALF OF WHY THEY WERE NEVER FILED IS IN main(), NOT HERE. The
+    roster query asked for `sector === "Government"` and these five carry
+    sector "Healthcare", so the generator never considered them at all — no
+    unmatched-roster line, no spare source row, nothing. A source that is
+    never asked about looks exactly like a source that has no answer.
+
+    THE HOST MOVED AND THE OLD ONE LIES ABOUT IT. tewhatuora.govt.nz 301s to
+    healthnz.govt.nz on the apex, but its content tree answers 200 to ANY path
+    with the homepage — /robots.txt, /sitemap.xml and /sitemap.xml.gz all
+    return the same 676 KB of HTML. So a sitemap fetch there succeeds, parses
+    to zero <loc> entries, and reads as a site with no sitemap rather than as
+    the wrong host. healthnz.govt.nz/robots.txt is 706 bytes of text/plain and
+    names the real sitemap, which is an index of five children over 4,479 URLs.
+
+    A PLAIN curl IS REFUSED AND THAT IS ABOUT THE USER-AGENT, NOT A WAF. The
+    first request here came back as a CloudFront "Request blocked" 403 and was
+    briefly written down as an AWS WAF block of the same family as the NT's
+    Cloudflare challenge. It is not: the identical URL answers 200 to urllib
+    with a browser User-Agent, no cookie, no warming and no browser. Worth
+    keeping straight, because the remedy for the two is completely different
+    and the expensive one was nearly reached for first.
+
+    THE FIGURE IS THE `Employed` COLUMN OF TABLE 1, which is the report's own
+    headline: page 7 says "Total employees 92,356" and that is what Employed
+    sums to. The `Total` column adds 8,305 "Others" — staff on parental leave
+    and those with no employment-status code — whom the report itself excludes
+    from every other table. It is a HEAD COUNT of distinct employees, not FTE,
+    unlike New Zealand's PSC data and Queensland's, so it is marked as one.
+
+    THE PAIR IS Q3 AGAINST Q3, both snapshots at 31 March. The quarters are
+    the natural unit here and comparing Q3 to the previous Q4 would measure
+    nine months of a cycle as if it were a year — the same error load_nz()
+    avoids by refusing the March column and pairing June to June.
+
+    Both editions must carry National Payrolls: the report says its totals are
+    "not directly comparable to those in the previous District Quarterly
+    reports, as data from Non-District agencies has been incorporated since
+    September 2024". Q3 2024/25 is March 2025 and so is safely after that, but
+    the check is asserted rather than assumed, because an earlier edition
+    silently lacking the row would understate the prior year and print growth
+    that is really a change of scope.
+    """
+    import pdfplumber
+
+    ROW = re.compile(r"^([A-Za-z][A-Za-z&'\u2019 \-]*?)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d.]+)%$")
+
+    def quarterly(page_url):
+        """The newest Q3 PDF linked from one publications page."""
+        html = fetch(page_url)
+        pdfs = re.findall(r'href="([^"]+\.pdf)(?:\?[^"]*)?"', html, re.I)
+        q3 = [u for u in pdfs if re.search(r'q(uarter)?[-_ ]?(3|three)', u, re.I)]
+        if not q3:
+            raise RuntimeError(f'no quarter-three PDF linked from {page_url}')
+        return q3[0]
+
+    def table1(pdf_url):
+        """Table 1 rows as {district: employed}, chosen by row count.
+
+        THE PAGE IS FOUND BY WHICH ONE PARSES, not by its heading. Matching on
+        "Distribution of employment types" lands on the contents page, which
+        carries the heading and no data, and the first version of this did
+        exactly that and reported zero rows for both years.
+        """
+        import io as _io
+        body = fetch(pdf_url, binary=True)
+        best, page_no = {}, None
+        with pdfplumber.open(_io.BytesIO(body)) as pdf:
+            for pg in pdf.pages:
+                rows = {}
+                for line in (pg.extract_text() or '').split('\n'):
+                    m = ROW.match(line.strip())
+                    if m:
+                        rows[m.group(1).strip()] = int(m.group(2).replace(',', ''))
+                if len(rows) > len(best):
+                    best, page_no = rows, pg.page_number
+        # UNDER FIFTEEN ROWS IS A FAILURE, NOT A SMALL TABLE. There are 21
+        # districts plus a Total; the Northern Territory taught this the
+        # expensive way, parsing 3 rows of 25 and reporting it as a success.
+        if len(best) < 15:
+            raise RuntimeError(f'{pdf_url}: only {len(best)} rows parsed (page {page_no})')
+        if 'National Payrolls' not in best:
+            raise RuntimeError(f'{pdf_url}: no National Payrolls row — pre-Sept-2024 scope')
+        best.pop('Total', None)
+        return best
+
+    now = table1(quarterly(
+        'https://www.healthnz.govt.nz/publications/employed-workforce-quarterly-reports-2025-26'))
+    prev = table1(quarterly(
+        'https://www.healthnz.govt.nz/publications/employed-workforce-quarterly-reports-2024-25'))
+
+    rows = {}
+    for d, v in now.items():
+        if d in prev:
+            rows[d] = (v, prev[d])
+    return rows, '31 March 2026', 'headcount'
+
+
 SOURCES = {
     'aps': ('APS (federal)', load_aps, 1),
     'vic': ('Victoria', load_vic, 1),
@@ -1095,6 +1542,12 @@ SOURCES = {
     # found, which took six rounds and is the more useful half of the story.
     'nt': ('Northern Territory', load_nt, 1),
     'tas': ('Tasmania', load_tas, 1),
+    # A SEPARATE SOURCE FROM `nz` ON PURPOSE, not a few more rows on it. The
+    # PSC publishes FTE and Health NZ publishes a head count, and one `unit`
+    # is carried per source — merging them would label 11,473 people as FTE on
+    # the card and put them in the same tile as figures they cannot be added
+    # to. Same reason Queensland and NSW health are kept apart.
+    'nzhealth': ('New Zealand health', load_healthnz, 1),
 }
 
 
@@ -1130,7 +1583,14 @@ def main():
     agencies = json.loads(subprocess.run(
         ['bun', '-e', '''
 import { COMPANIES } from "./src/employsi/data/companies";
-console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
+console.log(JSON.stringify(COMPANIES.filter(c =>
+    c.sector === "Government" ||
+    // HEALTH NZ'S FIVE CARRY sector "Healthcare", NOT "Government", and asking
+    // only for Government is why they were never even candidates: no match, no
+    // unmatched-roster line, no spare source row. They are Crown-entity
+    // districts, so they belong here whatever the sector field says. Scoped to
+    // `nz-` so it cannot pull in a private hospital.
+    (c.id.startsWith("nz-") && c.sector === "Healthcare"))
   .map(c => ({ id: c.id, name: c.name }))));'''],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
 
@@ -1151,6 +1611,19 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
         # the whole id and match no jurisdiction.
         if a['id'].startswith('aps-'):
             pre = 'aps'
+        elif a['id'].startswith(('nz-health-new-zealand', 'nz-northern-regional-alliance')):
+            # THE NORTHERN REGIONAL ALLIANCE IS DELIBERATELY SENT TO A SOURCE
+            # THAT CANNOT FILL IT, so the run says so in the right place. Since
+            # September 2024 the report folds NRA into a combined "National
+            # Payrolls" row with seven other agencies — its people are in the
+            # 4,614, not absent from it, and no row anywhere names NRA. Routed
+            # to `nz` instead it would come back unmatched against the Public
+            # Service Commission, which never covered it either and would read
+            # as the wrong reason for the right answer.
+            # Health NZ's districts go to their own source, which is a head
+            # count where the PSC's is FTE. Routing them to `nz` would look up
+            # names that are not in it and then label the miss as the PSC's.
+            pre = 'nzhealth'
         elif a['id'].startswith('nz-'):
             pre = 'nz'
         else:
@@ -1200,7 +1673,13 @@ console.log(JSON.stringify(COMPANIES.filter(c => c.sector === "Government")
             want = norm(spec)
             hit = by_norm.get(want)
             if not hit or len(hit) != 1:
-                unmatched_roster[pre].append((a['name'], 'ambiguous' if hit else 'no source row'))
+                # A RECORDED REASON BEATS "no source row". Without it the
+                # same name gets researched again every pass and reaches the
+                # same answer; with it the list separates what is still worth
+                # looking for from what has already been settled.
+                why = NOT_IN_SOURCE.get(f"{pre}:{a['name']}")
+                unmatched_roster[pre].append(
+                    (a['name'], why or ('ambiguous' if hit else 'no source row')))
                 skipped += 1
                 continue
             now, prev = hit[0][1]

@@ -25,7 +25,7 @@ import {
 } from "../lib/skillCard";
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
-import { getSkillTrend } from "../lib/jobHistoryFn";
+import { getSkillCompanyMonths, getSkillTrend } from "../lib/jobHistoryFn";
 import { COMPANIES } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
 import { SearchAuth } from "./SearchAuth";
@@ -284,6 +284,48 @@ export function GlobalSearch() {
     () => (cardSkill ? employmentFor(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
     [cardSkill, heatMonth],
   );
+  /**
+   * Who was advertising this skill, month by month, so the LOCAL map's company
+   * pins follow the timeline rather than showing today's employers under every
+   * month. Fetched once per skill — the covered span is a few months and the
+   * payload is small, and scrubbing has to feel instant.
+   */
+  const { data: skillMonths } = useQuery({
+    queryKey: ["skillCompanyMonths", cardSkill],
+    queryFn: () => getSkillCompanyMonths({ data: { skill: cardSkill as string } }),
+    enabled: !!cardSkill && !cardBlocked,
+    staleTime: 6 * 60 * 60 * 1000,
+    retry: false,
+  });
+  const setSkillMonths = useAppStore((st) => st.setSkillMonths);
+  useEffect(() => {
+    setSkillMonths(skillMonths ?? null);
+    // Cleared on the way out: the map reads this from the store, and a stale
+    // one would light the previous skill's employers under the new card.
+    return () => setSkillMonths(null);
+  }, [skillMonths, setSkillMonths]);
+
+  /**
+   * Where on the 245-month track the archive can actually name employers.
+   *
+   * It is one month today — the archive's per-company rows start 2026-07 and
+   * the agencies' series ends there too — and it gains a month whenever both
+   * ends do. Drawn rather than described because the alternative is a timeline
+   * that looks uniformly scrubbable and silently is not.
+   */
+  const covered = useMemo(() => {
+    const idx = (skillMonths?.months ?? []).map((m) => IVI_MONTHS.indexOf(m)).filter((i) => i >= 0);
+    if (!idx.length) return null;
+    const lo = Math.min(...idx);
+    const hi = Math.max(...idx);
+    return {
+      left: (lo / TIMELINE_SPAN) * 100,
+      width: ((hi - lo) / TIMELINE_SPAN) * 100,
+      from: monthLabel(IVI_MONTHS[lo]),
+      has: heatMonth >= lo && heatMonth <= hi,
+    };
+  }, [skillMonths, heatMonth]);
+
   const event = useMemo(() => eventFor(heatMonth), [heatMonth]);
   const monthPct = (heatMonth / TIMELINE_SPAN) * 100;
   // The line, its fill and the percentage in the summary all take the trend's
@@ -731,6 +773,14 @@ export function GlobalSearch() {
                       />
                     );
                   })}
+                  {/* The span the archive can name employers over. */}
+                  {covered && (
+                    <span
+                      className="gstimecov"
+                      style={{ left: `${covered.left}%`, width: `${covered.width}%` }}
+                      title={`Employers are named from ${covered.from}`}
+                    />
+                  )}
                   <span className="gstimeknob" style={{ left: `${monthPct}%` }} />
                 </div>
                 <input
@@ -744,6 +794,17 @@ export function GlobalSearch() {
                   aria-label="Timeline month"
                 />
               </div>
+              {/* Said, not implied. The map's company pins follow this handle
+                  only over the months the archive can name employers for;
+                  before that they hold at today's, and a reader has no way to
+                  tell those apart from the map alone. */}
+              {covered && (
+                <p className="gstimecovnote">
+                  {covered.has
+                    ? `Employers on the map are the ones advertising this in ${monthLabel(IVI_MONTHS[heatMonth])}.`
+                    : `The archive names employers from ${covered.from}. Before that the map holds today's, and only the city shading follows the timeline.`}
+                </p>
+              )}
               {event && (
                 <div className="gsevent">
                   <span className="gseventdate">

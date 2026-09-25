@@ -23,6 +23,24 @@ import {
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
 import {
+  centreOf,
+  FRAME_ASPECT,
+  FRAME_FLOOR,
+  frameFor,
+  maxZoomFor,
+  zoomFrame,
+} from "../src/employsi/lib/hotspotFrame";
+import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
+import { monthsBetween } from "../src/employsi/lib/jobHistoryFn";
+import { demandByCompanyAt } from "../src/employsi/lib/skillHeat";
+import { IVI_MONTHS } from "../src/employsi/data/iviSkillDemand";
+import {
+  TIMELINE_LABEL,
+  TIMELINE_SPAN,
+  eventIndex,
+  monthLabel,
+} from "../src/employsi/lib/skillCard";
+import {
   ALL_SKILLS,
   SKILL_CATEGORY,
   SKILL_PARENT,
@@ -1963,6 +1981,190 @@ console.log("\nwhat a skill card offers next:");
     const card = buildSkillCard(s, TIMELINE_SPAN, null);
     check(`${s}: never suggests itself`, !card.related.includes(s));
   }
+}
+
+// ── the hotspot map's frame ─────────────────────────────────────────────────
+// THE BUG THIS EXISTS FOR, shipped 2026-09-25 and reported from a CSL card.
+// The map draws its heat blobs in SVG, against the viewBox, and its dots in
+// HTML, against the container. Those two agree only while the frame's aspect
+// equals the container's — and the clamp that kept the frame on the world was
+// snapping w to WORLD_W and h to WORLD_H, which for anyone hiring on two
+// continents produced a 2.12 frame in a 1.50 box. The SVG letterboxed, and
+// every dot slid away from its own heat.
+//
+// Nothing on screen says so unless you know what the dots are meant to line up
+// with, and it only happens for some spreads of hubs, so it is asserted here.
+console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
+{
+  const spot = (x: number, y: number) => ({ hub: `${x},${y}`, label: "", n: 1, x, y });
+  const CASES: [string, { x: number; y: number }[]][] = [
+    ["one hub", [spot(120, 60)]],
+    ["two Australian cities", [spot(305, 118), spot(312, 121)]],
+    [
+      "CSL: six US hubs and Melbourne",
+      [
+        spot(75, 62),
+        spot(72, 66),
+        spot(82, 60),
+        spot(84, 58),
+        spot(92, 56),
+        spot(60, 50),
+        spot(311, 120),
+      ],
+    ],
+    ["opposite corners of the world", [spot(1, 1), spot(359, 169)]],
+    ["wider than the world", [spot(0, 84), spot(360, 86)]],
+    ["taller than the world", [spot(180, 0), spot(181, 170)]],
+    ["hard against the left edge", [spot(0, 0), spot(4, 4)]],
+    ["hard against the bottom right", [spot(356, 166), spot(360, 170)]],
+  ];
+  for (const [name, spots] of CASES) {
+    const f = frameFor(spots as never);
+    const aspect = f.w / f.h;
+    check(
+      `${name}: keeps the box's aspect`,
+      Math.abs(aspect - FRAME_ASPECT) < 1e-9,
+      `${aspect.toFixed(4)} vs ${FRAME_ASPECT}`,
+    );
+    // ...and every hub it was given has to be inside it, or the map is drawn
+    // without a city it claims to be showing.
+    const outside = spots.filter(
+      (sp) => sp.x < f.x || sp.x > f.x + f.w || sp.y < f.y || sp.y > f.y + f.h,
+    );
+    check(`${name}: encloses every hub`, outside.length === 0, `${outside.length} outside`);
+
+    // THE SAME BUG, NOW REACHABLE BY HAND. The map zooms, so the frame the SVG
+    // is drawn with is no longer the one this function returned — it is
+    // zoomFrame's, recomputed on every press of +, every dot click and every
+    // pixel of a drag. If any of those can produce a box of a different shape,
+    // the dots come off the heat exactly as they did in September, except that
+    // the map looks right when it opens and only breaks once touched.
+    //
+    // And the pan has to stay inside the base frame: that is what makes the
+    // reset button a complete way back, and what stops a drag wandering into an
+    // ocean with no hub in sight.
+    const cMax = maxZoomFor(f);
+    const skew: string[] = [];
+    const escaped: string[] = [];
+    for (const z of [1, 1.5, 2, 4, 9, cMax, cMax * 4]) {
+      // Every corner and then some, so the clamp is exercised on both axes at
+      // once rather than only where a centred zoom would land.
+      for (const [cx, cy] of [
+        [f.x + f.w / 2, f.y + f.h / 2],
+        [f.x, f.y],
+        [f.x + f.w, f.y + f.h],
+        [f.x - f.w, f.y + f.h * 2],
+        [spots[0].x, spots[0].y],
+      ]) {
+        const v = zoomFrame(f, z, { x: cx, y: cy });
+        const at = `${z.toFixed(1)}× @${cx.toFixed(0)},${cy.toFixed(0)}`;
+        if (Math.abs(v.w / v.h - FRAME_ASPECT) >= 1e-9)
+          skew.push(`${at} -> ${(v.w / v.h).toFixed(4)}`);
+        if (
+          v.x < f.x - 1e-9 ||
+          v.y < f.y - 1e-9 ||
+          v.x + v.w > f.x + f.w + 1e-9 ||
+          v.y + v.h > f.y + f.h + 1e-9
+        )
+          escaped.push(`${at} -> ${[v.x, v.y, v.w, v.h].map((n) => n.toFixed(1)).join(" ")}`);
+      }
+    }
+    // One line per case rather than per probe: 35 zoom/centre pairs per framing
+    // is a useful net and an unreadable report.
+    check(`${name}: every zoom keeps the box's aspect`, skew.length === 0, skew.join("; "));
+    check(`${name}: every zoom stays inside the frame`, escaped.length === 0, escaped.join("; "));
+    // Zoom 1 is the frame itself, so a map nobody has touched is drawn exactly
+    // as it was before the zoom existed.
+    const at1 = zoomFrame(f, 1, centreOf(f));
+    check(
+      `${name}: zoom 1 is the untouched frame`,
+      ["x", "y", "w", "h"].every(
+        (p) =>
+          Math.abs(
+            (at1 as never as Record<string, number>)[p] - (f as never as Record<string, number>)[p],
+          ) < 1e-9,
+      ),
+    );
+    // Never past the floor: a zoom that kept going would leave a flat blue
+    // field, the coastline off-screen and the dot with nothing to sit against.
+    const tight = zoomFrame(f, 1e6, centreOf(f));
+    check(
+      `${name}: never zooms past the floor`,
+      tight.w >= FRAME_FLOOR - 1e-9,
+      `${tight.w.toFixed(2)} < ${FRAME_FLOOR}`,
+    );
+  }
+}
+
+// ── the skill card's timeline ───────────────────────────────────────────────
+// THE BUG: "Present day" was a typed date. It was right when it was written and
+// the vacancy series then gained two months, so the header read "MAR 2006 – JUL
+// 2026", the handle sat on Jul 2026, and the panel under it was badged MAY
+// 2026. Nothing errored; the label had been left behind by its own data.
+console.log("\nthe timeline's present-day event sits on the series' last month:");
+{
+  const last = IVI_MONTHS[IVI_MONTHS.length - 1];
+  const present = LABOUR_EVENTS.find((e) => e.title === "Present day");
+  check("the present-day event exists", !!present, "not found in LABOUR_EVENTS");
+  if (present) {
+    const iso = `${present.year}-${String(present.month + 1).padStart(2, "0")}`;
+    check(`present day is ${last}`, iso === last, `event says ${iso}`);
+    // It must also be ON the axis and at its end, which is what makes the
+    // handle and the badge agree rather than merely reading alike.
+    check(
+      "...and lands on the last tick of the timeline",
+      eventIndex(present) === TIMELINE_SPAN,
+      `index ${eventIndex(present)} of ${TIMELINE_SPAN}`,
+    );
+    check(
+      "...and the header's end month is the same month",
+      TIMELINE_LABEL.endsWith(monthLabel(last)),
+      TIMELINE_LABEL,
+    );
+  }
+  // Every other event is a historical fact and must stay on the axis, or its
+  // tick silently disappears from the track.
+  const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);
+  check("every event falls inside the series", off.length === 0, off.join(", "));
+}
+
+// ── the skill map's pins following the timeline ─────────────────────────────
+// The card scrubs 245 months and the LOCAL map's company pins now follow it.
+// The archive can only name employers from 2026-07 on, so the fallback is the
+// thing to guard: outside the covered span the pins must HOLD at the live
+// index, never empty out. An empty map reads as a market nobody was hiring in.
+console.log("\ncompany pins follow the timeline only where the archive reaches:");
+{
+  const idx = {
+    updated: "",
+    totalJobs: 0,
+    skills: { Strategy: { total: 9, byCompany: { live: 9 }, bySector: {}, byCity: {} } },
+  } as never;
+  const months = {
+    months: ["2026-07", "2026-08"],
+    byMonth: { "2026-07": { a: 3, b: 1 }, "2026-08": {} },
+  };
+  const at = (m: string) => demandByCompanyAt(idx, months, "Strategy", m);
+  check("a covered month uses that month's employers", eq(at("2026-07").demand, { a: 3, b: 1 }));
+  check("...and says it is dated", at("2026-07").dated === true);
+  // The one case where lighting nothing is the truth.
+  check("a covered month with no ads is a real zero", eq(at("2026-08").demand, {}));
+  check("...and is still dated", at("2026-08").dated === true);
+  check("an uncovered month HOLDS the live index", eq(at("2014-03").demand, { live: 9 }));
+  check("...and says it is NOT dated", at("2014-03").dated === false);
+  check(
+    "no month data at all holds too",
+    eq(demandByCompanyAt(idx, null, "Strategy", "2026-07").demand, { live: 9 }),
+  );
+
+  // The month walk behind all of it. December is where this kind of thing
+  // breaks, and a reversed pair must return nothing rather than spin.
+  check(
+    "months span a year boundary",
+    eq(monthsBetween("2025-11", "2026-02"), ["2025-11", "2025-12", "2026-01", "2026-02"]),
+  );
+  check("one month is one month", eq(monthsBetween("2026-07", "2026-07"), ["2026-07"]));
+  check("a reversed span is empty, not endless", eq(monthsBetween("2026-09", "2026-07"), []));
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
