@@ -105,6 +105,14 @@ jobs:
         with:
           bun-version: latest
 
+      # WESTERN AUSTRALIA IS ON TRIAL IN THIS LIST. It reads fine from a
+      # developer machine, but so does Victoria, which answers HTTP 403 to a
+      # datacentre IP and is excluded below for exactly that reason. wa.gov.au
+      # has never been asked from a runner. If it refuses, `perth` comes back
+      # out and WA joins Victoria as a run-locally source — but a loader that
+      # nothing schedules is how WA got a year stale in the first place, so it
+      # is worth one run to find out.
+      #
       # --only qld,sa,nsw,nz, because the jurisdictions need OPPOSITE
       # environments and no machine can fetch them all. Measured 2026-09-24:
       # Queensland needs a browser and runs only here; Victoria answers HTTP
@@ -130,12 +138,12 @@ jobs:
       # can still be flushing when the step ends, and a diagnosis that is
       # sometimes empty is worse than no diagnosis at all. pipefail keeps the
       # generator's exit status.
-      - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
+      - name: Generate QLD + SA + NSW + NZ + NT + TAS + WA workforce data
         env:
           DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
