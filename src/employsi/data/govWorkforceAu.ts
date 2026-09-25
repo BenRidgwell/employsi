@@ -4,12 +4,12 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-25
+//   New South Wales: 27 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-25
+//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
 //   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   New South Wales: 33 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 14 agencies published as at Dec 2023 — KEPT, not refreshed this run
@@ -72,10 +72,10 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-hunter-new-england-local-health-district": { now: 14117, prev: 13752, yoy: 2.7, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nepean-blue-mountains-local-health-district": { now: 5984, prev: 5548, yoy: 7.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-northern-sydney-local-health-district": { now: 8960, prev: 9057, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "fte" },
-  "nsw-gov-nsw-ambulance": { now: 7677, prev: 7084, yoy: 8.4, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-nsw-ambulance": { now: 7509, prev: 7037, yoy: 6.7, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-health-pathology": { now: 4867, prev: 4810, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-eastern-sydney-local-health-district": { now: 11668, prev: 11525, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
-  "nsw-gov-south-western-sydney-local-health-district": { now: 15233, prev: 15145, yoy: 0.6, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-south-western-sydney-local-health-district": { now: 12965, prev: 12959, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nt-gov-attorney-general-s-department": { now: 594, prev: 603, yoy: -1.5, asof: "Jun 2026", span: 1, unit: "fte" },

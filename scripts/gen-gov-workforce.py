@@ -875,24 +875,49 @@ def load_nsw():
 
     — four consecutive Junes, so the last two are a year apart.
 
-    FIVE ROWS COME OUT NAMED AFTER A PAGE, not an organisation: "NSW Health
-    Annual Report 2024-25 Page 372" and four like it, carrying real figures
-    (12,965, 7,509, 7,336, 6,042, 322). The appendix repeats a running header
-    on some pages and the name-capture takes it when the organisation heading
-    sits above the page break. It costs nothing today — every one of them is a
-    Local Health District the roster does not carry, so the rows go unmatched
-    and unused, and the twelve health organisations the roster DOES carry all
-    parse correctly. It is written down because the failure is silent in the
-    wrong direction: add one of those districts to the roster and it would
-    quietly never match, looking like a source that does not report it rather
-    than a name this parser dropped. The two-sided unmatched report in main()
-    is what makes these visible at all.
+    FIVE ROWS USED TO COME OUT NAMED AFTER A PAGE, not an organisation: "NSW
+    Health Annual Report 2024-25 Page 372" and four like it, carrying real
+    figures. This docstring said it cost nothing — "every one of them is a
+    Local Health District the roster does not carry ... the twelve health
+    organisations the roster DOES carry all parse correctly". THAT WAS WRONG,
+    and wrong in the most expensive way available here.
 
-    IT IS FTE, NOT HEADCOUNT, and the data says so rather than the document:
+    The appendix has TWO sections over the same organisations, and they are
+    not the same measurement:
+
+        Appendix 2, "Workforce statistics / Full time equivalent" — 4 years,
+            June 2022-2025, the FTE tables, from p16.
+        "Headcount / Number of staff in headcount employed in the NSW public
+            health system." — 2 years, June 2024-2025, from p30.
+
+    A table crossing a page break repeats its "Treasury group ..." header at
+    the top of the next page, where the line before it is the page footer
+    rather than a name. So that table's FTE total was filed under a page
+    number — and the organisation's real name was then still free when the
+    HEADCOUNT section reached it, and took the head count instead. The parser
+    walks both sections and keeps the first hit per name, so the two bugs
+    combined to swap the MEASURE on exactly those organisations whose FTE
+    table happened to straddle a page.
+
+    Measured 2026-09-25, that reached two live roster cards:
+
+        South Western Sydney LHD   15,233 head count where the FTE is 12,965
+                                   — an 18% overstatement
+        NSW Ambulance               7,677 head count where the FTE is 7,509
+
+    Both read "Workforce FTE". Fixed on both sides: a repeated header carries
+    the organisation across the break instead of naming the table after the
+    page, and only the FTE section is recorded, because `fte` is what this
+    loader returns. 33 parsed rows become 27 — five page names and one
+    head-count-only spelling of Health Education Training Institute go, and
+    nothing the roster carries is lost.
+
+    IT IS FTE, NOT HEADCOUNT, and the data says so as well as the document:
     small organisations report "Medical 0.6 0.6 0.6 0.6" and "Nursing 1.0 0.3
     1.0 1.0". You cannot have 0.6 of a person. Marked `fte` accordingly, so
     these tiles read "Workforce FTE" like Queensland's and are never added to
-    or compared with a head count.
+    or compared with a head count — which is precisely the guarantee the bug
+    above was quietly breaking.
 
     The FIRST pages a search finds are activity statistics — admitted
     episodes, occupancy, emergency presentations — which name the same
@@ -918,19 +943,43 @@ def load_nsw():
 
     HEADER = re.compile(r'^Treasury group((?:\s+\w+\s+20\d\d)+)\s*$')
     TOTAL = re.compile(r'^Total\s+((?:[\d,.]+\s+){2,})?([\d,.]+)\s+([\d,.]+)\s*$')
+    # The running header/footer the appendix repeats on every page. It is the
+    # line that used to be taken for an organisation name.
+    RUNNING = re.compile(r'Annual Report|^Page\s+\d+$|^\d+$')
+
+    def is_heading(t):
+        return bool(t) and len(t) > 8 and not RUNNING.search(t)
+
     out, asof = {}, None
     with pdfplumber.open(io.BytesIO(raw)) as pdf:
-        pending = None            # the heading seen just before a Treasury row
+        pending = None            # the organisation this table belongs to
+        last_org = None           # the last real heading, for continuations
         prev_line = ''
+        in_fte = False
         for page in pdf.pages:
             for line in (page.extract_text() or '').splitlines():
                 line = line.strip()
+                # WHICH OF THE TWO SECTIONS ARE WE IN. Appendix 2 opens with
+                # "Full time equivalent" and the head-count section with
+                # "Headcount", each on a line of its own.
+                if line == 'Full time equivalent':
+                    in_fte = True
+                elif line == 'Headcount':
+                    in_fte = False
                 m = HEADER.match(line)
                 if m:
                     years = re.findall(r'(\w+)\s+(20\d\d)', m.group(1))
-                    if len(years) >= 2 and prev_line and len(prev_line) > 8:
-                        pending = prev_line
-                        asof = f'{years[-1][0][:3]} {years[-1][1]}'
+                    if len(years) >= 2:
+                        # A TABLE THAT CROSSES A PAGE BREAK REPEATS THIS
+                        # HEADER, and the line before it is then the page
+                        # footer rather than a name. Carry the organisation
+                        # across instead of naming the table after the page.
+                        if is_heading(prev_line):
+                            pending = last_org = prev_line
+                        else:
+                            pending = last_org
+                        if pending:
+                            asof = f'{years[-1][0][:3]} {years[-1][1]}'
                     prev_line = line
                     continue
                 t = TOTAL.match(line)
@@ -941,10 +990,29 @@ def load_nsw():
                     except ValueError:
                         pending, prev_line = None, line
                         continue
-                    if now > 0 and prev > 0:
+                    if in_fte and now > 0 and prev > 0:
                         out.setdefault(pending, (round(now), round(prev)))
                     pending = None
                 prev_line = line
+
+    # TWO GUARDS, BOTH FOR FAILURES THAT ARE SILENT IN THE WRONG DIRECTION.
+    #
+    # A page name among the keys means the continuation handling has stopped
+    # working. That never produces an error on its own — the row simply goes
+    # unmatched, and the organisation it belonged to then takes whatever the
+    # HEADCOUNT section offers, which is how an 18% overstatement sat on South
+    # Western Sydney's card reading "Workforce FTE".
+    stray = [k for k in out if RUNNING.search(k)]
+    if stray:
+        raise RuntimeError(f'NSW: {len(stray)} tables named after a page, not an '
+                           f'organisation: {stray[:3]}')
+    # And if the "Full time equivalent" caption is ever reworded, in_fte stays
+    # False for the whole document and this returns nothing. Empty is handled
+    # safely upstream (previous rows are kept and the run says so), but it
+    # would read as an unreachable source rather than a renamed heading.
+    if not out:
+        raise RuntimeError('NSW: no FTE rows — has the "Full time equivalent" '
+                           'section caption changed?')
     return out, asof, 'fte'
 
 
