@@ -7894,6 +7894,90 @@ body {
   gap: 4px;
   pointer-events: auto;
 }
+/* ── Supply / Demand switch ────────────────────────────────────────────────
+   Ported from the Supply_Demand_Switch design, 2026-09-25, and NOT YET WIRED
+   TO ANYTHING (see SupplyDemandSwitch.tsx). Every number below is the design's:
+   104×30 segments, 3px of padding around them, the pill radius, the ink thumb,
+   and 280ms cubic-bezier(.2,0,0,1) on both the thumb and the icon. The tokens
+   are this product's own — the design declares the same ones — so nothing here
+   is a literal that a theme change would leave behind.
+
+   It sits at the far left of the header cluster, before the bell, which makes
+   it the widest thing in that row at 214px. The dock has room at desktop
+   widths and it is hidden below the breakpoint, where the header is already
+   down to the essentials. */
+.sdsw {
+  position: relative;
+  display: flex;
+  /* It is 214px and no other width. Without this it is a block-level flex
+     container, so anywhere it is NOT a flex item it stretches to the row and
+     the thumb's 104px translate no longer lands under the second label. */
+  flex: 0 0 auto;
+  width: fit-content;
+  padding: 3px;
+  margin-right: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  outline: none;
+}
+.sdswthumb {
+  position: absolute;
+  z-index: 1;
+  top: 3px;
+  left: 3px;
+  width: 104px;
+  height: 30px;
+  border-radius: var(--radius-pill);
+  background: var(--neutral-900);
+  /* transform is set inline — it is the state, and the only state this control
+     has. 280ms is the design's, and the curve has no overshoot: the thumb
+     arrives under a label rather than past it. */
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 104px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* The label on the thumb, which is ink, so it is the inverse rather than the
+   primary text colour. */
+.sdswbtn[aria-selected="true"] {
+  color: var(--text-inverse);
+}
+.sdswbtn svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.7;
+  transform: scale(0.9);
+  transition: transform 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sdswbtn[aria-selected="true"] svg {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sdswthumb,
+  .sdswbtn,
+  .sdswbtn svg {
+    transition: none;
+  }
+}
 .dockslot {
   position: relative;
 }
@@ -11507,6 +11591,11 @@ body {
   /* Keep the help dock mounted (its Help / Settings / Feedback panels render
      inside it) but drop its buttons — the More sheet opens those panels now. */
   .helpdock .dockbtn {
+    display: none;
+  }
+  /* 214px of switch does not fit a phone header beside the brand and the
+     account control, and this is the width the design specifies. */
+  .sdsw {
     display: none;
   }
   /* Help / Settings / Feedback panels become bottom sheets on mobile so they
