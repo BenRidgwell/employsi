@@ -1281,14 +1281,63 @@ export function PerthMapbox() {
       }
     };
 
-    if (map.isStyleLoaded()) run();
-    else map.once("style.load", run);
-    return () => cancelAnimationFrame(cometRaf.current);
+    // CLOSING clears at once. It does not wait for the style: the badges are
+    // DOM, and emptying the sources needs no finished style — waiting on
+    // isStyleLoaded(), which is false while the 3D city is still streaming
+    // tiles, left the last company's spokes, arrows and badges on the map
+    // after the card was shut. Only if Mapbox refuses (a style mid-reload)
+    // is the clear retried when the map next goes idle.
+    if (!(flowsOpen && !zoomedOut && !!flowView)) {
+      cancelAnimationFrame(cometRaf.current);
+      clearMarkers();
+      const clear = () => {
+        try {
+          clearFlowArcs(map);
+        } catch {
+          map.once("idle", clear);
+        }
+      };
+      clear();
+      return () => {
+        map.off("idle", clear);
+        cancelAnimationFrame(cometRaf.current);
+      };
+    }
+    // DRAWING waits for the style, on whichever of style.load / idle comes
+    // first, and a draw still queued when this effect re-runs (the card
+    // closed, another company picked) is cancelled rather than left to fire
+    // later with the old view.
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      map.off("style.load", go);
+      map.off("idle", go);
+      run();
+    };
+    if (map.isStyleLoaded()) go();
+    else {
+      map.once("style.load", go);
+      map.once("idle", go);
+    }
+    return () => {
+      done = true;
+      map.off("style.load", go);
+      map.off("idle", go);
+      cancelAnimationFrame(cometRaf.current);
+    };
   }, [flowsOpen, flowView, flowMode, zoomedOut, localCity, reduceMotion]);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (map && map.isStyleLoaded()) paintFlowHover(map, flowsOpen ? flowHover : null);
+    if (!map) return;
+    // Not gated on isStyleLoaded() (false while tiles stream); setFlowHover
+    // no-ops without its layers, and a style mid-reload just skips a frame.
+    try {
+      paintFlowHover(map, flowsOpen ? flowHover : null);
+    } catch {
+      /* the next hover or draw repaints it */
+    }
   }, [flowHover, flowsOpen]);
 
   return <div className="mount" ref={containerRef} />;
