@@ -6,6 +6,7 @@ import { getTalentFlowMonths, getTalentFlowSkills, getTalentFlowView } from "../
 import { WINDOW_CAVEAT, viewForWindow } from "../../lib/flows";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
+import { IconClose } from "../ActionIcons";
 import { logoFor } from "../../lib/companyLogo";
 
 /**
@@ -131,6 +132,7 @@ export function TalentFlowPane() {
   const setHover = useAppStore((s) => s.setFlowHover);
   const setFocus = useAppStore((s) => s.setFlowFocus);
   const setFlowView = useAppStore((s) => s.setFlowView);
+  const close = useAppStore((s) => s.closeFlows);
   const [q, setQ] = useState("");
   // The handle's month index, or null for the latest (where it starts).
   const [tlIdx, setTlIdx] = useState<number | null>(null);
@@ -368,15 +370,29 @@ export function TalentFlowPane() {
             borderBottom: "1px solid var(--border-subtle,#e5e5ea)",
           }}
         >
-          <span
+          {/* Title and close, set as the Career pathways card's: the shared
+              round .paneclose at the right of the title row. */}
+          <div
             style={{
-              font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
-              letterSpacing: "-0.02em",
-              textWrap: "pretty",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
             }}
           >
-            {heading}
-          </span>
+            <span
+              style={{
+                font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
+                letterSpacing: "-0.02em",
+                textWrap: "pretty",
+              }}
+            >
+              {heading}
+            </span>
+            <button type="button" className="paneclose" onClick={close} aria-label="Close">
+              <IconClose />
+            </button>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <div
               style={{
