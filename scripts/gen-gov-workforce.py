@@ -179,6 +179,30 @@ ALIAS = {
     # eighteen a reader could not confirm from the two strings alone.
     'sa:Legal Profession Conduct Commissioner': 'Legal Profession Conduct Commission',
 
+    # ── Western Australia ──────────────────────────────────────────────
+    # The bulletin prefixes every health service with the portfolio — "WA
+    # Health (South Metropolitan Health Service)" — and the roster carries the
+    # service on its own. Eight of the fourteen here are that one prefix.
+    #
+    # The rest are ordinary variants, and one is a typo ON THE ROSTER rather
+    # than in the source: the card reads "Ombudsman Western Australian". It is
+    # aliased rather than corrected, because renaming a roster card changes a
+    # company id and the archive keys ads to it; the alias is the cheap half.
+    'perth:Child and Adolescent Health Service': 'WA Health (Child and Adolescent Health Service)',  # 7,290
+    'perth:Department of Health': 'WA Health (Department of Health)',  # 1,598
+    'perth:East Metropolitan Health Service': 'WA Health (East Metropolitan Health Service)',  # 11,536
+    'perth:Health Support Services': 'WA Health (Health Support Services)',  # 2,984
+    'perth:North Metropolitan Health Service': 'WA Health (North Metropolitan Health Service)',  # 14,397
+    'perth:PathWest': 'WA Health (PathWest)',  # 2,612
+    'perth:South Metropolitan Health Service': 'WA Health (South Metropolitan Health Service)',  # 16,036
+    'perth:WA Country Health Service': 'WA Health (WA Country Health Service)',  # 12,644
+    'perth:Department of Fire & Emergency Services': 'Department of Fire and Emergency Services',  # 2,012
+    'perth:Legal Aid Western Australia': 'Legal Aid Commission of Western Australia',  # 582
+    'perth:Main Roads WA': 'Main Roads Western Australia',  # 1,981
+    'perth:Ombudsman Western Australian': 'Ombudsman Western Australia',  # 96
+    'perth:Western Australia Police Force': 'Western Australia Police',  # 3,223
+    'perth:WorkCover WA': 'WorkCover Western Australia',  # 151
+
     # ── Victoria ───────────────────────────────────────────────────────
     # THE VICTORIAN SOURCE HAD 208 SPARE ROWS AGAINST 38 UNFILLED CARDS, which
     # is not a jurisdiction missing a source — it is a jurisdiction whose rows
@@ -519,6 +543,37 @@ NOT_IN_SOURCE_JURISDICTION = {
 }
 
 NOT_IN_SOURCE = {
+    # ── Western Australia: outside the PSM Act bulletin ────────────────────
+    # Nine WA cards are absent from every edition, and the reason is the one
+    # perthGovWorkforce.ts already stated at the top of the file it replaces:
+    # the Public Sector Commission reports agencies under the Public Sector
+    # Management Act, and government trading enterprises, Parliament-funded
+    # bodies and statutory authorities outside it are not in the collection.
+    # Checked against the 2025-26 sheet's 57 rows rather than assumed.
+    'perth:Gold Corporation':
+        'a government trading enterprise (the Perth Mint); no row in any '
+        'edition of the bulletin',
+    'perth:Pilbara Ports Authority':
+        'a port authority, a GTE outside the PSM Act bulletin',
+    'perth:Rottnest Island Authority':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Perth Zoo':
+        'the Zoological Parks Authority is outside the PSM Act bulletin',
+    'perth:Western Australian Museum':
+        'no row names it; the museum sits under the Arts and Culture Trust, '
+        'which is itself absent from the bulletin',
+    'perth:Arts and Culture Trust':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Tourism Western Australia':
+        'a statutory authority outside the PSM Act bulletin',
+    'perth:Parliamentary Services Department':
+        'Parliament-funded, and the bulletin covers the public sector under the '
+        'PSM Act rather than the departments of Parliament',
+    'perth:State Solicitors Office':
+        'no row names it; its staff are inside the Department of Justice '
+        '(8,578), where the State Solicitor sits — that parent is inference, '
+        'since the bulletin separates no branch of any department',
+
     # ── New South Wales: what the PORTFOLIO grain costs ────────────────────
     # The jurisdiction-level reason below covers the rest. These six say
     # something sharper, because for them a real figure EXISTS and is being
@@ -1058,6 +1113,93 @@ def _nsw_police_fte():
         return None
     print('  New South Wales: no NSW Police Force row in the profile', file=sys.stderr)
     return None
+
+
+def load_wa():
+    """WA Public Sector Commission "State of the Sector" bulletin — headcount.
+
+    WESTERN AUSTRALIA WAS THE ONLY JURISDICTION WITH NO LOADER. Its figures
+    lived in src/employsi/data/perthGovWorkforce.ts, whose header says
+    AUTO-GENERATED while no script in this repo produces it — 47 rows entered
+    by hand from the 2021-22 to 2024-25 bulletins. So WA could not be
+    refreshed, and was not: measured 2026-09-25, a 2025-26 edition had been on
+    the same page since September and the repo was a year behind it.
+
+    THAT STALENESS WAS READING AS A GAP. Sixteen WA cards were blank, and the
+    obvious conclusion — statutory bodies the bulletin does not cover — was
+    right about nine of them and wrong about seven. Western Australia
+    restructured its departments in 2025, and the 2025-26 bulletin names the
+    new ones: Transport and Major Infrastructure 2,145, Housing and Works
+    2,362, Local Government Industry Regulation and Safety 1,652, Creative
+    Industries Tourism and Sport 1,590, Mines Petroleum and Exploration 536,
+    Energy and Economic Diversification 520, and MyLeave 39. Nothing was
+    missing; the source had moved on and this had not.
+
+    EIGHT ROWS HAVE NO PRIOR YEAR AND MUST NOT BE GIVEN ONE. The 2024-25
+    edition reports the OLD structure — Energy Mines Industry Regulation and
+    Safety, Jobs Tourism Science and Innovation, Transport, Treasury, Finance,
+    Local Government Sport and Cultural Industries — and the 2025-26
+    workbook's "5 year comparison" sheet is whole-of-sector only (headcount
+    158,004 to 187,450, no agency breakdown). The new departments were
+    assembled from parts of the old, so no old row IS any one of them, and
+    summing predecessors would turn a machinery-of-government decision into a
+    headcount change. Those rows carry `prev = None` and a null `yoy`.
+
+    Department of Treasury and Finance is the clearest case for that rule: the
+    hand-made file had it at 1,587, which is about Treasury plus Finance added
+    together, while the 2025-26 bulletin reports the merged department at 815.
+    Whether that is a real fall or functions moving elsewhere is not something
+    this file can tell, so it states the figure and no change at all.
+
+    The bulletin is an .xlsx and the sheet is "Workforce": agency name in the
+    first column, headcount in the second, FTE in the third. HEADCOUNT is taken
+    — the file it supersedes is a head count, and the column is labelled as an
+    annual average of quarterly unique individuals.
+    """
+    import openpyxl
+
+    coll = ('https://www.wa.gov.au/government/document-collections/'
+            'state-of-the-wa-government-sector-workforce-statistical-bulletins')
+    html = fetch(coll)
+    if isinstance(html, bytes):
+        html = html.decode('utf-8', 'replace')
+    # sots_statistical_bulletin_2025-26_0.xlsx — the trailing _0 is Drupal's,
+    # so the year is matched rather than the whole filename.
+    found = {}
+    for href, yr in re.findall(
+            r'href="([^"]*sots_statistical_bulletin_(\d{4})-\d{2}[^"]*\.xlsx?)"', html, re.I):
+        found.setdefault(int(yr), href if href.startswith('http')
+                         else 'https://www.wa.gov.au' + href)
+    if len(found) < 2:
+        print(f'  Western Australia: {len(found)} bulletins linked, need two',
+              file=sys.stderr)
+        return {}, None, 'headcount'
+    now_y, prev_y = sorted(found, reverse=True)[:2]
+
+    def sheet(url):
+        raw = fetch(url, binary=True)
+        wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        if 'Workforce' not in wb.sheetnames:
+            raise RuntimeError(f'{url}: no Workforce sheet')
+        rows = {}
+        for r in wb['Workforce'].iter_rows(values_only=True):
+            if not r or not r[0] or not isinstance(r[1], (int, float)):
+                continue
+            name = str(r[0]).strip()
+            # THE SECTOR TOTAL IS NOT AN AGENCY. 187,450 against the largest
+            # real row of 65,098 — the same aggregate trap as South Australia's
+            # General Government Sector.
+            if name == 'WA Public Sector':
+                continue
+            rows[name] = int(r[1])
+        # Under forty rows means the sheet moved, not that the sector shrank.
+        if len(rows) < 40:
+            raise RuntimeError(f'{url}: only {len(rows)} agency rows parsed')
+        return rows
+
+    now, prev = sheet(found[now_y]), sheet(found[prev_y])
+    return ({k: (v, prev.get(k)) for k, v in now.items()},
+            f'{now_y}-{str(now_y + 1)[2:]}', 'headcount')
 
 
 def load_nsw():
@@ -1777,6 +1919,10 @@ SOURCES = {
     # the card and put them in the same tile as figures they cannot be added
     # to. Same reason Queensland and NSW health are kept apart.
     'nzhealth': ('New Zealand health', load_healthnz, 1),
+    # KEYED 'perth', NOT 'wa', because main() derives the jurisdiction from the
+    # roster id and Western Australia's agencies are `perth-gov-…`. The label is
+    # the state; the key has to match the ids.
+    'perth': ('Western Australia', load_wa, 1),
 }
 
 
@@ -1956,12 +2102,21 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
                 continue
             now, prev = hit[0][1]
             consumed[pre].add(want)
-        if now <= 0 or prev <= 0:
+        # A ROW MAY HAVE NO PRIOR YEAR, AND THAT IS NOT THE SAME AS A BAD ONE.
+        # Western Australia restructured its departments in 2025: the 2025-26
+        # bulletin reports a Department of Transport and Major Infrastructure
+        # that the 2024-25 one has never heard of, because it was assembled
+        # from parts of two others. There IS no comparator, and inventing one —
+        # summing the predecessors, or reusing `now` — would manufacture a
+        # change out of a machinery-of-government decision. So `prev` may be
+        # None, `yoy` is then null, and the card shows the figure with no delta,
+        # which is the behaviour headcountFor already has for an unknown span.
+        if now <= 0 or (prev is not None and prev <= 0):
             unmatched_roster[pre].append((a['name'], f'not positive ({now}/{prev})'))
             skipped += 1
             continue
         rec = {'now': now, 'prev': prev,
-               'yoy': round((now - prev) / prev * 100, 1),
+               'yoy': None if prev is None else round((now - prev) / prev * 100, 1),
                'asof': asof, 'span': span}
         if unit != 'headcount':
             rec['unit'] = unit
@@ -2015,8 +2170,13 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     for cid in sorted(out):
         v = out[cid]
         unit = f", unit: {json.dumps(v['unit'])}" if v.get('unit') else ''
-        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, prev: {int(v['prev'])}, "
-                 f"yoy: {v['yoy']}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
+        # prev is OMITTED rather than zeroed when there is no prior year. A 0
+        # would read as a real reading of nobody, and check-roster's
+        # "not positive" assertion would fire on a row that is perfectly good.
+        prev_part = '' if v['prev'] is None else f"prev: {int(v['prev'])}, "
+        yoy_part = 'null' if v['yoy'] is None else v['yoy']
+        L.append(f"  {json.dumps(cid)}: {{ now: {int(v['now'])}, {prev_part}"
+                 f"yoy: {yoy_part}, asof: {json.dumps(v['asof'])}, span: {int(v['span'])}{unit} }},")
     L += ['};', '']
     open(OUT, 'w').write('\n'.join(L))
     if summed:
