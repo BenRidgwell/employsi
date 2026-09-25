@@ -60,7 +60,14 @@
 name: gov-workforce
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dump_source:
+        description: >-
+          Comma-separated jurisdictions whose FULL source row list to print
+          (e.g. "qld"). Empty prints only the unmatched rows, as usual.
+        type: string
+        default: ''
   push:
     paths:
       - 'scripts/qld-workforce-probe.py'
@@ -124,9 +131,12 @@ jobs:
       # sometimes empty is worse than no diagnosis at all. pipefail keeps the
       # generator's exit status.
       - name: Generate QLD + SA + NSW + NZ + NT + TAS workforce data
+        env:
+          DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
           python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas \
+            ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
       - name: Show the generated file
@@ -194,6 +204,7 @@ jobs:
         if: always()
         run: |
           echo "=== unmatched roster agencies, and unmatched source rows ==="
+          sed -n '/ALL [0-9]* source rows/,$p' /tmp/gov-diagnosis.txt || true
           sed -n '/roster agencies WITHOUT/,$p' /tmp/gov-diagnosis.txt || true
           {
             echo '## gov-workforce diagnosis'

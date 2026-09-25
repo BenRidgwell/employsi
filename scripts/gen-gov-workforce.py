@@ -1556,6 +1556,20 @@ def main():
     if '--only' in sys.argv:
         only = {k.strip() for k in sys.argv[sys.argv.index('--only') + 1].split(',') if k.strip()}
 
+    # --dump-source qld[,sa,…] prints EVERY row a source parsed, not just the
+    # ones that matched nothing.
+    #
+    # WHY THAT IS A DIFFERENT LIST AND WHY IT IS NEEDED. The unmatched report
+    # answers "what could an alias point at", which is the right question when
+    # a jurisdiction has spare rows. Queensland has the opposite shape — 22
+    # blank cards against 5 spare rows — so every remaining answer is a
+    # refusal, and a refusal has to name what the body sits INSIDE. That name
+    # is in the rows that DID match, which nothing printed.
+    dump = set()
+    if '--dump-source' in sys.argv:
+        dump = {k.strip() for k in sys.argv[sys.argv.index('--dump-source') + 1].split(',')
+                if k.strip()}
+
     # The roster, read straight out of the app so the ids cannot drift.
     data, meta, failed = {}, [], []
     for key, (label, load, span) in SOURCES.items():
@@ -1574,6 +1588,11 @@ def main():
         by_norm = {}
         for name, v in rows.items():
             by_norm.setdefault(norm(name), []).append((name, v))
+        if key in dump:
+            print(f'\n  {key}: ALL {len(rows)} source rows, largest first:', file=sys.stderr)
+            for nm, v in sorted(rows.items(), key=lambda kv: -kv[1][0]):
+                print(f'      {v[0]:>8,}  {nm}', file=sys.stderr)
+            print(file=sys.stderr)
         meta.append((label, asof, len(rows), unit))
         print(f'  {label}: {len(rows)} source rows, as at {asof} ({unit})', file=sys.stderr)
         data[key] = (by_norm, asof, span, unit)
