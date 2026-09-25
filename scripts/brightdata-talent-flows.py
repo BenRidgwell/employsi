@@ -82,7 +82,8 @@ Options:
     --server-cmd CMD      MCP server command (default "npx -y @brightdata/mcp@2.11.3")
     --state PATH          local SQLite (default ~/.employsi/brightdata-talent-flows.sqlite)
     --window-months N     export window length (default 24)
-    --lag-months N        months before today the window ends (default 3)
+    --lag-months N        the latest a window may end, in months before today (default 3);
+                          it ends earlier, at the last month the data covers, when that is earlier
     --sync-d1             push new profiles' counts + keys and the cursors to D1 (0003)
     --pull-d1             fetch the cursors and counted keys from D1 before a run here
     --from-d1             with --export: export everything synced, from any machine
@@ -107,7 +108,8 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    MAX_GAP_MONTHS, aggregate, exclusion_report, moves_from, person_key, positions_from_brightdata)
+    MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, person_key,
+    positions_from_brightdata, tail_counts, window_note)
 
 args = sys.argv[1:]
 
@@ -502,7 +504,20 @@ def month_add(ym: str, n: int) -> str:
 
 def export(conn: sqlite3.Connection, out_dir: str) -> int:
     today = dt.date.today()
-    end = month_add(today.strftime('%Y-%m'), -LAG_MONTHS)
+    cap = month_add(today.strftime('%Y-%m'), -LAG_MONTHS)
+    # The window ends where the data does (talent_flows.coverage_end), so the
+    # month totals are read before anything else.
+    if '--from-d1' in args:
+        per_month = {r['month']: int(r['n']) for r in d1(
+            'SELECT month, SUM(moves) n FROM flow_collect_moves WHERE source = ? GROUP BY month',
+            [SOURCE])}
+    else:
+        per_month = {r['month']: r['n'] for r in conn.execute(
+            "SELECT m.month, COUNT(*) n FROM moves m JOIN people p USING (person_key) "
+            "WHERE p.status = 'ok' AND m.month IS NOT NULL GROUP BY m.month")}
+    end = coverage_end(per_month, cap)
+    if end is None:
+        sys.exit('No month is covered: nothing to export.')
     start = month_add(end, -(WINDOW_MONTHS - 1))
     if '--from-d1' in args:
         # Everything synced, from any machine. Run --sync-d1 first so this
@@ -547,15 +562,17 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         'base_company_ref': None,
         'top_n': None,
         'filters': {'country': COUNTRY, 'filter_field': FILTER_FIELD, 'window_months': WINDOW_MONTHS,
-                    'lag_months': LAG_MONTHS, 'total_hits_per_seed': totals,
+                    'lag_months': LAG_MONTHS, 'window_end': end, 'window_end_cap': cap,
+                    'window_end_rule': 'last month holding moves, with the two before it '
+                                       'holding moves too, no later than the cap',
+                    'moves_per_month_to_end': tail_counts(per_month, end),
+                    'total_hits_per_seed': totals,
                     'excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
         'notes': ('Counts of moves among sampled profiles, not workforce totals. Profiles are '
                   'current employees of each seed, so a flow out of a seed is only seen when '
-                  f'the destination is also seeded. The window ends {LAG_MONTHS} months before '
-                  'collection because profiles are updated late; that lag is an assumption, '
-                  'not a measurement.'
+                  f'the destination is also seeded. ' + window_note(end, cap)
                   + (f' {sum(n for k, n in excluded.items() if k[0] != "merged")} moves are '
                      'excluded: transfers between an acquired company and its buyer after '
                      'completion, moves inside one employer (between two of its own '

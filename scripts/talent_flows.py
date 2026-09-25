@@ -12,6 +12,7 @@ collector and the loader.
   moves_from(positions)          the employer changes those positions imply
   person_key(username, salt)     a salted hash; the only per-person id kept
   company_ref(slug, name)        the vendor-style ref the canonical format uses
+  coverage_end(counts, cap)      the last month the data covers: where a window ends
   aggregate(moves, start, end)   canonical rows (docs/talent-flows-plan.md),
                                  less acquisition transfers, non-employers and
                                  moves inside one employer (SAME_EMPLOYER)
@@ -586,6 +587,52 @@ def exclusion_report(excluded: Counter) -> dict:
             _, ref, name = key
             out['not_employers'].append({'ref': ref, 'name': name, 'moves': n})
     return out
+
+
+def month_add(ym: str, n: int) -> str:
+    y, m = map(int, ym.split('-'))
+    i = y * 12 + m - 1 + n
+    return f'{i // 12:04d}-{i % 12 + 1:02d}'
+
+
+# THE WINDOW ENDS WHERE THE DATA DOES, not at today minus a lag. Measured
+# 2026-09-25 on 18,646 dated moves from 14,040 BHP profiles: the latest move
+# was 2025-10, while today minus the 3-month lag the exports used gave
+# 2026-06. That window ran eight empty months past the data. Moves a month
+# also thin out toward the end (~50-60 in 2023, ~40 in 2024, ~25 by mid-2025,
+# 13 in 2025-10): the source was collected months ago and people update
+# profiles late. The lag was recorded as an assumption, and this measurement
+# showed it was wrong. It stays as a cap, for a source that is current.
+#
+# `run` guards against a lone profile dated past the rest: the end month
+# and the run-1 months before it must all hold moves. Nothing here decides
+# how thin a month may be before it is "incomplete". That would be a
+# threshold with no measurement behind it, so the export reports the last
+# months' counts (tail_counts) and a reader can see the thinning.
+def coverage_end(month_counts, cap: str, run: int = 3) -> str | None:
+    """The latest YYYY-MM no later than `cap` that holds moves, with each of
+    the `run`-1 months before it holding moves too. None if no month does."""
+    have = {m for m, n in month_counts.items() if n and m and len(m) == 7 and m <= cap}
+    for m in sorted(have, reverse=True):
+        if all(month_add(m, -i) in have for i in range(run)):
+            return m
+    return None
+
+
+def tail_counts(month_counts, end: str, n: int = 6) -> dict[str, int]:
+    """Moves in each of the `n` months up to `end`, oldest first."""
+    return {m: int(month_counts.get(m, 0)) for m in (month_add(end, -i) for i in range(n - 1, -1, -1))}
+
+
+def window_note(end: str, cap: str) -> str:
+    """The sentence import.json's notes carry about where the window ends."""
+    if end < cap:
+        return (f'The window ends at {end}, the last month the collected profiles cover, '
+                f'not at {cap}: the profiles were collected months before the export, and '
+                'the last months before the end are thin because people update profiles '
+                'late (filters.moves_per_month_to_end).')
+    return (f'The window ends at {end}, {cap} being the cap: profiles are updated late, so '
+            'the months before the end may be thin (filters.moves_per_month_to_end).')
 
 
 def aggregate(moves, start: str, end: str, excluded: Counter | None = None) -> list[dict]:

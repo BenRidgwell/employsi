@@ -64,7 +64,8 @@ Options:
     --state PATH       local SQLite (default ~/.employsi/talent-flows.sqlite)
     --server-cmd CMD   MCP server command (default "uvx mcp-server-linkedin@4.24.4")
     --window-months N  export window length (default 24)
-    --lag-months N     months before the export date the window ends (default 3)
+    --lag-months N     the latest a window may end, in months before the export date
+                       (default 3); earlier when the data ends earlier
 
 The server version is PINNED because the README's own @latest auto-update
 changes the code driving your account without asking. Bump it deliberately
@@ -87,7 +88,8 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    MAX_GAP_MONTHS, aggregate, exclusion_report, moves_from, parse_experience, person_key)
+    MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, parse_experience,
+    person_key, tail_counts, window_note)
 
 args = sys.argv[1:]
 
@@ -417,10 +419,15 @@ def month_add(ym: str, n: int) -> str:
 
 def export(conn: sqlite3.Connection, out_dir: str) -> int:
     today = dt.date.today()
-    end = month_add(today.strftime('%Y-%m'), -LAG_MONTHS)
-    start = month_add(end, -(WINDOW_MONTHS - 1))
+    cap = month_add(today.strftime('%Y-%m'), -LAG_MONTHS)
     moves = [dict(r) for r in conn.execute(
         "SELECT m.* FROM moves m JOIN people p USING (person_key) WHERE p.status = 'ok'")]
+    # The window ends where the data does (talent_flows.coverage_end).
+    per_month = Counter(m['month'] for m in moves if m['month'])
+    end = coverage_end(per_month, cap)
+    if end is None:
+        sys.exit('No month is covered: nothing to export.')
+    start = month_add(end, -(WINDOW_MONTHS - 1))
     excluded: Counter = Counter()
     rows = aggregate(moves, start, end, excluded)
     sample = {r['seed_ref']: r['n'] for r in conn.execute(
@@ -447,13 +454,13 @@ def export(conn: sqlite3.Connection, out_dir: str) -> int:
         'base_company_ref': None,
         'top_n': None,
         'filters': {'window_months': WINDOW_MONTHS, 'lag_months': LAG_MONTHS,
+                    'window_end': end, 'window_end_cap': cap,
+                    'moves_per_month_to_end': tail_counts(per_month, end),
                     'excluded': exclusion_report(excluded)},
         'sample': sample,
         'seeds': seeds,
         'notes': ('Counts of moves among sampled profiles, not workforce totals. '
-                  f'The window ends {LAG_MONTHS} months before collection because '
-                  'profiles are updated late; that lag is an assumption, not a '
-                  'measurement.'
+                  + window_note(end, cap)
                   + (f' {sum(n for k, n in excluded.items() if k[0] != "merged")} moves are '
                      'excluded: transfers between an acquired company and its buyer after '
                      'completion, moves inside one employer (between two of its own '

@@ -22,7 +22,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from talent_flows import (  # noqa: E402
-    Month, aggregate, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
+    Month, aggregate, coverage_end, tail_counts, window_note, exclusion_report, clean_lines, company_links, moves_from, parse_experience,
     person_key, positions_from_brightdata,
 )
 
@@ -332,6 +332,29 @@ def test_same_employer():
           {'name:bhp mitsubishi alliance': 1}, rep)
 
 
+def test_window_end():
+    counts = {'2025-06': 30, '2025-07': 26, '2025-08': 26, '2025-09': 23, '2025-10': 13}
+    check('window end: the last month the data covers, not the cap',
+          coverage_end(counts, '2026-06') == '2025-10')
+    check('window end: never later than the cap',
+          coverage_end(counts, '2025-08') == '2025-08')
+    check('window end: one stray later profile does not move it',
+          coverage_end(dict(counts, **{'2026-03': 1}), '2026-06') == '2025-10')
+    check('window end: a gap in the run is skipped past',
+          coverage_end({'2025-01': 5, '2025-02': 5, '2025-03': 5, '2025-05': 2, '2025-06': 1},
+                       '2026-06') == '2025-03')
+    check('window end: a year boundary counts as consecutive',
+          coverage_end({'2024-11': 1, '2024-12': 1, '2025-01': 1}, '2026-06') == '2025-01')
+    check('window end: nothing covered is None, not a guess',
+          coverage_end({'2025-01': 3}, '2026-06') is None and coverage_end({}, '2026-06') is None)
+    check('window end: the tail is reported oldest first, zero where empty',
+          list(tail_counts(counts, '2025-10', 6).items()) ==
+          [('2025-05', 0), ('2025-06', 30), ('2025-07', 26), ('2025-08', 26), ('2025-09', 23), ('2025-10', 13)])
+    check('window end: the note says when the data stops short of the cap',
+          'not at 2026-06' in window_note('2025-10', '2026-06') and
+          'not at' not in window_note('2026-06', '2026-06'))
+
+
 def test_person_key():
     a = person_key('Jane-Doe', b'salt')
     check('person key: case and url form do not matter',
@@ -436,7 +459,7 @@ def test_bd_empty():
 
 for t in [test_links, test_clean, test_single, test_grouped, test_side_role,
           test_unknown_employer, test_year_only, test_ambiguous, test_boomerang,
-          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_person_key, test_bd_sample, test_bd_moves,
+          test_aggregate, test_acquisition, test_not_employers, test_same_employer, test_window_end, test_person_key, test_bd_sample, test_bd_moves,
           test_bd_refusals, test_bd_grouped, test_bd_empty]:
     t()
 

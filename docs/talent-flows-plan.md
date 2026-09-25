@@ -1,9 +1,9 @@
 # Talent flows — format and build
 
 **Status (2026-09-25): built; on the preview Worker, not production. Production D1
-holds one live import** (`brightdata|2026-09-25|28373d8b91d8`: BHP, 9,605 usable
-profiles, 2,395 pairs, 3,246 moves over 2021-07..2026-06, with the
-same-employer rule applied; each earlier load is marked superseded). Nothing shows it yet: the reader
+holds one live import** (`brightdata|2026-09-25|1cb45fe529d3`: BHP, 9,696 usable
+profiles, 2,943 pairs, 3,946 moves over 2020-11..2025-10, the window ending
+where the data does; each earlier load is marked superseded). Nothing shows it yet: the reader
 (`flowsFn.ts`, `TalentFlow.tsx`) is on this branch only, not on `main`, and
 `deploy-preview.yml` is manual. The rows go live on whichever Worker is next
 deployed from a tree that has the reader, preview included (it shares
@@ -219,7 +219,11 @@ Facts it depends on (read 2026-09-24):
   3-month lag was recorded as an assumption, and this measurement shows it
   is wrong for this source. The window should end at the last month the
   data covers (the `coverageDay` rule from CLAUDE.md applied to months),
-  and report the span actually drawn. Not yet changed.
+  and report the span actually drawn. **Changed the same day**: see rule 11.
+  The 60-month BHP export moved from 2021-07..2026-06 to 2020-11..2025-10,
+  taking the moves in it from 3,246 to 3,946 and the pairs reaching 10 from
+  18 to 23. Loaded as `…1cb45fe529d3` (2,943 pairs, 9,696 usable profiles,
+  including the 150 from 06:31).
 - **The rate limit is not a fixed count per window.** 00:41–00:55 UTC: 164
   accepted, then 429. 02:02:14–02:25:38 UTC: 557 accepted (at the same ~24 a
   minute), then 429 on the 558th. So the cap had reset within 67 minutes of
@@ -620,6 +624,19 @@ Each one is a bug shape this repo has hit before on the job archive.
    `flow_company_map` (`li:pwc` and `li:pwc-australia` both map to
    `priv-pwc-australia`, one move). That is the roster having one PwC, not
    the flow being internal, and it is left as it is.
+
+11. **A window ends where the data does.** `coverage_end()` in
+   `scripts/talent_flows.py`: the latest month holding moves, with the two
+   before it holding moves too (so one stray profile cannot move it), no
+   later than today minus `--lag-months`, which is now a cap and not the
+   end. Bright Data's profiles stop at 2025-10, so a window drawn to
+   today − 3 months ran eight empty months past them. Both exports put
+   `window_end`, `window_end_cap` and the last six months' counts
+   (`moves_per_month_to_end`) in `filters`, and say in `notes` when the end
+   falls short of the cap. The last months are still thin (14 moves in
+   2025-10 against ~26 before it) because people update profiles late. No
+   threshold is set for "too thin to count", because none has been
+   measured; the counts are shown instead. Asserted in `test_window_end`.
 
 The check script runs against a small synthetic fixture checked into
 `scripts/fixtures/`, clearly labelled synthetic, and never loaded into D1.
