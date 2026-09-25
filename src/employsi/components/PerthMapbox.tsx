@@ -20,7 +20,9 @@ import {
 } from "../data/mapboxGeo";
 import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
-import { activeSkill, demandByCompany } from "../lib/skillHeat";
+import { activeSkill, demandByCompanyAt } from "../lib/skillHeat";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
+import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
 import type { SkillIndex } from "../lib/skillsFn";
 
@@ -392,9 +394,16 @@ function filterStateOf(s: {
 function skillDemandOf(s: {
   searchQuery: string;
   skillIndex: SkillIndex | null;
+  skillMonths: SkillCompanyMonths | null;
+  heatMonth: number;
 }): Record<string, number> | null {
   const sk = activeSkill(s.searchQuery);
-  return sk ? demandByCompany(s.skillIndex, sk) : null;
+  // AT the scrubbed month, so the pins follow the timeline the card scrubs.
+  // Before the archive reaches, this is the live index unchanged — see
+  // demandByCompanyAt for why that is the fallback rather than an empty map.
+  return sk
+    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, IVI_MONTHS[s.heatMonth] ?? "").demand
+    : null;
 }
 
 export function PerthMapbox() {
@@ -429,6 +438,8 @@ export function PerthMapbox() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const skillIndex = useAppStore((s) => s.skillIndex);
+  const skillMonths = useAppStore((s) => s.skillMonths);
+  const heatMonth = useAppStore((s) => s.heatMonth);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
@@ -462,8 +473,10 @@ export function PerthMapbox() {
 
   const skillDemand = useMemo(() => {
     const sk = activeSkill(searchQuery);
-    return sk ? demandByCompany(skillIndex, sk) : null;
-  }, [searchQuery, skillIndex]);
+    return sk
+      ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
+      : null;
+  }, [searchQuery, skillIndex, skillMonths, heatMonth]);
 
   useEffect(() => {
     if (!containerRef.current) return;

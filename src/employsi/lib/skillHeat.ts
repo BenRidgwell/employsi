@@ -18,6 +18,7 @@ import { HK_SERIES, HK_SKILL_BY_CITY } from "../data/hkVacancyDemand";
 import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
+import type { SkillCompanyMonths } from "./jobHistoryFn";
 import { rankedByRate, vacancyRate } from "./vacancyRate";
 
 /**
@@ -323,6 +324,33 @@ export function demandByCompany(
   if (!idx || !skill) return {};
   return idx.skills[skill]?.byCompany ?? {};
 }
+/**
+ * Per-company demand for a skill AT a month, and whether it is really that
+ * month's.
+ *
+ * The archive answers per-company from 2026-07 on and not before — see
+ * getSkillCompanyMonths. For a month it covers, this is who was advertising
+ * then. For every earlier month it falls back to the live index and says
+ * `dated: false`, and the caller is expected to say so rather than to draw an
+ * empty map: no employers lit reads as a market nobody was hiring in, not as a
+ * market nobody was watching.
+ */
+export function demandByCompanyAt(
+  idx: SkillIndex | null,
+  months: SkillCompanyMonths | null,
+  skill: string | null,
+  monthIso: string,
+): { demand: Record<string, number>; dated: boolean } {
+  const live = demandByCompany(idx, skill);
+  if (!skill || !months || !monthIso) return { demand: live, dated: false };
+  const covered = months.months.includes(monthIso);
+  if (!covered) return { demand: live, dated: false };
+  // A covered month with no rows for this skill is a real zero — nobody was
+  // advertising it then — so the empty map is returned rather than the live
+  // one. That is the one case where lighting nothing is the truth.
+  return { demand: months.byMonth[monthIso] ?? {}, dated: true };
+}
+
 export function demandByCity(idx: SkillIndex | null, skill: string | null): Record<string, number> {
   if (!idx || !skill) return {};
   return idx.skills[skill]?.byCity ?? {};

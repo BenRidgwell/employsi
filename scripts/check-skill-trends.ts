@@ -24,6 +24,8 @@ import {
 } from "../src/employsi/lib/jobHistoryFn";
 import { FRAME_ASPECT, frameFor } from "../src/employsi/lib/hotspotFrame";
 import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
+import { monthsBetween } from "../src/employsi/lib/jobHistoryFn";
+import { demandByCompanyAt } from "../src/employsi/lib/skillHeat";
 import { IVI_MONTHS } from "../src/employsi/data/iviSkillDemand";
 import {
   TIMELINE_LABEL,
@@ -2056,6 +2058,45 @@ console.log("\nthe timeline's present-day event sits on the series' last month:"
   // tick silently disappears from the track.
   const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);
   check("every event falls inside the series", off.length === 0, off.join(", "));
+}
+
+// ── the skill map's pins following the timeline ─────────────────────────────
+// The card scrubs 245 months and the LOCAL map's company pins now follow it.
+// The archive can only name employers from 2026-07 on, so the fallback is the
+// thing to guard: outside the covered span the pins must HOLD at the live
+// index, never empty out. An empty map reads as a market nobody was hiring in.
+console.log("\ncompany pins follow the timeline only where the archive reaches:");
+{
+  const idx = {
+    updated: "",
+    totalJobs: 0,
+    skills: { Strategy: { total: 9, byCompany: { live: 9 }, bySector: {}, byCity: {} } },
+  } as never;
+  const months = {
+    months: ["2026-07", "2026-08"],
+    byMonth: { "2026-07": { a: 3, b: 1 }, "2026-08": {} },
+  };
+  const at = (m: string) => demandByCompanyAt(idx, months, "Strategy", m);
+  check("a covered month uses that month's employers", eq(at("2026-07").demand, { a: 3, b: 1 }));
+  check("...and says it is dated", at("2026-07").dated === true);
+  // The one case where lighting nothing is the truth.
+  check("a covered month with no ads is a real zero", eq(at("2026-08").demand, {}));
+  check("...and is still dated", at("2026-08").dated === true);
+  check("an uncovered month HOLDS the live index", eq(at("2014-03").demand, { live: 9 }));
+  check("...and says it is NOT dated", at("2014-03").dated === false);
+  check(
+    "no month data at all holds too",
+    eq(demandByCompanyAt(idx, null, "Strategy", "2026-07").demand, { live: 9 }),
+  );
+
+  // The month walk behind all of it. December is where this kind of thing
+  // breaks, and a reversed pair must return nothing rather than spin.
+  check(
+    "months span a year boundary",
+    eq(monthsBetween("2025-11", "2026-02"), ["2025-11", "2025-12", "2026-01", "2026-02"]),
+  );
+  check("one month is one month", eq(monthsBetween("2026-07", "2026-07"), ["2026-07"]));
+  check("a reversed span is empty, not endless", eq(monthsBetween("2026-09", "2026-07"), []));
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
