@@ -633,12 +633,51 @@ def load_sa():
 def load_nsw():
     """NSW Health annual report appendix — staffing by health organisation.
 
-    NEW SOUTH WALES PUBLISHES NO PER-AGENCY WORKFORCE PROFILE ANY MORE. The
-    Public Service Commission's workforce-profile page carries no data even
-    rendered in a browser (its links are drawn by JavaScript, so a plain fetch
-    sees an empty shell and reports a false negative); its reports page carries
-    only annual reports. data.nsw.gov.au holds the PSC's gender and diversity
-    extract for 2006-2015 and nothing else per agency.
+    NEW SOUTH WALES PUBLISHES A WORKFORCE PROFILE AND IT HAS NO AGENCY IN IT.
+    That distinction matters, because this docstring used to say the profile was
+    no longer published and gave the wrong reason — that the PSC's page carried
+    no data and its links were drawn in JavaScript. The page is real, reachable
+    and machine-readable. It is at
+
+        nsw.gov.au/departments-and-agencies/premiers-department/
+                   reports-and-data/workforce-profile-reports
+
+    which is under the Premier's Department rather than the Public Service
+    Commission, and no path I guessed reached it — nsw.gov.au's sitemap index
+    did, in one request, out of 33,017 URLs. Same lesson as the Northern
+    Territory: ask a site for its map before inventing paths.
+
+    It serves a PDF report and an "additional data" workbook for every year from
+    2020 to 2025, and the 2025 workbook has 34 sheets. Measured 2026-09-25,
+    reading all of them and all 64 pages of the report: THE FINEST GRANULARITY
+    IS PORTFOLIO.
+
+        Table 2.2  by SERVICE   Public Service 84,780 · NSW Health Service
+                                140,998 · NSW Police Force 19,513 · Teaching ·
+                                Transport · Other Crown · State-owned
+        Table 2.3  by PORTFOLIO Communities and Justice 55,041 · Education
+                                120,111 · Customer Service 11,237 · Planning
+                                4,613 · Premier and Cabinet 3,091 · …
+
+    Neither is an agency. A portfolio is a group of departments and agencies
+    under one Secretary, and the roster holds the sub-agencies as their own
+    cards — Corrective Services, Youth Justice and Legal Aid all sit inside
+    Communities and Justice. Filing 55,041 against the Department of Communities
+    and Justice would attribute its whole portfolio to it while its children
+    carry their own rows, which is the double count declined for NSW Health.
+
+    INDIVIDUAL ENTITIES APPEAR ONLY IN PROSE, AND ONLY AS CHANGES: "Sydney Water
+    Corporation increased by 361 FTE (+10.5%)". A level can be derived from
+    those two numbers, and deliberately is not. 361/0.105 is arithmetic over a
+    percentage rounded to one decimal place, which puts the answer inside a band
+    about forty FTE wide, and the result would be a figure no row anywhere
+    states. The rule in CLAUDE.md is that a number on a card came from a row.
+
+    So the 64 non-health NSW agencies need 64 annual reports, and that is the
+    honest size of the remaining job rather than a source waiting to be found.
+    data.nsw.gov.au is not it either: its per-agency workforce extract is the
+    PSC's 2006-2015 gender and diversity file, and every dataset it returns for
+    "full time equivalent" is school ENROLMENTS.
 
     What IS published is the health side, which is where the value was anyway:
     13 Local Health Districts carry 1,667 of New South Wales' 2,561 live ads.
