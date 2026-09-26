@@ -39,6 +39,7 @@ import { COMPANY_HEADCOUNT } from "../data/companyHeadcount";
 import { GOV_HEADCOUNT } from "../data/perthGovWorkforce";
 import { GOV_HEADCOUNT_AU } from "../data/govWorkforceAu";
 import { WGEA_HEADCOUNT } from "../data/wgeaWorkforceAu";
+import { ACNC_HEADCOUNT } from "../data/acncWorkforce";
 
 /** Which badge the tile draws. Three fixed stats, so three fixed glyphs. */
 export type StatIcon = "roles" | "skill" | "headcount";
@@ -155,7 +156,15 @@ export function headcountFor(
  */
 export function filedHeadcount(id: string): CardHeadcount | null {
   return headcountFor(
-    COMPANY_HEADCOUNT[id] ?? GOV_HEADCOUNT_AU[id] ?? GOV_HEADCOUNT[id] ?? WGEA_HEADCOUNT[id],
+    COMPANY_HEADCOUNT[id] ??
+      GOV_HEADCOUNT_AU[id] ??
+      GOV_HEADCOUNT[id] ??
+      WGEA_HEADCOUNT[id] ??
+      // ACNC IS LAST, and last is where a regulator return belongs. It is what a
+      // charity states about itself once a year, so it fills a card no other
+      // source reaches rather than displacing one that does — the same position
+      // and the same reasoning as WGEA above it.
+      ACNC_HEADCOUNT[id],
   );
 }
 

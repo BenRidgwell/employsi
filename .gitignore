@@ -57,3 +57,6 @@ remap-*-backup-*.jsonl
 
 # WGEA public data files (~140MB of zips), cached by scripts/gen-wgea-workforce.py
 .wgea-cache/
+# ACNC Annual Information Statement CSVs (~37MB each), cached by
+# scripts/gen-acnc-workforce.py
+.acnc-cache/

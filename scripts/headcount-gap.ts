@@ -24,6 +24,7 @@ import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT } from "../src/employsi/data/perthGovWorkforce";
 import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
 import { WGEA_HEADCOUNT } from "../src/employsi/data/wgeaWorkforceAu";
+import { ACNC_HEADCOUNT } from "../src/employsi/data/acncWorkforce";
 
 const AU = ["sydney", "melbourne", "brisbane", "perth", "adelaide", "canberra", "darwin", "hobart"];
 const NZ = ["auckland", "wellington", "christchurch"];
@@ -79,7 +80,9 @@ const sourceOf = (id: string) =>
         ? "gov bulletin (AU)"
         : WGEA_HEADCOUNT[id]
           ? "WGEA"
-          : null;
+          : ACNC_HEADCOUNT[id]
+            ? "ACNC register"
+            : null;
 
 const all: Row[] = [];
 for (const c of COMPANIES) {
@@ -186,10 +189,16 @@ if (process.argv.includes("--csv")) {
   );
   console.log();
   console.log("filed, by source:");
-  for (const s of ["annual report", "gov bulletin", "gov bulletin (AU)", "WGEA"]) {
-    const n = filed.filter((r) => r.source === s).length;
+  // DERIVED FROM THE ROWS, not a hand-kept list. This was a literal array of
+  // four source names, so adding a fifth source filed two companies that the
+  // summary then did not count — 682 printed against 684 filed, with the
+  // difference silent. The totals now cannot disagree with the rows they come
+  // from, and an unfiled row is the only thing that can carry a null source.
+  const bySource = new Map<string, number>();
+  for (const r of filed)
+    bySource.set(r.source ?? "(none)", (bySource.get(r.source ?? "(none)") ?? 0) + 1);
+  for (const [s, n] of [...bySource].sort((a, b) => b[1] - a[1]))
     console.log(`  ${s.padEnd(20)} ${String(n).padStart(4)}`);
-  }
   console.log();
   console.log("the gap, by kind of company:");
   const kinds = [...new Set(gap.map((r) => r.kind))].sort(
