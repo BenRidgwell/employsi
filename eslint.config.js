@@ -29,6 +29,7 @@ export default tseslint.config(
       // thousands of lines, and the very next generator run would undo it — so
       // the repo would oscillate between "lint passes" and "lint fails" with
       // every data refresh. Their shape is the generator's responsibility.
+      "src/employsi/data/acncWorkforce.ts",
       "src/employsi/data/absOccupationSupply.ts",
       "src/employsi/data/auRealCoords.ts",
       "src/employsi/data/careerLand.ts",
