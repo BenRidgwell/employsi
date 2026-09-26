@@ -1,7 +1,8 @@
 // GENERATED — do not edit by hand. Run scripts/gen-headcount.py.
 // Real workforce headcount for the current + prior reporting year, sourced
-// from each company's annual report (via stockanalysis.com, which refreshes
-// once per year after each filing). Static by design — there is no live HRIS/
+// from each company's annual report — via stockanalysis.com for listed
+// companies, and read straight out of the report itself for employers that
+// aggregator does not carry. Static by design — there is no live HRIS/
 // LinkedIn feed — with the year-on-year growth % computed from now vs prev.
 //
 // `span` is the YEARS BETWEEN the two readings, and it is not always 1.
@@ -115,6 +116,7 @@ export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'perth-lyc': { now: 1156, prev: 1127, yoy: 2.6, asof: 'Jun 2026', span: 1 },
   'perth-prn': { now: 10000, prev: 10290, yoy: -2.8, asof: 'Jun 2026', span: 1 },
   'pls': { now: 1175, prev: 950, yoy: 23.7, asof: 'Jun 2026', span: 1 },
+  'priv-brisbane-catholic-education': { now: 10756, yoy: null, asof: 'Feb 2023', span: 0 },
   'rio': { now: 56865, prev: 55561, yoy: 2.3, asof: 'Dec 2025', span: 1 },
   'rms': { now: 380, prev: 250, yoy: 52.0, asof: 'Jun 2026', span: 1 },
   'rrl': { now: 460, prev: 419, yoy: 9.8, asof: 'Jun 2026', span: 1 },

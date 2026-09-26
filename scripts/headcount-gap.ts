@@ -15,7 +15,7 @@
 // a `-` is not a zero, the same distinction check-skills.ts draws.
 //
 // Run: bun run scripts/headcount-gap.ts            # summary + routes
-//      bun run scripts/headcount-gap.ts --csv      # the full worklist
+//      bun run scripts/headcount-gap.ts --csv      # the worklist, by archived + live
 //      bun run scripts/headcount-gap.ts --route private
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
@@ -40,6 +40,8 @@ type Row = {
   kind: string;
   source: string | null;
   ads: number | null;
+  archived?: number;
+  lastSeen?: string | null;
 };
 
 // What KIND of company this is, which decides which register could ever hold it.
@@ -110,21 +112,38 @@ if (acct && db && tok) {
       method: "POST",
       headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        sql: `SELECT company_id, COUNT(*) n FROM jobs
-              WHERE last_seen >= date('now','-1 day') GROUP BY company_id`,
+        // THE WHOLE ARCHIVE, NOT JUST TODAY. A live count alone ranks the
+        // worklist by who happens to be advertising this week, and several of
+        // these employers advertise in bursts — Royal Melbourne Hospital has 54
+        // archived rows and none live. `archived` is every row this company has
+        // ever had, so it measures how much of the product's data leans on the
+        // card; `live` stays the "is it advertising now" signal.
+        sql: `SELECT company_id,
+                     COUNT(*) archived,
+                     SUM(CASE WHEN last_seen >= date('now','-1 day')
+                              THEN 1 ELSE 0 END) live,
+                     MAX(last_seen) last_seen
+              FROM jobs GROUP BY company_id`,
       }),
     },
   );
   const j = (await res.json()) as {
     success: boolean;
-    result?: { results: { company_id: string; n: number }[] }[];
+    result?: {
+      results: { company_id: string; archived: number; live: number; last_seen: string }[];
+    }[];
     errors?: { message: string }[];
   };
   if (!j.success) {
     console.error("D1 query failed:", j.errors?.map((e) => e.message).join("; "));
   } else {
-    const byId = new Map(j.result![0].results.map((r) => [r.company_id, r.n]));
-    for (const r of all) r.ads = byId.get(r.id) ?? 0;
+    const byId = new Map(j.result![0].results.map((r) => [r.company_id, r]));
+    for (const r of all) {
+      const d = byId.get(r.id);
+      r.ads = d?.live ?? 0;
+      r.archived = d?.archived ?? 0;
+      r.lastSeen = d?.last_seen ?? null;
+    }
   }
 } else {
   console.error(
@@ -133,13 +152,28 @@ if (acct && db && tok) {
 }
 
 const adsOf = (r: Row) => (r.ads === null ? 0 : r.ads);
+const scoreOf = (r: Row) => (r.archived ?? 0) + adsOf(r);
 const sum = (rows: Row[]) => rows.reduce((a, b) => a + adsOf(b), 0);
 
 if (process.argv.includes("--csv")) {
-  console.log("company_id,name,city,country,kind,live_ads");
-  for (const r of [...gap].sort((a, b) => adsOf(b) - adsOf(a)))
+  // SORTED BY archived + live, WHICH DOUBLE-WEIGHTS WHAT IS ADVERTISING NOW.
+  // A live row is also an archived row, so the sum counts it twice on purpose:
+  // between two employers with the same history, the one still hiring is the one
+  // whose blank card is being read today.
+  console.log("company_id,name,city,country,kind,live_ads,archived_ads,score,last_seen");
+  for (const r of [...gap].sort((a, b) => scoreOf(b) - scoreOf(a)))
     console.log(
-      [r.id, `"${r.name.replace(/"/g, '""')}"`, r.city, r.country, r.kind, r.ads ?? ""].join(","),
+      [
+        r.id,
+        `"${r.name.replace(/"/g, '""')}"`,
+        r.city,
+        r.country,
+        r.kind,
+        adsOf(r),
+        r.archived ?? 0,
+        scoreOf(r),
+        r.lastSeen ?? "",
+      ].join(","),
     );
 } else {
   const wanted = process.argv.includes("--route")

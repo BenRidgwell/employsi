@@ -98,6 +98,85 @@ NZ_VIA_ASX = {'nz-xero': 'XRO'}
 
 US = {'chevron': 'CVX', 'perth-aa': 'AA', 'rio': 'RIO', 'shell': 'SHEL'}  # dual-listed / global majors (Alcoa is NYSE-only, Perth ops)
 
+# ── Figures read from the company's OWN annual report ────────────────────────
+#
+# WHY A SECOND PATH AT ALL. The aggregator carries listed companies and nothing
+# else, so the largest employers in the gap have no route through it however
+# long the ticker map grows — the biggest of them is a Catholic school system.
+# Their own annual reports are the source, and each is READ here rather than
+# transcribed, so the figure on the card cannot drift from the document.
+#
+# EVERY SPEC CARRIES ITS OWN PROOF, and the proof is what makes this safe:
+#   * `find` must match EXACTLY ONCE on the page it is sought on. A regex that
+#     matches twice is ambiguous and raises rather than quietly taking the first.
+#   * `proof` is the date the document itself states for that figure. If the
+#     report is restyled and the date moves, the load fails instead of carrying
+#     a number whose basis has changed underneath it.
+#
+# THE MIN_YEAR FLOOR DOES NOT APPLY HERE, deliberately, and the reason is not
+# laziness. That floor exists because a stale figure from the AGGREGATOR means
+# the aggregator failed to refresh — the company filed and the mirror did not.
+# Here the staleness belongs to the publisher: Brisbane Catholic Education's
+# most recent annual report is 2023 because it has not published since, which
+# the card states as "Feb 2023" rather than implying currency. An em dash is
+# not more honest than a dated figure; it is only less informative.
+OWN_REPORT = {
+    # THE LARGEST BLANK CARD IN THE WHOLE GAP: 1,268 archived ads and 555 live.
+    #
+    # NO PRIOR YEAR, AND THAT IS THE WHOLE POINT OF READING THE FOOTNOTES. The
+    # 2023 report says "10,756 employees (headcount)" with footnote 4 — "Does
+    # not include relief staff. Data as at State Census date (23/02/2023)". The
+    # 2022 report says "12,500 employees (headcount)" and carries NO such
+    # qualifier; its footnote 4 attaches to a different bullet entirely. So the
+    # two are not the same measure, and 12,500 -> 10,756 would publish a −14%
+    # that is mostly the relief-staff exclusion. That is the "never compare two
+    # days measured different ways" rule, and it is why `prev` is absent.
+    #
+    # The website still says "more than 12,500 employees" today, which matches
+    # the 2022 basis and is undated — so it cannot be filed either, and its
+    # disagreement with the 2023 report is itself the evidence that the basis
+    # changed rather than the workforce.
+    'priv-brisbane-catholic-education': dict(
+        url='https://www.bne.catholic.edu.au/ArticleDocuments/661/'
+            '2023%20BCE%20Annual%20Report.pdf',
+        needle='Our Employees',
+        find=r'([\d,]+) employees \(headcount\)',
+        proof=r'Data as at State Census date \(23/02/2023\)',
+        asof='Feb 2023'),
+}
+
+
+def own_report(cid, spec):
+    """Read one company's own annual report. -> a Headcount row, or raises."""
+    import io as _io
+    import pdfplumber
+
+    req = urllib.request.Request(spec['url'], headers={'User-Agent': UA})
+    blob = urllib.request.urlopen(req, timeout=90).read()
+    if blob[:4] != b'%PDF':
+        raise RuntimeError(f'{cid}: not a PDF — starts {blob[:40]!r}')
+
+    with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+        pages = [t for t in (pg.extract_text() or '' for pg in pdf.pages)
+                 if spec['needle'] in t]
+    if not pages:
+        raise RuntimeError(f'{cid}: no page contains {spec["needle"]!r}')
+    hits = [m for t in pages for m in re.finditer(spec['find'], t)]
+    if len(hits) != 1:
+        raise RuntimeError(f'{cid}: {spec["find"]!r} matched {len(hits)} times, not once '
+                           f'— ambiguous, so nothing is filed')
+    if not any(re.search(spec['proof'], t) for t in pages):
+        raise RuntimeError(f'{cid}: the page no longer states {spec["proof"]!r}, so '
+                           f'{spec["asof"]} can no longer be shown to be its date')
+    now = int(hits[0].group(1).replace(',', ''))
+    if now <= 0:
+        raise RuntimeError(f'{cid}: parsed a non-positive figure ({now})')
+    prev = spec.get('prev')
+    return {'now': now, 'prev': prev, 'asof': spec['asof'],
+            'yr': int(re.search(r'(20\d\d)', spec['asof']).group(1)),
+            'span': spec.get('span', 0) if prev else 0}
+
+
 SENT = re.compile(
     r'had ([\d,]+) employees as of ([A-Za-z0-9, ]+?)\. The number of employees '
     r'(?:(increased|decreased) by ([\d,]+) or (-?[\d.]+)%|(did not change|remained))', re.I)
@@ -187,11 +266,29 @@ def main():
             data[cid] = r
         time.sleep(0.25)
 
+    # The company's OWN annual report, for employers the aggregator cannot
+    # reach at all. Read last so an aggregator row always wins — the aggregator
+    # refreshes yearly on its own, and a spec here is pinned to one document.
+    #
+    # A FAILURE HERE IS REPORTED AND DOES NOT STOP THE RUN, because the rest of
+    # the file is 138 companies that have nothing to do with this one document.
+    # It is not silent either: the reason is printed, and the row is simply
+    # absent, which the gap script will show as a card that went back to blank.
+    for cid, spec in OWN_REPORT.items():
+        if cid in data:
+            continue
+        try:
+            data[cid] = own_report(cid, spec)
+            print(f'  own report: {cid} -> {data[cid]["now"]:,} as at {spec["asof"]}')
+        except Exception as e:                                    # noqa: BLE001
+            print(f'  own report FAILED for {cid}: {type(e).__name__}: {e}')
+
     L = [
         '// GENERATED — do not edit by hand. Run scripts/gen-headcount.py.',
         "// Real workforce headcount for the current + prior reporting year, sourced",
-        "// from each company's annual report (via stockanalysis.com, which refreshes",
-        '// once per year after each filing). Static by design — there is no live HRIS/',
+        "// from each company's annual report — via stockanalysis.com for listed",
+        '// companies, and read straight out of the report itself for employers the',
+        '// aggregator does not carry at all. Static by design — there is no live HRIS/',
         '// LinkedIn feed — with the year-on-year growth % computed from now vs prev.',
         '//',
         '// `span` is the YEARS BETWEEN the two readings, and it is not always 1.',
@@ -234,9 +331,14 @@ def main():
         v = data[cid]
         span = v.get('span') or 0
         yoy = (round((v['now'] - v['prev']) / v['prev'] * 100, 1)
-               if v['prev'] and span else None)
+               if v.get('prev') and span else None)
         yoy_s = 'null' if yoy is None else str(yoy)
-        L.append(f"  {cid!r}: {{ now: {v['now']}, prev: {v['prev']}, yoy: {yoy_s}, "
+        # prev is OMITTED rather than written as None when there is no prior
+        # reading — `prev: None` is not TypeScript, and a 0 would be a reading of
+        # nobody. The interface above already declares it optional for exactly
+        # this case; the own-report path is the first thing here to use it.
+        prev_s = '' if not v.get('prev') else f"prev: {v['prev']}, "
+        L.append(f"  {cid!r}: {{ now: {v['now']}, {prev_s}yoy: {yoy_s}, "
                  f"asof: {short(v['asof'])!r}, span: {span} }},")
     L.append('};')
     L.append('')
