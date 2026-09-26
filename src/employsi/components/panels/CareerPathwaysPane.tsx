@@ -157,7 +157,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   // Selection is held by node id, not index: a skill search swaps the model
   // (a lane appears or goes), and an index would then point at another role.
   const [selId, setSelId] = useState<string | null>(null);
-  const [curId, setCurId] = useState<string | null>(null);
+  /** The ladder's entry rung — the first role on the core path. Not the
+   *  reader's own role; nothing here knows that. */
+  const [entryId, setEntryId] = useState<string | null>(null);
   const [goalId, setGoalId] = useState<string | null>(null);
   const [pop, setPop] = useState(false);
   const [scrub, setScrub] = useState<number | null>(null);
@@ -196,17 +198,23 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   // A new model (first load, or a skill picked / cleared). Keep the selection
   // if the role is still on the map; otherwise the design's rules — the first
-  // role asking for the skill above "you", or the core's second rung.
+  // role asking for the skill above the ENTRY RUNG, or the core's second rung.
+  //
+  // The entry rung is the first role on the core path, and it is exactly that:
+  // where this ladder starts. It carried a "YOU" badge until 2026-09-26, which
+  // made it look like the reader's own position — see the note at the node.
+  // Removing the badge leaves the rung doing its real job, which is giving the
+  // "above here" below something to be above.
   useEffect(() => {
     if (!nodes.length) return;
     const core = nodes.filter((n) => n.row === 0);
-    const cur = idx(curId) >= 0 ? curId : (core[0]?.id ?? nodes[0].id);
-    if (cur !== curId) setCurId(cur);
+    const entry = idx(entryId) >= 0 ? entryId : (core[0]?.id ?? nodes[0].id);
+    if (entry !== entryId) setEntryId(entry);
     let sel = idx(selId) >= 0 ? selId : null;
     if (skill) {
-      const curRung = nodes[idx(cur)]?.rung ?? 0;
+      const entryRung = nodes[idx(entry)]?.rung ?? 0;
       const hits = nodes.filter((n) => n.skills.includes(skill));
-      sel = (hits.find((n) => n.rung > curRung) ?? hits[0])?.id ?? sel;
+      sel = (hits.find((n) => n.rung > entryRung) ?? hits[0])?.id ?? sel;
     }
     sel ??= core[Math.min(1, core.length - 1)]?.id ?? nodes[0].id;
     setSelId(sel);
@@ -234,7 +242,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   }
 
   const sel = Math.max(0, idx(selId));
-  const cur = Math.max(0, idx(curId));
   const goal = idx(goalId);
   const n = nodes[sel];
   const sk = skill;
@@ -543,9 +550,14 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             {nodes.map((o, i) => {
               const isSel = i === sel;
               const isGoal = i === goal;
+              // NO "YOU" BADGE. It used to sit on the ladder's entry rung, and
+              // it was a claim about the reader that nothing in this product
+              // knows: there is no profile, no stated role, no signal of where
+              // anyone is in their own career. It read as personalised and was
+              // the first core role of whatever map the skill opened, the same
+              // for every visitor. GOAL stays — the reader sets that themselves.
               const tags: string[] = [];
               if (isGoal) tags.push("GOAL");
-              if (i === cur) tags.push("YOU");
               return (
                 <button
                   key={o.id}

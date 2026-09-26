@@ -153,12 +153,17 @@ jobs:
       # can still be flushing when the step ends, and a diagnosis that is
       # sometimes empty is worse than no diagnosis at all. pipefail keeps the
       # generator's exit status.
+      # The five nsw-* keys are individual NSW agency ANNUAL REPORTS, one
+      # source each — see NSW_AGENCY_REPORTS in the generator for why they
+      # cannot share a loader. They are reachable from anywhere, including the
+      # authoring sandbox, and are in this list so a scheduled run picks up each
+      # agency's next report rather than leaving five cards frozen.
       - name: Generate QLD + SA + NSW + NZ + NT + TAS + WA workforce data
         env:
           DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 

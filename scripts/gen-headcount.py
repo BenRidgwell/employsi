@@ -85,6 +85,17 @@ ASX = {
     'sydney-wor': 'WOR', 'sydney-wow': 'WOW', 'sydney-wtc': 'WTC', 'sydney-yal': 'YAL',
     'sydney-zip': 'ZIP', 'wds': 'WDS', 'wes': 'WES', 'wgx': 'WGX',
 }
+# THE ONE NEW ZEALAND COMPANY THE AGGREGATOR CARRIES, and it is carried under
+# ASX rather than NZX. The comment above says "ALL 14 NZX COMPANIES 404", which
+# was measured and is still true of the NZX path — /quote/nzx/XRO/ 404s today.
+# But Xero's primary listing is the ASX, so /quote/asx/XRO/ answers 200 with a
+# current figure, and it was never tried because the roster files Xero as NZ.
+# Re-probed 2026-09-25: every other NZ company 404s on the ASX path too — FPH,
+# AIA, SPK, MCY, FBU, SKC, A2M, IFT, MEL, CEN, CNU, MFT, FSF, all of them — so
+# this is one company, not a route. Do not re-probe the list; do re-probe if a
+# NZ company ever moves its primary listing.
+NZ_VIA_ASX = {'nz-xero': 'XRO'}
+
 US = {'chevron': 'CVX', 'perth-aa': 'AA', 'rio': 'RIO', 'shell': 'SHEL'}  # dual-listed / global majors (Alcoa is NYSE-only, Perth ops)
 
 SENT = re.compile(
@@ -159,7 +170,7 @@ def short(asof):
 
 def main():
     data = {}
-    for cid, tk in ASX.items():
+    for cid, tk in {**ASX, **NZ_VIA_ASX}.items():
         r = parse(fetch(f'https://stockanalysis.com/quote/asx/{tk}/employees/'))
         if (not r or r['yr'] < MIN_YEAR) and cid in US:
             r2 = parse(fetch(f'https://stockanalysis.com/stocks/{US[cid]}/employees/'))
