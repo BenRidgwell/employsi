@@ -2195,6 +2195,40 @@ NSW_AGENCY_REPORTS = {
         ncols=3, now_i=1, prev_i=0, sums=[(0,), (1,)],
         proof=r'19 June 2025',
         unit='headcount', asof='Jun 2025'),
+    # 39 on the archived+live ranking. p88 "Table 4: Number of employees by
+    # employment category by year", three years, and its own prose above it says
+    # "As at 30 June 2025, RA employed 488 ongoing and temporary employees".
+    # Every column reconciles: 240, 361, 488.
+    'nsw-ra': dict(
+        label='NSW: Reconstruction Authority',
+        agency='NSW Reconstruction Authority',
+        agency_id='nsw-gov-nsw-reconstruction-authority',
+        url='https://www.nsw.gov.au/sites/default/files/2026-01/'
+            'nsw-reconstruction-authority-annual-report-2024-25.pdf',
+        needle='Number of employees by employment category by year',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Senior Executives|Casual|Others)\b',
+        ncols=3, now_i=2, prev_i=1, sums=[(0,), (1,), (2,)],
+        proof=r'As at 30 June 2025',
+        unit='headcount', asof='Jun 2025'),
+    # 44 on the ranking. p55 "Table 6. Number of full-time equivalent staff
+    # employed" — NINE year columns, 2017 to 2025, and a SINGLE data row. So
+    # there is nothing to reconcile against, and the header is asserted instead:
+    # the table is rejected unless its header still ends "June 2024 June 2025",
+    # which is the only thing that proves which column is being read. Excludes
+    # casual staff, per its own Note 2.
+    'nsw-lls': dict(
+        label='NSW: Local Land Services',
+        agency='Local Land Services',
+        agency_id='nsw-gov-local-land-services',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-12/'
+            'local-land-services-annual-report-2024-25.pdf',
+        needle='Number of full-time equivalent staff employed',
+        total=r'^Number of full-time equivalent staff',
+        ncols=9, now_i=8, prev_i=7,
+        header=r'Year ending.*June 2024 June 2025',
+        proof=r'Workforce Profile Report 2025',
+        unit='fte', asof='Jun 2025'),
     # 23 live ads but by far the largest workforce here — this is the department
     # that operates every NSW public school, so its own figure includes teachers.
     #
@@ -2387,6 +2421,18 @@ def _nsw_agency(spec):
                         c_rows.append(nums)
                 if not t_row or not (c_rows or not spec.get('comp')):
                     continue
+                # AN OPTIONAL HEADER ASSERTION, for a table with ONE data row and
+                # so nothing to reconcile against. Local Land Services prints nine
+                # year columns and a single FTE row: the only thing that can prove
+                # the last column is June 2025 is the header itself, so the spec
+                # names it and the table is rejected if it no longer reads that way.
+                if spec.get('header'):
+                    joined = [' '.join(' '.join(str(c).split())
+                                       for c in row if c not in (None, ''))
+                              for row in tab]
+                    if not any(re.search(spec['header'], j) for j in joined):
+                        rejected.append(f'no header row matching {spec["header"]!r}')
+                        continue
                 why = _reconciles(spec, t_row, c_rows)
                 if why:
                     rejected.append(why)
