@@ -728,8 +728,10 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             >
               DRAG TO EXPLORE
             </span>
-            {/* The key to the cards' glow: the globe's own heat legend, read
-              here as live ads relative to the busiest role on this map. */}
+            {/* The key to the cards' glow: the globe's own heat legend. Labelled
+              DEMAND, but measured in ads — live ads relative to the busiest
+              role on this map (or, with a skill searched, the ads naming it);
+              see glowStyle. The label changed, the measure did not. */}
             <span
               style={{
                 padding: "5px 8px",
@@ -748,7 +750,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                   color: "var(--text-tertiary,#8e8e93)",
                 }}
               >
-                {sk ? "LIVE ADS WITH SKILL" : "LIVE ADS"}
+                {sk ? "SKILL DEMAND" : "DEMAND"}
               </span>
               <span
                 style={{
