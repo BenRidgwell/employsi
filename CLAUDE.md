@@ -56,6 +56,7 @@ bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the cl
 bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
 bun run scripts/check-career-ladder.ts     # every title lands on the right rung
 bun run scripts/check-career-card.ts       # the career card's series, trend and model
+bun run scripts/check-analyst-llm.ts        # the AI analyst only says figures a tool returned
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
 python scripts/test_rosters.py             # roster parsers still read their data files
@@ -690,6 +691,26 @@ rewriting the child's.
 completed in under a second through 2026-09-24, which is far too fast for those queries:
 the evidence floor and the stale-`Principal` check were not running in CI, and two real
 drifts sat unreported until they were run by hand. A `·` in that output is not a pass.
+
+### The conversational analyst (Claude)
+
+"Ask an analyst" runs through Claude Haiku 4.5 when the Worker has an
+`ANTHROPIC_API_KEY` secret, and through the rule-based router exactly as before
+when it does not. `lib/analystLlmFn.ts` holds the model call and every cap;
+`lib/analystLlmClient.ts` runs the tools **in the browser**, through the same
+`resolveTurn` → `answerQuestion` path a typed question takes, because that path
+reads national-series data files the Worker bundle does not carry.
+
+- **The model never supplies a figure.** `untraced()` compares every number in
+  a reply with the tool results; a reply with a figure from nowhere is replaced
+  by the tool's own answer. `check-analyst-llm.ts` asserts it.
+- **Cost is capped server-side**: Haiku, `max_tokens` 700, two tool rounds per
+  question, and daily call allowances per visitor (hashed IP) and per site,
+  counted atomically in the `llm_usage` D1 table (created lazily). Over a cap,
+  the pane falls back to the free router. The Anthropic Console spend limit is
+  the backstop, and the only one code cannot get wrong.
+- The secret is per-Worker: setting it on `employsi-preview` does not turn it on
+  in production. Mind the secret-is-not-live trap above.
 
 ### Map layers
 

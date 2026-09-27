@@ -25,6 +25,8 @@ on:
       - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-analyst-llm.ts'
+      - 'src/employsi/lib/analystLlmFn.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
       - 'scripts/check-crawl-schedule.ts'
@@ -63,6 +65,8 @@ on:
       - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-analyst-llm.ts'
+      - 'src/employsi/lib/analystLlmFn.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
       - 'scripts/check-crawl-schedule.ts'
@@ -154,6 +158,11 @@ jobs:
       # what forgets it.
       - name: Assert every analyst scope excludes the closed corpora
         run: bun run scripts/check-analyst-scope.ts
+
+      # The conversational analyst may only say figures a tool returned; this
+      # asserts the check that enforces it (see analystLlmFn.ts, untraced).
+      - name: Assert the conversational analyst's figure check
+        run: bun run scripts/check-analyst-llm.ts
 
       # News skill tags are an INFERENCE shown next to measured things, so the
       # only way a wrong one surfaces is by being read. A labelled corpus of 256

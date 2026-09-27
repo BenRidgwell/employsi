@@ -85,7 +85,7 @@ export function detectChat(question: string): ChatIntent | null {
  * and an explanation that drops it is worse than no explanation — the user came
  * here asking how far to trust the number.
  */
-const METHOD: Record<DataIntent, string> = {
+export const METHOD: Record<DataIntent, string> = {
   // THE FIRST VERSION OF THIS SAID A ROLE ON TWO BOARDS COLLAPSES TO ONE ROW.
   // It does not. jobKey in jobArchive.ts puts the SOURCE first, so the same
   // role on SEEK and on Adzuna is two keys and two rows, and the answer is a
@@ -125,7 +125,7 @@ const METHOD: Record<DataIntent, string> = {
  * Each entry ends with a question the router actually answers, so "tell me
  * more" always leaves somewhere to go.
  */
-const LIMITS: Record<DataIntent, string> = {
+export const LIMITS: Record<DataIntent, string> = {
   volume:
     "What it can't tell you: how many JOBS there are. One role advertised on two boards is two rows here, because the board is part of what makes an ad distinct, so a market whose employers post everywhere reads higher than one that posts once. It also only covers employers employsi crawls, and an ad staying up is not proof the job is still unfilled. Treat it as advertising activity, which is what it measures, and lean on the direction more than the level. Ask me which skills those ads name, or the same question about another city — the double-counting is roughly consistent between places, so comparisons hold up better than the raw number.",
   skills:
