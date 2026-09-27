@@ -198,15 +198,12 @@ export interface CareerCardModel {
 const trackLabel = (p: CareerPathways, family: string, track: string) =>
   p.families.find((f) => f.id === family)?.tracks.find((t) => t.id === track)?.label ?? track;
 
-function describe(n: PathwayNode, m: PathwayMarket, country: string, days: number): string {
-  const others = n.titles
-    .slice(1, 3)
-    .map(([t]) => displayTitle(t))
-    .filter(Boolean);
-  const also = others.length ? ` Also advertised as ${others.join(" and ")}.` : "";
+/** The line under the role's title. No "Also advertised as …" — removed
+ *  2026-09-27; the other titles are still on the model as `alsoTitled`. */
+function describe(m: PathwayMarket, country: string, days: number): string {
   return (
     `Advertised by ${num(m.employers)} employer${m.employers === 1 ? "" : "s"} in ` +
-    `${countryName(country)} over the last ${days} days.${also}`
+    `${countryName(country)} over the last ${days} days.`
   );
 }
 
@@ -287,7 +284,7 @@ export function careerCard(
       lat: row > 0,
       title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[n.rung]),
       alsoTitled: n.titles.slice(1, 4).map(([x]) => displayTitle(x)),
-      desc: describe(n, m, country, days),
+      desc: describe(m, country, days),
       stageOf:
         row === 0
           ? `STAGE ${n.rung} OF 6 · ${RUNG_LABEL[n.rung].toUpperCase()}`
