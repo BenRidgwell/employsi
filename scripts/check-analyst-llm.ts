@@ -15,13 +15,29 @@ const TOOL =
 
 const CASES: { reply: string; passes: boolean; why: string }[] = [
   { reply: "There are 1,234 live roles in Perth, up 6.4%.", passes: true, why: "exact figures" },
-  { reply: "About 1,234 roles, up roughly 6%.", passes: true, why: "a tool figure rounded to a whole" },
-  { reply: "The median is $140K, or $140,000.", passes: true, why: "K and full forms of one value" },
+  {
+    reply: "About 1,234 roles, up roughly 6%.",
+    passes: true,
+    why: "a tool figure rounded to a whole",
+  },
+  {
+    reply: "The median is $140K, or $140,000.",
+    passes: true,
+    why: "K and full forms of one value",
+  },
   { reply: "312 of the ads disclosed pay.", passes: true, why: "a count the tool printed" },
   { reply: "Since 2019, the top 5 skills shifted.", passes: true, why: "years and single digits" },
-  { reply: "There are about 1,300 roles.", passes: false, why: "a rounded figure the tool never gave" },
+  {
+    reply: "There are about 1,300 roles.",
+    passes: false,
+    why: "a rounded figure the tool never gave",
+  },
   { reply: "Pay is around $150K.", passes: false, why: "an invented salary" },
-  { reply: "Roughly 45% of ads disclose pay.", passes: false, why: "a derived share the tool never gave" },
+  {
+    reply: "Roughly 45% of ads disclose pay.",
+    passes: false,
+    why: "a derived share the tool never gave",
+  },
 ];
 
 let failed = 0;
