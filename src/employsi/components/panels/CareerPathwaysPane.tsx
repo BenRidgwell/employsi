@@ -13,6 +13,7 @@ import { useAppStore } from "../../state/store";
 import { getCareerCard, searchCareerSkills } from "../../lib/careerPathwaysFn";
 import type { CardNode, CareerCardModel } from "../../lib/careerCard";
 import { CAREER_LAND_PATH, projectHotspot } from "../../data/careerLand";
+import { HEAT_RAMP_FLOOR, heatGradientCss, heatRgb } from "../../lib/heatRamp";
 import { IconClose } from "../ActionIcons";
 import { CardLoader } from "./CardLoader";
 import { FollowGlyph } from "../GlobalSearch";
@@ -98,6 +99,30 @@ function sparkPath(counts: number[]) {
 }
 
 type Placed = CardNode & { x: number; y: number };
+
+/**
+ * A role card's demand glow, on the globe's heat legend (lib/heatRamp).
+ *
+ * RELATIVE to the map shown: `ads / max` over the roles drawn, with the ads
+ * the card itself prints (live ads, or live ads naming the searched skill).
+ * The busiest role is the top of the ramp and the thinnest the bottom, the
+ * way the hotspot map beside it scales its cities — so it answers "where on
+ * this ladder is the demand", not "is this a busy job" in absolute terms,
+ * which is a different question with a different denominator.
+ *
+ * A role with no live ads gets no glow at all: a real zero stays zero, and a
+ * faint green would read as "some demand".
+ */
+function glowStyle(ads: number, max: number): CSSProperties & { "--cpglow": string } {
+  if (!(ads > 0) || !(max > 0)) return { "--cpglow": "0 0 0 0 transparent" };
+  const t = ads / max;
+  const [r, g, b] = heatRgb(HEAT_RAMP_FLOOR + t * (1 - HEAT_RAMP_FLOOR));
+  const c = (a: number) => `rgba(${r},${g},${b},${a.toFixed(2)})`;
+  return {
+    background: `radial-gradient(130% 110% at 50% 0%, ${c(0.1 + 0.14 * t)}, ${c(0.03)} 62%, #fff 100%), #fff`,
+    "--cpglow": `0 0 0 1px ${c(0.22 + 0.2 * t)}, 0 6px 18px -6px ${c(0.35 + 0.35 * t)}`,
+  };
+}
 
 // ── The card ─────────────────────────────────────────────────────────────────
 
@@ -246,6 +271,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   const n = nodes[sel];
   const sk = skill;
   const adsFor = (o: CardNode) => (sk ? (o.skillLive[sk] ?? 0) : o.ads);
+  // The busiest role on the map shown — the top of its glow scale.
+  const maxAds = Math.max(0, ...nodes.map(adsFor));
 
   const go = (i: number | null | undefined) => {
     if (i == null || i < 0 || !nodes[i]) return;
@@ -576,7 +603,10 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                     border: isGoal
                       ? `1.5px dashed ${INK}`
                       : "1px solid var(--border-subtle,#e5e5ea)",
-                    boxShadow: isSel ? `0 0 0 2px ${INK}, var(--shadow-md)` : "var(--shadow-xs)",
+                    ...glowStyle(adsFor(o), maxAds),
+                    boxShadow: isSel
+                      ? `0 0 0 2px ${INK}, var(--shadow-md), var(--cpglow)`
+                      : "var(--shadow-xs), var(--cpglow)",
                     opacity: sk && !o.skills.includes(sk) ? 0.4 : 1,
                   }}
                 >
@@ -671,22 +701,74 @@ function CareerCard({ onClose }: { onClose: () => void }) {
               </div>
             )}
           </div>
-          <span
+          <div
             style={{
               position: "absolute",
               left: 10,
               bottom: 10,
-              padding: "5px 8px",
-              borderRadius: 999,
-              background: "rgba(255,255,255,.85)",
-              font: `500 9px/1 ${INTER}`,
-              letterSpacing: ".1em",
-              color: "var(--text-tertiary,#8e8e93)",
+              display: "flex",
+              gap: 6,
               pointerEvents: "none",
             }}
           >
-            DRAG TO EXPLORE
-          </span>
+            <span
+              style={{
+                padding: "5px 8px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,.85)",
+                font: `500 9px/1 ${INTER}`,
+                letterSpacing: ".1em",
+                color: "var(--text-tertiary,#8e8e93)",
+                pointerEvents: "none",
+              }}
+            >
+              DRAG TO EXPLORE
+            </span>
+            {/* The key to the cards' glow: the globe's own heat legend, read
+              here as live ads relative to the busiest role on this map. */}
+            <span
+              style={{
+                padding: "5px 8px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,.85)",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                pointerEvents: "none",
+              }}
+            >
+              <span
+                style={{
+                  font: `500 9px/1 ${INTER}`,
+                  letterSpacing: ".08em",
+                  color: "var(--text-tertiary,#8e8e93)",
+                }}
+              >
+                {sk ? "LIVE ADS WITH SKILL" : "LIVE ADS"}
+              </span>
+              <span
+                style={{
+                  font: `500 9px/1 ${INTER}`,
+                  letterSpacing: ".08em",
+                  color: "var(--text-secondary,#636366)",
+                }}
+              >
+                LOW
+              </span>
+              <span
+                style={{ width: 56, height: 5, borderRadius: 999, background: heatGradientCss() }}
+              />
+              <span
+                style={{
+                  font: `500 9px/1 ${INTER}`,
+                  letterSpacing: ".08em",
+                  color: "var(--text-secondary,#636366)",
+                }}
+              >
+                HIGH
+              </span>
+            </span>
+          </div>
           <div
             onPointerDown={(e) => e.stopPropagation()}
             style={{
