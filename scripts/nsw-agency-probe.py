@@ -130,8 +130,19 @@ def pdfs_on(url, warm=None):
         html = gen.fetch(url, warm=warm, render=True)
     except Exception as e:                      # a 404 here is information, not a crash
         return None, f'{type(e).__name__}: {str(e)[:120]}'
+    # `.pdf` IS NOT WHERE THESE FILES ALWAYS LIVE. The Sydney Opera House serves
+    # every annual report from a media CDN with no extension in the path —
+    # sydneyoperahouse.api.collaboro.com/media/annual-report-2025 is 8.7 MB of
+    # %PDF-1.5 — so an extension-only grep found zero links and the card was one
+    # sentence away from being recorded as "publishes no annual report". Links
+    # whose path SAYS annual report are collected too; read_report() judges by
+    # content type, so a false positive here costs a fetch and nothing else.
     links = sorted(set(re.findall(r'(?:href|src)="([^"]*\.pdf[^"]*)"', html)))
-    return links, None
+    labelled = sorted(set(l for l in re.findall(r'href="([^"]+)"', html)
+                          if re.search(r'(?i)annual[-_ ]?report', l)
+                          and not l.lower().endswith(('.html', '.htm', '/'))
+                          and '.pdf' not in l.lower()))
+    return links + labelled, None
 
 
 def read_report(url, warm=None):

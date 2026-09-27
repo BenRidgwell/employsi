@@ -20,6 +20,8 @@
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Service NSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-27
@@ -101,6 +103,8 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-trustee-and-guardian": { now: 728, prev: 720, yoy: 1.1, asof: "Jun 2025", span: 1 },
+  "nsw-gov-office-of-sport": { now: 405, prev: 404, yoy: 0.2, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-service-nsw": { now: 4036, prev: 4868, yoy: -17.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-south-eastern-sydney-local-health-district": { now: 11668, prev: 11525, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-western-sydney-local-health-district": { now: 12965, prev: 12959, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },

@@ -686,10 +686,25 @@ NOT_IN_SOURCE = {
         'annual-report path and its sitemap of 1,357 URLs contains the word '
         '"annual" zero times; the report is not on nsw.gov.au either',
     'nsw:Fire and Rescue NSW':
-        'fire.nsw.gov.au REFUSES this network — 403 on the sitemap and a '
-        'connection reset on the site itself, which is the datacentre-IP '
-        'signature South Australia and Victoria also have. Nothing about the '
-        'report can be established from here, including whether it exists',
+        'fire.nsw.gov.au REFUSES this network, and re-tested 2026-09-27 with a '
+        'warmed browser it still does: the annual-reports page renders as 174 '
+        'BYTES — not a page with no links, a page with no content — and the '
+        'direct report path its own site publishes '
+        '(__data/assets/pdf_file/0022/4936/annual_report_2024_25.pdf) answers '
+        '5,818 bytes of 403 HTML through the browser, with the download '
+        'navigation timing out. The report EXISTS, which is more than the '
+        'earlier probe could say; it is tabled in Parliament, and that host is '
+        'blocked too. Nothing here can open either copy',
+    'nsw:NSW Rural Fire Service':
+        'the same refusal as Fire and Rescue, measured 2026-09-27. Its '
+        'annual-reports page renders through a warmed browser — 28,722 bytes, so '
+        'the host is not refusing the page — and links NO document at all, by '
+        'extension or by label. Its own direct report path '
+        '(__data/assets/pdf_file/...) answers 403 HTML to the browser and times '
+        'out on a download navigation, and admin.rfs.nsw.gov.au is unreachable '
+        'through this proxy (502). The 2024-25 report is tabled in Parliament, '
+        'whose host is blocked, so the document exists and no copy of it is '
+        'reachable from here',
     'nsw:Department of Planning, Housing and Infrastructure':
         'no annual report on nsw.gov.au or planning.nsw.gov.au. The only '
         '"annual-reports" page on either is the Valuer General\'s, a different '
@@ -2591,6 +2606,45 @@ NSW_AGENCY_REPORTS = {
     # directly: pdfplumber puts a wrapped label on its own line, so "Centres,
     # Venues and / 231 255 269 263 / Regions" has its numbers on a line with no
     # label at all.
+    # 23 on the ranking, and it was one sentence away from being recorded as
+    # "publishes no annual report". The probe greps listing pages for `\.pdf` and
+    # found NONE here — not because the reports are absent but because the Opera
+    # House serves them from a media CDN with no extension in the path:
+    # sydneyoperahouse.api.collaboro.com/media/annual-report-2025 is 8.7 MB of
+    # %PDF-1.5. A refusal written from that probe run would have been false, and
+    # the probe now looks for the label as well as the extension.
+    #
+    # p94 "Five-year comparison of staff as at 30 June 2025", columns FY25 FY24
+    # FY23 FY22 FY21 — NEWEST FIRST, which no other report on this route does, so
+    # now_i is 0 and the header assertion is what proves it. A spec that assumed
+    # the usual oldest-first order would file FY21's 499.77 as this year's figure
+    # and look perfectly reasonable doing it.
+    #
+    # THE FTE IS TAKEN AND NO HEAD COUNT IS DERIVED, because the document's two
+    # accounts of its head count disagree. Its prose says "headcount increased by
+    # 10 (one per cent) to 1052 in FY25", which puts FY24 at 1,042 — while the
+    # table's own permanent + non-permanent rows give 574 + 478 = 1,052 for FY25
+    # and 559 + 480 = 1,039 for FY24, a rise of 13. The FY25 figure is solid
+    # either way (574 ongoing + 98 temporary + 380 casuals = 1,052 exactly) but
+    # its comparator is not, and a change of 10 against a change of 13 is the
+    # NSW Police lesson again. The total-FTE row is printed for both years and
+    # needs no arithmetic at all: 669.56 against 667.64.
+    #
+    # ONE ROUNDING NOTE, recorded because it looks like a parse fault and is not.
+    # FY25's components sum exactly (513.88 + 155.68 = 669.56) and FY24's do not
+    # (499.94 + 167.99 = 667.93 against a stated 667.64, out by 0.29). That is in
+    # the document; it is why no component sum is asserted here.
+    'nsw-soh': dict(
+        label='NSW: Sydney Opera House',
+        agency='Sydney Opera House',
+        agency_id='nsw-gov-sydney-opera-house',
+        url='https://sydneyoperahouse.api.collaboro.com/media/annual-report-2025',
+        needle='Five-year comparison of staff',
+        total=r'^Total full-time equivalent',
+        ncols=5, now_i=0, prev_i=1,
+        header=r'FY25\s+FY24\s+FY23\s+FY22\s+FY21',
+        proof=r'as at 30 June 2025',
+        unit='fte', asof='Jun 2025'),
     'nsw-sport': dict(
         label='NSW: Office of Sport',
         agency='Office of Sport',
