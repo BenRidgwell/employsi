@@ -593,6 +593,20 @@ NOT_IN_SOURCE_JURISDICTION = {
 }
 
 NOT_IN_SOURCE = {
+    # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
+    'sa:TAFE SA':
+        'not reachable. Its own site answers 404 at every annual-report path '
+        'tried, warmed browser included, and carries only credit-statement '
+        'reports; the SA government host that would hold it 403s this network. '
+        "TAFE SA is also not in the state's workforce report, which names "
+        'departments and administrative units',
+    'nzhealth:Northern Regional Alliance (NRA)':
+        'ROUTED HERE DELIBERATELY so the run says so in the right place. Since '
+        'September 2024 the Health NZ report folds NRA into a combined "National '
+        'Payrolls" row with seven other agencies — its people are inside that '
+        '4,614, not absent from it, and no row anywhere names NRA. Sent to the '
+        'Public Service Commission instead it would read as the PSC having no '
+        'answer, which is the wrong reason for the right outcome',
     # ── NSW: the rest of the top twelve, each tried 2026-09-25 ────────────────
     # Six NSW agencies now come from their own annual report (NSW_AGENCY_REPORTS).
     # These are the others among the twelve that carry 82% of the route's ads,

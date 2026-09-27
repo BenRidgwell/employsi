@@ -37,6 +37,18 @@ MIN_YEAR = 2024
 #     Elders, Lendlease (2018), NextDC (2021), Nib, and two smaller.
 #   * 82 are not carried at all — a 404 at the aggregator. That includes EVT,
 #     ResMed, Evolution Mining, Adbri and Eagers Automotive.
+# RE-PROBED 2026-09-26, ALL 37 REMAINING LISTED CARDS, ZERO RETURNED A FIGURE.
+# Every company still without a headcount whose roster id carries a ticker was
+# asked again — Catalyst Metals, Core Lithium, Perseus, Magnetite Mines, the
+# REITs, the listed investment companies, all of them — and the aggregator has
+# none. So the 82-not-carried figure below is not drift; it is still the answer.
+# Do not walk that list a ticker at a time again.
+#
+# Two were then checked at the SOURCE with a browser rather than at the
+# aggregator: Catalyst Metals publishes only Extractive Sector Transparency
+# Measures Act filings, and Perseus Mining only quarterly reports. Neither
+# carries a workforce figure.
+#
 #   * ALL 14 NZX COMPANIES 404. Xero, Spark, Fletcher Building, Auckland
 #     Airport, Mainfreight and the rest. stockanalysis.com carries no NZ
 #     listings at /quote/nzx/; /quote/nzse/ and /quote/nz/ also 404, and the
@@ -193,6 +205,63 @@ OWN_REPORT = {
                    ncols=5, idx=4)],
         proof=r'2022 2023 2024 2025 2026',
         span=1, asof='Mar 2026'),
+}
+
+
+# Companies whose OWN report was found and read, and which does not carry a total
+# workforce figure. Recorded because "not filed" and "checked, and the document
+# does not say" are different facts, and only the second one stops the next pass
+# repeating the hunt. Printed at the end of a run so it stays visible.
+#
+# THE COMMON SHAPE IS AN UNDATED WEBSITE NUMBER. Several of these publish a staff
+# count on an About page — Fletcher Building "more than 9,000 people", Linfox
+# "24,000+ People", Contact Energy "more than 1,200 people" — with no as-at date
+# anywhere near it. `asof` is not optional in Headcount, and dating a marketing
+# page to whenever it was last edited would be inventing the one fact that makes
+# a figure worth showing.
+NO_FIGURE_PUBLISHED = {
+    # Checked at the SOURCE with a browser after the aggregator returned nothing
+    # for all 37 remaining listed cards.
+    'perth-cyl':
+        'its own site publishes only Extractive Sector Transparency Measures Act '
+        'filings — payments to governments, not people — and no annual report '
+        'carrying a workforce figure',
+    'pru':
+        'its own site publishes quarterly reports only; none carries a workforce '
+        'figure',
+    'nz-fletcher-building':
+        'annual report FOUND and read — the browser located '
+        'assets/4-investor-centre/annual-reports/2026-annual-report.pdf, which a '
+        'plain fetch cannot reach because the investor pages render in JS. 81 '
+        'pages of financial statements with no total employee count in them; the '
+        'only staff disclosure is the Companies Act one, how many employees earn '
+        'over $100k in $10,000 brackets. Website says "more than 9,000 people", '
+        'undated',
+    'nz-contact-energy':
+        'the 2026 Integrated Report downloaded and scanned: no total headcount or '
+        'FTE stated anywhere in 138 pages. Website says "more than 1,200 people", '
+        'undated',
+    'priv-linfox':
+        'private, no annual report. Its homepage says "24,000+ People" across Asia '
+        'Pacific, undated',
+    'nz-auckland-international-airport':
+        'behind a Cloudflare interstitial that a WARMED browser does clear — but '
+        'its investor pages then carry only meeting notices and a PwC summary, no '
+        'annual report with a staff figure',
+    'nz-reserve-bank-of-new-zealand':
+        'Cloudflare interstitial does NOT clear for this host even warmed, over '
+        'twelve waits; rbnz.govt.nz also 403s a plain fetch on every path tried',
+    'nz-mercury-nz':
+        'site clears and renders, but no annual-report PDF is reachable from its '
+        'navigation',
+    'nz-meridian-energy':
+        'results-and-reports path 404s and no annual-report PDF appears in its '
+        'navigation',
+    'nz-transpower-new-zealand-limited':
+        'an SOE that must report, but its sitemap of 86 KB holds no annual-report '
+        'URL and every guessed path 404s',
+    'nz-victoria-university-of-wellington':
+        'its governance/annual-reports page renders with no PDF links at all',
 }
 
 
@@ -420,6 +489,11 @@ def main():
     L.append('')
     open(OUT, 'w').write('\n'.join(L))
     print(f'wrote {OUT} with {len(data)} companies')
+    if NO_FIGURE_PUBLISHED:
+        print(f'\n{len(NO_FIGURE_PUBLISHED)} companies whose own report was READ and '
+              f'carries no total workforce figure:')
+        for cid in sorted(NO_FIGURE_PUBLISHED):
+            print(f'  {cid}: {NO_FIGURE_PUBLISHED[cid]}')
 
 
 if __name__ == '__main__':
