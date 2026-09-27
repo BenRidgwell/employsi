@@ -118,9 +118,13 @@ function glowStyle(ads: number, max: number): CSSProperties & { "--cpglow": stri
   const t = ads / max;
   const [r, g, b] = heatRgb(HEAT_RAMP_FLOOR + t * (1 - HEAT_RAMP_FLOOR));
   const c = (a: number) => `rgba(${r},${g},${b},${a.toFixed(2)})`;
+  // The card itself stays white — the demand is the halo BEHIND it, not a
+  // tint on it (the first version washed the card's background and edge, and
+  // read as a coloured card rather than a lit one). A wide soft spread plus a
+  // tighter inner ring, both scaling with t, so the busiest role is visibly
+  // lit and the thinnest only faintly.
   return {
-    background: `radial-gradient(130% 110% at 50% 0%, ${c(0.1 + 0.14 * t)}, ${c(0.03)} 62%, #fff 100%), #fff`,
-    "--cpglow": `0 0 0 1px ${c(0.22 + 0.2 * t)}, 0 6px 18px -6px ${c(0.35 + 0.35 * t)}`,
+    "--cpglow": `0 0 26px 3px ${c(0.3 + 0.45 * t)}, 0 0 9px 0 ${c(0.22 + 0.33 * t)}`,
   };
 }
 
