@@ -17500,7 +17500,8 @@ body {
 .cpnode:hover {
   box-shadow:
     0 0 0 1px var(--border-strong, #aeaeb2),
-    var(--shadow-md) !important;
+    var(--shadow-md),
+    var(--cpglow, 0 0 0 0 transparent) !important;
 }
 .cphover:hover {
   background: var(--surface-subtle, #f4f4f5) !important;
