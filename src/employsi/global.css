@@ -7280,8 +7280,11 @@ body {
 .gsauthpanel .accgoal {
   margin: 12px 0 0;
 }
-.gsauthpending {
-  margin: 0 0 12px;
+/* The same 10px to the Google button as the fine print sits below LinkedIn
+   (.authoptions' 8px gap + .authfine's 2px). Doubled class so it wins over
+   .gsauthhint's top margin, which is declared after it. */
+.gsauthhint.gsauthpending {
+  margin: 0 0 10px;
 }
 .gsauthhint {
   margin: 12px 0 0;
