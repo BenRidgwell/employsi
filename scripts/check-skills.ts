@@ -20,6 +20,7 @@ import {
   SKILL_PARENT,
   skillsForText,
 } from "../src/employsi/data/skillsTaxonomy";
+import { SKILL_ICON, SKILL_ICONS } from "../src/employsi/lib/skillCard";
 
 let failed = false;
 
@@ -655,6 +656,23 @@ if (ACCOUNT && DB && TOKEN) {
     }
   } else {
     console.log("· Speciality evidence check skipped (no D1 credentials in the environment).");
+  }
+}
+
+// Every skill names its own card icon. The category fallback exists, but it is
+// how Administration & Office Support ended up wearing the coding brackets —
+// a new skill should get a glyph that means it, not its category's.
+{
+  const noIcon = ALL_SKILLS.filter((s) => !SKILL_ICON[s]);
+  const badGlyph = Object.entries(SKILL_ICON).filter(([, g]) => !SKILL_ICONS[g]);
+  if (noIcon.length || badGlyph.length) {
+    failed = true;
+    if (noIcon.length)
+      console.error(`✗ Skills with no card icon (SKILL_ICON): ${noIcon.join(", ")}`);
+    for (const [s, g] of badGlyph)
+      console.error(`✗ ${s} names glyph "${g}", which SKILL_ICONS lacks`);
+  } else {
+    console.log(`✓ All ${ALL_SKILLS.length} skills name a card icon.`);
   }
 }
 
