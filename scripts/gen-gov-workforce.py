@@ -977,8 +977,25 @@ def read_existing():
         body.setdefault('prev', None)
         body.setdefault('yoy', None)
         rows[m.group(1)] = body
+    # THE LABEL CANNOT BE `[^:]+`, BECAUSE TEN LABELS CONTAIN A COLON. It was,
+    # and every NSW agency source — "NSW: Treasury", "NSW: Department of
+    # Education" — parsed as the label "NSW" with the agency name pushed into the
+    # line. Ten sources collapsed onto one key, the last one won, and since no
+    # source is ever called plain "NSW" that key was never matched this run and
+    # came back out as
+    #
+    #     //   NSW: Primary Industries and Regional Development: 1 agencies
+    #          published as at Jun 2025 — KEPT, not refreshed this run
+    #
+    # beside that same source's own "refreshed today" line. Harmless to the
+    # FIGURES — they are parsed separately — and corrosive to the one signal a
+    # human reads to notice a source going quietly stale: South Australia's KEPT
+    # line that run was real, and this noise sat next to it.
+    #
+    # The emitted line always begins with a count, so the label is everything up
+    # to the last ": " before a digit. Non-greedy plus that anchor gets it.
     meta = {}
-    for m in re.finditer(r'^//   ([^:]+): (.+?)(?: — (?:refreshed|KEPT).*)?$', txt, re.M):
+    for m in re.finditer(r'^//   (.+?): (\d+ .+?)(?: — (?:refreshed|KEPT).*)?$', txt, re.M):
         meta[m.group(1)] = m.group(2)
     return rows, meta
 
@@ -2451,6 +2468,74 @@ NSW_AGENCY_REPORTS = {
         header=r'Annual salary\s+2023.241\s+2024.251',
         proof=r'Excludes cadets, casuals and contractors/labour hire',
         unit='fte', asof='Jun 2025'),
+    # 45 on the archived+live ranking, and on nsw.gov.au all along — linked from
+    # the department's "resources" page, which is why the last pass missed it.
+    # That pass searched the sitemap, whose only dciths annual-report entries are
+    # Liquor & Gaming's and State Records', two other bodies. A sitemap is not an
+    # index of files; grepping the listing page is what finds these.
+    #
+    # p45 PRINTS NO TOTAL ROW AT ALL, which is why this is the first spec with
+    # `from_components`. "Employee classification 2024 2025" runs four rows —
+    # senior executive 73/71, ongoing 812/858, temporary 86/85, trainee 5/5 —
+    # and stops. The 2025 column sums to 1,019, which is exactly the head count
+    # the sentence above it states: "As at 19 June 2025, the department had 977.2
+    # full-time equivalent (FTE) staff, equating to a headcount of 1,019 staff."
+    # So the sum is checked against an independent figure rather than against
+    # itself, and 2024 sums to 976 on the same four rows.
+    #
+    # THE HEAD COUNT IS TAKEN, NOT THE 977.2 FTE, because the FTE has no prior
+    # year anywhere in the document while the classification table gives both.
+    #
+    # DESTINATION NSW IS INSIDE IT AND SAYS SO. p46: its 177.8 FTE / 187
+    # headcount "is already included in the department's total workforce figure",
+    # because its people are employed by the department — so nothing here double
+    # counts, and Destination NSW holds no card of its own. Overseas employees
+    # are excluded by the table's own note (22 in 2024, 23 in 2025).
+    'nsw-dciths': dict(
+        label='NSW: Creative Industries, Tourism, Hospitality and Sport',
+        agency='Department of Creative Industries, Tourism, Hospitality and Sport',
+        agency_id='nsw-gov-department-of-creative-industries-tourism-hospitality-and-sport',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'dciths-annual-report-2024-2025.pdf',
+        needle='Employee classification',
+        comp=r'^(?:Public service senior executive|Ongoing employee|'
+             r'Temporary employee|Trainee/graduate)\b',
+        from_components=True, min_rows=4,
+        stated=r'equating to a headcount of\s+([\d,]+) staff',
+        ncols=2, now_i=1, prev_i=0,
+        proof=r'As at 19 June 2025, the department had',
+        unit='headcount', asof='Jun 2025'),
+    # 27 on the ranking. ITS OWN HOST LISTS THE FILE AND DOES NOT SERVE IT —
+    # tag.nsw.gov.au links this exact path and answers it with HTTP 200 and
+    # 185 KB of its own landing page, having redirected to
+    # nsw.gov.au/departments-and-agencies/trustee-guardian. The same path on
+    # www.nsw.gov.au is 10 MB of application/pdf. A probe that trusted the status
+    # code would have recorded this card as read and found no table in a web page.
+    #
+    # p70 "Table 7: Full-time equivalent staff and headcount at 30 June 2025",
+    # four columns — 2024 FTE, 2024 Headcount, 2025 FTE, 2025 Headcount — and a
+    # Total row of 680.3 / 720 / 685.18 / 728. The head count columns are taken
+    # because both years are there in both measures and a head count is the
+    # plainer quantity; either choice is internally consistent here.
+    #
+    # NO COMPONENT SUM: pdfplumber glues the classification rows ("Temporary
+    # employees 39 43" arrives with two of its four numbers), so the header is
+    # asserted instead — and with four columns alternating measure and year, the
+    # header IS the whole proof of which one was read. Footnote 13 dates it: "This
+    # data is current as of 19 June 2025, the end of the last pay period for
+    # 2024-25."
+    'nsw-tag': dict(
+        label='NSW: Trustee and Guardian',
+        agency='NSW Trustee and Guardian',
+        agency_id='nsw-gov-nsw-trustee-and-guardian',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-12/'
+            'nsw-trustee-guardian-annual-report-2024-25.pdf',
+        needle='Full-time equivalent staff and headcount',
+        total=r'^Total\b',
+        ncols=4, now_i=3, prev_i=1,
+        header=r'2024 FTE\s+2024 Headcount\s+2025 FTE\s+2025 Headcount',
+        proof=r'current as of 19 June 2025',
+        unit='headcount', asof='Jun 2025'),
     'nsw-treasury': dict(
         label='NSW: Treasury',
         agency='NSW Treasury',
@@ -2585,7 +2670,7 @@ def _nsw_agency(spec):
     if blob[:4] != b'%PDF':
         raise RuntimeError(f"{spec['label']}: not a PDF — starts {blob[:40]!r}")
 
-    total, comps, proved, rejected = None, [], False, []
+    total, comps, proved, rejected, stated = None, [], False, [], None
 
     def cells(row):
         """A compacted table row -> (label, [numbers]) if its cells are numeric."""
@@ -2607,6 +2692,16 @@ def _nsw_agency(spec):
                 continue
             if re.search(spec['proof'], txt):
                 proved = True
+            # A TOTAL THE DOCUMENT STATES IN PROSE RATHER THAN PRINTING IN THE
+            # TABLE. Creative Industries' classification table has four rows and
+            # no Total line at all; the number is in the sentence above it, "the
+            # department had 977.2 full-time equivalent (FTE) staff, equating to
+            # a headcount of 1,019 staff". Captured here because it is the thing
+            # the summed components get checked against.
+            if spec.get('stated') and stated is None:
+                m = re.search(spec['stated'], txt)
+                if m:
+                    stated = _num(m.group(1))
 
             # TABLES FIRST, LINES ONLY IF THEY YIELD NOTHING. Two of these pages
             # print two tables side by side, and extract_text() then interleaves
@@ -2620,10 +2715,35 @@ def _nsw_agency(spec):
                     label, nums = cells(row)
                     if len(nums) != spec['ncols']:
                         continue
-                    if re.match(spec['total'], label):
+                    # `.get`, BECAUSE A SPEC NEED NOT HAVE A TOTAL ROW. The
+                    # `from_components` specs have none to match — Creative
+                    # Industries' table simply stops after its four rows.
+                    if spec.get('total') and re.match(spec['total'], label):
                         t_row = nums
                     elif spec.get('comp') and re.match(spec['comp'], label):
                         c_rows.append(nums)
+                # NO TOTAL ROW, SO THE COMPONENTS ARE THE TOTAL — and the
+                # prose is what proves it. Creative Industries prints
+                # "Employee classification 2024 2025" over four rows and stops:
+                # 73/71 senior executive, 812/858 ongoing, 86/85 temporary, 5/5
+                # trainee. The 2025 column sums to 1,019, which is exactly the
+                # head count its own text states, and 2024 sums to 976.
+                #
+                # THIS IS NOT THE USUAL RECONCILIATION AND MUST NOT BE MISTAKEN
+                # FOR IT. Everywhere else the components are checked against a
+                # total the document printed, and disagreement means the parse
+                # is wrong. Here the sum IS the figure, so checking it against
+                # itself would prove nothing — `stated` is the independent
+                # quantity, and without a match the run refuses rather than
+                # filing an unverified sum. `min_rows` stops one stray numeric
+                # line becoming a workforce.
+                if spec.get('from_components') and not t_row:
+                    if len(c_rows) >= spec.get('min_rows', 3):
+                        t_row = [sum(r[i] for r in c_rows) for i in range(spec['ncols'])]
+                    else:
+                        rejected.append(f'only {len(c_rows)} component rows, '
+                                        f'below the {spec.get("min_rows", 3)} this '
+                                        f'spec requires to add them up')
                 if not t_row or not (c_rows or not spec.get('comp')):
                     continue
                 # AN OPTIONAL HEADER ASSERTION, for a table with ONE data row and
@@ -2682,6 +2802,21 @@ def _nsw_agency(spec):
                         else:
                             comps.append([_num(x) for x in nums])
                         break
+
+            # AND THE SYNTHESIS HAS TO HAPPEN AFTER BOTH PATHS, not just the
+            # table one. Creative Industries' page is exactly the case: its
+            # "table" comes back from extract_tables() as a lone header row
+            # ['Employee classification', '2024', '2025'] with no data rows at
+            # all, so the four classification rows are only ever reached as
+            # TEXT. Synthesising in the table loop alone found zero components
+            # and reported the report restyled.
+            if spec.get('from_components') and total is None:
+                if len(comps) >= spec.get('min_rows', 3):
+                    total = [sum(r[i] for r in comps) for i in range(spec['ncols'])]
+                elif comps:
+                    rejected.append(f'only {len(comps)} component lines, below the '
+                                    f'{spec.get("min_rows", 3)} this spec requires '
+                                    f'to add them up')
             if total:
                 break
 
@@ -2693,6 +2828,17 @@ def _nsw_agency(spec):
     why = _reconciles(spec, total, comps)
     if why:
         raise RuntimeError(f"{spec['label']}: {why}")
+    if spec.get('stated'):
+        if stated is None:
+            raise RuntimeError(f"{spec['label']}: the page no longer states a total "
+                               f"matching {spec['stated']!r}, and this spec adds its "
+                               f"own components up — so there is nothing left to "
+                               f"check the sum against")
+        got = total[spec['now_i']]
+        if abs(got - stated) > spec.get('tol', 0.6):
+            raise RuntimeError(f"{spec['label']}: components sum to {got:,.1f} "
+                               f"against the {stated:,.1f} the document states in "
+                               f"prose — the rows or the column are wrong")
     if not proved:
         raise RuntimeError(f"{spec['label']}: the page no longer carries "
                            f"{spec['proof']!r}, so the column the figure is read "

@@ -7,7 +7,6 @@
 //   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-27
 //   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-27
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-27
-//   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
@@ -19,10 +18,13 @@
 //   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   NSW: icare: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-27
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-27
+//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
@@ -81,6 +83,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-clinical-excellence-commission": { now: 131, prev: 144, yoy: -9.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-department-of-climate-change-energy-the-environment-and-water": { now: 6208, prev: 5737, yoy: 8.2, asof: "Jun 2025", span: 1 },
   "nsw-gov-department-of-communities-and-justice": { now: 25643, prev: 24082, yoy: 6.5, asof: "Jun 2024", span: 1 },
+  "nsw-gov-department-of-creative-industries-tourism-hospitality-and-sport": { now: 1019, prev: 976, yoy: 4.4, asof: "Jun 2025", span: 1 },
   "nsw-gov-department-of-customer-service": { now: 7651, prev: 7497, yoy: 2.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-department-of-education": { now: 107979, prev: 107949, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-department-of-primary-industries-and-regional-development": { now: 3639, yoy: null, asof: "Jun 2025", span: 1 },
@@ -98,6 +101,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-nsw-trustee-and-guardian": { now: 728, prev: 720, yoy: 1.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-south-eastern-sydney-local-health-district": { now: 11668, prev: 11525, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-western-sydney-local-health-district": { now: 12965, prev: 12959, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
