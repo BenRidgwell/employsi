@@ -197,7 +197,43 @@ def main():
         if not newest:
             print('  no 2024-25 report among the links — nothing to read')
             continue
-        url = newest[0]
+
+        # A LISTING PAGE CARRIES OTHER BODIES' REPORTS, and taking the first
+        # 2024-25 link read the wrong one in silence. sport.nsw.gov.au publishes
+        # forty annual reports going back to 1997 and hosts its portfolio's as
+        # well: the first 2024-25 match by sort order is
+        # CSA-Annual-Report-2024-2025.pdf, the COMBAT SPORTS AUTHORITY — a
+        # fifteen-page document that parses perfectly and is not this agency.
+        # Nothing about the read would have looked wrong.
+        #
+        # So every candidate is printed, and one whose filename carries a word
+        # from the agency's own name is preferred. When none does the first is
+        # still read, because a report named "annual_report_2024_25.pdf" on the
+        # agency's own host is usually right — but the list above it is what a
+        # human checks.
+        # MATCH THE INITIALISM AS WELL AS THE WORDS, because these files are named
+        # by initialism far more often than not. The three 2024-25 reports on the
+        # Office of Sport's page are CSA-Annual-Report-2024-2025.pdf (Combat
+        # Sports Authority), OoS-Annual-Report-2024-25.pdf and
+        # SSVA-Annual-Report-2024-2025.pdf (State Sporting Venues Authority) —
+        # so a word match on "sport" finds NONE of them and the sort order hands
+        # back the Combat Sports Authority.
+        words = [w.lower() for w in re.findall(r'[A-Za-z]{4,}', spec['name'])
+                 if w.lower() not in ('department', 'office', 'service', 'services',
+                                      'authority', 'commission', 'south', 'wales')]
+        initials = ''.join(w[0] for w in spec['name'].split() if w[:1].isalpha()).lower()
+        named = [l for l in newest
+                 if any(w in l.lower() for w in words)
+                 or (len(initials) >= 3
+                     and re.search(rf'(?<![a-z]){re.escape(initials)}(?![a-z])',
+                                   l.rsplit('/', 1)[-1].lower()))]
+        if len(newest) > 1:
+            print(f'  {len(newest)} candidates for 2024-25 — CHECK THIS LIST, a '
+                  f"listing page carries other bodies' reports too:")
+            for l in newest:
+                mark = '  <- name matches the agency' if l in named else ''
+                print(f'      {l[:130]}{mark}')
+        url = (named or newest)[0]
         if url.startswith('/'):
             # AN AGENCY SUB-DOMAIN LISTS THE FILES AND DOES NOT SERVE THEM, and
             # it does not 404 when you ask — which is the part that wastes an

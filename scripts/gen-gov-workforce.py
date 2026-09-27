@@ -2536,6 +2536,87 @@ NSW_AGENCY_REPORTS = {
         header=r'2024 FTE\s+2024 Headcount\s+2025 FTE\s+2025 Headcount',
         proof=r'current as of 19 June 2025',
         unit='headcount', asof='Jun 2025'),
+    # 15 on the ranking, and it was nearly recorded as a refusal. A scan for a
+    # people-word beside a thousands-scale number found nothing but a senior
+    # executive table, and "Service NSW publishes only senior executives" was
+    # written down before the contents page turned out to list four workforce
+    # tables further in. The filter was the problem, not the document.
+    #
+    # NOT INSIDE CUSTOMER SERVICE, CHECKED RATHER THAN ASSUMED. Service NSW is an
+    # executive agency related to DCS, so the obvious call was to refuse it as
+    # already counted there — but the DCS report's own "Division FTE over time"
+    # table names its twenty-two divisions and Service NSW is not one of them, so
+    # its people are NOT in the 7,651.9 and this card is not a double count.
+    #
+    # p67 "Table 27: Size of agency (Headcount)", 2023 / 2024 / 2025 plus a
+    # published change: non-casual head count 5,213 / 4,868 / 4,036 and -17.1%.
+    # The NON-CASUAL row is taken because it is the same basis in all three
+    # years, while the plain head-count row above it gives 5,253 for 2023 and
+    # then repeats the non-casual figure for 2025 — 4,036 — although Table 11 on
+    # p50 counts 37 casuals that year. One of those two rows is wrong about 2025
+    # and it is not the one that agrees with everything else.
+    #
+    # Table 28 repeats 5,213 / 4,868 / 4,036 independently as the denominator of
+    # its survey response rate, and Table 11's totals including casuals (5,253 /
+    # 4,911 / 4,073) sit exactly 40 / 43 / 37 above them — the casual column in
+    # each year. Three tables agreeing is why this pair is safe to compare.
+    # 26 on the ranking. THE PROBE READ THE WRONG DOCUMENT FIRST and nothing
+    # about it looked wrong: sport.nsw.gov.au lists forty annual reports back to
+    # 1997 and hosts its portfolio's as well, so the first 2024-25 match by sort
+    # order is CSA-Annual-Report-2024-2025.pdf — the Combat Sports Authority, a
+    # fifteen-page document that parses perfectly and is not this agency. The
+    # right file is OoS-Annual-Report-2024-25.pdf, named by initialism like its
+    # two neighbours, which is why the probe now matches on that too.
+    #
+    # AN ANNUAL AVERAGE, NOT A CENSUS-DATE COUNT — the only figure here that is.
+    # p48 "TABLE 11: Number of full-time equivalent staff in Office of Sport
+    # (annual average)": 372 / 404 / 404 / 405 over 2021/22 to 2024/25. Every
+    # other NSW card on this route is a head count or FTE at the June census
+    # date; this one is averaged across the year, because that is the only
+    # workforce figure the report publishes. It includes 36 FTE of casuals.
+    #
+    # THE PAGE CONTRADICTS ITSELF BY ONE AND THE TABLE WINS. Its prose says "The
+    # annual average number of full-time equivalent (FTE) staff across the Office
+    # of Sport was 406 in 2024/2025", against the table's 405. Table 12 breaks
+    # the same year down by division — 19 + 62 + 263 + 61 — and sums to 405, and
+    # prints its own TOTAL row of 372 / 404 / 404 / 405, identical to Table 11.
+    # So 405 is corroborated twice and 406 is corroborated by nothing. `stated`
+    # is deliberately NOT used here: it would match the prose and refuse the run
+    # over the document's own typo.
+    #
+    # `comp` POINTS AT THE OTHER TABLE ON PURPOSE. Matching Table 12's TOTAL and
+    # requiring it to equal Table 11's row is a cross-table agreement check —
+    # two independently printed series that must not diverge — which is stronger
+    # than anything Table 11 alone can offer. Its division rows cannot be summed
+    # directly: pdfplumber puts a wrapped label on its own line, so "Centres,
+    # Venues and / 231 255 269 263 / Regions" has its numbers on a line with no
+    # label at all.
+    'nsw-sport': dict(
+        label='NSW: Office of Sport',
+        agency='Office of Sport',
+        agency_id='nsw-gov-office-of-sport',
+        url='https://www.sport.nsw.gov.au/sites/default/files/2025-11/'
+            'OoS-Annual-Report-2024-25.pdf',
+        needle='full-time equivalent staff in Office of Sport (annual average)',
+        total=r'^Office of Sport\b',
+        comp=r'^TOTAL\b',
+        ncols=4, now_i=3, prev_i=2, sums=[(2,), (3,)],
+        header=r'2021/2022\s+2022/2023\s+2023/2024\s+2024/2025',
+        proof=r'annual average number of full-time equivalent',
+        unit='fte', asof='Jun 2025'),
+    'nsw-snsw': dict(
+        label='NSW: Service NSW',
+        agency='Service NSW',
+        agency_id='nsw-gov-service-nsw',
+        url='https://www.service.nsw.gov.au/system/files/2025-12/'
+            'Annual-Report-2025-SNSW_0.pdf',
+        warm='https://www.service.nsw.gov.au/',
+        needle='Size of agency (Headcount)',
+        total=r'^Non-casual Headcount at Census Date',
+        ncols=4, now_i=2, prev_i=1, change_i=3,
+        header=r'2023\s+2024\s+2025\s+% Change 2024 to 2025',
+        proof=r'census date 19 June 2025|Census Date',
+        unit='headcount', asof='Jun 2025'),
     'nsw-treasury': dict(
         label='NSW: Treasury',
         agency='NSW Treasury',
@@ -2828,6 +2909,27 @@ def _nsw_agency(spec):
     why = _reconciles(spec, total, comps)
     if why:
         raise RuntimeError(f"{spec['label']}: {why}")
+    # A PERCENTAGE CHANGE THE DOCUMENT PUBLISHES, TURNED INTO THE GUARD.
+    # Service NSW's "Size of agency (Headcount)" row reads
+    #
+    #     Non-casual Headcount at Census Date 5213 4868 4036 -17.1%
+    #
+    # so the trailing change parses as a FOURTH number and the spec has to
+    # declare ncols=4 — which is the Customer Service footnote trap again, where
+    # "Total15" made a four-column row look like five. Here the extra number is
+    # not noise: it is the agency's own arithmetic over the two columns being
+    # read, so requiring it to match turns the liability into the strongest check
+    # available. A spec that took the wrong pair fails even though its regex
+    # matched cleanly and its column count was right.
+    if spec.get('change_i') is not None:
+        now, prev = total[spec['now_i']], total[spec['prev_i']]
+        want = total[spec['change_i']]
+        got = abs((now - prev) / prev * 100)
+        if abs(got - want) > spec.get('change_tol', 0.15):
+            raise RuntimeError(f"{spec['label']}: columns {spec['prev_i']} and "
+                               f"{spec['now_i']} ({prev:,.0f} -> {now:,.0f}) are a "
+                               f"{got:.1f}% change, against the {want:.1f}% the table "
+                               f"publishes beside them — the wrong pair was read")
     if spec.get('stated'):
         if stated is None:
             raise RuntimeError(f"{spec['label']}: the page no longer states a total "
