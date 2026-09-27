@@ -338,8 +338,25 @@ jobs:
           # calls page.html a binary file, the title comes back empty and this
           # step warns "/app did not return the app title" on a perfectly good
           # deploy. Measured 2026-09-21 on the first successful run.
+          #
+          # AND `grep -a` IS REQUIRED TOO, for the same symptom from a different
+          # cause — so fixing the encoding did not finish the job. The DECODED
+          # page contains NUL bytes (5 of them, measured 2026-09-27 on a 3,248-byte
+          # body), which is enough for grep to call it binary, print
+          #
+          #     grep: page.html: binary file matches
+          #
+          # and emit NOTHING on stdout. The title came back empty and this step
+          # warned about the app title on a deploy that was serving the app
+          # perfectly — run 36301272025, where a hand curl of the same URL read
+          # "Employsi map — the live labour-market globe". The comment above was
+          # then the natural suspect and it was already satisfied.
+          #
+          # -a says "treat this as text", which is the whole fix. Note the Summary
+          # step below already used `grep -aE` on the deploy log; this step is the
+          # one that missed it.
           code=$(curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
-          title=$(grep -o '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
+          title=$(grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
           echo "$code  $title"
           [ "$code" = "200" ] || { echo "::error::$url answered $code"; exit 1; }
           case "$title" in
