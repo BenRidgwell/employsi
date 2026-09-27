@@ -25,7 +25,6 @@
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-27
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-27
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //
