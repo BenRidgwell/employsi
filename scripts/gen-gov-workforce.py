@@ -339,13 +339,17 @@ def _browser_ctx():
             # briefly written up as if it did. With the path pinned the browser
             # launches and the failure moves to the NEXT one:
             # ERR_CERT_AUTHORITY_INVALID, because the sandbox reaches the
-            # network through a proxy whose CA Chromium does not trust. That is
-            # not worked around here — launching with certificate errors
-            # ignored would turn off verification for every page the scraper
-            # reads. These four stay runner-only, as gov-workforce.yml already
-            # has them; what changes is that the error now names the real
-            # blocker. On a runner the glob finds whatever playwright installed,
-            # and an empty glob falls through to the default launch.
+            # network through a proxy whose CA Chromium does not trust.
+            #
+            # THAT IS FIXABLE, AND THIS COMMENT USED TO SAY IT WAS NOT. Adding
+            # the session's proxy CA to Chromium's NSS store clears it — see
+            # CLAUDE.md, which has the two commands. It is a trust
+            # CONFIGURATION, not the --ignore-certificate-errors bypass this
+            # comment was right to refuse. What is still true is that the fix is
+            # per session, so these four stay runner-only here rather than
+            # depending on a setup step nobody ran. On a runner the glob finds
+            # whatever playwright installed, and an empty glob falls through to
+            # the default launch.
             exe = next(iter(sorted(glob.glob(
                 '/opt/pw-browsers/chromium-*/chrome-linux/chrome') + glob.glob(
                 '/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell'),
@@ -589,6 +593,20 @@ NOT_IN_SOURCE_JURISDICTION = {
 }
 
 NOT_IN_SOURCE = {
+    # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
+    'sa:TAFE SA':
+        'not reachable. Its own site answers 404 at every annual-report path '
+        'tried, warmed browser included, and carries only credit-statement '
+        'reports; the SA government host that would hold it 403s this network. '
+        "TAFE SA is also not in the state's workforce report, which names "
+        'departments and administrative units',
+    'nzhealth:Northern Regional Alliance (NRA)':
+        'ROUTED HERE DELIBERATELY so the run says so in the right place. Since '
+        'September 2024 the Health NZ report folds NRA into a combined "National '
+        'Payrolls" row with seven other agencies — its people are inside that '
+        '4,614, not absent from it, and no row anywhere names NRA. Sent to the '
+        'Public Service Commission instead it would read as the PSC having no '
+        'answer, which is the wrong reason for the right outcome',
     # ── NSW: the rest of the top twelve, each tried 2026-09-25 ────────────────
     # Six NSW agencies now come from their own annual report (NSW_AGENCY_REPORTS).
     # These are the others among the twelve that carry 82% of the route's ads,
@@ -2195,6 +2213,40 @@ NSW_AGENCY_REPORTS = {
         ncols=3, now_i=1, prev_i=0, sums=[(0,), (1,)],
         proof=r'19 June 2025',
         unit='headcount', asof='Jun 2025'),
+    # 39 on the archived+live ranking. p88 "Table 4: Number of employees by
+    # employment category by year", three years, and its own prose above it says
+    # "As at 30 June 2025, RA employed 488 ongoing and temporary employees".
+    # Every column reconciles: 240, 361, 488.
+    'nsw-ra': dict(
+        label='NSW: Reconstruction Authority',
+        agency='NSW Reconstruction Authority',
+        agency_id='nsw-gov-nsw-reconstruction-authority',
+        url='https://www.nsw.gov.au/sites/default/files/2026-01/'
+            'nsw-reconstruction-authority-annual-report-2024-25.pdf',
+        needle='Number of employees by employment category by year',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Senior Executives|Casual|Others)\b',
+        ncols=3, now_i=2, prev_i=1, sums=[(0,), (1,), (2,)],
+        proof=r'As at 30 June 2025',
+        unit='headcount', asof='Jun 2025'),
+    # 44 on the ranking. p55 "Table 6. Number of full-time equivalent staff
+    # employed" — NINE year columns, 2017 to 2025, and a SINGLE data row. So
+    # there is nothing to reconcile against, and the header is asserted instead:
+    # the table is rejected unless its header still ends "June 2024 June 2025",
+    # which is the only thing that proves which column is being read. Excludes
+    # casual staff, per its own Note 2.
+    'nsw-lls': dict(
+        label='NSW: Local Land Services',
+        agency='Local Land Services',
+        agency_id='nsw-gov-local-land-services',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-12/'
+            'local-land-services-annual-report-2024-25.pdf',
+        needle='Number of full-time equivalent staff employed',
+        total=r'^Number of full-time equivalent staff',
+        ncols=9, now_i=8, prev_i=7,
+        header=r'Year ending.*June 2024 June 2025',
+        proof=r'Workforce Profile Report 2025',
+        unit='fte', asof='Jun 2025'),
     # 23 live ads but by far the largest workforce here — this is the department
     # that operates every NSW public school, so its own figure includes teachers.
     #
@@ -2387,6 +2439,18 @@ def _nsw_agency(spec):
                         c_rows.append(nums)
                 if not t_row or not (c_rows or not spec.get('comp')):
                     continue
+                # AN OPTIONAL HEADER ASSERTION, for a table with ONE data row and
+                # so nothing to reconcile against. Local Land Services prints nine
+                # year columns and a single FTE row: the only thing that can prove
+                # the last column is June 2025 is the header itself, so the spec
+                # names it and the table is rejected if it no longer reads that way.
+                if spec.get('header'):
+                    joined = [' '.join(' '.join(str(c).split())
+                                       for c in row if c not in (None, ''))
+                              for row in tab]
+                    if not any(re.search(spec['header'], j) for j in joined):
+                        rejected.append(f'no header row matching {spec["header"]!r}')
+                        continue
                 why = _reconciles(spec, t_row, c_rows)
                 if why:
                     rejected.append(why)

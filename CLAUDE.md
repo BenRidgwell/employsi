@@ -757,5 +757,42 @@ grep -rn "qMOOs\|StephenCurry30\|cfut_\|eyJhbGciOiJIUzI1NiI" src/ scripts/ worke
 commits that are already pushed — it rewrites history on Lovable's side and the user can
 lose their project history. Keep the pushed branch in a working state.
 
-**No visual verification is possible from this sandbox** — Chromium cannot reach remote hosts
-through the proxy. Deploy and ask the user to look, rather than claiming a UI change renders.
+**HEADLESS CHROMIUM DOES REACH THE NETWORK FROM THIS SANDBOX, after two setup
+steps.** This file said it could not, and `gen-gov-workforce.py` still carries a
+comment naming `ERR_CERT_AUTHORITY_INVALID` as an unworked-around blocker. The
+error was real; the conclusion was not. Measured 2026-09-27:
+
+1. **Pin the executable.** The pip `playwright` expects a browser build newer
+   than the image's, so a plain `launch()` dies asking you to run
+   `playwright install` — which the environment says not to do. Point it at
+   what is there instead (the existing glob in `gen-gov-workforce.py` and
+   `gov-source-probe.py` already does this):
+
+       exe = sorted(glob.glob('/opt/pw-browsers/chromium-*/chrome-linux/chrome'))[-1]
+
+2. **Give Chromium the proxy CA.** It does not read the system trust store, and
+   `/root/.pki/nssdb` was EMPTY despite the proxy README saying the browser NSS
+   store is set up — the CA in `/root/.ccr/` is regenerated per session, so
+   whatever the image installed is not this session's. `certutil` is not
+   installed either:
+
+       apt-get install -y libnss3-tools
+       certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n ccr-agent-proxy \
+                -i /root/.ccr/agent-proxy-ca.crt
+
+   Then launch with `proxy={'server': os.environ['HTTPS_PROXY']}`.
+
+That is CONFIGURING trust, not disabling it — do NOT reach for
+`--ignore-certificate-errors` or `ignoreHTTPSErrors`, which would turn
+verification off for every page a scraper reads. Both steps are per session:
+the NSS entry does not survive a new container.
+
+What it unlocked: the NZ investor sites that render their report lists in
+JavaScript. Fisher & Paykel Healthcare and Spark were filed from documents a
+plain fetch could not even find the links to. Cloudflare's "Just a moment…"
+interstitial still stops Auckland Airport and the Reserve Bank of NZ, which is
+the warmed-browser problem the NT and Tasmania loaders already solve.
+
+**Visual verification of the APP is still a separate question** and the answer
+is still no: nothing here serves the built app, so deploy to the preview Worker
+and ask the user to look rather than claiming a UI change renders.
