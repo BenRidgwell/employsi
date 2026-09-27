@@ -41,6 +41,16 @@ export interface AppState {
   authOpen: boolean;
   pendingFollowId: string | null;
   pendingFollowSkill: string | null;
+  /** The signed-in account's career goal, a pathway node id
+   *  ("family|track|rung"); null when none is set or nobody is signed in. */
+  careerGoal: string | null;
+  /** A goal a signed-out visitor tried to set, saved the moment they sign in.
+   *  Kept in sessionStorage as well as here, because sign-in is an OAuth
+   *  redirect and the in-memory copy does not survive the round trip. */
+  pendingCareerGoal: { id: string; title: string } | null;
+  /** A pathway node the career card should open on (the profile's "View
+   *  pathway"); consumed by the card when it mounts. */
+  careerFocus: string | null;
   // Transient notification text (e.g. "sign in to follow"); null when hidden.
   toast: string | null;
   settingsOpen: boolean;
@@ -183,6 +193,15 @@ export interface AppState {
   requestFollow: (id: string) => void;
   toggleFollowSkill: (skill: string) => void;
   requestFollowSkill: (skill: string) => void;
+  /** Set (or with null, clear) the career goal. Signed out, prompts sign-in
+   *  and remembers the goal for when they come back. */
+  requestCareerGoal: (id: string | null, title?: string) => void;
+  /** Adopt the account's goal as the server reported it. */
+  setCareerGoalLocal: (id: string | null) => void;
+  clearPendingCareerGoal: () => void;
+  /** Open the career card on one role. */
+  openCareerAt: (id: string) => void;
+  takeCareerFocus: () => string | null;
   dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
@@ -376,6 +395,38 @@ if (typeof document !== "undefined") {
 // Write a follow through to the signed-in account. Lazily imported: the store
 // is loaded by every component, and followsFn pulls in the auth stack, which
 // has no business in that graph until something actually follows.
+// Same lazy import for the goal; last write wins, and getSession reconciles.
+async function persistCareerGoal(id: string | null): Promise<void> {
+  try {
+    const { setCareerGoal } = await import("../lib/followsFn");
+    await setCareerGoal({ data: { id } });
+  } catch {
+    // Best effort, as above.
+  }
+}
+
+const PENDING_GOAL_KEY = "employsi.pendingCareerGoal";
+function loadPendingGoal(): { id: string; title: string } | null {
+  try {
+    const raw = typeof window !== "undefined" ? sessionStorage.getItem(PENDING_GOAL_KEY) : null;
+    const v = raw ? (JSON.parse(raw) as { id?: unknown; title?: unknown }) : null;
+    return v && typeof v.id === "string" && typeof v.title === "string"
+      ? { id: v.id, title: v.title }
+      : null;
+  } catch {
+    return null;
+  }
+}
+function savePendingGoal(v: { id: string; title: string } | null): void {
+  try {
+    if (v) sessionStorage.setItem(PENDING_GOAL_KEY, JSON.stringify(v));
+    else sessionStorage.removeItem(PENDING_GOAL_KEY);
+  } catch {
+    // Private mode or blocked storage: the in-memory copy still covers a
+    // sign-in that does not leave the page.
+  }
+}
+
 async function persistFollow(kind: "company" | "skill", ref: string, on: boolean): Promise<void> {
   try {
     const { setFollow } = await import("../lib/followsFn");
@@ -466,6 +517,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   authOpen: false,
   pendingFollowId: null,
   pendingFollowSkill: null,
+  careerGoal: null,
+  pendingCareerGoal: loadPendingGoal(),
+  careerFocus: null,
   toast: null,
   settingsOpen: false,
   alertsOpen: false,
@@ -610,10 +664,54 @@ export const useAppStore = create<AppState>((set, get) => ({
         : [...s.followedSkills, skill],
     });
   },
+  // A career goal is an account feature, gated like following: signed out,
+  // the sign-in sheet opens with the role named, and the goal is saved the
+  // moment a session appears (useAuthSession applies it — it needs a server
+  // write, which setSession does not do).
+  requestCareerGoal: (id, title) => {
+    const s = get();
+    if (!s.account) {
+      if (!id) return;
+      const pending = { id, title: title ?? "this role" };
+      savePendingGoal(pending);
+      // The card closes: it sits above the header, so the sign-in panel would
+      // open behind it. Nothing is lost — the goal is pending, and once saved
+      // the profile's goal opens the map straight back on it.
+      set({
+        authOpen: true,
+        careerOpen: false,
+        pendingCareerGoal: pending,
+        toast: "Create a free account or sign in to save a career goal",
+      });
+      return;
+    }
+    if (id === s.careerGoal) return;
+    set({ careerGoal: id });
+    void persistCareerGoal(id);
+  },
+  setCareerGoalLocal: (id) => set({ careerGoal: id }),
+  clearPendingCareerGoal: () => {
+    savePendingGoal(null);
+    set({ pendingCareerGoal: null });
+  },
+  openCareerAt: (id) => set({ ...solo("careerOpen", true), careerFocus: id }),
+  takeCareerFocus: () => {
+    const id = get().careerFocus;
+    if (id) set({ careerFocus: null });
+    return id;
+  },
   dismissToast: () => set({ toast: null }),
   openAuth: () =>
     set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
-  closeAuth: () => set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }),
+  closeAuth: () => {
+    savePendingGoal(null);
+    set({
+      authOpen: false,
+      pendingFollowId: null,
+      pendingFollowSkill: null,
+      pendingCareerGoal: null,
+    });
+  },
   // The session is whatever the server says it is. Signing in happens by OAuth
   // redirect (see lib/authClient.ts), so there is no "submit these credentials"
   // action here any more — the app simply learns who came back.
@@ -626,7 +724,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => {
       // Signing out drops the role with the account: leaving it behind would
       // keep the admin surface visible to the next person at this browser.
-      if (!a) return { account: null, role: "user" as Role, authOpen: false };
+      if (!a) return { account: null, role: "user" as Role, authOpen: false, careerGoal: null };
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
           ? [...s.followedIds, s.pendingFollowId]
@@ -678,6 +776,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       pendingFollowSkill: null,
       followedIds: [],
       followedSkills: [],
+      careerGoal: null,
     });
     if (typeof window !== "undefined") {
       // Same URL, so the person lands where they were rather than being sent
@@ -1043,8 +1142,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   closeTopmost: () => {
     const s = get();
     if (s.comingSoon) return (set({ comingSoon: null }), true);
-    if (s.authOpen)
-      return (set({ authOpen: false, pendingFollowId: null, pendingFollowSkill: null }), true);
+    if (s.authOpen) return (get().closeAuth(), true);
     if (s.compareOpen) return (set({ compareOpen: false, selectedId: s.lastId }), true);
     if (s.selectedId) return (set({ selectedId: null }), true);
     const panes = [

@@ -20,6 +20,7 @@ import {
 import type { CareerPathways, PathwayMarket } from "../src/employsi/lib/careerLadder";
 import {
   careerCard,
+  careerGoalSummary,
   displayTitle,
   familyForSkill,
   pctLabel,
@@ -362,6 +363,40 @@ check(
   familyForSkill(P, "au", hrSkill) === "hr",
   familyForSkill(P, "au", hrSkill),
 );
+
+// A saved goal on a specialist lane must reopen with that lane on the map, and
+// its profile summary must read the same figures the card shows for it.
+{
+  let lanes = 0;
+  for (const fam of P.families) {
+    const base = careerCard(P, fam.id, "au");
+    if (!base) continue;
+    const core = base.nodes.find((x) => x.row === 0)?.track;
+    for (const t of fam.tracks) {
+      if (t.id === core) continue;
+      const m = careerCard(P, fam.id, "au", null, t.id);
+      const on = m?.nodes.filter((x) => x.track === t.id) ?? [];
+      if (!on.length) continue;
+      lanes++;
+      const node = on[on.length - 1];
+      const g = careerGoalSummary(P, node.id, "au");
+      check(
+        `goal ${node.id} summarises as the card shows it`,
+        !!g &&
+          g.title === node.title &&
+          g.ads === node.ads &&
+          g.payLabel === node.payLabel &&
+          g.stageOf === node.stageOf,
+        { g, node: { title: node.title, ads: node.ads, pay: node.payLabel, stage: node.stageOf } },
+      );
+    }
+  }
+  check("some family has a specialist lane to force", lanes > 0, lanes);
+  check(
+    "a goal that is not published summarises as null",
+    careerGoalSummary(P, "hr|nope|3", "au") === null,
+  );
+}
 
 if (failed) {
   console.error(`\n${failed} career-card check(s) failed.`);

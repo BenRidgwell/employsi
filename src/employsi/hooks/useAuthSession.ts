@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getSession, claimLocalFollows } from "../lib/followsFn";
+import { getSession, claimLocalFollows, setCareerGoal } from "../lib/followsFn";
 import { useAppStore } from "../state/store";
 
 /**
@@ -22,6 +22,8 @@ export function useAuthSession(): void {
   const setAuthProviders = useAppStore((s) => s.setAuthProviders);
   const setFollows = useAppStore((s) => s.setFollows);
   const setRole = useAppStore((s) => s.setRole);
+  const setCareerGoalLocal = useAppStore((s) => s.setCareerGoalLocal);
+  const clearPendingCareerGoal = useAppStore((s) => s.clearPendingCareerGoal);
   const qc = useQueryClient();
   const claimed = useRef(false);
 
@@ -39,6 +41,21 @@ export function useAuthSession(): void {
     // After setSession, which resets the role on sign-out.
     setRole(data.role);
     if (!data.user) return;
+
+    // THE GOAL. A goal set while signed out was the thing the visitor came to
+    // sign in for, so it wins over whatever the account held — the same as a
+    // pending follow. It is written first and shown optimistically; the
+    // session query is refreshed after so the next read agrees.
+    const pendingGoal = useAppStore.getState().pendingCareerGoal;
+    if (pendingGoal) {
+      clearPendingCareerGoal();
+      setCareerGoalLocal(pendingGoal.id);
+      void setCareerGoal({ data: { id: pendingGoal.id } })
+        .then(() => qc.invalidateQueries({ queryKey: ["session"] }))
+        .catch(() => undefined);
+    } else {
+      setCareerGoalLocal(data.careerGoal);
+    }
 
     // Whatever this browser held before there was an account to hold it.
     const local = useAppStore.getState();
@@ -60,5 +77,14 @@ export function useAuthSession(): void {
     // No local leftovers (or they have been handed over): the account's own
     // set is now the truth.
     setFollows(data.followedIds, data.followedSkills);
-  }, [data, setSession, setAuthProviders, setFollows, setRole, qc]);
+  }, [
+    data,
+    setSession,
+    setAuthProviders,
+    setFollows,
+    setRole,
+    setCareerGoalLocal,
+    clearPendingCareerGoal,
+    qc,
+  ]);
 }

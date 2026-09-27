@@ -7,6 +7,7 @@ import { searchCityFor } from "../data/mapboxGeo";
 import { logoFor } from "../lib/companyLogo";
 import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
+import { CareerGoalBlock } from "./CareerGoalBlock";
 
 /**
  * The account control inside the search pill, from `Employsi Skill Search.html`.
@@ -91,6 +92,7 @@ export function SearchAuth() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
+  const pendingCareerGoal = useAppStore((s) => s.pendingCareerGoal);
 
   // A follow made before a market was gated -- or before the gate existed --
   // would otherwise keep offering a card the product refuses to fill. The
@@ -132,6 +134,7 @@ export function SearchAuth() {
                   <span className="gsauthname">{account.name}</span>
                   <span className="gsauthemail">{account.email}</span>
                 </div>
+                <CareerGoalBlock onLeave={closeAuth} />
                 {saved.length > 0 && (
                   <div className="gsauthsaved">
                     <span className="gsauthsavedlbl">Companies you follow</span>
@@ -204,7 +207,14 @@ export function SearchAuth() {
                 </button>
               </>
             ) : (
-              <SignInOptions />
+              <>
+                {pendingCareerGoal && (
+                  <p className="gsauthhint gsauthpending">
+                    Sign in to save <b>{pendingCareerGoal.title}</b> as your career goal.
+                  </p>
+                )}
+                <SignInOptions />
+              </>
             )}
           </div>
         </>

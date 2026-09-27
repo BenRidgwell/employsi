@@ -6128,6 +6128,59 @@ body {
   color: #6c6c72;
   text-wrap: pretty;
 }
+/* The career goal: one role from the career pathways map, with its current
+   median pay and live ads. Sits between the counters and the follow lists. */
+.accgoal {
+  flex: 0 0 auto;
+  margin: 12px 22px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.accgoallbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8e8e93;
+}
+.accgoalmain {
+  gap: 3px;
+  padding: 10px 12px;
+}
+.accgoalstage {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #8e8e93;
+}
+.accgoaltitle {
+  font-size: 14px;
+}
+.accgoalfigs {
+  display: flex;
+  gap: 14px;
+  font-size: 11.5px;
+  color: #6c6c72;
+}
+.accgoalfigs b {
+  color: #1c1c1e;
+  font-weight: 600;
+}
+.accgoalview {
+  margin-top: 3px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--action-primary, #1c1c1e);
+}
+.accgoalnone {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f4f4f5;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #6c6c72;
+}
 /* The disclosed follow list. The only scrolling part of the card. */
 .acclist {
   flex: 1 1 auto;
@@ -7221,6 +7274,14 @@ body {
 .gsauthlogo:focus-visible .gsauthlogotip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+/* The career goal block (CareerGoalBlock) in the 288px desktop panel, which
+   has its own padding where the phone card uses 22px margins. */
+.gsauthpanel .accgoal {
+  margin: 12px 0 0;
+}
+.gsauthpending {
+  margin: 0 0 12px;
 }
 .gsauthhint {
   margin: 12px 0 0;

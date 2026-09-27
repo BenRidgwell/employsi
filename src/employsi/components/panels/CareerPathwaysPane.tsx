@@ -165,14 +165,18 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     const t = setTimeout(() => setHolding(false), OPEN_LOADER_MS);
     return () => clearTimeout(t);
   }, []);
-  const [family, setFamily] = useState("hr");
+  // Opened from the profile's "View pathway": start on that role's family,
+  // with its lane beside the core if it is a specialism, and select it.
+  const [focus] = useState(() => useAppStore.getState().takeCareerFocus());
+  const [family, setFamily] = useState(() => focus?.split("|")[0] || "hr");
   const [skill, setSkill] = useState<string | null>(null);
+  const [lane, setLane] = useState<string | null>(() => focus?.split("|")[1] || null);
 
   const { data } = useQuery({
     // With a skill, the server picks the family (the one advertising it most),
     // so the family is only a tie-break hint and not part of the key.
-    queryKey: ["careerCard", skill ? "" : family, skill],
-    queryFn: () => getCareerCard({ data: { family, skill } }),
+    queryKey: ["careerCard", skill ? "" : family, skill, skill ? null : lane],
+    queryFn: () => getCareerCard({ data: { family, skill, lane } }),
     placeholderData: keepPreviousData,
     staleTime: 30 * 60 * 1000,
     retry: false,
@@ -185,11 +189,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   // Selection is held by node id, not index: a skill search swaps the model
   // (a lane appears or goes), and an index would then point at another role.
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(focus);
   /** The ladder's entry rung — the first role on the core path. Not the
    *  reader's own role; nothing here knows that. */
   const [entryId, setEntryId] = useState<string | null>(null);
-  const [goalId, setGoalId] = useState<string | null>(null);
+  // The goal is the account's, not the card's: set here, shown on the profile
+  // (AccountButton), and still marked here next time. Signed out, setting one
+  // opens the sign-in sheet and it is saved on return (store.requestCareerGoal).
+  const goalId = useAppStore((s) => s.careerGoal);
+  const requestCareerGoal = useAppStore((s) => s.requestCareerGoal);
   const [pop, setPop] = useState(false);
   const [scrub, setScrub] = useState<number | null>(null);
   const [hub, setHub] = useState<string | null>(null);
@@ -247,7 +255,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     }
     sel ??= core[Math.min(1, core.length - 1)]?.id ?? nodes[0].id;
     setSelId(sel);
-    if (goalId && idx(goalId) < 0) setGoalId(null);
     const t = setTimeout(() => center(idx(sel)), 60);
     return () => clearTimeout(t);
     // Deliberately only on a new model: selection changes centre themselves.
@@ -295,11 +302,11 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setScrub(null);
     // The server resolves the family that advertises the skill most; the
     // model effect above then selects and centres.
+    setLane(null);
     setSkill(k);
   };
   const clearSkill = () => {
     setSkill(null);
-    setGoalId(null);
     setPop(false);
   };
 
@@ -682,7 +689,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   className="cpgoal"
-                  onClick={() => setGoalId(goal === sel ? null : n.id)}
+                  onClick={() => requestCareerGoal(goal === sel ? null : n.id, n.title)}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                     {goal === sel && (
