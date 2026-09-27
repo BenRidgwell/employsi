@@ -1,8 +1,8 @@
 // GENERATED — do not edit by hand. Run scripts/gen-headcount.py.
 // Real workforce headcount for the current + prior reporting year, sourced
 // from each company's annual report — via stockanalysis.com for listed
-// companies, and read straight out of the report itself for employers that
-// aggregator does not carry. Static by design — there is no live HRIS/
+// companies, and read straight out of the report itself for employers the
+// aggregator does not carry at all. Static by design — there is no live HRIS/
 // LinkedIn feed — with the year-on-year growth % computed from now vs prev.
 //
 // `span` is the YEARS BETWEEN the two readings, and it is not always 1.
@@ -106,6 +106,8 @@ export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'nhc': { now: 1339, prev: 1575, yoy: -15.0, asof: 'Jul 2026', span: 1 },
   'nst': { now: 10062, prev: 3383, yoy: 197.4, asof: 'Jun 2026', span: 5 },
   'nwh': { now: 13300, prev: 8800, yoy: 51.1, asof: 'Jun 2026', span: 1 },
+  'nz-fisher-and-paykel-healthcare': { now: 7629, prev: 7506, yoy: 1.6, asof: 'Mar 2026', span: 1 },
+  'nz-spark-new-zealand': { now: 3423, yoy: null, asof: 'Jun 2026', span: 0 },
   'nz-xero': { now: 5114, prev: 4610, yoy: 10.9, asof: 'Mar 2026', span: 1 },
   'pdn': { now: 549, prev: 500, yoy: 9.8, asof: 'Jun 2026', span: 1 },
   'perth-aa': { now: 14900, prev: 13900, yoy: 7.2, asof: 'Dec 2025', span: 1 },

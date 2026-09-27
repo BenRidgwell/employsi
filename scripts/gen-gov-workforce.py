@@ -339,13 +339,17 @@ def _browser_ctx():
             # briefly written up as if it did. With the path pinned the browser
             # launches and the failure moves to the NEXT one:
             # ERR_CERT_AUTHORITY_INVALID, because the sandbox reaches the
-            # network through a proxy whose CA Chromium does not trust. That is
-            # not worked around here — launching with certificate errors
-            # ignored would turn off verification for every page the scraper
-            # reads. These four stay runner-only, as gov-workforce.yml already
-            # has them; what changes is that the error now names the real
-            # blocker. On a runner the glob finds whatever playwright installed,
-            # and an empty glob falls through to the default launch.
+            # network through a proxy whose CA Chromium does not trust.
+            #
+            # THAT IS FIXABLE, AND THIS COMMENT USED TO SAY IT WAS NOT. Adding
+            # the session's proxy CA to Chromium's NSS store clears it — see
+            # CLAUDE.md, which has the two commands. It is a trust
+            # CONFIGURATION, not the --ignore-certificate-errors bypass this
+            # comment was right to refuse. What is still true is that the fix is
+            # per session, so these four stay runner-only here rather than
+            # depending on a setup step nobody ran. On a runner the glob finds
+            # whatever playwright installed, and an empty glob falls through to
+            # the default launch.
             exe = next(iter(sorted(glob.glob(
                 '/opt/pw-browsers/chromium-*/chrome-linux/chrome') + glob.glob(
                 '/opt/pw-browsers/chromium_headless_shell-*/chrome-linux/headless_shell'),

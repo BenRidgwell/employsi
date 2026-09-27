@@ -143,6 +143,56 @@ OWN_REPORT = {
         find=r'([\d,]+) employees \(headcount\)',
         proof=r'Data as at State Census date \(23/02/2023\)',
         asof='Feb 2023'),
+    # 69 on the ranking, and another the headless browser reached — the investor
+    # centre lists its reports in JavaScript.
+    #
+    # p44 "Gender composition by role as at 30 June 2026 (with headcounts)", whose
+    # Total row reads "Total5 FY26: 3,423". A head count, stated as at a date.
+    #
+    # NO PRIOR YEAR, AND THE ARITHMETIC IS WHY. That table's FY25 line is a
+    # CHANGE, not a level — "FY25: -626" — which would put FY25 at 4,049, while
+    # the FY25 report's own prose says "we now have 4,043 employees". Six apart,
+    # and nothing in either document reconciles them. Its gender columns do not
+    # close either: 1,244 + 2,135 + 7 is 3,386, and the 30 people the page says
+    # did not disclose leave 3,416 against a stated 3,423. So the total is taken
+    # as stated and no comparison is built on top of it — the same call as
+    # Brisbane Catholic Education, for the same reason.
+    'nz-spark-new-zealand': dict(
+        url='https://investors.sparknz.co.nz/FormBuilder/_Resource/_module/'
+            'gXbeer80tkeL4nEaF-kwFA/doc/FY26_Annual_Report.pdf',
+        needle='Gender composition by role as at 30 June 2026',
+        find=r'Total\d?\s+FY26:\s+([\d,]+)',
+        proof=r'as at 30 June 2026',
+        asof='Jun 2026'),
+    # 99 on the archived+live ranking, and the first company reached by driving a
+    # HEADLESS BROWSER from this sandbox — its investor site renders its report
+    # list in JavaScript, so nothing was in the HTML a plain fetch returns.
+    #
+    # p162 "Five year summary": header 2022 2023 2024 2025 2026, then
+    # "People numbers" 7,375 6,564 7,141 7,506 7,629. The document states its
+    # basis on p42 — "workforce by headcount as at 31 March 2026" — so this is a
+    # head count at a 31 March balance date, not an FTE.
+    #
+    # CHECKED AGAINST THE DOCUMENT TWICE. The same page breaks the total down by
+    # FUNCTION (969 + 4,726 + 1,568 + 366) and by REGION (3,897 + 2,724 + 408 +
+    # 600), and both sum to 7,629. Two independent breakdowns agreeing is what
+    # makes the fifth column the right one to read; the FY25 report's own series
+    # ends 7,506, which is this one's fourth column, and corroborates it again.
+    'nz-fisher-and-paykel-healthcare': dict(
+        url='https://resources.fphcare.com/content/fph-fy26-full-year-report.pdf',
+        needle='PEOPLE NUMBERS',
+        find=r'People numbers\d?\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)',
+        col=5, prev_col=4,
+        sums=[dict(what='the by-function rows',
+                   labels=['Research and development', 'Manufacturing and operations',
+                           'Sales, marketing and distribution',
+                           'Management and administration'],
+                   ncols=5, idx=4),
+              dict(what='the by-region rows',
+                   labels=['New Zealand', 'North America', 'Europe', 'Rest of World'],
+                   ncols=5, idx=4)],
+        proof=r'2022 2023 2024 2025 2026',
+        span=1, asof='Mar 2026'),
 }
 
 
@@ -168,10 +218,36 @@ def own_report(cid, spec):
     if not any(re.search(spec['proof'], t) for t in pages):
         raise RuntimeError(f'{cid}: the page no longer states {spec["proof"]!r}, so '
                            f'{spec["asof"]} can no longer be shown to be its date')
-    now = int(hits[0].group(1).replace(',', ''))
+    def g(i):
+        return int(hits[0].group(i).replace(',', ''))
+
+    now = g(spec.get('col', 1))
     if now <= 0:
         raise RuntimeError(f'{cid}: parsed a non-positive figure ({now})')
     prev = spec.get('prev')
+    if spec.get('prev_col'):
+        prev = g(spec['prev_col'])
+
+    # A COMPONENT RECONCILIATION, where the document gives one. Fisher & Paykel
+    # publishes its head count broken down TWICE — by function and by region —
+    # and both breakdowns sum to the same total, so the parse can be checked
+    # against the document twice over rather than trusted. `labels` names the
+    # rows, `ncols` how many year columns each carries and `idx` which of them
+    # the figure was taken from, so a spec that reads the wrong COLUMN fails
+    # here even though its regex matched cleanly.
+    for part in spec.get('sums', []):
+        total = 0
+        for label in part['labels']:
+            pat = re.escape(label) + r'((?:\s+[\d,]+){%d})(?:\s|$)' % part['ncols']
+            found = [m for t in pages for m in re.finditer(pat, t)]
+            if len(found) != 1:
+                raise RuntimeError(f'{cid}: component {label!r} matched '
+                                   f'{len(found)} times, not once')
+            nums = re.findall(r'[\d,]+', found[0].group(1))
+            total += int(nums[part['idx']].replace(',', ''))
+        if total != now:
+            raise RuntimeError(f'{cid}: {part["what"]} sum to {total:,} against a '
+                               f'stated {now:,} — the column or the rows are wrong')
     return {'now': now, 'prev': prev, 'asof': spec['asof'],
             'yr': int(re.search(r'(20\d\d)', spec['asof']).group(1)),
             'span': spec.get('span', 0) if prev else 0}
