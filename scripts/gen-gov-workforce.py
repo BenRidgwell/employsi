@@ -589,10 +589,65 @@ NOT_IN_SOURCE_JURISDICTION = {
            "Justice 55,041, Education 120,111, Transport 29,420), and a "
            "portfolio holds many agencies that each have their own card here. "
            "The one service row that IS a single agency, the NSW Police Force, "
-           "is merged; the rest need their own annual reports",
+           "is merged; the rest need their own annual reports. THE ONE INDEX "
+           "THAT WOULD HOLD THEM ALL IS BLOCKED: every NSW agency tables its "
+           "annual report in Parliament and parliament.nsw.gov.au/tp/files/ "
+           "serves each as a PDF, which is the central list nsw.gov.au does not "
+           "have — its sitemap carries 101 annual-report pages for about a dozen "
+           "agencies. That host sits behind a Cloudflare interstitial this "
+           "network cannot clear: measured 2026-09-27, a warmed browser still "
+           "read \'Just a moment...\' after 120 seconds, ctx.request answered 403, "
+           "and a download navigation timed out. So a found URL there is not a "
+           "readable document from here, and the agency\'s OWN host is the route "
+           "every time — which for Transport for NSW turned out to work once the "
+           "search stopped going through the sitemap",
 }
 
 NOT_IN_SOURCE = {
+    # ── APS: read off the sheet itself, 2026-09-27 ────────────────────────────
+    # WHY ALL FIVE AT ONCE. These are every gov-aps card left in the gap, and
+    # none of them is a name-matching failure — which is what they looked like,
+    # because the APSC sheet files agencies under short names and the roster
+    # keeps formal ones, and that HAS been the answer before (`aps-` aliases
+    # exist for exactly that). Dumping all 101 rows of Table 2 settles it: not
+    # one of the five is present under any spelling, and the reason is the same
+    # for each, so the honest record is five reasons naming the same structural
+    # fact rather than five more aliases that could never match.
+    #
+    # TABLE 2 IS AN APS ACT CENSUS, NOT A LIST OF FEDERAL EMPLOYERS. It counts
+    # people employed under the Public Service Act. An agency whose staff are
+    # employed under its own statute is absent by construction and will stay
+    # absent however the sheet is spelled — so the remaining route for those is
+    # each agency's own annual report, not this source.
+    'aps:Australian Signals Directorate':
+        'employs its staff under the Intelligence Services Act, not the Public '
+        'Service Act, so it is not in the APSC Table 2 census at all — checked '
+        'against all 101 rows, which do carry the Office of National '
+        'Intelligence (441) and the Inspector-General of Intelligence and '
+        'Security (51), both of which ARE APS. Its own annual report is the '
+        'only route left',
+    'aps:Australian Security Intelligence Organisation':
+        'employed under the ASIO Act rather than the Public Service Act, so it '
+        'is absent from APSC Table 2 by construction, the same as the Australian '
+        'Signals Directorate. Its own annual report is the only route left',
+    'aps:Australian Securities and Investments Commission':
+        'ASIC staff are employed under the ASIC Act, not the Public Service '
+        'Act, so the APSC census does not cover them. Table 2 does carry the '
+        'other Treasury-portfolio bodies that ARE APS — the ACCC (1,882), the '
+        'ABS (3,791), the ATO (21,186) — which is what shows the absence is '
+        'ASIC\'s employment basis and not a gap in the sheet',
+    # THESE TWO ARE THE OPPOSITE PROBLEM: not absent, but already counted.
+    'aps:Geoscience Australia':
+        'INSIDE the Industry, Science and Resources figure (5,730), which is '
+        "filed. Its people are APS employees of that department, and Table 2's "
+        'only Industry-portfolio row of its own is the National Offshore '
+        'Petroleum Safety and Environmental Management Authority (187). Filing '
+        'it again would double count, the same call as National Parks and '
+        'Wildlife Service inside DCCEEW',
+    'aps:IP Australia':
+        'INSIDE the Industry, Science and Resources figure (5,730) for the same '
+        'reason as Geoscience Australia — a listed entity whose staff are that '
+        "department's APS employees, with no row of its own in Table 2",
     # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
     'sa:TAFE SA':
         'not reachable. Its own site answers 404 at every annual-report path '
@@ -612,13 +667,20 @@ NOT_IN_SOURCE = {
     # These are the others among the twelve that carry 82% of the route's ads,
     # and each of these reasons is a measurement rather than "no source row", so
     # the next pass starts from what was already established.
-    'nsw:Transport for NSW':
-        'publishes no CURRENT annual report on its own site. Its '
-        'news-and-events/annual-reports page is an archive of pre-2012 RTA and '
-        'RailCorp documents, and its sitemap — 14,375 URLs, all eight pages of '
-        'it — holds no 2024-25 report under any name. Its people are also the '
-        'largest part of the Transport SERVICE row in the Workforce Profile '
-        '(29,420 FTE for the whole portfolio), which is not this card',
+    'nsw:Sydney Trains':
+        'its 2024-25 annual report downloads and BOTH volumes were read (72 + 80 '
+        'pages, 2026-09-27): neither carries an employee-count table. The '
+        'workforce section is percentages only — a diversity table against '
+        'benchmarks — and the sole headcount-shaped number in either volume is '
+        '"11,735 employees voted, 86 per cent of" in an enterprise-agreement '
+        'ballot. THAT IS A TURNOUT, NOT A WORKFORCE, and dividing it by the 86% '
+        'to get ~13,600 would be a figure this codebase invented from a rounded '
+        'percentage. Its people are inside the Transport SERVICE row of the '
+        'Workforce Profile (29,420 FTE for the whole portfolio), which is not '
+        'this card. Worth recording that transport.nsw.gov.au IS readable '
+        'through a warmed browser though it 403s a plain fetch — so the same '
+        "route is open for Sydney Metro and NSW Trains, whose reports sit "
+        'beside this one',
     'nsw:TAFE NSW':
         'no annual report reachable. tafensw.edu.au answers 404 at every '
         'annual-report path and its sitemap of 1,357 URLs contains the word '
@@ -2279,6 +2341,128 @@ NSW_AGENCY_REPORTS = {
     # Industries. They are not the same department, so the change between them
     # is a machinery-of-government event rather than hiring, and `prev` is left
     # unset exactly as it is for Tasmania's renamed agencies.
+    # 52 on the archived+live ranking, and the largest NSW card whose report the
+    # last pass could not find: it is not on nsw.gov.au and not on the Parliament
+    # tabled-papers host (Cloudflare challenge, see the note below), but icare
+    # publishes it itself through Sitecore's CDN.
+    #
+    # p69 "Headcount ... with a breakdown by classification of employment,
+    # compared to the previous year": Category | 30 June 25 | 30 June 2024, and
+    # Total 1,850 / 1,879.
+    #
+    # THE REPORT CONTRADICTS ITSELF ON THE PRIOR YEAR AND THE COMPONENTS SETTLE
+    # IT. p82's work-health-and-safety table gives "Number of employees (by
+    # headcount) 1,850 1,979" — a hundred above p69 for FY24, agreeing on FY25.
+    # p69's own rows sum to 1,879 exactly (1 + 8 + 59 + 1,811), so p69 is the
+    # table and p82 has a transposed digit. Reconciliation as a DISCRIMINATOR
+    # again, which is the same job it does for Education's two side-by-side
+    # tables — except that here the losing number is not another measure of the
+    # workforce, it is simply wrong.
+    #
+    # `tol` IS FOR THE CURRENT COLUMN, NOT THE PRIOR ONE. The 2025 rows sum to
+    # 1,851 against a stated 1,850, and the table says why in its own footnote:
+    # "One general manager contingent worker captured in this table". So the
+    # off-by-one is a real property of the document, as Education's is, and the
+    # tolerance is sized to admit exactly that and nothing wider — p82's
+    # hundred-person disagreement is still rejected by a mile.
+    'nsw-icare': dict(
+        label='NSW: icare',
+        agency='icare NSW',
+        agency_id='nsw-gov-icare-nsw',
+        url='https://edge.sitecorecloud.io/insuranceanf0c2-xmcprodf24d-xmprod74a5-5eb4/'
+            'media/icare/unique-media/about-us/annual-report/media-files/files/'
+            'download-module/icare-annual-report-2024-25.pdf',
+        needle='This table shows the number of employees in headcount',
+        total=r'^Total\b',
+        comp=r'^(?:Chief Executive|Group Executive Team|Executives|Non-executives)',
+        ncols=2, now_i=0, prev_i=1, sums=[(0,), (1,)], tol=1.5,
+        proof=r'30 June 25\s+30 June 2024',
+        unit='headcount', asof='Jun 2025'),
+    # 37 on the archived+live ranking, and it WAS on nsw.gov.au all along — the
+    # last pass looked for it under the Premier's Department route and recorded
+    # "no workforce table" for that department, which is true of that document
+    # and says nothing about this one. Treasury's own library page lists twenty
+    # years of reports; only the newest is under a 2025-12 path.
+    #
+    # p96 "Table 4: Full-time equivalent (FTEs) per group", columns 2022-23 /
+    # 2023-24 / 2024-25, total row "FTE 1,256.1 782.8 786.9". The prose above it
+    # states the reading outright: "On 19 June 2025 NSW Treasury had 786.9
+    # full-time equivalent (FTE) staff. This equates to a headcount of 829
+    # staff." The FTE is taken rather than the 829 because only the FTE has a
+    # prior year on the same basis.
+    #
+    # NO COMPONENT SUM, FOR THE SAME REASON AS CUSTOMER SERVICE. Half the group
+    # rows carry N/A in one or two columns — EnergyCo and Energy, Climate Change
+    # and Sustainability left Treasury, Procurement Reform and Banking was
+    # created in August 2024 — so a row's numbers cannot be mapped to columns by
+    # position, and summing only the rows that do carry three gives 639.2
+    # against 786.9. The table says so itself: "Due to internal structural
+    # changes to Treasury Groups, divisional FTE comparisons cannot be
+    # accurately mapped." The header is asserted instead, which is what rules
+    # out reading the wrong COLUMN — the risk the sum was there to catch.
+    #
+    # 2022-23 IS DELIBERATELY NOT THE COMPARATOR. 1,256.1 -> 782.8 is EnergyCo
+    # and the energy group leaving, not 473 people going; taking the two newest
+    # columns keeps the comparison inside one Treasury.
+    # 844 on the archived+live ranking — THE LARGEST CARD IN THE NSW ROUTE, and
+    # this file recorded it as having no current annual report. That was wrong,
+    # and the way it was wrong is the lesson: the last pass searched
+    # transport.nsw.gov.au's SITEMAP, all 14,375 URLs of it, and concluded the
+    # report does not exist. A sitemap lists PAGES. This report is a file under
+    # /system/files/media/documents/2025/ and is not in the sitemap at all —
+    # neither is Sydney Trains', which is beside it. "Absent from the sitemap"
+    # is evidence about the sitemap.
+    #
+    # The host also 403s a plain fetch and reads fine through a warmed browser,
+    # so the earlier probe was answered by a WAF on one attempt and by a page
+    # index on the other; neither was the document.
+    #
+    # THE FTE TABLE IS TAKEN AND THE HEAD COUNT IS REFUSED, ON THE FOOTNOTES.
+    # p93 prints both. Table 29, "Total employee headcount by salary band", runs
+    # 15,273 / 15,531 / 15,607 — and its footnote 1 hangs on the 2024-25 column
+    # ONLY: "Excludes cadets (40), casuals (253) and contractors/labour hire."
+    # The two earlier columns carry no such marker, so 15,531 -> 15,607 is a
+    # +0.5% across a basis change worth at least 293 people and an unstated
+    # number of contractors. Its <$50,000 band falling 1,352 -> 77 in one year
+    # is that change showing.
+    #
+    # Table 30, "Total employee FTE by salary band", carries the footnote on BOTH
+    # its columns — so 14,437.76 -> 14,506.25 is like for like, and it is the
+    # only pair in the document that is. `header` asserts exactly that: both
+    # year labels must still carry the footnote digit, so an edition that drops
+    # it from one year fails here instead of quietly comparing two bases.
+    #
+    # THE ROW SUMS ARE THE RECONCILIATION, NOT THE COLUMN SUMS, because
+    # pdfplumber glues some salary-band cells together ("34.00 44.00" arrives as
+    # one cell, and stripping non-digits from it yields 3444 — a number that
+    # never existed). The Total row extracts cleanly, and Female + Male = Total
+    # holds in each of its two year groups, which is what proves the columns are
+    # where the spec thinks they are.
+    'nsw-tfnsw': dict(
+        label='NSW: Transport for NSW',
+        agency='Transport for NSW',
+        agency_id='nsw-gov-transport-for-nsw',
+        url='https://www.transport.nsw.gov.au/system/files/media/documents/2025/'
+            'transport-for-nsw-annual-report-2024%E2%80%9325-volume-1.pdf',
+        warm='https://www.transport.nsw.gov.au/',
+        needle='Total employee FTE by salary band',
+        total=r'^Total\b',
+        ncols=6, now_i=5, prev_i=2, sums=[(0, 1, 2), (3, 4, 5)],
+        header=r'Annual salary\s+2023.241\s+2024.251',
+        proof=r'Excludes cadets, casuals and contractors/labour hire',
+        unit='fte', asof='Jun 2025'),
+    'nsw-treasury': dict(
+        label='NSW: Treasury',
+        agency='NSW Treasury',
+        agency_id='nsw-gov-nsw-treasury',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-12/'
+            'nsw-treasury-annual-report-2024-25.pdf',
+        needle='Full-time equivalent (FTEs) per group',
+        total=r'^FTE\b',
+        ncols=3, now_i=2, prev_i=1,
+        header=r'Group\s+2022.23\s+2023.24\s+2024.25',
+        proof=r'On 19 June 2025 NSW Treasury had',
+        unit='fte', asof='Jun 2025'),
     'nsw-dpird': dict(
         label='NSW: Primary Industries and Regional Development',
         agency='Department of Primary Industries and Regional Development',
@@ -2394,7 +2578,10 @@ def _nsw_agency(spec):
     import io as _io
     import pdfplumber
 
-    blob = fetch(spec['url'], binary=True)
+    # `warm` FOR A HOST THAT 403s A PLAIN FETCH. transport.nsw.gov.au refuses
+    # urllib outright and serves the same file to a browser that has loaded its
+    # root first; every other report here needs nothing.
+    blob = fetch(spec['url'], binary=True, warm=spec.get('warm'))
     if blob[:4] != b'%PDF':
         raise RuntimeError(f"{spec['label']}: not a PDF — starts {blob[:40]!r}")
 
@@ -2463,7 +2650,22 @@ def _nsw_agency(spec):
             # text only. Numbers are taken AFTER the row prefix, never over the
             # whole line: its total reads "Total15 5,986.8 …" and counting the
             # footnote 15 made a four-column row look like five.
-            if total is None:
+            #
+            # AND THE HEADER ASSERTION APPLIES HERE TOO. It did not, and that is
+            # a guard that looked present and was not: the check above lives
+            # inside the table loop, so a spec whose table stops being one falls
+            # through to these lines and reads them with NO proof of which column
+            # it took. Customer Service and Local Land Services have the header
+            # as their ONLY protection — neither can reconcile, by a property of
+            # its table — so for those two the fallback was the whole guard
+            # missing. Caught 2026-09-27 by a negative control that pointed a
+            # spec at a header the document does not contain and got a figure
+            # back anyway.
+            if total is None and spec.get('header') and not re.search(spec['header'], txt):
+                rejected.append(f'page text carries no header matching '
+                                f'{spec["header"]!r}, so the line fallback is '
+                                f'refused as well')
+            elif total is None:
                 for line in txt.split('\n'):
                     for which in ('total', 'comp'):
                         pat = spec.get(which)

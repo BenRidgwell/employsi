@@ -4,25 +4,28 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-26
-//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-26
-//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-26
+//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-27
+//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-27
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-27
+//   South Australia: 98 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-27
+//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: icare: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
+//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
+//   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-27
+//   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-27
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
-//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
-//   Western Australia: 57 agencies published as at 2025-26 — KEPT, not refreshed this run
-//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
-//   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
-//   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which
@@ -85,6 +88,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-health-infrastructure": { now: 163, prev: 174, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-healthshare-nsw": { now: 7939, prev: 6788, yoy: 17.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-hunter-new-england-local-health-district": { now: 14117, prev: 13752, yoy: 2.7, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-icare-nsw": { now: 1850, prev: 1879, yoy: -1.5, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nepean-blue-mountains-local-health-district": { now: 5984, prev: 5548, yoy: 7.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-northern-sydney-local-health-district": { now: 8960, prev: 9057, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -93,9 +97,11 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-health-pathology": { now: 4867, prev: 4810, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
+  "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-eastern-sydney-local-health-district": { now: 11668, prev: 11525, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-western-sydney-local-health-district": { now: 12965, prev: 12959, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-transport-for-nsw": { now: 14506, prev: 14437, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nt-gov-attorney-general-s-department": { now: 594, prev: 603, yoy: -1.5, asof: "Jun 2026", span: 1, unit: "fte" },
   "nt-gov-department-mining-and-energy": { now: 175, prev: 169, yoy: 3.6, asof: "Jun 2026", span: 1, unit: "fte" },

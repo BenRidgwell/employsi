@@ -78,6 +78,12 @@ ASX = {
     'melbourne-sek': 'SEK', 'melbourne-tcl': 'TCL', 'melbourne-tlc': 'TLC',
     'melbourne-tls': 'TLS', 'melbourne-tlx': 'TLX', 'melbourne-twe': 'TWE',
     'melbourne-vcx': 'VCX', 'melbourne-vea': 'VEA', 'mgt': 'MGT', 'min': 'MIN', 'mmi': 'MMI',
+    # THE AGGREGATOR HAD IT ALL ALONG; the map did not. Worth 56 on the
+    # archived+live ranking and it was never asked for — 4,500 at 30 June 2026
+    # against 3,900, span 1. Both are round because Mader's own FY26 report is
+    # round ("over 4,500 employees across more than 685 locations"), so this is
+    # the company's own precision, not the aggregator losing digits.
+    'perth-mad': 'MAD',
     'mnd': 'MND', 'nhc': 'NHC', 'nst': 'NST', 'nwh': 'NWH', 'pdn': 'PDN', 'perth-drr': 'DRR',
     'perth-emr': 'EMR', 'perth-ggp': 'GGP', 'perth-imd': 'IMD', 'perth-lyc': 'LYC',
     'perth-prn': 'PRN', 'pls': 'PLS', 'pru': 'PRU', 'rio': 'RIO', 'rms': 'RMS', 'rrl': 'RRL',
@@ -190,6 +196,38 @@ OWN_REPORT = {
     # 600), and both sum to 7,629. Two independent breakdowns agreeing is what
     # makes the fifth column the right one to read; the FY25 report's own series
     # ends 7,506, which is this one's fourth column, and corroborates it again.
+    # 204 on the archived+live ranking — the largest card left in the gap with no
+    # recorded reason, and the largest private employer among them.
+    #
+    # THE FIGURE IS A DENOMINATOR, NOT A WORKFORCE TABLE, and that is the only
+    # place the report states it. p70, under Reportable conduct: "With a
+    # workforce of 12,656 in 2025, the Thiess Group had a complaint report rate
+    # of 1.11 per 100 workers compared with 1.41 in 2024." There is no people
+    # table anywhere in the 82 pages — the data appendix carries emissions and
+    # water, not headcount — and every other mention is rounded ("a workforce of
+    # over 12,500", p9). So the precise number exists because a rate needed
+    # dividing by it.
+    #
+    # NO PRIOR YEAR, AND THE TEMPTATION TO DERIVE ONE IS THE REASON TO SAY SO.
+    # The same sentence gives 1.41 per 100 workers for 2024, and the page gives
+    # this year's complaint count, so a 2024 workforce could be reconstructed
+    # from a 2024 complaint count — which the report does not print. Anything
+    # built from the rate alone would be a formula over a hash, not a source.
+    #
+    # IT IS THE GROUP, AND THE CARD IS THE GROUP'S ONLY CARD. The figure covers
+    # Thiess plus MACA, Fleetco and the 88%-owned RTL; none of those three is a
+    # roster company, so nothing here double counts, and no narrower figure is
+    # published. Checked against cityRosters.ts 2026-09-27.
+    #
+    # A CALENDAR YEAR, NOT A FINANCIAL ONE — p3, "from 1 January 2025 to
+    # 31 December 2025", which `doc_proof` holds the spec to.
+    'priv-thiess': dict(
+        url='https://thiess.com/uploads/Thiess-Group-2025-Sustainability-Report.pdf',
+        needle='With a workforce of',
+        find=r'With a workforce of ([\d,]+) in 2025, the Thiess Group',
+        proof=r'per 100 workers compared with [\d.]+ in 2024',
+        doc_proof=r'from 1 January 2025 to 31 December 2025',
+        asof='Dec 2025'),
     'nz-fisher-and-paykel-healthcare': dict(
         url='https://resources.fphcare.com/content/fph-fy26-full-year-report.pdf',
         needle='PEOPLE NUMBERS',
@@ -287,6 +325,22 @@ def own_report(cid, spec):
     if not any(re.search(spec['proof'], t) for t in pages):
         raise RuntimeError(f'{cid}: the page no longer states {spec["proof"]!r}, so '
                            f'{spec["asof"]} can no longer be shown to be its date')
+
+    # AN OPTIONAL WHOLE-DOCUMENT ASSERTION, for a report whose PERIOD is stated
+    # in its front matter rather than beside the number. Thiess publishes a
+    # CALENDAR-year sustainability report and says so once, on p3: "from
+    # 1 January 2025 to 31 December 2025". Nothing on the page carrying the
+    # figure repeats it, so `proof` — which only ever sees the needle's pages —
+    # cannot reach it, and without this the spec would be asserting the sentence
+    # and assuming the year. A sustainability report moving to a June balance
+    # date would then shift every figure in it by six months in silence.
+    if spec.get('doc_proof'):
+        with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+            whole = '\n'.join((pg.extract_text() or '') for pg in pdf.pages)
+        if not re.search(spec['doc_proof'], whole):
+            raise RuntimeError(f'{cid}: the report no longer states '
+                               f'{spec["doc_proof"]!r} anywhere, so its reporting '
+                               f'period can no longer be shown to end {spec["asof"]}')
     def g(i):
         return int(hits[0].group(i).replace(',', ''))
 
