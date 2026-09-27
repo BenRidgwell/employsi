@@ -156,23 +156,60 @@ export function CareerPathwaysPane() {
  */
 const OPEN_LOADER_MS = 1200;
 
+/**
+ * The first open of the session starts on "Start with a skill"
+ * (`Career_Pathway_Placeholder.html`) rather than on a family's map picked for
+ * the reader. The first skill searched ends it for the rest of the session;
+ * every later open goes straight to the map, as before.
+ *
+ * sessionStorage so it survives a reload the way a session should, with the
+ * module variable as the fallback where storage is blocked.
+ */
+const STARTED_KEY = "employsi.careerStarted";
+let startedFallback = false;
+function careerStarted(): boolean {
+  try {
+    return startedFallback || sessionStorage.getItem(STARTED_KEY) === "1";
+  } catch {
+    return startedFallback;
+  }
+}
+function markCareerStarted(): void {
+  startedFallback = true;
+  try {
+    sessionStorage.setItem(STARTED_KEY, "1");
+  } catch {
+    // The module variable covers the rest of this page's life.
+  }
+}
+
 function CareerCard({ onClose }: { onClose: () => void }) {
   const uid = useId().replace(/:/g, "");
   // CareerCard mounts on every open (CareerPathwaysPane renders nothing while
   // closed), so this runs once per opening.
-  const [holding, setHolding] = useState(true);
+  // Opened from the profile's "View pathway": start on that role's family,
+  // with its lane beside the core if it is a specialism, and select it.
+  const [focus] = useState(() => useAppStore.getState().takeCareerFocus());
+  // A goal link is a destination, so it skips the placeholder.
+  const [started, setStarted] = useState(() => !!focus || careerStarted());
+  // The loader runs when the map is first shown: on open, or — from the
+  // placeholder — when the first skill is searched. The placeholder itself is
+  // static and has nothing to wait for.
+  const [holding, setHolding] = useState(started);
   useEffect(() => {
+    if (!holding) return;
     const t = setTimeout(() => setHolding(false), OPEN_LOADER_MS);
     return () => clearTimeout(t);
-  }, []);
-  const [family, setFamily] = useState("hr");
+  }, [holding]);
+  const [family, setFamily] = useState(() => focus?.split("|")[0] || "hr");
   const [skill, setSkill] = useState<string | null>(null);
+  const [lane, setLane] = useState<string | null>(() => focus?.split("|")[1] || null);
 
-  const { data } = useQuery({
+  const { data, isPlaceholderData } = useQuery({
     // With a skill, the server picks the family (the one advertising it most),
     // so the family is only a tie-break hint and not part of the key.
-    queryKey: ["careerCard", skill ? "" : family, skill],
-    queryFn: () => getCareerCard({ data: { family, skill } }),
+    queryKey: ["careerCard", skill ? "" : family, skill, skill ? null : lane],
+    queryFn: () => getCareerCard({ data: { family, skill, lane } }),
     placeholderData: keepPreviousData,
     staleTime: 30 * 60 * 1000,
     retry: false,
@@ -185,11 +222,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   // Selection is held by node id, not index: a skill search swaps the model
   // (a lane appears or goes), and an index would then point at another role.
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(focus);
   /** The ladder's entry rung — the first role on the core path. Not the
    *  reader's own role; nothing here knows that. */
   const [entryId, setEntryId] = useState<string | null>(null);
-  const [goalId, setGoalId] = useState<string | null>(null);
+  // The goal is the account's, not the card's: set here, shown on the profile
+  // (AccountButton), and still marked here next time. Signed out, setting one
+  // opens the sign-in sheet and it is saved on return (store.requestCareerGoal).
+  const goalId = useAppStore((s) => s.careerGoal);
+  const requestCareerGoal = useAppStore((s) => s.requestCareerGoal);
   const [pop, setPop] = useState(false);
   const [scrub, setScrub] = useState<number | null>(null);
   const [hub, setHub] = useState<string | null>(null);
@@ -247,12 +288,27 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     }
     sel ??= core[Math.min(1, core.length - 1)]?.id ?? nodes[0].id;
     setSelId(sel);
-    if (goalId && idx(goalId) < 0) setGoalId(null);
     const t = setTimeout(() => center(idx(sel)), 60);
     return () => clearTimeout(t);
     // Deliberately only on a new model: selection changes centre themselves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model]);
+
+  if (!started) {
+    return (
+      <CareerPlaceholder
+        skills={data?.skills ?? []}
+        onClose={onClose}
+        onPick={(k) => {
+          markCareerStarted();
+          setStarted(true);
+          setHolding(true);
+          setLane(null);
+          setSkill(k);
+        }}
+      />
+    );
+  }
 
   if (!data) {
     return (
@@ -295,11 +351,11 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setScrub(null);
     // The server resolves the family that advertises the skill most; the
     // model effect above then selects and centres.
+    setLane(null);
     setSkill(k);
   };
   const clearSkill = () => {
     setSkill(null);
-    setGoalId(null);
     setPop(false);
   };
 
@@ -457,7 +513,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="cpcard" tabIndex={0} onKeyDown={onKey}>
-      {holding && <CardLoader />}
+      {/* Also while the first skill's map is still the previous model held
+          as placeholder data, so it never flashes the default family. */}
+      {(holding || isPlaceholderData) && <CardLoader />}
       <div style={{ padding: "24px 24px 0", display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ font: `600 24px/1.2 ${MONA}`, letterSpacing: "-0.025em" }}>
@@ -682,7 +740,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 <button
                   type="button"
                   className="cpgoal"
-                  onClick={() => setGoalId(goal === sel ? null : n.id)}
+                  onClick={() => requestCareerGoal(goal === sel ? null : n.id, n.title)}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                     {goal === sel && (
@@ -1413,6 +1471,293 @@ function CareerCard({ onClose }: { onClose: () => void }) {
  * Enter with nothing matched asks the server (searchCareerSkills), which reads
  * the words with the taxonomy matcher the ads were tagged with.
  */
+// ── The first-open placeholder ───────────────────────────────────────────────
+
+/** A faded role card on the ghost map. */
+function GhostNode({ left, top, a, b }: { left: number; top: number; a: string; b: string }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left,
+        top,
+        width: 168,
+        height: 96,
+        boxSizing: "border-box",
+        padding: 12,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        background: "rgba(255,255,255,.7)",
+        borderRadius: 12,
+        border: "1px solid var(--border-subtle,#e5e5ea)",
+      }}
+    >
+      <span style={{ height: 8, width: a, borderRadius: 4, background: "#ebebef" }} />
+      <span style={{ height: 8, width: b, borderRadius: 4, background: "#ebebef" }} />
+      <span
+        style={{
+          marginTop: "auto",
+          height: 6,
+          width: "30%",
+          borderRadius: 4,
+          background: "#f2f2f5",
+        }}
+      />
+    </div>
+  );
+}
+
+const SearchGlyph = ({ size }: { size: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+const FEATURES: { title: string; sub: string; icon: React.ReactNode }[] = [
+  {
+    title: "Pathway map",
+    sub: "Roles that use the skill, and the steps between them",
+    icon: (
+      <>
+        <rect x="3" y="4" width="6" height="5" rx="1.5" />
+        <rect x="15" y="4" width="6" height="5" rx="1.5" />
+        <rect x="15" y="15" width="6" height="5" rx="1.5" />
+        <path d="M9 6.5h6" />
+        <path d="M6 9v6.5a1 1 0 0 0 1 1h8" />
+      </>
+    ),
+  },
+  {
+    title: "Demand",
+    sub: "Live job ads, pay and days to fill for each role",
+    icon: (
+      <>
+        <path d="M3 17l5-5 4 4 8-8" />
+        <path d="M15 8h5v5" />
+      </>
+    ),
+  },
+  {
+    title: "Hiring hotspots",
+    sub: "The cities hiring for it most",
+    icon: (
+      <>
+        <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+        <circle cx="12" cy="9.5" r="2.5" />
+      </>
+    ),
+  },
+];
+
+/**
+ * "Start with a skill" — `Career_Pathway_Placeholder.html`, as drawn: the
+ * card's own header and search, a ghost pathway map behind the prompt, and
+ * what the card will show once a skill is picked. The search is the card's
+ * real one (CareerSearch), so picking a skill here is exactly picking one on
+ * the map. The close button is the one addition; the pane needs a way out.
+ */
+function CareerPlaceholder({
+  skills,
+  onPick,
+  onClose,
+}: {
+  skills: string[];
+  onPick: (skill: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="cpcard">
+      <div style={{ padding: "24px 24px 0", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ font: `600 24px/1.2 ${MONA}`, letterSpacing: "-0.025em" }}>
+            Career pathways
+          </span>
+          <button type="button" className="paneclose" onClick={onClose} aria-label="Close">
+            <IconClose />
+          </button>
+        </div>
+        <CareerSearch skills={skills} selected={null} onPick={onPick} onClear={() => undefined} />
+      </div>
+
+      <div style={{ padding: "20px 24px 0" }}>
+        <div
+          style={{
+            position: "relative",
+            height: 300,
+            borderRadius: 14,
+            overflow: "hidden",
+            backgroundColor: "var(--surface-subtle,#f4f4f5)",
+            backgroundImage: "radial-gradient(circle, rgba(28,28,30,.13) 1px, transparent 1.3px)",
+            backgroundSize: "16px 16px",
+            border: "1px solid var(--border-subtle,#e5e5ea)",
+          }}
+        >
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 632 300"
+            preserveAspectRatio="xMidYMid slice"
+            style={{ position: "absolute", inset: 0, display: "block" }}
+            aria-hidden
+          >
+            <path
+              d="M152 88 H232 M400 88 H480"
+              fill="none"
+              stroke="#d1d1d6"
+              strokeWidth="1.5"
+              strokeDasharray="4 5"
+              strokeLinecap="round"
+            />
+            <path
+              d="M316 136 V200 Q316 212 328 212 H400"
+              fill="none"
+              stroke="#d1d1d6"
+              strokeWidth="1.5"
+              strokeDasharray="4 5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              left: "calc(50% - 316px)",
+              top: 40,
+              width: 632,
+              height: 260,
+              pointerEvents: "none",
+            }}
+          >
+            <GhostNode left={-16} top={0} a="70%" b="45%" />
+            <GhostNode left={232} top={0} a="62%" b="40%" />
+            <GhostNode left={480} top={0} a="66%" b="48%" />
+            <GhostNode left={400} top={124} a="58%" b="38%" />
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 24,
+              background:
+                "radial-gradient(ellipse 60% 70% at 50% 55%, rgba(244,244,245,.96) 30%, rgba(244,244,245,0) 100%)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 12,
+                maxWidth: 320,
+                textAlign: "center",
+              }}
+            >
+              <span
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
+                  background: "#1c1c1e",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  boxShadow: "var(--shadow-md)",
+                }}
+              >
+                <SearchGlyph size={18} />
+              </span>
+              <span style={{ font: `600 17px/1.25 ${MONA}`, letterSpacing: "-0.015em" }}>
+                Start with a skill
+              </span>
+              <span
+                style={{
+                  font: `400 14px/1.5 ${INTER}`,
+                  color: "var(--text-secondary,#636366)",
+                  textWrap: "pretty",
+                }}
+              >
+                Search for a skill you have or want to build. We’ll map the roles that use it and
+                where they lead.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "20px 24px 24px" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            padding: 16,
+            borderRadius: 14,
+            background: "#fafafa",
+            border: "1px solid var(--border-subtle,#e5e5ea)",
+          }}
+        >
+          {FEATURES.map((f) => (
+            <span
+              key={f.title}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "28px minmax(0,1fr)",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  background: "#1c1c1e",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  {f.icon}
+                </svg>
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ font: `600 13px/1.2 ${MONA}` }}>{f.title}</span>
+                <span style={{ font: `400 12.5px/1.4 ${INTER}`, color: "#8e8e93" }}>{f.sub}</span>
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CareerSearch({
   skills,
   selected,

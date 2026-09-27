@@ -87,6 +87,8 @@ export interface SessionInfo {
   providers: ("google" | "linkedin")[];
   followedIds: string[];
   followedSkills: string[];
+  /** The career-pathway role set as a goal ("family|track|rung"), or null. */
+  careerGoal: string | null;
 }
 
 const SAFE_REF = /^[\w &+/'().-]{1,80}$/;
@@ -101,10 +103,11 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     const e = await env();
     const providers = authProviders(e ?? undefined);
     const user = await currentUser(requestHeaders());
-    if (!user) return { user: null, role: "user", providers, followedIds: [], followedSkills: [] };
+    const none = { followedIds: [], followedSkills: [], careerGoal: null };
+    if (!user) return { user: null, role: "user", providers, ...none };
     const role = roleForEmail(e ?? undefined, user.email);
     const d = db(e);
-    if (!d) return { user, role, providers, followedIds: [], followedSkills: [] };
+    if (!d) return { user, role, providers, ...none };
     try {
       const res = await d
         .prepare(`SELECT kind, ref FROM user_follow WHERE user_id = ?1`)
@@ -112,14 +115,17 @@ export const getSession = createServerFn({ method: "GET" }).handler(
         .all();
       const ids: string[] = [];
       const skills: string[] = [];
+      let careerGoal: string | null = null;
       for (const r of res?.results ?? []) {
         const ref = String(r.ref || "");
-        if (String(r.kind) === "company") ids.push(ref);
-        else skills.push(ref);
+        const kind = String(r.kind);
+        if (kind === "company") ids.push(ref);
+        else if (kind === "skill") skills.push(ref);
+        else if (kind === "goal") careerGoal = goalFromRef(ref);
       }
-      return { user, role, providers, followedIds: ids, followedSkills: skills };
+      return { user, role, providers, followedIds: ids, followedSkills: skills, careerGoal };
     } catch {
-      return { user, role, providers, followedIds: [], followedSkills: [] };
+      return { user, role, providers, ...none };
     }
   },
 );
@@ -148,6 +154,58 @@ export const setFollow = createServerFn({ method: "POST" })
           .prepare(`DELETE FROM user_follow WHERE user_id = ?1 AND kind = ?2 AND ref = ?3`)
           .bind(user.id, kind, ref)
           .run();
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+/**
+ * THE CAREER GOAL — the role a person set with "Set as goal?" on the career
+ * pathways map. Stored in user_follow as kind 'goal', because it is the same
+ * kind of thing (something a person keeps on their account) and the table's
+ * `kind` is free text, so it needs no migration. ONE per account: setting a
+ * new goal replaces the old one.
+ *
+ * The ref is the rung's node id with '/' for '|' ("hr/generalist/3"), because
+ * SAFE_REF — the table's one input guard — has no '|'. Only the id is kept:
+ * the profile reads the role's title, pay and ads from the current pathways
+ * data (careerPathwaysFn.getCareerGoal), so they never go stale in the table.
+ */
+const GOAL_REF = /^[a-z][a-z-]{0,40}\/[a-z][a-z-]{0,40}\/[1-6]$/;
+const goalToRef = (id: string) => id.split("|").join("/");
+function goalFromRef(ref: string): string | null {
+  return GOAL_REF.test(ref) ? ref.split("/").join("|") : null;
+}
+
+export const setCareerGoal = createServerFn({ method: "POST" })
+  .validator((data: { id: string | null }) => data)
+  .handler(async ({ data }): Promise<{ ok: boolean }> => {
+    const user = await currentUser(requestHeaders());
+    if (!user) return { ok: false };
+    const d = db(await env());
+    if (!d) return { ok: false };
+    const ref = data.id ? goalToRef(String(data.id)) : null;
+    if (ref !== null && !GOAL_REF.test(ref)) return { ok: false };
+    try {
+      const clear = d
+        .prepare(`DELETE FROM user_follow WHERE user_id = ?1 AND kind = 'goal'`)
+        .bind(user.id);
+      if (!ref) {
+        await clear.run();
+        return { ok: true };
+      }
+      const add = d
+        .prepare(
+          `INSERT INTO user_follow (user_id, kind, ref, created) VALUES (?1, 'goal', ?2, ?3)`,
+        )
+        .bind(user.id, ref, new Date().toISOString().slice(0, 10));
+      // One batch, so there is never a moment with two goals or none.
+      if (typeof d.batch === "function") await d.batch([clear, add]);
+      else {
+        await clear.run();
+        await add.run();
       }
       return { ok: true };
     } catch {

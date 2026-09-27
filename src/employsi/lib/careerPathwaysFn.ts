@@ -5,10 +5,12 @@ import { kvBinding } from "./kv";
 import type { CareerPathways } from "./careerLadder";
 import {
   careerCard,
+  careerGoalSummary,
   familyForSkill,
   searchSkills,
   skillDemand,
   type CareerCardModel,
+  type CareerGoalSummary,
 } from "./careerCard";
 
 /**
@@ -73,7 +75,9 @@ export interface CareerCardResponse {
  * (familyForSkill) and the model carries that skill's specialism lane.
  */
 export const getCareerCard = createServerFn({ method: "GET" })
-  .validator((data: { family?: string | null; skill?: string | null }) => data)
+  .validator(
+    (data: { family?: string | null; skill?: string | null; lane?: string | null }) => data,
+  )
   .handler(async ({ data }): Promise<CareerCardResponse | null> => {
     if (!marketVisible(await callerRole(), CAREER_COUNTRY)) return null;
     const { p, source } = await pathways();
@@ -83,7 +87,7 @@ export const getCareerCard = createServerFn({ method: "GET" })
       data.family ||
       "hr";
     return {
-      model: careerCard(p, family, CAREER_COUNTRY, skill),
+      model: careerCard(p, family, CAREER_COUNTRY, skill, skill ? null : data.lane),
       skills: [...skillDemand(p, CAREER_COUNTRY).keys()].sort(),
       source,
       generated: p.generated,
@@ -101,4 +105,18 @@ export const searchCareerSkills = createServerFn({ method: "GET" })
     if (!marketVisible(await callerRole(), CAREER_COUNTRY)) return [];
     const { p } = await pathways();
     return searchSkills(p, CAREER_COUNTRY, String(data.q || "").slice(0, 200));
+  });
+
+/**
+ * The profile's view of a saved career goal: the role, its stage, and its
+ * current median pay and live ads in the card's market. Null when the rung is
+ * not published this window.
+ */
+export const getCareerGoal = createServerFn({ method: "GET" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }): Promise<CareerGoalSummary | null> => {
+    if (!marketVisible(await callerRole(), CAREER_COUNTRY)) return null;
+    if (!/^[a-z][a-z-]*\|[a-z][a-z-]*\|[1-6]$/.test(String(data.id || ""))) return null;
+    const { p } = await pathways();
+    return careerGoalSummary(p, data.id, CAREER_COUNTRY);
   });
