@@ -268,6 +268,11 @@ for (const f of P.families) {
       );
       check(`${where}: title is never blank`, !!n.title.trim(), n.id);
       check(
+        `${where}: the description names no other titles`,
+        !/also advertised/i.test(n.desc),
+        n.desc,
+      );
+      check(
         `${where}: nodes are indexed by lane then rung`,
         i === 0 ||
           m.nodes[i - 1].row < n.row ||
