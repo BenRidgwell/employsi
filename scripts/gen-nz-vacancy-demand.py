@@ -62,18 +62,40 @@ ROOT = __file__.rsplit('/scripts/', 1)[0]
 TAX = f'{ROOT}/src/employsi/data/skillsTaxonomy.ts'
 IVI = f'{ROOT}/src/employsi/data/iviSkillDemand.ts'
 OUT = f'{ROOT}/src/employsi/data/nzVacancyDemand.ts'
-CITY = 'auckland'
-# Realistic current Auckland online-vacancy level. UNCHANGED from the quarterly
-# generator: the release is an index, the app wants levels, and changing this
-# alongside the source change would make the two impossible to tell apart in the
-# diff.
-ANCHOR_AUCKLAND = 11000
+# app hub id → (the release's region column, that city's anchor level).
+#
+# THE ANCHOR IS THE ONE NUMBER THIS RELEASE CANNOT SUPPLY. Jobs Online is an
+# INDEX and every region is separately based at 100 in May 2007, so the file
+# says how each region has MOVED and never how large it is. Auckland's anchor is
+# carried over unchanged from the quarterly generator — a realistic current
+# Auckland online-vacancy level — so that swapping the source changed the source
+# and nothing else.
+#
+# A city with `None` is not emitted. That is deliberate and is the whole reason
+# this is a table rather than a constant: Wellington is in the release, its index
+# is read and rescaled exactly like Auckland's, and it will appear the moment a
+# published regional ad COUNT for any single month is dropped in here. Until
+# then it is left out rather than guessed, because the guess is the part a
+# reader would never see: a wrong anchor does not look wrong, it looks like
+# Wellington.
+#
+# Two anchors that were considered and rejected:
+#   · our own D1 archive, where Auckland holds 1,263 recent ads and Wellington
+#     1,148. That ratio is our SCRAPE, not the market — the NZ feed is
+#     government-heavy and the public service is Wellington-centred — and it
+#     would put Wellington at 91% of Auckland when employment is nearer a third.
+#   · regional EMPLOYMENT share, which is reachable (Stats NZ) but measures
+#     filled jobs rather than advertised ones, and the two differ by exactly the
+#     thing this map is about.
+CITY_ANCHOR: dict[str, tuple[str, int | None]] = {
+    'auckland': ('Auckland', 11000),
+    'wellington': ('Wellington', None),
+}
 
 # The CSV's own column headings. The eight occupation columns ARE the ANZSCO
 # major groups — NZ shares the classification with Australia, so no crosswalk is
 # needed here at all, which is the opposite of what the Asian releases need.
 COL_TOTAL = 'TOTALS'
-COL_CITY = 'Auckland'
 OCC_COLS = [
     'Managers',
     'Professionals',
@@ -136,9 +158,9 @@ def read_jol(path):
             if not m:
                 raise SystemExit(f'unreadable ACTUAL_DATE {d!r} — expected dd/mm/yyyy')
             ym = f'{m.group(3)}-{int(m.group(2)):02d}'
-            rec = {}
-            for key, col in [('total', COL_TOTAL), ('city', COL_CITY)]:
-                rec[key] = float(row[col])
+            rec = {'total': float(row[COL_TOTAL])}
+            for hub, (col, _anchor) in CITY_ANCHOR.items():
+                rec[hub] = float(row[col])
             for occ in OCC_COLS:
                 rec[occ] = float(row[occ])
             # A zero national total would make the regional factor infinite. The
@@ -169,16 +191,16 @@ def main(path):
     have = sorted(jol)
     first_nz, last_nz = have[0], have[-1]
 
-    def occ_index(group, ym):
-        """The city's index for one occupation group, or None before the series.
+    def occ_index(hub, group, ym):
+        """A hub's index for one occupation group, or None before the series.
 
-        National occupation movement, rescaled to the city's own total. See the
-        docstring: the mix is the country's, the level is Auckland's.
+        National occupation movement, rescaled to that city's own total. See the
+        docstring: the mix is the country's, the level is the city's.
         """
         rec = jol.get(ym)
         if rec is None:
             return None
-        return rec[group] * rec['city'] / rec['total']
+        return rec[group] * rec[hub] / rec['total']
 
     # The most recent month the AXIS and the RELEASE agree on. The release runs
     # a month ahead of IVI_MONTHS today (2026-08 vs 2026-07); anchoring on a
@@ -194,6 +216,11 @@ def main(path):
     unmapped = sorted({cat for _, cat in skills if cat not in CAT_TO_NZ})
     if unmapped:
         raise SystemExit(f'taxonomy categories with no ANZSCO group: {unmapped}')
+
+    cities = [c for c, (_col, a) in CITY_ANCHOR.items() if a]
+    no_anchor = [c for c, (_col, a) in CITY_ANCHOR.items() if not a]
+    if not cities:
+        raise SystemExit('no city has an anchor level — nothing to emit')
 
     series, latest, no_weight = {}, {}, []
     for s, cat in skills:
@@ -213,23 +240,29 @@ def main(path):
         if weight <= 0:
             no_weight.append(s)
             continue
-        cur = ANCHOR_AUCKLAND * weight / total_nat
-        base = occ_index(group, anchor_ym)
-        if not base:
-            raise SystemExit(f'{anchor_ym}: no index for {group}')
-        arr = []
-        for ym in months:
-            idx = occ_index(group, ym)
-            # Before the release begins is NOT zero demand, it is no
-            # measurement — the app draws a zero as the start of the series,
-            # which is the same convention every other country file here uses.
-            arr.append(0 if idx is None else round(cur * idx / base))
-        if len(arr) != len(months):
-            raise SystemExit(f'{s}: {len(arr)} points against a {len(months)}-month axis')
-        series[s] = {CITY: arr}
-        latest[s] = {CITY: arr[anchor_i]}
+        by_city, last_city = {}, {}
+        for hub in cities:
+            anchor = CITY_ANCHOR[hub][1]
+            cur = anchor * weight / total_nat
+            base = occ_index(hub, group, anchor_ym)
+            if not base:
+                raise SystemExit(f'{anchor_ym}: no index for {group} in {hub}')
+            arr = []
+            for ym in months:
+                idx = occ_index(hub, group, ym)
+                # Before the release begins is NOT zero demand, it is no
+                # measurement — the app draws a zero as the start of the
+                # series, which is the same convention every other country file
+                # here uses.
+                arr.append(0 if idx is None else round(cur * idx / base))
+            if len(arr) != len(months):
+                raise SystemExit(f'{s}/{hub}: {len(arr)} points against a {len(months)}-month axis')
+            by_city[hub] = arr
+            last_city[hub] = arr[anchor_i]
+        series[s] = by_city
+        latest[s] = last_city
 
-    order = sorted(series, key=lambda s: -latest[s][CITY])
+    order = sorted(series, key=lambda s: -sum(latest[s].values()))
     covered = sum(1 for ym in months if ym in jol)
 
     L = []
@@ -248,26 +281,33 @@ def main(path):
     L.append('')
     L.append(f"export const NZ_MONTH = '{anchor_ym}';")
     L.append("export const NZ_SOURCE =")
-    L.append("  'New Zealand MBIE — Jobs Online monthly series (Auckland, indexed)';")
+    label = ' + '.join(c.capitalize() for c in cities)
+    L.append(f"  'New Zealand MBIE — Jobs Online monthly series ({label}, indexed)';")
     L.append('')
-    L.append('export const NZ_CITIES: string[] = ' + json.dumps([CITY]) + ';')
+    L.append('export const NZ_CITIES: string[] = ' + json.dumps(cities) + ';')
     L.append('')
-    L.append('// Skill → Auckland → monthly vacancy history (aligned to IVI_MONTHS).')
+    L.append('// Skill → city → monthly vacancy history (aligned to IVI_MONTHS).')
     L.append('export const NZ_SERIES: Record<string, Record<string, number[]>> = {')
     for s in order:
-        L.append(f'  {json.dumps(s)}: {{ {CITY}: [{",".join(map(str, series[s][CITY]))}] }},')
+        body = ', '.join(f'{c}: [{",".join(map(str, series[s][c]))}]' for c in cities)
+        L.append(f'  {json.dumps(s)}: {{ {body} }},')
     L.append('};')
     L.append('')
-    L.append('// Skill → latest-month Auckland vacancy count (current heat map).')
+    L.append('// Skill → latest-month vacancy count per city (current heat map).')
     L.append('export const NZ_SKILL_BY_CITY: Record<string, Record<string, number>> = {')
     for s in order:
-        L.append(f'  {json.dumps(s)}: {{ {CITY}: {latest[s][CITY]} }},')
+        body = ', '.join(f'{c}: {latest[s][c]}' for c in cities)
+        L.append(f'  {json.dumps(s)}: {{ {body} }},')
     L.append('};')
     L.append('')
     open(OUT, 'w').write('\n'.join(L))
-    tot = sum(latest[s][CITY] for s in order)
     print(f'{anchor_ym}: {len(order)} skills, release {first_nz}..{last_nz} (monthly), '
-          f'{covered}/{len(months)} axis months covered, Auckland latest total {tot} -> {OUT}')
+          f'{covered}/{len(months)} axis months covered -> {OUT}')
+    for hub in cities:
+        print(f'  {hub}: latest total {sum(latest[s][hub] for s in order)}')
+    if no_anchor:
+        print(f'  no anchor level, left out: {", ".join(sorted(no_anchor))} '
+              f'(set it in CITY_ANCHOR from a published regional ad count)')
     if no_weight:
         print(f'  no AU mix weight, left out: {", ".join(sorted(no_weight))} '
               f'(regenerate {IVI.rsplit("/", 1)[1]} to include them)')
