@@ -32,6 +32,7 @@ import { SEEK_TRADING_NAMES } from "../src/employsi/data/seekTradingNames";
 import { SITES as CAREER_SITES } from "../workers/jobs-cron/careerSites";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
+import { ACNC_HEADCOUNT } from "../src/employsi/data/acncWorkforce";
 import { WGEA_HEADCOUNT } from "../src/employsi/data/wgeaWorkforceAu";
 
 import { buildCompanyCard, filedHeadcount } from "../src/employsi/lib/companyCard";
@@ -297,6 +298,17 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
   // is no comparator to state. Absent is how that is said. A prev of 0 would be
   // a reading of nobody, and a missing prev WITH a yoy would mean a change was
   // computed against something that is not there — both stay errors.
+  // The ACNC rows get the same assertions as every other source. They are FTE
+  // by construction — the register's own column — so a row that lost its unit
+  // would relabel a full-time-equivalent as a head count on the card.
+  for (const [id, h] of Object.entries(ACNC_HEADCOUNT)) {
+    if (!(h.now > 0)) err("acnc headcount not positive", id, `now ${h.now}`);
+    if (h.unit !== "fte") err("acnc row is not marked fte", id, `unit ${h.unit}`);
+    if (h.prev !== undefined && !(h.prev > 0)) err("acnc prev not positive", id, `prev ${h.prev}`);
+    if (h.prev === undefined && h.yoy !== null)
+      err("acnc yoy without a prev", id, `yoy ${h.yoy} against no prior reading`);
+  }
+
   for (const [id, h] of Object.entries(GOV_HEADCOUNT_AU)) {
     if (!(h.now > 0)) err("gov headcount not positive", id, `now ${h.now}`);
     if (h.prev !== undefined && !(h.prev > 0))
