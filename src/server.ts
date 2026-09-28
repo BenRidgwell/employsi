@@ -2,52 +2,23 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { MARKETING_APEX, MARKETING_WWW, isAppOnlyPath } from "./lib/siteGate";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
-/**
- * THE PUBLIC MARKETING DOMAIN.
- *
- * employsi.com.au is the waitlist, and only the waitlist. The same Worker also
- * serves the map app, so pointing a domain at it would otherwise publish an
- * unreleased product on the address the product is about to be advertised at —
- * discoverable, linkable and indexable. The gate is HOST-BASED rather than a
- * removal, so nothing is lost: /app stays fully reachable on the workers.dev
- * URL, which is where it is developed and demoed from.
- *
- * This is a visibility gate on a marketing domain, NOT a security boundary, and
- * the difference matters if you are tempted to lean on it. The per-market data
- * gate in employsi/lib/markets.ts is the boundary; it runs server-side on every
- * archive read and is unaffected by which hostname asked.
- *
- * RELEASING THE APP is deleting APP_ONLY_PATHS, and nothing else.
- */
-const MARKETING_APEX = "employsi.com.au";
-const MARKETING_WWW = "www.employsi.com.au";
-
-/**
- * Paths that belong to the product rather than the waitlist.
- *
- * `/api/auth` is here because an open sign-up endpoint on a promoted domain is
- * surface with nothing behind it: the waitlist page has no auth UI, and the
- * server functions it does call resolve the caller's role in-process through
- * auth.api.getSession rather than over this route, so closing it costs the
- * waitlist nothing. Verified before closing it.
- */
-const APP_ONLY_PATHS = ["/app", "/mobile-frame", "/api/auth"];
-
-function isAppOnlyPath(pathname: string): boolean {
-  return APP_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-}
+// THE PUBLIC MARKETING DOMAIN, and which of this Worker's paths it keeps
+// closed, live in lib/siteGate.ts — the login page reads the same module to
+// decide between sign-in buttons and the waitlist, so the two cannot drift.
+// RELEASING THE APP is emptying APP_ONLY_PATHS there, and nothing else.
 
 /**
  * robots.txt, which has to differ by hostname — so it is served here rather
  * than dropped in public/, where one file would answer for every host.
  *
- * The waitlist is deployed on employsi.com.au AND on the workers.dev URL, and
- * they are the same page. Left alone, a search engine finds both, has to guess
+ * The marketing site is deployed on employsi.com.au AND on the workers.dev URL,
+ * and they are the same pages. Left alone, a search engine finds both, has to guess
  * which is canonical, and splits the ranking between them. The canonical tag on
  * the landing route names the apex as the real one; this stops the workers.dev
  * copy being crawled at all, which is the belt to that braces.

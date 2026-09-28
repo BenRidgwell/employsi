@@ -138,8 +138,11 @@ and the real `OPEN_ROLES_HISTORY` KV. Reads are the point — the preview shows 
 data — but nothing is isolated, so a change that writes needs thinking about before
 it runs there.
 
-**THE APP IS AT `/app`. `/` IS THE WAITLIST, ON EVERY HOST.** `src/routes/index.tsx`
-is the marketing page; `src/routes/app.tsx` is the product. Send a reviewer to
+**THE APP IS AT `/app`. `/` IS THE MARKETING LANDING PAGE, ON EVERY HOST.**
+`src/routes/index.tsx` is the landing page (with `/product` and `/login` beside it,
+all under `src/site/`); `src/routes/app.tsx` is the product. Until 2026-09-28 `/`
+was a waitlist page; the waitlist form now lives on `/login`, and shows there only
+where sign-in is gated (see below). Send a reviewer to
 `…workers.dev/app` — a link to `/` shows them the waitlist and nothing you built.
 
 This is easy to get backwards, and this file said the opposite until 2026-08-12.
@@ -148,11 +151,14 @@ This is easy to get backwards, and this file said the opposite until 2026-08-12.
 is not: the frame only wraps the app when the hostname matches `-mobile`, and
 the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
 hydration and never shows up in the SSR HTML. Read the `<title>` instead —
-"Employsi map — the live labour-market globe" is the app, "Employsi — Exploring
-the world of work" is the waitlist.
+"Employsi map — the live labour-market globe" is the app, "employsi — Explore
+the world of work" is the landing page.
 
-The apex serves the waitlist ONLY: `employsi.com.au/app` 302s away (see
-`APP_ONLY_PATHS` in `src/server.ts`). So a production deploy of app work is
+The apex serves the marketing pages ONLY: `employsi.com.au/app` and `/api/auth`
+302 away (see `APP_ONLY_PATHS` in `src/lib/siteGate.ts`, which `src/server.ts`
+imports). `/login` reads the same module: on a gated host it shows the waitlist
+form instead of OAuth buttons that would 302. Releasing the app is emptying
+`APP_ONLY_PATHS`; the login page switches to real sign-in on the same deploy. So a production deploy of app work is
 reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
 else — checking `employsi.com.au` returns 200 proves the waitlist is up, not
 that the app deployed.
