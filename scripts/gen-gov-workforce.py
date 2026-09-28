@@ -392,6 +392,31 @@ def close_browser():
         _BROWSER['ctx'], _BROWSER['stop'] = None, None
 
 
+# WHAT A DOORMAN LOOKS LIKE, AND WHY ONE STRING WAS NOT ENOUGH.
+#
+# Every challenge wait in fetch() tested for Cloudflare's 'Just a moment' and
+# nothing else, so a DIFFERENT interstitial was handed back to the caller as if
+# it were the page. Measured 2026-09-28 on three ASX explorers — Core Lithium,
+# Hillgrove/Kantra Copper and Magnetite Mines — all three sit behind a "Vercel
+# Security Checkpoint", and all three came back as a rendered 31 KB document
+# with zero PDF links. The probe reading them reported "0 pdfs, 0 annual", which
+# reads exactly like a company that publishes no annual report.
+#
+# Two unrelated domains returning 31,312 and 31,316 bytes is what gave it away.
+# A real site and a real absence do not agree to four significant figures.
+#
+# This is the same failure as the header assertion the line fallback skipped: a
+# check that is present, looks thorough, and does not cover the case in front of
+# it. Adding a name to this tuple is how the next doorman gets handled.
+CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
+             'Attention Required!', 'challenge-platform')
+
+
+def _challenged(html):
+    """Is this an interstitial rather than the page asked for?"""
+    return any(c in html for c in CHALLENGE)
+
+
 def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=False):
     """GET, falling back to a real browser when the host refuses a plain one.
 
@@ -461,16 +486,25 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=F
             if warm:
                 page.goto(warm, wait_until='domcontentloaded', timeout=90_000)
                 w = 0
-                while 'Just a moment' in page.content() and w < 30_000:
+                while _challenged(page.content()) and w < 30_000:
                     page.wait_for_timeout(3000)
                     w += 3000
             page.goto(url, wait_until='domcontentloaded', timeout=120_000)
             w = 0
-            while 'Just a moment' in page.content() and w < 30_000:
+            while _challenged(page.content()) and w < 30_000:
                 page.wait_for_timeout(3000)
                 w += 3000
             page.wait_for_timeout(2000)
             html = page.content()
+            # A CHALLENGE PAGE IS NOT THE PAGE, AND RETURNING IT IS WORSE THAN
+            # FAILING. This printed a reassuring "rendered 31,316 bytes" and
+            # handed back a Vercel checkpoint, so the caller found no links and
+            # reported a company with no annual report. Raising says what actually
+            # happened; every caller that can tolerate it already catches.
+            if _challenged(html):
+                raise RuntimeError(
+                    f'still behind an interstitial after {w // 1000}s '
+                    f'({len(html):,} bytes) — {url[:70]} was not read')
             print(f'  (rendered {len(html):,} bytes from {url[:60]})', file=sys.stderr)
             return html
         finally:
@@ -486,7 +520,7 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=F
         # collects no cookie at all — which looks exactly like a host that
         # refuses browsers.
         w = 0
-        while 'Just a moment' in page.content() and w < 30_000:
+        while _challenged(page.content()) and w < 30_000:
             page.wait_for_timeout(3000)
             w += 3000
         if w:
@@ -502,7 +536,7 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=F
     # navigation carries the fingerprint the clearance was issued for. The
     # request path stays first because it is cheaper and is what Queensland
     # has always used; this is the fallback.
-    if r.status != 200 or b[:200].find(b'Just a moment') >= 0:
+    if r.status != 200 or _challenged(b[:400].decode('utf-8', 'replace')):
         page = ctx.new_page()
         try:
             if binary:
@@ -522,11 +556,11 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=F
             else:
                 resp = page.goto(url, wait_until='domcontentloaded', timeout=120_000)
                 w = 0
-                while 'Just a moment' in page.content() and w < 30_000:
+                while _challenged(page.content()) and w < 30_000:
                     page.wait_for_timeout(3000)
                     w += 3000
                 html = page.content()
-                if 'Just a moment' not in html:
+                if not _challenged(html):
                     print(f'  (navigated instead of requested: {len(html):,} bytes)',
                           file=sys.stderr)
                     return html

@@ -299,7 +299,51 @@ NO_FIGURE_PUBLISHED = {
         'an SOE that must report, but its sitemap of 86 KB holds no annual-report '
         'URL and every guessed path 404s',
     'nz-victoria-university-of-wellington':
-        'its governance/annual-reports page renders with no PDF links at all',
+        'its governance/annual-reports page renders with no PDF links at all. '
+        'the 2025 annual report publishes NO workforce total. Re-checked '
+        '2026-09-28 and the old reason here — "renders with no PDF links at '
+        'all" — was wrong twice over. It was written against '
+        'wgtn.ac.nz/about/governance/annual-reports, which 404s; the page that '
+        'exists is /about/publications/annual-report, 105,714 bytes and '
+        'unchallenged, linking a 5.6 MB 2025 annual report. THE DOCUMENT WAS '
+        'THEN READ, all 86 pages: it gives staff only as percentages '
+        '("proportion of academic staff who are Māori 6.8%") and a remuneration '
+        'BAND table (142 employees on $140,000-$149,999), whose bands start at '
+        '$100,000 and so cannot be summed to a workforce. Council members and '
+        'Te Hiwa appear as 3 FTE and 10 FTE, which are committees. So the card '
+        'stays blank on the substance, and it now says so from the document '
+        'rather than from a dead URL',
+    # ── Behind a VERCEL SECURITY CHECKPOINT, measured 2026-09-28 ──────────────
+    # THESE THREE NEARLY GOT THE WRONG REASON. Their investor pages came back as
+    # rendered 31 KB documents with zero PDF links, which reads exactly like a
+    # small explorer that publishes no annual report — and 141 points of gap
+    # would have been closed with a sentence that was false.
+    #
+    # Two unrelated domains returning 31,312 and 31,316 bytes is what gave it
+    # away: a real site and a real absence do not agree to four significant
+    # figures. Both were a "Vercel Security Checkpoint", which fetch() did not
+    # recognise because every challenge wait in it tested for Cloudflare's
+    # 'Just a moment' and nothing else. It now tests a tuple and RAISES rather
+    # than handing an interstitial back as content.
+    #
+    # The checkpoint does not clear with patience: a warmed browser sat on it for
+    # 80 seconds with the title unchanged, against the 30 s that clears
+    # dpac.tas.gov.au and ocpe.nt.gov.au. A plain fetch gets HTTP 429 from these
+    # hosts, not 403 — they are rate-limiting the network, not refusing the path.
+    'cxo':
+        'corelithium.com.au sits behind a Vercel Security Checkpoint this '
+        'network cannot clear (80 s of warmed browser, title unchanged; plain '
+        'fetch answers 429). Whether it publishes a workforce figure cannot be '
+        'established from here — the aggregator has no employee series for CXO '
+        'either',
+    'hgo':
+        'hillgroveresources.com.au — the Kantra Copper card — is behind the same '
+        'Vercel checkpoint as Core Lithium, byte for byte the same interstitial. '
+        'kantracopper.com.au answers 114 bytes',
+    'mgt':
+        'magnetitemines.com answers a connection reset to a plain fetch, which '
+        'now reaches the browser fallback (that was a separate bug fixed the same '
+        'day) and lands on an investor page of 2,676 bytes with no reports on it',
 }
 
 
