@@ -65,6 +65,13 @@ type TravelMode = "plane" | "ship" | "train";
 // Uniform slow-down applied to every traveler's duration (>1 = slower drift).
 const TRAVEL_SLOWDOWN = 1.6;
 
+/**
+ * Trains and their rail lines are OFF for now (2026-09-28, at the product
+ * owner's request). Everything they need stays below — the corridors, the
+ * runs, the layers — so turning this back on is the whole of bringing them
+ * back. Planes and ships are unaffected.
+ */
+const SHOW_TRAINS = false;
 const RAIL_SOURCE = "au-rail";
 const RAIL_BED_LAYER = "au-rail-bed";
 const RAIL_SLEEPER_LAYER = "au-rail-sleepers";
@@ -1508,7 +1515,7 @@ export function WorldMapbox() {
         // so there is no room between those two failures. A single locomotive
         // is what a train looks like at this size, and it matches how the plane
         // and the ship are each one sprite.
-        ...TRAIN_RUNS.map(({ region, dur, path }, run): Traveler => ({
+        ...(SHOW_TRAINS ? TRAIN_RUNS : []).map(({ region, dur, path }, run): Traveler => ({
           mode: "train" as const,
           region,
           path,
@@ -1601,7 +1608,7 @@ export function WorldMapbox() {
         // Auckland–Wellington line and Asia's Singapore–KL line each appear on
         // their own view without the other being drawn off-screen.
         const railRegion = show && !s.globalOut ? s.domesticRegion : "";
-        const showTrain = !!railRegion;
+        const showTrain = SHOW_TRAINS && !!railRegion;
         if (map.getLayer(RAIL_BED_LAYER)) {
           const railVis = showTrain ? "visible" : "none";
           map.setLayoutProperty(RAIL_BED_LAYER, "visibility", railVis);

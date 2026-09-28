@@ -17641,3 +17641,46 @@ body {
 .mk-company.nofig .mkshadow {
   opacity: 0.25;
 }
+
+/* Supply mode's workforce-size key (SupplyKey.tsx): bottom-right, mirroring
+   the city banner bottom-left, in the demand keys' pill style. */
+.supplykey {
+  position: fixed;
+  right: var(--rail-left);
+  bottom: calc(var(--frame-inset) + 8px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 18px 40px -18px rgba(28, 28, 30, 0.34);
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.supplykeylbl {
+  margin-right: 4px;
+  color: var(--text-tertiary);
+}
+.supplykeyend {
+  color: var(--text-secondary);
+}
+.supplykeydot {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid var(--neutral-500, #8e8e93);
+  box-sizing: border-box;
+}
+@media (max-width: 680px) {
+  .supplykey {
+    display: none;
+  }
+}

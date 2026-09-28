@@ -90,9 +90,10 @@ export function TalentFlow({ flows }: { flows: CompanyFlows | null }) {
           <Side title="Lost people to" rows={flows.lostTo} max={max} />
         </>
       )}
-      <div className="cchiremore">
-        {[...notes, `Source: ${flows.source} — ${flows.method}`].join(" · ")}
-      </div>
+      {/* The source-and-method line ("Source: BrightData — …") was removed
+          from the card on 2026-09-28 at the product owner's request; the
+          caveats above it stay, since they change how the figures read. */}
+      {notes.length > 0 && <div className="cchiremore">{notes.join(" · ")}</div>}
     </>
   );
 }
