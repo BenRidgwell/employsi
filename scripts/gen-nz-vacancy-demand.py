@@ -37,16 +37,12 @@ the country's — and it is the one thing this file gives up for monthly detail.
 It is stated in the generated header so nobody has to read this docstring to
 find it.
 
-WHY WELLINGTON IS NOT HERE, though the CSV carries it. The series is an INDEX,
-not counts, so a city needs an anchor level from outside the file; Auckland has
-one (ANCHOR_AUCKLAND below). Wellington would need the Auckland:Wellington ratio
-of online ads at a known month, which this release does not publish — both
-regions are separately based at 100 in May 2007, so their ratio today says only
-how differently they have GROWN. Anchoring it off our own archive was
-considered and rejected: our NZ scrape is government-heavy and so
-Wellington-heavy, which would put Wellington at about 90% of Auckland when the
-labour market is nearer a third. One published regional ad count, for any single
-month, is the whole of what is missing.
+AUCKLAND AND WELLINGTON, and where each city's LEVEL comes from. The series is
+an index, so nothing in the release says how large a region is — both are based
+at 100 in May 2007, and their ratio today says only how differently they have
+grown since. Auckland carries a level anchor from the quarterly generator;
+Wellington's is derived from Stats NZ filled jobs. See CITY_ANCHOR, which argues
+the substitution and names what would replace it.
 
 Usage: python3 scripts/gen-nz-vacancy-demand.py path/to/jol-monthly.csv
 """
@@ -79,17 +75,43 @@ OUT = f'{ROOT}/src/employsi/data/nzVacancyDemand.ts'
 # reader would never see: a wrong anchor does not look wrong, it looks like
 # Wellington.
 #
-# Two anchors that were considered and rejected:
-#   · our own D1 archive, where Auckland holds 1,263 recent ads and Wellington
-#     1,148. That ratio is our SCRAPE, not the market — the NZ feed is
-#     government-heavy and the public service is Wellington-centred — and it
-#     would put Wellington at 91% of Auckland when employment is nearer a third.
-#   · regional EMPLOYMENT share, which is reachable (Stats NZ) but measures
-#     filled jobs rather than advertised ones, and the two differ by exactly the
-#     thing this map is about.
+# WELLINGTON IS ANCHORED ON EMPLOYMENT, NOT ON ADS, and that substitution is
+# the one judgement in this file worth arguing with.
+#
+# There is no published New Zealand job-ad COUNT by region. Jobs Online is an
+# index by design — the underlying ads are licensed from the job boards — and
+# both MBIE releases confirm it: the monthly series bases every region at 100 in
+# May 2007, and the quarterly occupation-by-region workbook bases all sixteen
+# region x occupation cells at 100 in December 2010. Figure.NZ republishes the
+# same series, indexed. mbie.govt.nz and data.govt.nz cannot be read from the
+# build sandbox at all (Imperva returns a 212-byte challenge on every path).
+#
+# So Wellington's LEVEL comes from Stats NZ Business Employment Data — filled
+# jobs by region — and Auckland's own anchor carries it:
+#
+#     wellington = ANCHOR_AUCKLAND x WLG_FILLED_JOBS / AKL_FILLED_JOBS
+#
+# WHAT THAT ASSUMES: that the two cities advertise in proportion to the jobs
+# they hold. They do not, quite. Wellington is the seat of the public service,
+# which hires on different cycles and at different rates from Auckland's private
+# sector, so its share of ADS is not exactly its share of JOBS. The error is a
+# level shift on one city, it does not touch the shape of any series, and it is
+# named here so that a single published regional ad count replaces it in one
+# line.
+#
+# Rejected: our own D1 archive, where Auckland holds 1,263 recent ads to
+# Wellington's 1,148. That ratio is our SCRAPE, not the market — the NZ feed is
+# government-heavy and therefore Wellington-heavy — and it would put Wellington
+# at 91% of Auckland.
+#
+# Stats NZ Business Employment Data, June 2026 quarter, via Figure.NZ table
+# o1397DyrtpI5ZHD0 (series MEIM.SB1RA*, "Filled jobs" by region, Actual).
+AKL_FILLED_JOBS = 795_137
+WLG_FILLED_JOBS = 253_220  # 31.8% of Auckland
+
 CITY_ANCHOR: dict[str, tuple[str, int | None]] = {
     'auckland': ('Auckland', 11000),
-    'wellington': ('Wellington', None),
+    'wellington': ('Wellington', round(11000 * WLG_FILLED_JOBS / AKL_FILLED_JOBS)),
 }
 
 # The CSV's own column headings. The eight occupation columns ARE the ANZSCO
