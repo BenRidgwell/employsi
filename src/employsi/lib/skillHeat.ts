@@ -260,7 +260,17 @@ export function iviCityDemandAt(
     return out;
   }
   const out: Record<string, number> = {};
-  for (const city of Object.keys(series)) out[city] = series[city][i] ?? 0;
+  for (const city of Object.keys(series)) {
+    const v = series[city][i];
+    // NO VALUE IS NOT ZERO DEMAND, and `?? 0` said it was. Every country file
+    // here is aligned to IVI_MONTHS, so a short array means that country was
+    // not regenerated when the axis was extended — measured 2026-09-27, six of
+    // the eight were two months short, and their cities were reporting zero
+    // demand for 2026-06 and 2026-07 rather than reporting nothing. A real zero
+    // in the data still comes through as zero; only a missing month is skipped.
+    if (v === undefined) continue;
+    out[city] = v;
+  }
   return out;
 }
 
@@ -282,8 +292,11 @@ export function iviCityChangeAt(
   const b = Math.max(0, i - window);
   const out: Record<string, number> = {};
   for (const city of Object.keys(series)) {
-    const base = series[city][b] ?? 0;
-    const cur = series[city][i] ?? 0;
+    const base = series[city][b];
+    const cur = series[city][i];
+    // Same rule as iviCityDemandAt: a month the series does not reach is
+    // unknown, and a change computed from it would be a number about nothing.
+    if (base === undefined || cur === undefined) continue;
     out[city] = base > 0 ? ((cur - base) / base) * 100 : 0;
   }
   return out;
