@@ -94,7 +94,8 @@ const SYSTEM = `You are the analyst inside employsi, a labour-market intelligenc
 How you work:
 - For ANY question about jobs, vacancies, hiring, demand, pay, skills, how long ads stay up, or how a market has changed, call the employsi_data tool. Write its question as one plain, self-contained sentence naming the place, company and skill, e.g. "What does nursing pay in Perth?" or "Which skills are most in demand in Sydney?". One measurement per call; call it more than once to compare places or skills.
 - For questions about careers, progression, next roles or what a skill leads to, call career_pathway with a skill name.
-- Every number you write must come from a tool result in this conversation, copied exactly as the tool wrote it (same rounding, same units). Never estimate, round differently, convert currencies, or add figures of your own. If the tools don't have it, say employsi doesn't measure that.
+- Every number you write must come from a tool result in this conversation, copied exactly as the tool wrote it (same rounding, same units). Never estimate, round differently, convert currencies, or calculate differences, ratios or totals of your own. If the tools don't have it, say employsi doesn't measure that.
+- Say what a figure is and when: a national-series figure is a monthly count for the month the tool names ("in July 2026"), not what is open "right now"; only live-ad figures from the archive are current.
 - You may give general career guidance that needs no figures (how to move into a role, what employers look for, how to read the data). Say plainly when something is general knowledge rather than employsi data.
 - The data measures ADVERTISED vacancies, not jobs, hires or applicants. Use the method and limits text a tool returns when asked why, how or whether to trust a figure.
 - Stay on work, careers, skills and the labour market. For anything else, say briefly that you only cover those and suggest a question you can answer.
@@ -359,22 +360,23 @@ export const analystLlmStep = createServerFn({ method: "POST" })
     try {
       const { default: AnthropicClient } = await import("@anthropic-ai/sdk");
       const client = new AnthropicClient({ apiKey: key, maxRetries: 1, timeout: 25_000 });
+      const system: Anthropic.TextBlockParam[] = [
+        { type: "text", text: SYSTEM },
+        {
+          type: "text",
+          text:
+            `The analyst panel is currently scoped to ${scope || "the world"}` +
+            (sector ? `, narrowed to the ${sector} sector` : "") +
+            `. A question that names no place is about that scope.` +
+            (rounds >= MAX_ROUNDS
+              ? " You have used your tool calls for this question: answer now from the results above."
+              : ""),
+        },
+      ];
       const res = await client.messages.create({
         model: LLM_MODEL,
         max_tokens: MAX_TOKENS,
-        system: [
-          { type: "text", text: SYSTEM },
-          {
-            type: "text",
-            text:
-              `The analyst panel is currently scoped to ${scope || "the world"}` +
-              (sector ? `, narrowed to the ${sector} sector` : "") +
-              `. A question that names no place is about that scope.` +
-              (rounds >= MAX_ROUNDS
-                ? " You have used your tool calls for this question: answer now from the results above."
-                : ""),
-          },
-        ],
+        system,
         tools: TOOLS,
         // Past the round limit the model must answer; it cannot call again.
         tool_choice: rounds >= MAX_ROUNDS ? { type: "none" } : { type: "auto" },
@@ -402,7 +404,51 @@ export const analystLlmStep = createServerFn({ method: "POST" })
         .join("")
         .trim();
       if (!text) return { kind: "unavailable", reason: "error" };
-      return { kind: "reply", text, verified: untraced(text, sourcesOf(messages)).length === 0 };
+      const sources = sourcesOf(messages);
+      const bad = untraced(text, sources);
+      if (!bad.length) return { kind: "reply", text, verified: true };
+
+      /**
+       * ONE REWRITE BEFORE GIVING UP. Measured 2026-09-28 on the preview: the
+       * figures that fail are almost always arithmetic on real ones — a pay
+       * gap between two rungs, a difference between two cities — not
+       * inventions, and showing the raw data answer instead threw away a
+       * reply that was otherwise right (the HR admin → business partner
+       * question fell back to an Australia-wide pay median). So the model is
+       * told exactly which figures it cannot use and asked once more, with no
+       * tools. It is a model call like any other and is counted as one; if
+       * the rewrite still fails the check, the pane shows the data answer.
+       */
+      if (!(await withinAllowance(db, await visitorKey()))) {
+        return { kind: "reply", text, verified: false };
+      }
+      const redo = await client.messages.create({
+        model: LLM_MODEL,
+        max_tokens: MAX_TOKENS,
+        system,
+        tools: TOOLS,
+        tool_choice: { type: "none" },
+        messages: [
+          ...(messages as Anthropic.MessageParam[]),
+          { role: "assistant", content: text },
+          {
+            role: "user",
+            content:
+              `Your reply used figures that are not in any tool result: ${bad.join(", ")}. ` +
+              "Rewrite the same answer using only figures copied exactly from the tool results. " +
+              "Do not calculate differences, ratios or totals. Reply with the rewritten answer only, " +
+              "without mentioning this correction.",
+          },
+        ],
+      });
+      const fixed = redo.content
+        .map((b) => (b.type === "text" ? b.text : ""))
+        .join("")
+        .trim();
+      if (fixed && !untraced(fixed, sources).length) {
+        return { kind: "reply", text: fixed, verified: true };
+      }
+      return { kind: "reply", text, verified: false };
     } catch {
       return { kind: "unavailable", reason: "error" };
     }
