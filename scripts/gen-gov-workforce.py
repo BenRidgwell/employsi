@@ -2775,6 +2775,46 @@ NSW_AGENCY_REPORTS = {
     # card: the table's own note says "Average annual headcount shows data
     # averaged over the" reporting period. Non-casual only, per the FTE table's
     # label; the prose on p25 gives 271 FTE, which is the other table's 271.4.
+    # 30 on the ranking, and the report took finding: the SES publishes it under
+    # /sites/default/files/document/, and my three guessed listing paths all 404'd
+    # before a search turned up the file.
+    #
+    # p24 "Representation of employees by level compared with the two previous
+    # years" — three years wide, Total/Women/Racial-ethno-religious-minority in
+    # each, so the Totals row is NINE numbers: 628 351 37 | 691 382 41 | 498 382
+    # 28. All three year columns reconcile EXACTLY against the seven grade rows
+    # (50+117+173+142+96+37+13 = 628, and likewise 691 and 498), which is as
+    # strong as this route gets.
+    #
+    # THE GRADE LABELS ARE ON THE WRONG LINES, so `comp` matches the SALARY BAND
+    # instead. pdfplumber emits "$67,975 - $73,902 50 30 3 49 31 2 44 27 2" and
+    # then "Grade 1/2" on the line after it, so a pattern anchored on the grade
+    # name matches a line with no numbers on it at all.
+    #
+    # `stated` CROSS-CHECKS AGAINST THE NOTE, which prints the figure a second
+    # time: "Total staff for 2024-25 is inclusive of a Full Time Employees (628).
+    # This is inclusive of ongoing, temporary and casual staff." So the column and
+    # the prose have to agree, and the same page's senior-executive Totals row
+    # cannot be taken by mistake — it carries six numbers, not nine.
+    #
+    # THIS IS PAID STAFF AND THE SES IS MOSTLY VOLUNTEERS. 628 is the employed
+    # workforce; the volunteer membership is reported separately and grew 6.4%
+    # over the same year. A card reading 628 is not the size of the NSW SES as the
+    # public meets it, and that is the honest figure for an EMPLOYER card.
+    'nsw-ses': dict(
+        label='NSW: State Emergency Service',
+        agency='NSW State Emergency Service',
+        agency_id='nsw-gov-nsw-state-emergency-service',
+        url='https://www.ses.nsw.gov.au/sites/default/files/document/'
+            'nsw-ses-annual-report-2024-2025.pdf',
+        warm='https://www.ses.nsw.gov.au/',
+        needle='Representation of employees by level compared with the two previous years',
+        total=r'^Totals\b',
+        comp=r'^(?:\$[\d,]+ - \$[\d,]+|Above A & C Grade 12)',
+        ncols=9, now_i=0, prev_i=3, sums=[(0,), (3,), (6,)],
+        stated=r'Full Time Employees \(([\d,]+)\)',
+        proof=r'Total staff for 2024-25 is inclusive of',
+        unit='headcount', asof='Jun 2025'),
     'nsw-slnsw': dict(
         label='NSW: State Library',
         agency='State Library of New South Wales',
