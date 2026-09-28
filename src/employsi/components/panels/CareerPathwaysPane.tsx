@@ -161,30 +161,20 @@ export function CareerPathwaysPane() {
 const OPEN_LOADER_MS = 1200;
 
 /**
- * The first open of the session starts on "Start with a skill"
+ * The first open on each PAGE LOAD starts on "Start with a skill"
  * (`Career_Pathway_Placeholder.html`) rather than on a family's map picked for
- * the reader. The first skill searched ends it for the rest of the session;
- * every later open goes straight to the map, as before.
+ * the reader. The first skill searched ends it until the page is reloaded;
+ * later opens go straight to the map.
  *
- * sessionStorage so it survives a reload the way a session should, with the
- * module variable as the fallback where storage is blocked.
+ * In memory, deliberately. It was sessionStorage until 2026-09-28, which
+ * outlived reloads for as long as the tab stayed open — so once anyone had
+ * searched in a tab, the placeholder never came back there, and it read as
+ * gone. A reload is now a fresh start.
  */
-const STARTED_KEY = "employsi.careerStarted";
-let startedFallback = false;
-function careerStarted(): boolean {
-  try {
-    return startedFallback || sessionStorage.getItem(STARTED_KEY) === "1";
-  } catch {
-    return startedFallback;
-  }
-}
+let careerStartedThisLoad = false;
+const careerStarted = () => careerStartedThisLoad;
 function markCareerStarted(): void {
-  startedFallback = true;
-  try {
-    sessionStorage.setItem(STARTED_KEY, "1");
-  } catch {
-    // The module variable covers the rest of this page's life.
-  }
+  careerStartedThisLoad = true;
 }
 
 function CareerCard({ onClose }: { onClose: () => void }) {
