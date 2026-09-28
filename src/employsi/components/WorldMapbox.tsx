@@ -377,6 +377,18 @@ const PLANE_ROUTES: PlaneRoute[] = [
 ];
 
 /**
+ * OFF FOR NOW, ON REQUEST — 2026-09-28. The container ships are not drawn; the
+ * aircraft and the trains are unchanged.
+ *
+ * Nothing below is deleted, because what it encodes is the expensive part: the
+ * lanes are hand-steered waypoint paths through real straits, and the note under
+ * this one records the three "ports" that were not ports. Re-deleting that
+ * research to re-derive it later is the trade this flag exists to avoid. Flip it
+ * to true and the ships come back exactly as they were.
+ */
+const SHOW_SHIPS: boolean = false;
+
+/**
  * Container-ship lanes, as waypoint paths through open water.
  *
  * Ships used to run hub-to-hub on the same straight line the aircraft use,
@@ -1420,12 +1432,15 @@ export function WorldMapbox() {
           if (!a || !b) return [];
           return [{ mode: "plane", path: [a, b], dur: r.dur, offset: r.offset }];
         }),
-        ...SHIP_LANES.map((l): Traveler => ({
-          mode: "ship",
-          path: l.path,
-          dur: l.dur,
-          offset: l.offset,
-        })),
+        // SHIPS ARE OFF — see SHOW_SHIPS. Everything they need is still here.
+        ...(SHOW_SHIPS
+          ? SHIP_LANES.map((l): Traveler => ({
+              mode: "ship",
+              path: l.path,
+              dur: l.dur,
+              offset: l.offset,
+            }))
+          : []),
         // ONE train per run, not a coupled consist.
         //
         // This started as a locomotive plus two wagons, and there is no spacing
