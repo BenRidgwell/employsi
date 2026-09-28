@@ -218,3 +218,49 @@ export function rankedByRate(hub: string, month: string): SkillRate[] {
   }
   return out.sort((a, b) => b.rate - a.rate);
 }
+
+/**
+ * Every skill with an employment figure at a month, ranked by how many people
+ * do the work — the SUPPLY side read as a level rather than as a denominator.
+ *
+ * This is the same ABS stock `vacancyRate` divides by, asked the other question:
+ * not "how tight is this labour" but "how many people are in it". The supply
+ * side of the app ranks on this, because a reader looking at the workforce wants
+ * the big occupations first, which is the ordering a vacancy count actively
+ * fights — see the note at the top of this file for why the two disagree.
+ *
+ * MIN_EMPLOYED applies here too, for the same reason: a cell below the
+ * thousand-person unit the survey is denominated in is sampling noise, and a
+ * noisy cell ranked among real ones is worse in a list than in a ratio, because
+ * a list makes it look chosen.
+ */
+export function rankedByEmployment(
+  hub: string,
+  month: string,
+): { skill: string; employed: number }[] {
+  const out: { skill: string; employed: number }[] = [];
+  for (const skill of Object.keys(IVI_SERIES)) {
+    const employed = employmentFor(skill, hub, month);
+    if (employed === null) continue;
+    out.push({ skill, employed });
+  }
+  return out.sort((a, b) => b.employed - a.employed);
+}
+
+/**
+ * The hubs ABS EQ08 covers: the eight Australian capitals, one per state and
+ * territory. Exported because the supply-side map has to iterate the cities it
+ * CAN answer for rather than asking every hub and discarding nulls — the
+ * difference matters when the alternative is a fallback that would quietly
+ * light a non-AU city from the vacancy series instead.
+ */
+export const AU_RATE_HUBS: string[] = [
+  "sydney",
+  "melbourne",
+  "brisbane",
+  "perth",
+  "adelaide",
+  "canberra",
+  "hobart",
+  "darwin",
+];

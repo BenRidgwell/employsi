@@ -3,7 +3,13 @@ import { isReleasedPlace } from "../lib/markets";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
 import { useAppStore, cityMatchesFilters, type FilterState } from "../state/store";
-import { activeSkill, demandByCity, iviCityDemandAt, iviCityChangeAt } from "../lib/skillHeat";
+import {
+  activeSkill,
+  demandByCity,
+  iviCityDemandAt,
+  iviCityChangeAt,
+  type DemandMode,
+} from "../lib/skillHeat";
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -375,6 +381,18 @@ const PLANE_ROUTES: PlaneRoute[] = [
   { from: "dubai", to: "johannesburg", dur: 27000, offset: 0.6 },
   { from: "sanfrancisco", to: "tokyo", dur: 36000, offset: 0.15 },
 ];
+
+/**
+ * OFF FOR NOW, ON REQUEST — 2026-09-28. The container ships are not drawn; the
+ * aircraft and the trains are unchanged.
+ *
+ * Nothing below is deleted, because what it encodes is the expensive part: the
+ * lanes are hand-steered waypoint paths through real straits, and the note under
+ * this one records the three "ports" that were not ports. Re-deleting that
+ * research to re-derive it later is the trade this flag exists to avoid. Flip it
+ * to true and the ships come back exactly as they were.
+ */
+const SHOW_SHIPS: boolean = false;
 
 /**
  * Container-ship lanes, as waypoint paths through open water.
@@ -1151,6 +1169,12 @@ export function WorldMapbox() {
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
       const skill = activeSkill(s.searchQuery);
+      // What the globe is coloured BY. The Supply/Demand switch decides the
+      // dataset; the Vacancies/Per-1,000 toggle only ever describes demand, so
+      // on the supply side it is overridden rather than combined — the same
+      // rule the search box follows, so the two surfaces cannot disagree about
+      // what is being shown.
+      const heatMode: DemandMode = s.marketMode === "supply" ? "employment" : s.demandMode;
       let cityDemand = demandByCity(s.skillIndex, skill);
       // Overlay the real Jobs & Skills Australia IVI vacancy demand (whole
       // labour market, with monthly history) on top of the company/Adzuna
@@ -1165,9 +1189,23 @@ export function WorldMapbox() {
           s.domesticRegion === "asia" ||
           s.domesticRegion === "europe")
       ) {
-        const ivi = iviCityDemandAt(skill, s.heatMonth, s.demandMode);
-        cityDemand = { ...cityDemand };
-        for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
+        const ivi = iviCityDemandAt(skill, s.heatMonth, heatMode);
+        if (heatMode === "employment") {
+          // REPLACE, DO NOT ADD. `cityDemand` here is the scraped company ad
+          // count, and the line below used to sum the national series onto it —
+          // correct while both are vacancies, and a category error the moment
+          // one of them is people. Sydney would have been 454,000 employed plus
+          // a few hundred job ads, a number that is neither.
+          //
+          // So on the supply side the employment figures ARE the layer. The
+          // company signal is dropped rather than scaled in: there is no
+          // per-employer headcount behind those pins, so there is nothing
+          // honest to add.
+          cityDemand = ivi;
+        } else {
+          cityDemand = { ...cityDemand };
+          for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
+        }
       }
       const fs: FilterState = {
         searchQuery: s.searchQuery,
@@ -1203,7 +1241,7 @@ export function WorldMapbox() {
           s.domesticRegion === "asia" ||
           s.domesticRegion === "europe")
       ) {
-        const change = iviCityChangeAt(skill, s.heatMonth);
+        const change = iviCityChangeAt(skill, s.heatMonth, 12, heatMode);
         if (mode === "global") {
           // Country-level momentum: demand-weighted mean of its cities' changes,
           // so a country's ▲/▼ reflects where its volume actually sits.
@@ -1420,12 +1458,15 @@ export function WorldMapbox() {
           if (!a || !b) return [];
           return [{ mode: "plane", path: [a, b], dur: r.dur, offset: r.offset }];
         }),
-        ...SHIP_LANES.map((l): Traveler => ({
-          mode: "ship",
-          path: l.path,
-          dur: l.dur,
-          offset: l.offset,
-        })),
+        // SHIPS ARE OFF — see SHOW_SHIPS. Everything they need is still here.
+        ...(SHOW_SHIPS
+          ? SHIP_LANES.map((l): Traveler => ({
+              mode: "ship",
+              path: l.path,
+              dur: l.dur,
+              offset: l.offset,
+            }))
+          : []),
         // ONE train per run, not a coupled consist.
         //
         // This started as a locomotive plus two wagons, and there is no spacing

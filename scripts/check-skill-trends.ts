@@ -25,6 +25,13 @@ import {
 import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct } from "../src/employsi/lib/chart";
 import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
 import {
+  demandLevel,
+  iviCityChangeAt,
+  iviCityDemandAt,
+  popularSkills,
+} from "../src/employsi/lib/skillHeat";
+import { rankedByEmployment, MIN_EMPLOYED } from "../src/employsi/lib/vacancyRate";
+import {
   centreOf,
   FRAME_ASPECT,
   FRAME_FLOOR,
@@ -2062,6 +2069,106 @@ console.log("\nthe market hero's markers land on its line:");
     const i = heroIdxAt(f, 30);
     check(`pointer at ${f}: lands on a real day`, Number.isInteger(i) && i >= 0 && i <= 29, `${i}`);
   }
+}
+
+// ── the supply side's measure ───────────────────────────────────────────────
+// The Supply/Demand switch makes the skill search read EMPLOYMENT instead of
+// vacancies. Two ways that goes wrong quietly:
+//
+//   · a skill with no ABS cell falls through to the vacancy bands, and the card
+//     answers a question about job ads under a heading about people. That is
+//     the same substitution the rate branch was written to refuse.
+//   · the employment ranking comes out the same as the volume one, in which
+//     case the switch changes the wording and nothing else.
+console.log("\nthe supply side measures employment, not vacancies:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+  const emp = rankedByEmployment("national", m);
+  check("skills have an employment figure at all", emp.length > 40, `${emp.length}`);
+  // Descending, or the chip row leads with the smallest workforce in the country.
+  let ordered = true;
+  for (let i = 1; i < emp.length; i++) if (emp[i].employed > emp[i - 1].employed) ordered = false;
+  check("ranked by employment, descending", ordered);
+  check(
+    "and every figure is a real count",
+    emp.every((r) => r.employed >= MIN_EMPLOYED),
+  );
+
+  // No fall-through: a skill the ABS does not carry must say so.
+  const withFigure = new Set(emp.map((r) => r.skill));
+  const wrong: string[] = [];
+  for (const sk of ALL_SKILLS) {
+    const label = demandLevel(sk, false, null, "employment").label;
+    const says = label === "Employment unavailable";
+    if (says === withFigure.has(sk)) wrong.push(`${sk}: ${label}`);
+  }
+  check(
+    "a skill with no ABS figure is labelled unavailable, not banded",
+    wrong.length === 0,
+    wrong.slice(0, 3).join("; "),
+  );
+
+  // The two orderings have to differ, or the switch is cosmetic. They are
+  // different questions: employment leads with the biggest occupations, a
+  // vacancy count with the ones that advertise most.
+  const ctx = {
+    zoomedOut: true,
+    globalOut: false,
+    domesticRegion: "australia",
+    localCity: "perth",
+  };
+  const supply = popularSkills(null, ctx, 6, "employment");
+  const demand = popularSkills(null, ctx, 6, "volume");
+  check(
+    "supply and demand rank the chips differently",
+    supply.join() !== demand.join(),
+    supply.join(),
+  );
+
+  // ── THE TWO DATASETS DO NOT MIX ──────────────────────────────────────────
+  // The heat map reads employment on the supply side. Employment is ABS EQ08
+  // and covers the eight Australian capitals; the demand layer merges nine
+  // countries' vacancy series across fifty hubs. If one non-AU city ever
+  // appeared in the employment layer it would be a vacancy figure wearing an
+  // employment legend — and nothing on screen carries a unit, so it would look
+  // exactly like a city that employs a great many people.
+  const AU = new Set([
+    "sydney",
+    "melbourne",
+    "brisbane",
+    "perth",
+    "adelaide",
+    "canberra",
+    "hobart",
+    "darwin",
+  ]);
+  const i = IVI_MONTHS.length - 1;
+  const leaked: string[] = [];
+  const sameValue: string[] = [];
+  let anyEmployment = 0;
+  for (const sk of ["Nursing", "Software Engineering", "Retail & Customer Service", "Mining"]) {
+    const emp = iviCityDemandAt(sk, i, "employment");
+    const vol = iviCityDemandAt(sk, i, "volume");
+    anyEmployment += Object.keys(emp).length;
+    for (const city of Object.keys(emp)) if (!AU.has(city)) leaked.push(`${sk}/${city}`);
+    for (const city of Object.keys(iviCityChangeAt(sk, i, 12, "employment")))
+      if (!AU.has(city)) leaked.push(`${sk}/${city} (change)`);
+    // And where both exist they must be different numbers — identical values
+    // would mean the employment branch fell through to the vacancy series.
+    for (const city of Object.keys(emp))
+      if (vol[city] !== undefined && vol[city] === emp[city]) sameValue.push(`${sk}/${city}`);
+  }
+  check("the employment layer has figures at all", anyEmployment > 20, `${anyEmployment}`);
+  check(
+    "no non-Australian city in the employment layer",
+    leaked.length === 0,
+    leaked.slice(0, 4).join(", "),
+  );
+  check(
+    "employment values are not the vacancy values",
+    sameValue.length === 0,
+    sameValue.slice(0, 4).join(", "),
+  );
 }
 
 console.log("\nevery domestic region the ticker can scope to is nameable:");

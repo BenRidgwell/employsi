@@ -19,7 +19,13 @@ import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillCompanyMonths } from "./jobHistoryFn";
-import { rankedByRate, vacancyRate } from "./vacancyRate";
+import {
+  AU_RATE_HUBS,
+  employmentFor,
+  rankedByEmployment,
+  rankedByRate,
+  vacancyRate,
+} from "./vacancyRate";
 
 /**
  * Which question the map and the rankings are answering.
@@ -38,7 +44,16 @@ import { rankedByRate, vacancyRate } from "./vacancyRate";
  * no denominator has an unknown rate, and drawing it as cold would assert
  * slackness we have not measured.
  */
-export type DemandMode = "volume" | "rate";
+/**
+ * Which measure the skill surfaces read.
+ *
+ * "volume" and "rate" are the two readings of DEMAND — how many ads, and how
+ * many ads per 1,000 people already doing the work. "employment" is the SUPPLY
+ * side: how many people do the work at all, with no vacancy in the arithmetic.
+ * It is what the Supply/Demand switch selects, and it exists for Australia only
+ * because ABS EQ08 is the only employment-by-occupation series here.
+ */
+export type DemandMode = "volume" | "rate" | "employment";
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
 // (ONS), EU (Eurostat, by country), US (BLS OEWS × JOLTS, by metro), Hong Kong
@@ -113,6 +128,21 @@ const RATE_SORTED = Object.values(RATE_LATEST).sort((a, b) => a - b);
 const RATE_LO = qtile(RATE_SORTED, 0.34);
 const RATE_HI = qtile(RATE_SORTED, 0.67);
 
+// The same shape for the supply side: employed persons nationally at the latest
+// quarter, banded on its own distribution. Banding it against the VACANCY
+// distribution would be meaningless — the two are different units — and banding
+// it against a fixed headcount would make every band a statement about
+// Australia's occupational structure rather than about this skill's place in it.
+const EMPLOY_LATEST: Record<string, number> = Object.fromEntries(
+  rankedByEmployment("national", IVI_MONTHS[IVI_MONTHS.length - 1]).map((r) => [
+    r.skill,
+    r.employed,
+  ]),
+);
+const EMPLOY_SORTED = Object.values(EMPLOY_LATEST).sort((a, b) => a - b);
+const EMPLOY_LO = qtile(EMPLOY_SORTED, 0.34);
+const EMPLOY_HI = qtile(EMPLOY_SORTED, 0.67);
+
 export function demandLevel(
   skill: string,
   global: boolean,
@@ -122,6 +152,18 @@ export function demandLevel(
   let v: number;
   let lo: number;
   let hi: number;
+  if (mode === "employment") {
+    // NO FALL-THROUGH TO VOLUME. A skill with no ABS figure is unmeasured on
+    // the supply side, and labelling it from the vacancy buckets would answer a
+    // question about job ads under a heading about people — the same quiet
+    // substitution the rate branch below refuses. Outside Australia that is
+    // every skill, which is why the switch says so rather than showing bands.
+    const e = EMPLOY_LATEST[skill];
+    if (e === undefined) return { label: "Employment unavailable", tone: "lo" };
+    if (e >= EMPLOY_HI && EMPLOY_HI > 0) return { label: "Large workforce", tone: "hi" };
+    if (e >= EMPLOY_LO && EMPLOY_LO > 0) return { label: "Mid-sized workforce", tone: "mid" };
+    return { label: "Small workforce", tone: "lo" };
+  }
   if (!global && mode === "rate") {
     // A skill with no denominator gets no band. Falling through to the volume
     // buckets would label it from a different metric while the UI said "rate",
@@ -243,10 +285,28 @@ export function iviCityDemandAt(
   mode: DemandMode = "volume",
 ): Record<string, number> {
   if (!skill) return {};
-  const series = seriesFor(skill);
-  if (!series) return {};
   const last = IVI_MONTHS.length - 1;
   const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
+  if (mode === "employment") {
+    // EMPLOYMENT IS NOT READ FROM seriesFor, AND THAT IS THE POINT. seriesFor
+    // merges nine countries' VACANCY series; employment here is ABS EQ08 and
+    // exists for the Australian capitals only. Falling back to a vacancy figure
+    // for every other hub would light the globe from two different datasets
+    // under one legend — a Toronto coloured by job ads beside a Sydney coloured
+    // by people, with nothing on screen saying so.
+    //
+    // So this reads the supply side directly and returns ONLY the cities that
+    // have it. Everywhere else is absent, which the map draws as unlit, and
+    // unlit here means unmeasured rather than empty.
+    const out: Record<string, number> = {};
+    for (const city of AU_RATE_HUBS) {
+      const e = employmentFor(skill, city, IVI_MONTHS[i]);
+      if (e !== null) out[city] = e;
+    }
+    return out;
+  }
+  const series = seriesFor(skill);
+  if (!series) return {};
   if (mode === "rate") {
     // Only the cities that have BOTH sides appear. vacancyRate returns null for
     // a city with no ABS denominator — every non-AU hub, and the handful of
@@ -283,8 +343,31 @@ export function iviCityChangeAt(
   skill: string | null,
   monthIndex: number,
   window = 12,
+  mode: DemandMode = "volume",
 ): Record<string, number> {
   if (!skill) return {};
+  const last0 = IVI_MONTHS.length - 1;
+  if (mode === "employment") {
+    // The momentum arrow has to be measured on the same quantity the colour
+    // is. A vacancy trend drawn over an employment map is the conflation this
+    // whole branch exists to prevent — and it would be invisible, because a
+    // percentage carries no unit.
+    //
+    // ABS is quarterly, so a 12-MONTH window is four quarters and a shorter one
+    // may be zero quarters wide. employmentFor resolves each month to the
+    // quarter containing it; when both ends land in the same quarter the change
+    // is a true 0 and says so rather than being suppressed.
+    const i0 = monthIndex < 0 || monthIndex > last0 ? last0 : monthIndex;
+    const b0 = Math.max(0, i0 - window);
+    const out: Record<string, number> = {};
+    for (const city of AU_RATE_HUBS) {
+      const base = employmentFor(skill, city, IVI_MONTHS[b0]);
+      const cur = employmentFor(skill, city, IVI_MONTHS[i0]);
+      if (base === null || cur === null || base <= 0) continue;
+      out[city] = ((cur - base) / base) * 100;
+    }
+    return out;
+  }
   const series = seriesFor(skill);
   if (!series) return {};
   const last = IVI_MONTHS.length - 1;
@@ -464,6 +547,10 @@ export function popularSkills(
       // ordering rather than being silently left in a mode they cannot honour.
       if (mode === "rate") {
         const ranked = rankedByRate("national", IVI_MONTHS[IVI_MONTHS.length - 1]);
+        if (ranked.length) return ranked.slice(0, n).map((r) => r.skill);
+      }
+      if (mode === "employment") {
+        const ranked = rankedByEmployment("national", IVI_MONTHS[IVI_MONTHS.length - 1]);
         if (ranked.length) return ranked.slice(0, n).map((r) => r.skill);
       }
       return IVI_SKILLS.slice(0, n);
