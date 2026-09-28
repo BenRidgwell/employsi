@@ -10,7 +10,7 @@ Only keeps figures dated in the last ~2 filing years so stale entries are
 dropped rather than shown wrong. Companies not resolved keep their existing
 fallback figure in the card (buildPanel).
 """
-import re, json, time, urllib.request
+import re, json, sys, time, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/companyHeadcount.ts'
@@ -381,12 +381,36 @@ SENT = re.compile(
     r'(?:(increased|decreased) by ([\d,]+) or (-?[\d.]+)%|(did not change|remained))', re.I)
 
 
+FETCH_FAILED = {}          # url -> why, for the run report
+
+
 def fetch(url):
-    try:
-        return urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent': UA}),
-                                      timeout=25).read().decode('utf-8', 'replace')
-    except Exception:
-        return ''
+    """The page, or '' — and a reason recorded when '' means a failure.
+
+    `except Exception: return ''` HID A REAL FAILURE BEHIND A REAL ANSWER. A
+    timeout, a 403, a reset and a company the aggregator does not cover all
+    produced the same empty string, which parse() turns into None, which main()
+    treats as "no data for this company" — and main() builds its dict from
+    scratch, so the row is simply dropped and the card goes blank.
+
+    Measured 2026-09-28: in one pass BHP returned 90,625 bytes and Rio Tinto
+    returned 0, seconds apart. Rio Tinto is filed at 56,865 and is not a
+    coverage gap; that run would have deleted it. One retry is cheap against a
+    host being fetched 155 times in a row, and what survives a retry is recorded
+    rather than swallowed.
+    """
+    err = None
+    for attempt in (1, 2):
+        try:
+            return urllib.request.urlopen(
+                urllib.request.Request(url, headers={'User-Agent': UA}),
+                timeout=25).read().decode('utf-8', 'replace')
+        except Exception as e:                                    # noqa: BLE001
+            err = f'{type(e).__name__}: {e}'
+            if attempt == 1:
+                time.sleep(3)
+    FETCH_FAILED[url] = err
+    return ''
 
 
 def parse_table(h):
@@ -446,8 +470,36 @@ def short(asof):
     return f'{m.group(1)[:3]} {m.group(2)}' if m else asof
 
 
+def read_existing():
+    """The rows already in the generated file, so a run cannot silently lose one.
+
+    gen-gov-workforce.py has had this for a while and this generator never did,
+    which is the whole reason a flaky fetch could delete a card. Same idea, same
+    reason: what a run failed to READ is not the same as what the source stopped
+    REPORTING, and only the first should ever be kept.
+    """
+    try:
+        txt = open(OUT, encoding='utf-8').read()
+    except OSError:
+        return {}
+    rows = {}
+    for m in re.finditer(r"^  '([^']+)': \{ (.+?) \},?$", txt, re.M):
+        body = {}
+        # THE EMITTER WRITES STRINGS IN SINGLE QUOTES — `asof: 'Jun 2026'` — so a
+        # double-quote-only pattern parsed every row and silently dropped its
+        # DATE, which the emitter then needs back. Both quotes are accepted.
+        for k, v in re.findall(r'''(\w+): ("[^"]*"|'[^']*'|null|-?[\d.]+)''', m.group(2)):
+            body[k] = (None if v == 'null'
+                       else v[1:-1] if v[:1] in '"\''
+                       else float(v))
+        if 'now' in body and body.get('asof'):
+            rows[m.group(1)] = body
+    return rows
+
+
 def main():
     data = {}
+    existing = read_existing()
     for cid, tk in {**ASX, **NZ_VIA_ASX}.items():
         r = parse(fetch(f'https://stockanalysis.com/quote/asx/{tk}/employees/'))
         if (not r or r['yr'] < MIN_YEAR) and cid in US:
@@ -481,6 +533,33 @@ def main():
             print(f'  own report: {cid} -> {data[cid]["now"]:,} as at {spec["asof"]}')
         except Exception as e:                                    # noqa: BLE001
             print(f'  own report FAILED for {cid}: {type(e).__name__}: {e}')
+
+    # A ROW THIS RUN DID NOT PRODUCE IS KEPT, NOT DROPPED — and the run says
+    # which, because for this source "nothing came back" is far more often a
+    # flaky fetch than a company that stopped being covered. Dropping it silently
+    # is how a filed card goes blank with nothing to read about it.
+    kept = sorted(cid for cid in existing if cid not in data)
+    if kept:
+        failed_for = {c for c in kept
+                      if any(f'/{ (ASX.get(c) or NZ_VIA_ASX.get(c) or US.get(c) or "?") }/' in u
+                             for u in FETCH_FAILED)}
+        print(f'\n  KEPT {len(kept)} row(s) the fetch did not return this run '
+              f'(the previous reading stands):', file=sys.stderr)
+        for cid in kept:
+            was = existing[cid]
+            why = 'the fetch FAILED' if cid in failed_for else 'the page had no usable table'
+            print(f'      {cid}  (was {int(was["now"]):,} as at {was.get("asof")}) — {why}',
+                  file=sys.stderr)
+        for cid in kept:
+            data[cid] = {k: v for k, v in existing[cid].items()}
+            data[cid]['now'] = int(existing[cid]['now'])
+            if existing[cid].get('prev') is not None:
+                data[cid]['prev'] = int(existing[cid]['prev'])
+            data[cid]['span'] = int(existing[cid].get('span') or 0)
+    if FETCH_FAILED:
+        print(f'\n  {len(FETCH_FAILED)} fetch(es) failed outright this run:', file=sys.stderr)
+        for u, why in list(FETCH_FAILED.items())[:12]:
+            print(f'      {u.rsplit("/quote/", 1)[-1][:40]}  {why[:70]}', file=sys.stderr)
 
     L = [
         '// GENERATED — do not edit by hand. Run scripts/gen-headcount.py.',
