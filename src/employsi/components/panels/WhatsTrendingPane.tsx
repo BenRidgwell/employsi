@@ -21,6 +21,7 @@ import { CardLoader } from "./CardLoader";
 import { CITY_CONTINENT } from "../../data/geo";
 import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 function ViewedIcon({ kind }: { kind: ViewedItem["kind"] | "city" }) {
   const c = {
@@ -181,6 +182,8 @@ export function WhatsTrendingPane() {
   // the local view too, where the old `zoomedOut` gate left it silently closed.
   const open = trendingOpen;
   const dragRef = useDraggablePane<HTMLElement>(open);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, closeTrending, ".trendpane");
 
   // WHICH AREA THE PANE IS ABOUT — the one the map is currently showing.
   //
@@ -321,7 +324,6 @@ export function WhatsTrendingPane() {
 
   return (
     <>
-      {open && <div className="panescrim" onClick={closeTrending} />}
       <aside
         className={`briefpane trendpane ${open ? "open" : ""}`}
         aria-hidden={!open}
