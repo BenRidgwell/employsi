@@ -17768,7 +17768,11 @@ body {
 .mk-company.nofig .mkbody {
   background: transparent;
   border: 1.5px dashed #c4c4cc;
-  box-shadow: none;
+  /* Drops the drop shadow — an outline should not sit on the map like a solid
+     object — but KEEPS the inset ring, which is the selected state. A plain
+     `box-shadow: none` here would make a company with no filed figure the one
+     company on the map that cannot be seen to be selected. */
+  box-shadow: inset 0 0 0 calc(var(--sel, 0) * 2px) #1c1c1e;
 }
 .mk-company.nofig .mklogo {
   opacity: 0.32;
