@@ -763,6 +763,18 @@ NOT_IN_SOURCE = {
     # These are the others among the twelve that carry 82% of the route's ads,
     # and each of these reasons is a measurement rather than "no source row", so
     # the next pass starts from what was already established.
+    'nsw:Museum of Applied Arts and Sciences':
+        'its 2024-25 annual report exists and only the BLOCKED host has it. '
+        'Measured 2026-09-28: parliament.nsw.gov.au/tp/files/192296 carries the '
+        '"2024-25 Powerhouse Museum Annual Report", and that host cannot be read '
+        'from here (120 s of warmed browser still on the interstitial). Its own '
+        'site does not publish it — powerhouse.com.au/about renders 334,018 bytes '
+        'unchallenged with no PDF at all and links nothing annual; /governance '
+        'renders 433,385 bytes and holds exactly ONE PDF, which was opened and is '
+        'a 2021 Indigenous Cultural and Intellectual Property protocol, not a '
+        'report. maas.museum/about/annual-reports renders with no links and '
+        'powerhouse.com.au/about/annual-reports 404s. So the document is real, '
+        'its location is known, and no copy of it is reachable',
     'nsw:Sydney Trains':
         'its 2024-25 annual report downloads and BOTH volumes were read (72 + 80 '
         'pages, 2026-09-27): neither carries an employee-count table. The '
@@ -2801,6 +2813,37 @@ NSW_AGENCY_REPORTS = {
     # workforce; the volunteer membership is reported separately and grew 6.4%
     # over the same year. A card reading 628 is not the size of the NSW SES as the
     # public meets it, and that is the honest figure for an EMPLOYER card.
+    # 18 on the ranking, and the fourth of six listing paths I guessed to 404 or
+    # reset before a search found the real one. ombo.nsw.gov.au answers a
+    # connection reset to a plain fetch and serves its reports from a separate CMS
+    # asset host, cmsassets.ombo.nsw.gov.au.
+    #
+    # p65 states it in PROSE and nowhere in a table: "As at 30 June 2025, our
+    # workforce consisted of 259 people (250.1 full-time equivalent staff levels)."
+    # So the total row here is a sentence, and both numbers come off it — the head
+    # count is taken and the FTE is the second.
+    #
+    # NO PRIOR YEAR, DELIBERATELY. p81 carries "FTE 233.6 250.1" as the denominator
+    # of a workers-compensation rate, which would give a two-year FTE comparison —
+    # but its column labels were not established, and a 7% change built on an
+    # assumed column order is the failure this file keeps recording. The head count
+    # has no comparator stated anywhere, so the card shows a level and no change.
+    #
+    # The basis is asserted rather than the number: staff "employed under the
+    # provisions of the Government Sector Employment Act 2013", which is the same
+    # scope the Electoral Commission's table uses.
+    'nsw-ombo': dict(
+        label='NSW: Ombudsman',
+        agency='NSW Ombudsman',
+        agency_id='nsw-gov-nsw-ombudsman',
+        url='https://cmsassets.ombo.nsw.gov.au/assets/Reports/'
+            'NSW-Ombudsman-Annual-Report-2024-25.pdf',
+        warm='https://www.ombo.nsw.gov.au/',
+        needle='our workforce consisted of',
+        total=r'^As at 30 June 2025, our workforce consisted of',
+        ncols=2, now_i=0, prev_i=None,
+        proof=r'employed under the provisions of the Government Sector Employment Act',
+        unit='headcount', asof='Jun 2025'),
     'nsw-ses': dict(
         label='NSW: State Emergency Service',
         agency='NSW State Emergency Service',
