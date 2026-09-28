@@ -6,6 +6,7 @@
 // Sources, as at the run that produced this file:
 //   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-28
 //   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-28
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-28
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
@@ -19,6 +20,7 @@
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
+//   NSW: Art Gallery of NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   NSW: Multicultural NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   NSW: Ombudsman: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
@@ -32,7 +34,6 @@
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-28
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-28
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
@@ -87,6 +88,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "aps-national-library-of-australia": { now: 453, prev: 459, yoy: -1.3, asof: "Dec 2025", span: 1 },
   "aps-safe-work-australia": { now: 123, prev: 109, yoy: 12.8, asof: "Dec 2025", span: 1 },
   "aps-services-australia": { now: 34026, prev: 35038, yoy: -2.9, asof: "Dec 2025", span: 1 },
+  "nsw-gov-art-gallery-of-new-south-wales": { now: 583, prev: 572, yoy: 1.9, asof: "Jun 2024", span: 1 },
   "nsw-gov-australian-museum": { now: 347, prev: 319, yoy: 8.8, asof: "Jun 2025", span: 1 },
   "nsw-gov-cancer-institute-nsw": { now: 286, prev: 279, yoy: 2.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-clinical-excellence-commission": { now: 131, prev: 144, yoy: -9.0, asof: "Jun 2025", span: 1, unit: "fte" },
