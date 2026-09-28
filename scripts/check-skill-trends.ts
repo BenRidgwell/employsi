@@ -24,7 +24,12 @@ import {
 } from "../src/employsi/lib/jobHistoryFn";
 import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct } from "../src/employsi/lib/chart";
 import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
-import { demandLevel, popularSkills } from "../src/employsi/lib/skillHeat";
+import {
+  demandLevel,
+  iviCityChangeAt,
+  iviCityDemandAt,
+  popularSkills,
+} from "../src/employsi/lib/skillHeat";
 import { rankedByEmployment, MIN_EMPLOYED } from "../src/employsi/lib/vacancyRate";
 import {
   centreOf,
@@ -2118,6 +2123,51 @@ console.log("\nthe supply side measures employment, not vacancies:");
     "supply and demand rank the chips differently",
     supply.join() !== demand.join(),
     supply.join(),
+  );
+
+  // ── THE TWO DATASETS DO NOT MIX ──────────────────────────────────────────
+  // The heat map reads employment on the supply side. Employment is ABS EQ08
+  // and covers the eight Australian capitals; the demand layer merges nine
+  // countries' vacancy series across fifty hubs. If one non-AU city ever
+  // appeared in the employment layer it would be a vacancy figure wearing an
+  // employment legend — and nothing on screen carries a unit, so it would look
+  // exactly like a city that employs a great many people.
+  const AU = new Set([
+    "sydney",
+    "melbourne",
+    "brisbane",
+    "perth",
+    "adelaide",
+    "canberra",
+    "hobart",
+    "darwin",
+  ]);
+  const i = IVI_MONTHS.length - 1;
+  const leaked: string[] = [];
+  const sameValue: string[] = [];
+  let anyEmployment = 0;
+  for (const sk of ["Nursing", "Software Engineering", "Retail & Customer Service", "Mining"]) {
+    const emp = iviCityDemandAt(sk, i, "employment");
+    const vol = iviCityDemandAt(sk, i, "volume");
+    anyEmployment += Object.keys(emp).length;
+    for (const city of Object.keys(emp)) if (!AU.has(city)) leaked.push(`${sk}/${city}`);
+    for (const city of Object.keys(iviCityChangeAt(sk, i, 12, "employment")))
+      if (!AU.has(city)) leaked.push(`${sk}/${city} (change)`);
+    // And where both exist they must be different numbers — identical values
+    // would mean the employment branch fell through to the vacancy series.
+    for (const city of Object.keys(emp))
+      if (vol[city] !== undefined && vol[city] === emp[city]) sameValue.push(`${sk}/${city}`);
+  }
+  check("the employment layer has figures at all", anyEmployment > 20, `${anyEmployment}`);
+  check(
+    "no non-Australian city in the employment layer",
+    leaked.length === 0,
+    leaked.slice(0, 4).join(", "),
+  );
+  check(
+    "employment values are not the vacancy values",
+    sameValue.length === 0,
+    sameValue.slice(0, 4).join(", "),
   );
 }
 

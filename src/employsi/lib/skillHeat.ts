@@ -19,7 +19,13 @@ import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillCompanyMonths } from "./jobHistoryFn";
-import { rankedByEmployment, rankedByRate, vacancyRate } from "./vacancyRate";
+import {
+  AU_RATE_HUBS,
+  employmentFor,
+  rankedByEmployment,
+  rankedByRate,
+  vacancyRate,
+} from "./vacancyRate";
 
 /**
  * Which question the map and the rankings are answering.
@@ -279,10 +285,28 @@ export function iviCityDemandAt(
   mode: DemandMode = "volume",
 ): Record<string, number> {
   if (!skill) return {};
-  const series = seriesFor(skill);
-  if (!series) return {};
   const last = IVI_MONTHS.length - 1;
   const i = monthIndex < 0 || monthIndex > last ? last : monthIndex;
+  if (mode === "employment") {
+    // EMPLOYMENT IS NOT READ FROM seriesFor, AND THAT IS THE POINT. seriesFor
+    // merges nine countries' VACANCY series; employment here is ABS EQ08 and
+    // exists for the Australian capitals only. Falling back to a vacancy figure
+    // for every other hub would light the globe from two different datasets
+    // under one legend — a Toronto coloured by job ads beside a Sydney coloured
+    // by people, with nothing on screen saying so.
+    //
+    // So this reads the supply side directly and returns ONLY the cities that
+    // have it. Everywhere else is absent, which the map draws as unlit, and
+    // unlit here means unmeasured rather than empty.
+    const out: Record<string, number> = {};
+    for (const city of AU_RATE_HUBS) {
+      const e = employmentFor(skill, city, IVI_MONTHS[i]);
+      if (e !== null) out[city] = e;
+    }
+    return out;
+  }
+  const series = seriesFor(skill);
+  if (!series) return {};
   if (mode === "rate") {
     // Only the cities that have BOTH sides appear. vacancyRate returns null for
     // a city with no ABS denominator — every non-AU hub, and the handful of
@@ -319,8 +343,31 @@ export function iviCityChangeAt(
   skill: string | null,
   monthIndex: number,
   window = 12,
+  mode: DemandMode = "volume",
 ): Record<string, number> {
   if (!skill) return {};
+  const last0 = IVI_MONTHS.length - 1;
+  if (mode === "employment") {
+    // The momentum arrow has to be measured on the same quantity the colour
+    // is. A vacancy trend drawn over an employment map is the conflation this
+    // whole branch exists to prevent — and it would be invisible, because a
+    // percentage carries no unit.
+    //
+    // ABS is quarterly, so a 12-MONTH window is four quarters and a shorter one
+    // may be zero quarters wide. employmentFor resolves each month to the
+    // quarter containing it; when both ends land in the same quarter the change
+    // is a true 0 and says so rather than being suppressed.
+    const i0 = monthIndex < 0 || monthIndex > last0 ? last0 : monthIndex;
+    const b0 = Math.max(0, i0 - window);
+    const out: Record<string, number> = {};
+    for (const city of AU_RATE_HUBS) {
+      const base = employmentFor(skill, city, IVI_MONTHS[b0]);
+      const cur = employmentFor(skill, city, IVI_MONTHS[i0]);
+      if (base === null || cur === null || base <= 0) continue;
+      out[city] = ((cur - base) / base) * 100;
+    }
+    return out;
+  }
   const series = seriesFor(skill);
   if (!series) return {};
   const last = IVI_MONTHS.length - 1;

@@ -246,3 +246,21 @@ export function rankedByEmployment(
   }
   return out.sort((a, b) => b.employed - a.employed);
 }
+
+/**
+ * The hubs ABS EQ08 covers: the eight Australian capitals, one per state and
+ * territory. Exported because the supply-side map has to iterate the cities it
+ * CAN answer for rather than asking every hub and discarding nulls — the
+ * difference matters when the alternative is a fallback that would quietly
+ * light a non-AU city from the vacancy series instead.
+ */
+export const AU_RATE_HUBS: string[] = [
+  "sydney",
+  "melbourne",
+  "brisbane",
+  "perth",
+  "adelaide",
+  "canberra",
+  "hobart",
+  "darwin",
+];
