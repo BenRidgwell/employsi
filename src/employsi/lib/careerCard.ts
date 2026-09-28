@@ -198,15 +198,12 @@ export interface CareerCardModel {
 const trackLabel = (p: CareerPathways, family: string, track: string) =>
   p.families.find((f) => f.id === family)?.tracks.find((t) => t.id === track)?.label ?? track;
 
-function describe(n: PathwayNode, m: PathwayMarket, country: string, days: number): string {
-  const others = n.titles
-    .slice(1, 3)
-    .map(([t]) => displayTitle(t))
-    .filter(Boolean);
-  const also = others.length ? ` Also advertised as ${others.join(" and ")}.` : "";
+/** The line under the role's title. No "Also advertised as …" — removed
+ *  2026-09-27; the other titles are still on the model as `alsoTitled`. */
+function describe(m: PathwayMarket, country: string, days: number): string {
   return (
     `Advertised by ${num(m.employers)} employer${m.employers === 1 ? "" : "s"} in ` +
-    `${countryName(country)} over the last ${days} days.${also}`
+    `${countryName(country)} over the last ${days} days.`
   );
 }
 
@@ -251,6 +248,9 @@ export function careerCard(
   family: string,
   country: string,
   skill?: string | null,
+  /** A specialism to show beside the core regardless of any skill — how the
+   *  profile's "View pathway" opens a goal that sits on a specialist lane. */
+  lane?: string | null,
 ): CareerCardModel | null {
   const fam = p.families.find((f) => f.id === family);
   if (!fam) return null;
@@ -261,7 +261,12 @@ export function careerCard(
   // first track (in the family's own order) that does.
   const tracks = fam.tracks.map((t) => t.id).filter((t) => all.some((n) => n.track === t));
   const core = tracks[0];
-  const lateral = skill ? laneForSkill(p, family, country, skill, core) : null;
+  const lateral =
+    lane && lane !== core && tracks.includes(lane)
+      ? lane
+      : skill
+        ? laneForSkill(p, family, country, skill, core)
+        : null;
   const order = lateral ? [core, lateral] : [core];
   const here = all.filter((n) => order.includes(n.track));
   const rowOf = new Map(order.map((t, i) => [t, i]));
@@ -287,7 +292,7 @@ export function careerCard(
       lat: row > 0,
       title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[n.rung]),
       alsoTitled: n.titles.slice(1, 4).map(([x]) => displayTitle(x)),
-      desc: describe(n, m, country, days),
+      desc: describe(m, country, days),
       stageOf:
         row === 0
           ? `STAGE ${n.rung} OF 6 · ${RUNG_LABEL[n.rung].toUpperCase()}`
@@ -419,4 +424,59 @@ export function familyForSkill(
     if (v > b || (v === b && f === current)) best = f;
   }
   return best;
+}
+
+// ── Career goal ──────────────────────────────────────────────────────────────
+
+/** What the profile shows for a saved career goal. */
+export interface CareerGoalSummary {
+  id: string;
+  family: string;
+  familyLabel: string;
+  track: string;
+  rung: Rung;
+  title: string;
+  /** "STAGE 3 OF 6 · SENIOR / PARTNER" on the core; "SPECIALIST · …" off it. */
+  stageOf: string;
+  payLabel: string;
+  /** Live roles in this market. */
+  ads: number;
+  employers: number;
+}
+
+/**
+ * A saved goal ("family|track|rung") read against the CURRENT pathways data,
+ * so the profile's pay and ad figures are tonight's, not the day it was set.
+ * Null when the rung is not published in this market any more — too few roles
+ * this window — and the profile says so rather than showing a stale figure.
+ */
+export function careerGoalSummary(
+  p: CareerPathways,
+  id: string,
+  country: string,
+): CareerGoalSummary | null {
+  const [family, track, rungS] = id.split("|");
+  const rung = Number(rungS) as Rung;
+  const n = p.nodes.find((x) => x.family === family && x.track === track && x.rung === rung);
+  const m = n?.markets[country];
+  if (!n || !m) return null;
+  const fam = p.families.find((f) => f.id === family);
+  const core = fam?.tracks.find((t) =>
+    p.nodes.some((x) => x.family === family && x.track === t.id && x.markets[country]),
+  )?.id;
+  return {
+    id,
+    family,
+    familyLabel: fam?.label ?? family,
+    track,
+    rung,
+    title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[rung]),
+    stageOf:
+      track === core
+        ? `STAGE ${rung} OF 6 · ${RUNG_LABEL[rung].toUpperCase()}`
+        : `SPECIALIST · ${trackLabel(p, family, track).toUpperCase()}`,
+    payLabel: payLabel(n.pay[country]?.median ?? null, country),
+    ads: m.live,
+    employers: m.employers,
+  };
 }

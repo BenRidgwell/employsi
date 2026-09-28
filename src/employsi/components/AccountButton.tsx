@@ -6,6 +6,7 @@ import { signOut as authSignOut } from "../lib/authClient";
 import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
+import { CareerGoalBlock } from "./CareerGoalBlock";
 
 /**
  * The account popout, built from `Account_Popouts.html`.
@@ -28,6 +29,11 @@ import { cityForCompany } from "../data/mapboxGeo";
  * Both menu rows are live: Alerts opens the bell's panel (which is why its
  * `open` state moved into the store — see state/store.ts), Settings opens the
  * settings card. Neither is decoration.
+ *
+ * THE CAREER GOAL is the role set with "Set as goal?" on the Career pathways
+ * map. Only its id is stored (followsFn's `kind 'goal'` row); the title, stage,
+ * median pay and live ads are read from tonight's pathways data every time the
+ * card shows it, so the figures are current rather than the day it was set.
  */
 
 const IconBell = () => (
@@ -121,6 +127,7 @@ export function AccountButton() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const openAlerts = useAppStore((s) => s.openAlerts);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
+  const pendingCareerGoal = useAppStore((s) => s.pendingCareerGoal);
 
   /** Which counter is expanded, if any. Null is the design's default state. */
   const [openList, setOpenList] = useState<"companies" | "skills" | null>(null);
@@ -196,6 +203,8 @@ export function AccountButton() {
                 </button>
               ))}
             </div>
+
+            <CareerGoalBlock onLeave={closeAuth} />
 
             {isEmpty && (
               <div className="accempty">Follow a skill or a company and it will be saved here.</div>
@@ -289,6 +298,11 @@ export function AccountButton() {
                 </span>
               </span>
             </div>
+            {pendingCareerGoal && !pending && (
+              <div className="accpending">
+                Sign in to save <b>{pendingCareerGoal.title}</b> as your career goal.
+              </div>
+            )}
             {pending && (
               <div className="accpending">
                 Sign in to save <b>{pending.name}</b> to your favourites.

@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { smoothPath } from "../../lib/chart";
+import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct, smoothPath } from "../../lib/chart";
+
 import { MARKET_WINDOWS, type SkillMarket } from "../../lib/jobHistoryFn";
 import { ChartTooltip } from "./ChartTooltip";
 
-const W = 320;
+/**
+ * The plot's x axis, from lib/chart so it can be asserted — the note there has
+ * the bug it was pulled out for. `W` is the line's span, `PAD` the inset at
+ * each end that gives the last marker somewhere to sit inside a plot that
+ * clips, and `VB_W` the widened box both the path and the overlays measure
+ * against.
+ */
+const W = HERO_W;
+const PAD = HERO_PAD;
+const VB_W = HERO_VB_W;
+
 /** The line's band. The viewBox runs to BASE so the fill carries on below the
  *  lowest point and out of the card, leaving the strip the period tabs sit on. */
 const TOP = 30;
@@ -142,21 +153,32 @@ export function MarketHero({
     const line = smoothPath(pts);
     const hiAt = series.indexOf(hi);
     const loAt = series.indexOf(lo);
-    // Percentages, because the SVG is stretched to the card's width and the
-    // overlays are HTML sitting on top of it — and clamped, because the plot
-    // bleeds to the card's edges and a ring centred on day one or on the last
-    // day would otherwise be sliced in half by overflow:hidden.
-    const px = (i: number) =>
-      `min(calc(100% - 10px), max(10px, ${(i / Math.max(1, n - 1)) * 100}%))`;
+    /**
+     * Where day `i` sits across the plot, as a percentage of the widened box.
+     *
+     * THE ONE X MAPPING. The SVG is stretched to the card's width and the
+     * markers are HTML on top of it, so the only way the two can agree is for
+     * both to be the same fraction of the same box. Every overlay goes through
+     * this — the rings, the callout's anchor and the scrub tooltip — and the
+     * guide line uses the viewBox coordinate it is derived from.
+     */
+    const fx = (i: number) => heroPct(i, n);
+    const px = (i: number) => `${fx(i)}%`;
+    // The FILL still bleeds to the card's edges, which is what gives the card
+    // its wash; only the line is inset. So the area runs flat out to the padded
+    // edge at the height of the first and last readings rather than following
+    // the line's own end, which would cut a diagonal notch into both corners.
+    const flatIn = `M ${-PAD} ${y(series[0]).toFixed(2)} ${line.replace(/^M/, "L")}`;
     return {
       line,
-      area: `${line} L ${W} ${BASE} L 0 ${BASE} Z`,
+      area: `${flatIn} L ${W + PAD} ${y(series[n - 1]).toFixed(2)} L ${W + PAD} ${BASE} L ${-PAD} ${BASE} Z`,
       hiAt,
       loAt,
       hi,
       lo,
       lastVal: series[n - 1],
       px,
+      fx,
       y,
       flat: hi === lo,
     };
@@ -239,12 +261,17 @@ export function MarketHero({
             const n = series.length;
             if (n < 2) return;
             const r = e.currentTarget.getBoundingClientRect();
-            const f = (e.clientX - r.left) / r.width;
-            setIdx(Math.max(0, Math.min(n - 1, Math.round(f * (n - 1)))));
+            // Back through the same inset the line is drawn with: the pointer's
+            // fraction of the PLOT is a fraction of the widened box, and the
+            // days occupy 0..W inside it. Reading it as the day fraction
+            // directly — which is what this did — put the cursor up to half a
+            // day off, and off in the direction that makes the first and last
+            // days hardest to land on.
+            setIdx(heroIdxAt((e.clientX - r.left) / r.width, n));
           }}
           onMouseLeave={() => setIdx(null)}
         >
-          <svg viewBox={`0 0 ${W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
+          <svg viewBox={`${-PAD} 0 ${VB_W} ${BASE}`} preserveAspectRatio="none" aria-hidden="true">
             <defs>
               <linearGradient id="mkheroFill" x1="0" y1="0" x2="0" y2="1">
                 {/* currentColor, set on the svg by .mkhero.up / .mkhero.down,
@@ -315,7 +342,12 @@ export function MarketHero({
                   most likely to scrub to. */}
               <ChartTooltip
                 boxRef={plotRef}
-                leftPct={(idx / Math.max(1, series.length - 1)) * 100}
+                /* The same mapping the ring beside it uses. It was the raw
+                   day fraction, which agreed with the line but not with the
+                   marker — so on the first and last day the tooltip pointed
+                   at a slightly different place from the ring it belonged
+                   to. */
+                leftPct={geom.fx(idx)}
                 topPct={(geom.y(series[idx]) / BASE) * 100}
               >
                 {/* The date is shown only when the series and the day list are

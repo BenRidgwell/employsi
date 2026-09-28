@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 270 of 859 Australian roster companies
-//        (249 matched on the group name, 21 on the employer name).
+// Filed: 281 of 859 Australian roster companies
+//        (260 matched on the group name, 21 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -72,6 +72,8 @@
 //   priv-meriton
 //   priv-midfield
 //   priv-minterellison
+//   priv-nepean-consolidated
+//   priv-nrma-motoring-services
 //   priv-perth-airport
 //   priv-raa
 //   priv-rac-of-wa
@@ -95,6 +97,8 @@
 //   sydney-eos
 //   sydney-evn
 //   sydney-evt
+//   sydney-llc
+//   sydney-nhf
 //   sydney-org
 //   sydney-ppt
 //   sydney-qub
@@ -164,6 +168,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "melbourne-reg": { now: 11938, prev: 10161, yoy: 17.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Regis Healthcare Limited
   "melbourne-sek": { now: 1596, prev: 1732, yoy: -7.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Seek Limited
   "melbourne-sig": { now: 859, prev: 809, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Sigma Healthcare Limited
+  "melbourne-tah": { now: 2354, prev: 2829, yoy: -16.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Tabcorp Holdings Limited
   "melbourne-tlc": { now: 902, prev: 840, yoy: 7.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: THE LOTTERY CORPORATION LIMITED
   "melbourne-tls": { now: 26557, prev: 26557, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Telstra Group Limited
   "min": { now: 6852, prev: 8061, yoy: -15.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mineral Resources Limited
@@ -246,9 +251,11 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-minterellison": { now: 2283, prev: 2283, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: MinterEllison
   "priv-mort-co": { now: 270, prev: 262, yoy: 3.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mort & Co Ltd
   "priv-mpc-kinetic": { now: 855, prev: 754, yoy: 13.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mpc Kinetic Holdings Limited
+  "priv-nepean-consolidated": { now: 1255, prev: 1255, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Nepean No1 Pty Ltd
   "priv-newcastle-greater-mutual-group": { now: 1840, prev: 1818, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Newcastle Greater Mutual Group Ltd
   "priv-nhp-electrical-engineering-products": { now: 659, prev: 718, yoy: -8.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: N.H.P. Electrical Engineering Products Proprietary Limited
   "priv-norco-co-op": { now: 776, prev: 792, yoy: -2.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Norco Co-Operative Limited
+  "priv-nrma-motoring-services": { now: 3282, prev: 3282, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: National Roads And Motorists' Association Limited
   "priv-pallion": { now: 327, prev: 403, yoy: -18.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Pallion Hr Pty Ltd
   "priv-patterson-cheney": { now: 690, prev: 656, yoy: 5.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Patterson Cheney Pty. Ltd.
   "priv-people-first-bank": { now: 2056, prev: 2110, yoy: -2.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Heritage and People's Choice Limited
@@ -261,6 +268,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-racq": { now: 2743, prev: 2703, yoy: 1.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Racq Operations Pty Ltd
   "priv-racv": { now: 4105, prev: 4105, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Royal Automobile Club Of Victoria (Racv) Limited
   "priv-richard-crookes-constructions": { now: 652, prev: 720, yoy: -9.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Richard Crookes Constructions Pty. Limited
+  "priv-ritchies-supa-iga": { now: 7418, prev: 5974, yoy: 24.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Ritchies Stores Proprietary Limited
   "priv-salvation-army-australia": { now: 9870, prev: 9555, yoy: 3.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For The Salvation Army (Victoria) Property Trust
   "priv-san-remo": { now: 339, prev: 339, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: San Remo Macaroni Company Pty Ltd
   "priv-sarah-group": { now: 194, prev: 207, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Sarah Constructions Pty Ltd
@@ -269,6 +277,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-st-vincent-de-paul": { now: 746, prev: 879, yoy: -15.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: St Vincent de Paul Society Victoria
   "priv-st-vincent-s-health-australia": { now: 23491, prev: 23178, yoy: 1.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: St Vincent's Health Australia Ltd
   "priv-stowe-australia": { now: 1658, prev: 1404, yoy: 18.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Stowe Australia Pty Limited
+  "priv-sunny-queen-farms": { now: 296, prev: 207, yoy: 43.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Sunny Queen Australia Pty Ltd
   "priv-sunpork-group": { now: 1496, prev: 1327, yoy: 12.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Sunpork Pty Ltd
   "priv-suttons-motors": { now: 1312, prev: 1312, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Suttons Investments Pty Limited
   "priv-swift-holdings-investments": { now: 1988, prev: 1988, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: SWIFT HOLDINGS INVESTMENTS PTY LTD
@@ -300,6 +309,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "sydney-all": { now: 979, prev: 976, yoy: 0.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Aristocrat Leisure Limited
   "sydney-amp": { now: 2057, prev: 2310, yoy: -11.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: AMP Limited
   "sydney-apa": { now: 2828, prev: 2745, yoy: 3.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: APA Group Limited
+  "sydney-ask": { now: 456, prev: 441, yoy: 3.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Abacus Storage Operations Limited
   "sydney-asx": { now: 1283, prev: 1106, yoy: 16.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: ASX Limited
   "sydney-aub": { now: 1519, prev: 1519, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: AUB Group Limited
   "sydney-bga": { now: 3595, prev: 3595, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Bega Cheese Limited
@@ -314,12 +324,16 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "sydney-eos": { now: 295, prev: 295, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Electro Optic Systems Holdings Limited
   "sydney-evn": { now: 2529, prev: 2529, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Evolution Mining Limited
   "sydney-evt": { now: 5349, prev: 5349, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: EVT Limited
+  "sydney-gpt": { now: 671, prev: 670, yoy: 0.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: GPT Management Holdings Limited
   "sydney-iag": { now: 9156, prev: 9804, yoy: -6.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Insurance Australia Group Limited
+  "sydney-llc": { now: 3097, prev: 3097, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Lendlease Corporation Limited
   "sydney-lnw": { now: 292, prev: 316, yoy: -7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Light & Wonder, Inc
   "sydney-mfg": { now: 109, prev: 124, yoy: -12.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Magellan Financial Group Ltd
   "sydney-mgr": { now: 1647, prev: 1735, yoy: -5.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Mirvac Limited
   "sydney-mqg": { now: 9376, prev: 9954, yoy: -5.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Macquarie Group Limited
+  "sydney-nhf": { now: 1829, prev: 1829, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Nib Holdings Ltd
   "sydney-org": { now: 5540, prev: 5540, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Origin Energy Limited
+  "sydney-pni": { now: 113, prev: 105, yoy: 7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Pinnacle Investment Management Group Limited
   "sydney-ppt": { now: 1459, prev: 1459, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Perpetual Limited
   "sydney-qan": { now: 25017, prev: 23247, yoy: 7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Qantas Airways Limited
   "sydney-qub": { now: 7759, prev: 7759, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Qube Holdings Limited
@@ -329,6 +343,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "sydney-scg": { now: 2473, prev: 2501, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Scentre Group Limited
   "sydney-sdf": { now: 1828, prev: 1828, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Steadfast Group Ltd
   "sydney-sgh": { now: 11003, prev: 11054, yoy: -0.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: SGH Limited
+  "sydney-sgp": { now: 1718, prev: 1671, yoy: 2.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Stockland Corporation Ltd
   "sydney-shl": { now: 19580, prev: 19580, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Sonic Healthcare Limited
   "sydney-tpg": { now: 3234, prev: 3372, yoy: -4.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: TPG Telecom Limited
   "sydney-vnt": { now: 13073, prev: 13073, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Ventia Services Group Limited

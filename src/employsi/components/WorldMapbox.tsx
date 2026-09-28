@@ -20,6 +20,7 @@ import { EU_CITY_LNGLAT } from "../data/euVacancyDemand";
 import { buildMarker, MARKER_FOOT, type MarkerShape } from "../lib/mapMarker";
 import { SATELLITE_SVG, LOCO_SVG } from "./vehicleSprites";
 import { codeFor } from "../data/cityCodes";
+import { heatmapColorExpression } from "../lib/heatRamp";
 
 // Europe domestic points: the mapped hubs (London/Zurich/Paris) plus every EU
 // country that carries Eurostat by-country vacancy data, each on its capital.
@@ -1301,23 +1302,9 @@ export function WorldMapbox() {
           "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.8, 5, 0.76, 6.5, 0],
           // Green (low) -> lime -> amber -> red (high), matching the city-dot
           // ramp so a hub's dot and its blob agree.
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            0,
-            "rgba(21,157,103,0)",
-            0.12,
-            "rgba(21,157,103,0.42)",
-            0.35,
-            "rgba(120,190,60,0.55)",
-            0.55,
-            "rgba(245,166,35,0.68)",
-            0.78,
-            "rgba(224,82,74,0.8)",
-            1,
-            "rgba(214,54,46,0.88)",
-          ],
+          // The ramp lives in lib/heatRamp.ts so the career pathway map's
+          // role cards glow on exactly this legend.
+          "heatmap-color": heatmapColorExpression() as mapboxgl.ExpressionSpecification,
         },
       });
 

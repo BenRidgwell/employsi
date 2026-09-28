@@ -22,6 +22,7 @@ import {
   type RankRow,
   type CompanySkillTrends,
 } from "../src/employsi/lib/jobHistoryFn";
+import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct } from "../src/employsi/lib/chart";
 import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
 import {
   centreOf,
@@ -2008,6 +2009,61 @@ console.log("\nwhat a skill card offers next:");
 // Both are one line of data away at all times, because the regions are declared
 // by deriving REGION_HUBS from CITY_CONTINENT and the labels are written out by
 // hand beside it.
+// ── the market hero's end marker ────────────────────────────────────────────
+// THE BUG, reported from a Perth card on 2026-09-26: the ring on the latest
+// reading did not sit on the line. The card had three x mappings — the path's
+// viewBox coordinate, the markers' percentage and the scrub tooltip's — and the
+// markers' was clamped in CSS pixels to keep the last one inside a plot that
+// clips. Its y stayed the y of the last reading while its x moved back down the
+// line, so on any series still rising or falling at the end the ring floated
+// off it.
+//
+// Nothing about that is visible in a flat series, and nothing in a screenshot
+// of a chart proves the general case, so it is asserted over the shapes and
+// lengths the card actually draws.
+console.log("\nthe market hero's markers land on its line:");
+{
+  // The line spans 0..HERO_W inside a box widened by HERO_PAD, so a point's
+  // share of the box is what the HTML overlay must use, to the pixel.
+  const expected = (i: number, n: number) =>
+    ((HERO_PAD + (i / Math.max(1, n - 1)) * HERO_W) / HERO_VB_W) * 100;
+  // 2 is the minimum the card will draw; 31 is a 30-day window.
+  for (const n of [2, 3, 8, 15, 30, 31]) {
+    let worst = 0;
+    for (let i = 0; i < n; i++) worst = Math.max(worst, Math.abs(heroPct(i, n) - expected(i, n)));
+    check(`${n} days: every marker is where the line is`, worst < 1e-9, `off by ${worst}`);
+
+    // The clamp existed for a real reason — a marker at the very edge is
+    // sliced in half by the plot's overflow. The inset has to be doing that
+    // job too, or this trades a visible bug for the one it replaced. The ring
+    // is 12px across at its widest (.mkheroglow), so it needs ~1.8% of a
+    // 340px plot at each end.
+    const need = (6 / 340) * 100;
+    check(
+      `${n} days: the end markers clear the plot's edges`,
+      heroPct(0, n) >= need && heroPct(n - 1, n) <= 100 - need,
+      `${heroPct(0, n).toFixed(2)}% … ${heroPct(n - 1, n).toFixed(2)}%`,
+    );
+
+    // And the scrub has to agree with the markers, or the day a reader lands
+    // on is not the day whose ring is under the cursor. This is the round trip
+    // that the raw-percentage version of the tooltip quietly failed at both
+    // ends.
+    const bad: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const back = heroIdxAt(heroPct(i, n) / 100, n);
+      if (back !== i) bad.push(`${i}->${back}`);
+    }
+    check(`${n} days: scrubbing to a marker selects its own day`, bad.length === 0, bad.join(" "));
+  }
+  // A pointer anywhere on the plot resolves to a real day rather than to an
+  // index off either end — the inset means the extremes now map OUTSIDE 0..W.
+  for (const f of [-0.2, 0, 0.001, 0.5, 0.999, 1, 1.2]) {
+    const i = heroIdxAt(f, 30);
+    check(`pointer at ${f}: lands on a real day`, Number.isInteger(i) && i >= 0 && i <= 29, `${i}`);
+  }
+}
+
 console.log("\nevery domestic region the ticker can scope to is nameable:");
 {
   const regions = Object.keys(REGION_HUBS);

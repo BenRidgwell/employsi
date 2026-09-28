@@ -51,3 +51,40 @@ export function scaler(vals: number[], plotTop: number, plotH: number) {
 export const signed = (v: number, fmt: (n: number) => string) =>
   (v >= 0 ? "+" : "−") + fmt(Math.abs(v));
 export const pctStr = (v: number) => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(1) + "%";
+
+// ── the market hero's x axis ────────────────────────────────────────────────
+/**
+ * One mapping from "day i" to "where across the plot", shared by the SVG line
+ * and the HTML markers that sit on top of it.
+ *
+ * IT LIVES HERE RATHER THAN IN THE COMPONENT so the round trip below can be
+ * asserted. The card had three x mappings — the path's viewBox coordinate, the
+ * markers' clamped percentage and the scrub tooltip's raw percentage — and two
+ * of them agreed. The one that did not was the markers': the last one was
+ * pulled back by `calc(100% - 10px)` to keep it inside a plot that clips, while
+ * its y stayed the y of the last reading, so on a series still moving at the
+ * end the ring floated off the line it was marking. Reported from a Perth card
+ * on 2026-09-26.
+ *
+ * A clamp in CSS pixels cannot line up with a path in stretched viewBox units,
+ * because the two disagree by more or less with the card's width. So the inset
+ * is expressed once, in the line's own units: the box is widened by HERO_PAD on
+ * both sides and the line spans 0..HERO_W inside it. Every overlay is then a
+ * plain percentage of the widened box, and lands on the line at every width.
+ */
+export const HERO_W = 320;
+/** The inset at each end, in viewBox units — room for the end marker. */
+export const HERO_PAD = 12;
+export const HERO_VB_W = HERO_W + HERO_PAD * 2;
+
+/** viewBox x for day `i` of `n`, inside the widened box. */
+export const heroX = (i: number, n: number) => (i / Math.max(1, n - 1)) * HERO_W;
+/** The same point as a percentage of the rendered plot. */
+export const heroPct = (i: number, n: number) => ((HERO_PAD + heroX(i, n)) / HERO_VB_W) * 100;
+/**
+ * The day nearest a pointer `f` of the way across the plot — the inverse of
+ * heroPct, and it has to be, or the day the reader scrubs to is not the day
+ * whose marker is under the cursor.
+ */
+export const heroIdxAt = (f: number, n: number) =>
+  Math.max(0, Math.min(n - 1, Math.round(((f * HERO_VB_W - HERO_PAD) / HERO_W) * (n - 1))));
