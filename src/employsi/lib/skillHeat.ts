@@ -237,6 +237,16 @@ export function demandPercentile(
   idx: SkillIndex | null,
   mode: DemandMode = "volume",
 ): number {
+  if (mode === "employment") {
+    // Where this skill's WORKFORCE sits among the workforces, not where its
+    // vacancies sit among vacancies. Unlike the rate branch this ignores
+    // `global`, because ABS employment is national by construction — there is
+    // no separate global ranking to fall back to.
+    const v = EMPLOY_LATEST[skill];
+    if (v === undefined || !EMPLOY_SORTED.length) return 0;
+    const below = EMPLOY_SORTED.filter((x) => x < v).length;
+    return (below / EMPLOY_SORTED.length) * 100;
+  }
   if (!global && mode === "rate") {
     const v = RATE_LATEST[skill];
     if (v === undefined || !RATE_SORTED.length) return 0;
@@ -636,4 +646,22 @@ export function popularSkills(
     .slice(0, n)
     .map(([name]) => name);
   return ranked.length ? ranked : ALL_SKILLS.slice(0, n);
+}
+
+/**
+ * What a figure produced under a given mode is CALLED.
+ *
+ * It exists because the unit is the part that goes wrong silently. The world
+ * map drew ABS employment on the supply side and labelled it "137,312 ads" —
+ * right colour, right number, wrong noun, and nothing about that looks broken.
+ * The card had the same shape of bug a commit earlier.
+ *
+ * So every surface that prints one of these numbers asks here rather than
+ * writing the word itself, and the word cannot be left behind when the mode
+ * changes.
+ */
+export function measureNoun(mode: DemandMode, n: number): string {
+  if (mode === "employment") return "employed";
+  if (mode === "rate") return "per 1,000";
+  return n === 1 ? "ad" : "ads";
 }

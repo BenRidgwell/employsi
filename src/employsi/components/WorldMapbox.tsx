@@ -8,6 +8,7 @@ import {
   demandByCity,
   iviCityDemandAt,
   iviCityChangeAt,
+  measureNoun,
   type DemandMode,
 } from "../lib/skillHeat";
 import {
@@ -1111,6 +1112,8 @@ export function WorldMapbox() {
       markers: Marker[],
       selectedId: string | null,
       demand: Record<string, number>,
+      /** What `demand` counts, so the pin can name its own unit. */
+      measure: DemandMode,
     ) => {
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
@@ -1129,10 +1132,21 @@ export function WorldMapbox() {
           // Set only while a skill is searched: how that skill's demand here has
           // moved over the trailing year at the slider's month.
           delta: typeof m.pct === "number" ? m.pct : null,
-          // The vacancy count behind the colour — real job ads, so it is safe to
-          // show as a figure. Absent when no skill is searched (there is no
-          // single "demand" to count).
-          count: demand[m.id] > 0 ? `${Math.round(demand[m.id]).toLocaleString()} ads` : null,
+          // THE COUNT BEHIND THE COLOUR, NAMED FOR WHAT IT IS. This said
+          // "ads" unconditionally, so the supply side drew ABS employment on
+          // the map and then labelled 137,312 PEOPLE as 137,312 ads. That is
+          // the worst shape this bug takes: the figure is right, the colour is
+          // right, and only the unit is wrong, so nothing looks broken.
+          //
+          // Absent when no skill is searched — there is no single figure to
+          // count then, on either side.
+          count:
+            demand[m.id] > 0
+              ? `${Math.round(demand[m.id]).toLocaleString()} ${measureNoun(
+                  measure,
+                  Math.round(demand[m.id]),
+                )}`
+              : null,
           selected: m.id === selectedId,
           faded: m.faded,
         });
@@ -1263,7 +1277,7 @@ export function WorldMapbox() {
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
-      renderLabels(markers, s.selectedId, demandForView);
+      renderLabels(markers, s.selectedId, demandForView, heatMode);
 
       // The dot halo now only appears WITH a skill search — a pulsing, demand-
       // coloured ring that (alongside the gradient) draws the eye to the standout
