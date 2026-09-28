@@ -19,7 +19,7 @@ import { PH_SERIES, PH_SKILL_BY_CITY } from "../data/phVacancyDemand";
 import { US_SERIES, US_SKILL_BY_CITY } from "../data/usVacancyDemand";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillCompanyMonths } from "./jobHistoryFn";
-import { rankedByRate, vacancyRate } from "./vacancyRate";
+import { rankedByEmployment, rankedByRate, vacancyRate } from "./vacancyRate";
 
 /**
  * Which question the map and the rankings are answering.
@@ -38,7 +38,16 @@ import { rankedByRate, vacancyRate } from "./vacancyRate";
  * no denominator has an unknown rate, and drawing it as cold would assert
  * slackness we have not measured.
  */
-export type DemandMode = "volume" | "rate";
+/**
+ * Which measure the skill surfaces read.
+ *
+ * "volume" and "rate" are the two readings of DEMAND — how many ads, and how
+ * many ads per 1,000 people already doing the work. "employment" is the SUPPLY
+ * side: how many people do the work at all, with no vacancy in the arithmetic.
+ * It is what the Supply/Demand switch selects, and it exists for Australia only
+ * because ABS EQ08 is the only employment-by-occupation series here.
+ */
+export type DemandMode = "volume" | "rate" | "employment";
 
 // The AU (JSA/IVI), Canada (StatCan), Singapore (MRSD), New Zealand (MBIE), UK
 // (ONS), EU (Eurostat, by country), US (BLS OEWS × JOLTS, by metro), Hong Kong
@@ -113,6 +122,21 @@ const RATE_SORTED = Object.values(RATE_LATEST).sort((a, b) => a - b);
 const RATE_LO = qtile(RATE_SORTED, 0.34);
 const RATE_HI = qtile(RATE_SORTED, 0.67);
 
+// The same shape for the supply side: employed persons nationally at the latest
+// quarter, banded on its own distribution. Banding it against the VACANCY
+// distribution would be meaningless — the two are different units — and banding
+// it against a fixed headcount would make every band a statement about
+// Australia's occupational structure rather than about this skill's place in it.
+const EMPLOY_LATEST: Record<string, number> = Object.fromEntries(
+  rankedByEmployment("national", IVI_MONTHS[IVI_MONTHS.length - 1]).map((r) => [
+    r.skill,
+    r.employed,
+  ]),
+);
+const EMPLOY_SORTED = Object.values(EMPLOY_LATEST).sort((a, b) => a - b);
+const EMPLOY_LO = qtile(EMPLOY_SORTED, 0.34);
+const EMPLOY_HI = qtile(EMPLOY_SORTED, 0.67);
+
 export function demandLevel(
   skill: string,
   global: boolean,
@@ -122,6 +146,18 @@ export function demandLevel(
   let v: number;
   let lo: number;
   let hi: number;
+  if (mode === "employment") {
+    // NO FALL-THROUGH TO VOLUME. A skill with no ABS figure is unmeasured on
+    // the supply side, and labelling it from the vacancy buckets would answer a
+    // question about job ads under a heading about people — the same quiet
+    // substitution the rate branch below refuses. Outside Australia that is
+    // every skill, which is why the switch says so rather than showing bands.
+    const e = EMPLOY_LATEST[skill];
+    if (e === undefined) return { label: "Employment unavailable", tone: "lo" };
+    if (e >= EMPLOY_HI && EMPLOY_HI > 0) return { label: "Large workforce", tone: "hi" };
+    if (e >= EMPLOY_LO && EMPLOY_LO > 0) return { label: "Mid-sized workforce", tone: "mid" };
+    return { label: "Small workforce", tone: "lo" };
+  }
   if (!global && mode === "rate") {
     // A skill with no denominator gets no band. Falling through to the volume
     // buckets would label it from a different metric while the UI said "rate",
@@ -464,6 +500,10 @@ export function popularSkills(
       // ordering rather than being silently left in a mode they cannot honour.
       if (mode === "rate") {
         const ranked = rankedByRate("national", IVI_MONTHS[IVI_MONTHS.length - 1]);
+        if (ranked.length) return ranked.slice(0, n).map((r) => r.skill);
+      }
+      if (mode === "employment") {
+        const ranked = rankedByEmployment("national", IVI_MONTHS[IVI_MONTHS.length - 1]);
         if (ranked.length) return ranked.slice(0, n).map((r) => r.skill);
       }
       return IVI_SKILLS.slice(0, n);

@@ -7,6 +7,7 @@ import { SKILL_PARENT, searchSkillMatches } from "../data/skillsTaxonomy";
 import {
   popularSkills as popularSkillsForLayer,
   demandLevel,
+  type DemandMode,
   type DemandTone,
 } from "../lib/skillHeat";
 import { employmentFor, vacancyRate } from "../lib/vacancyRate";
@@ -112,7 +113,25 @@ function rankCompany(c: { name: string; ticker: string }, q: string): number {
 
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
-  const demandMode = useAppStore((s) => s.demandMode);
+  const pickedMode = useAppStore((s) => s.demandMode);
+  const marketMode = useAppStore((s) => s.marketMode);
+  /**
+   * WHAT THE SKILL SEARCH MEASURES.
+   *
+   * The Supply/Demand switch decides the QUESTION; the Vacancies/Per-1,000
+   * toggle in the card decides how DEMAND is read. On the supply side the
+   * measure is employment — how many people do the work — and the demand
+   * toggle has nothing to say about it, so it is overridden rather than
+   * combined. Two controls that both claimed to set the measure would be a
+   * control the reader cannot predict.
+   *
+   * This reaches the three places the search ranks or bands a skill: the chip
+   * row, the suggestion badges and the result card. It does NOT touch the heat
+   * map, which still colours by the demand mode — changing the globe was not
+   * asked for, and doing it silently alongside this would make the switch mean
+   * two things at once.
+   */
+  const demandMode: DemandMode = marketMode === "supply" ? "employment" : pickedMode;
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -719,7 +738,26 @@ export function GlobalSearch() {
               employment by occupation, which exists for Australia only, so
               offering the switch on a skill it cannot answer would be a control
               that silently does nothing. */}
-          {cardRate !== null && (
+          {/* SUPPLY SIDE: one read-out, no toggle. Vacancies and per-1,000 are
+              both readings of DEMAND, so offering them here would be two
+              controls arguing about what the card measures. The figure is the
+              ABS employed stock — the same number the rate divides by, shown as
+              a level. Australia only, like the rate, and absent rather than
+              zeroed where ABS has no cell. */}
+          {marketMode === "supply" && (
+            <div className="gsmode" role="group" aria-label="Employment measure">
+              <button type="button" className="on" disabled>
+                Employed
+              </button>
+              <span className="gsmodeval">
+                {cardEmployed !== null && cardEmployed !== undefined
+                  ? `${cardEmployed.toLocaleString("en-AU")} people do this work · AU only`
+                  : "No ABS employment figure for this skill"}
+              </span>
+            </div>
+          )}
+
+          {marketMode !== "supply" && cardRate !== null && (
             <div className="gsmode" role="group" aria-label="Demand measure">
               <button
                 type="button"
