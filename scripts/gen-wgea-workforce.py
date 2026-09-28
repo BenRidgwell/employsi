@@ -184,6 +184,35 @@ ALIAS = {
     # YoY is a true 0.0% rather than a missing reading.
     "Nepean Consolidated": "Nepean No1 Pty Ltd",
     "Sunny Queen Farms": "Sunny Queen Australia Pty Ltd",     # 1 member, Sunny Queen Pty Ltd
+    # 74 on the archived+live ranking, the largest card left in the gap with no
+    # recorded reason — and the register held it all along under a group name
+    # norm() cannot reach, because it strips pty/ltd but not "maintenance
+    # services". The same shape as the eight ASX brands above.
+    #
+    # 16,403 across TWENTY members in 2024-25, against 18,278 in 2023-24. The
+    # employer of that exact name is 175 people: the head-office entity, which is
+    # the St Vincent's failure in miniature, and reading it would put a labour
+    # hire business of sixteen thousand on the card as a small office.
+    #
+    # THE MEMBERS WERE READ, and nineteen of the twenty are plainly Programmed's
+    # own: eleven carry the name (Facility Management 1,787, Skilled Workforce
+    # 6,359, Property Services 1,208, Industrial Maintenance 990, and so on),
+    # Skilled Rail Services and Skilled Workforce Solutions (NSW) are the SKILLED
+    # Group it bought in 2015, and Integrated Maintenance Services, T&C Services,
+    # The Tesa Group, HVA Technical Services, Allied Technologies and Urban
+    # Maintenance Systems are its maintenance acquisitions.
+    #
+    # THE TWENTIETH IS PERSOLKELLY AUSTRALIA (1,230) AND IT IS KEPT, which is the
+    # judgement worth recording. PERSOLKELLY is the PERSOL/Kelly staffing joint
+    # venture — a sister brand, which is exactly the Torrens/Think trap this file
+    # warns about. It is kept for three reasons: it FILES inside Programmed
+    # Maintenance Services Limited, so the register itself puts it there; the
+    # roster's own note on this card reads "Owned by PERSOL", so the card is the
+    # PERSOL-owned Australian business rather than the maintenance brand alone;
+    # and no roster card holds PERSOLKELLY, so nothing double counts. Excluding it
+    # would mean publishing a 15,173 subtotal the register does not report. It is
+    # 7.5% of the figure.
+    "Programmed": "Programmed Maintenance Services Limited",
     # Professional services file through a service trust, never the brand.
     "EY": "The Trustee For Ernst & Young Services Trust",
     "PwC Australia": "The Trustee For The Pricewaterhousecoopers Services Trust",
@@ -642,12 +671,39 @@ def main():
         "// shows an em dash and says no figure was collected.",
     ]
     if nospan:
+        # WHY A CARD SHOWS NO CHANGE, SAID PROPERLY. This block used to claim
+        # every id below "appears in only one of the two files", and for 57 of
+        # them that was untrue: they appear in both and the comparison was
+        # suppressed on purpose. Anyone reading the generated file to find out
+        # why a card prints an em dash was handed the wrong answer, and the right
+        # one matters more — two totals that cover different employers are not a
+        # change, which is the discipline the archive's own windows need.
+        #
+        # The generator already knows which bucket each id fell into, so it says
+        # so rather than lumping them together.
+        was = {'membership changed, so the two totals cover different employers':
+                   {c[0] for c in changed},
+               'reported last year and not this one, so the reading is older':
+                   {c[0] for c in lapsed},
+               'the newest total was a fragment, so the prior year is used':
+                   {c[0] for c in fallbacks}}
         out += [
             "//",
-            "// `span: 0` and `yoy: null` mean the company appears in only one of the",
-            "// two files, so there is no prior reading to compare — the card prints",
-            "// the head count and an em dash for the change:",
-        ] + [f"//   {k}" for k in nospan]
+            "// `span: 0` and `yoy: null` mean the card prints the head count and an",
+            "// em dash for the change. There are several reasons for that and they",
+            "// are not the same, so they are listed apart:",
+        ]
+        accounted = set()
+        for label, ids in was.items():
+            here = sorted(k for k in nospan if k in ids)
+            accounted |= set(here)
+            if here:
+                out += ["//", f"//   {label} ({len(here)}):"]
+                out += [f"//     {k}" for k in here]
+        rest = [k for k in nospan if k not in accounted]
+        if rest:
+            out += ["//", f"//   in only one of the two files ({len(rest)}):"]
+            out += [f"//     {k}" for k in rest]
     out += [
         'import type { Headcount } from "./companyHeadcount";',
         "export const WGEA_HEADCOUNT: Record<string, Headcount> = {",

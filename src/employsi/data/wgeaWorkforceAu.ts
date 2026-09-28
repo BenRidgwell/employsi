@@ -20,99 +20,108 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 281 of 859 Australian roster companies
-//        (260 matched on the group name, 21 on the employer name).
+// Filed: 283 of 862 Australian roster companies
+//        (261 matched on the group name, 22 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
 //
-// `span: 0` and `yoy: null` mean the company appears in only one of the
-// two files, so there is no prior reading to compare — the card prints
-// the head count and an em dash for the change:
-//   adelaide-cda
-//   adelaide-tea
-//   brisbane-ape
-//   brisbane-boq
-//   brisbane-crn
-//   brisbane-dmp
-//   brisbane-dtl
-//   brisbane-sul
-//   fmg
-//   gmd
-//   igo
-//   jellinbah
-//   ltr
-//   mah
-//   melbourne-ann
-//   melbourne-anz
-//   melbourne-col
-//   melbourne-dnl
-//   melbourne-gdg
-//   melbourne-ifl
-//   melbourne-jbh
-//   melbourne-pmv
-//   melbourne-tls
-//   mmi
-//   nt-gov-batchelor-institute-of-indigenous-tertiary-education
-//   nwh
-//   perth-prn
-//   perth-vau
-//   pls
-//   priv-afl
-//   priv-alto
-//   priv-ara
-//   priv-bing-lee-electrics
-//   priv-bolton-clarke
-//   priv-cmv-group
-//   priv-deloitte-touche-tohmatsu
-//   priv-drake-supermarkets
-//   priv-hancock-prospecting
-//   priv-mater
-//   priv-mcnab-constructions
-//   priv-meriton
-//   priv-midfield
-//   priv-minterellison
-//   priv-nepean-consolidated
-//   priv-nrma-motoring-services
-//   priv-perth-airport
-//   priv-raa
-//   priv-rac-of-wa
-//   priv-racv
-//   priv-san-remo
-//   priv-st-john-of-god-health-care
-//   priv-suttons-motors
-//   priv-swift-holdings-investments
-//   priv-teys-australia
-//   priv-united-petroleum
-//   priv-unitingcare-queensland
-//   priv-vgw-holdings
-//   priv-village-roadshow
-//   rms
-//   s32
-//   sydney-agl
-//   sydney-aub
-//   sydney-bga
-//   sydney-cgf
-//   sydney-dro
-//   sydney-eos
-//   sydney-evn
-//   sydney-evt
-//   sydney-llc
-//   sydney-nhf
-//   sydney-org
-//   sydney-ppt
-//   sydney-qub
-//   sydney-sdf
-//   sydney-shl
-//   sydney-vnt
-//   sydney-wor
-//   sydney-wow
-//   uni-macquarie-university
-//   uni-southern-cross-university
-//   uni-swinburne-university-of-technology
-//   uni-university-of-new-england
-//   uni-university-of-technology-sydney
-//   uni-university-of-wollongong
+// `span: 0` and `yoy: null` mean the card prints the head count and an
+// em dash for the change. There are several reasons for that and they
+// are not the same, so they are listed apart:
+//
+//   membership changed, so the two totals cover different employers (57):
+//     adelaide-cda
+//     adelaide-tea
+//     brisbane-ape
+//     brisbane-boq
+//     brisbane-dmp
+//     brisbane-dtl
+//     brisbane-sul
+//     fmg
+//     gmd
+//     mah
+//     melbourne-anz
+//     melbourne-col
+//     melbourne-jbh
+//     nwh
+//     perth-prn
+//     priv-afl
+//     priv-alto
+//     priv-ara
+//     priv-bolton-clarke
+//     priv-cmv-group
+//     priv-deloitte-touche-tohmatsu
+//     priv-drake-supermarkets
+//     priv-hancock-prospecting
+//     priv-mater
+//     priv-meriton
+//     priv-minterellison
+//     priv-nepean-consolidated
+//     priv-nrma-motoring-services
+//     priv-programmed
+//     priv-rac-of-wa
+//     priv-racv
+//     priv-st-john-of-god-health-care
+//     priv-suttons-motors
+//     priv-swift-holdings-investments
+//     priv-teys-australia
+//     priv-united-petroleum
+//     priv-vgw-holdings
+//     priv-village-roadshow
+//     sydney-agl
+//     sydney-aub
+//     sydney-bga
+//     sydney-evn
+//     sydney-evt
+//     sydney-llc
+//     sydney-nhf
+//     sydney-org
+//     sydney-qub
+//     sydney-sdf
+//     sydney-shl
+//     sydney-vnt
+//     sydney-wor
+//     sydney-wow
+//     uni-macquarie-university
+//     uni-southern-cross-university
+//     uni-swinburne-university-of-technology
+//     uni-university-of-new-england
+//     uni-university-of-wollongong
+//
+//   reported last year and not this one, so the reading is older (8):
+//     brisbane-crn
+//     melbourne-ann
+//     melbourne-pmv
+//     pls
+//     priv-bing-lee-electrics
+//     priv-mcnab-constructions
+//     sydney-ppt
+//     uni-university-of-technology-sydney
+//
+//   the newest total was a fragment, so the prior year is used (6):
+//     melbourne-ifl
+//     melbourne-tls
+//     rms
+//     s32
+//     sydney-cgf
+//     sydney-eos
+//
+//   in only one of the two files (14):
+//     igo
+//     jellinbah
+//     ltr
+//     melbourne-dnl
+//     melbourne-gdg
+//     mmi
+//     nt-gov-batchelor-institute-of-indigenous-tertiary-education
+//     perth-vau
+//     priv-midfield
+//     priv-perth-airport
+//     priv-raa
+//     priv-san-remo
+//     priv-unitingcare-queensland
+//     sydney-dro
 import type { Headcount } from "./companyHeadcount";
 export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "adelaide-abc": { now: 1621, prev: 1596, yoy: 1.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Adbri Limited
@@ -261,6 +270,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-people-first-bank": { now: 2056, prev: 2110, yoy: -2.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Heritage and People's Choice Limited
   "priv-perfection-fresh": { now: 315, prev: 323, yoy: -2.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Perfection Fresh Australia Pty Ltd
   "priv-perth-airport": { now: 463, prev: 463, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // employer: Perth Airport Pty Ltd
+  "priv-programmed": { now: 16403, prev: 16403, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Programmed Maintenance Services Limited
   "priv-pwc-australia": { now: 6248, prev: 7020, yoy: -11.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For The Pricewaterhousecoopers Services Trust
   "priv-queensland-sugar": { now: 220, prev: 230, yoy: -4.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Queensland Sugar Limited
   "priv-raa": { now: 1376, prev: 1376, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Royal Automobile Association Of South Australia Limited
@@ -285,6 +295,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-teachers-health-fund": { now: 473, prev: 440, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Teachers Federation Health Ltd
   "priv-team-global-express": { now: 6129, prev: 6450, yoy: -5.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Team Global Express Pty Ltd
   "priv-teys-australia": { now: 3450, prev: 3450, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Teys Australia Pty Ltd
+  "priv-thiess": { now: 5440, prev: 4855, yoy: 12.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Thiess Pty Ltd
   "priv-thomas-foods-international": { now: 124, prev: 99, yoy: 25.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Thomas Foods International Pty Limited
   "priv-turosi": { now: 1833, prev: 1958, yoy: -6.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Turosi Pty Ltd
   "priv-united-petroleum": { now: 334, prev: 334, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: The Trustee For United Petroleum Unit Trust
