@@ -169,6 +169,9 @@ export interface CardNode {
   skills: string[];
   /** Live roles carrying each listed skill. */
   skillLive: Record<string, number>;
+  /** Roster companies that advertised this role in the window —
+   *  [company id, roles advertised, still live] — for the map's highlight. */
+  companies: [string, number, number][];
 }
 
 export interface CardEdge {
@@ -210,9 +213,17 @@ function describe(m: PathwayMarket, country: string, days: number): string {
 /**
  * The specialist lane a searched skill opens: the family's non-core track with
  * the most live roles asking for it in this market. Null when no specialism
- * asks for it — or when the core path itself lists it: every HR specialism
- * also carries "Human Resources", and opening Talent Acquisition for that
- * search would be picking one of six by volume, not by the skill.
+ * asks for it — or when the core path itself asks for it here: every HR
+ * specialism also carries "Human Resources", and opening Talent Acquisition
+ * for that search would be picking one of six by volume, not by the skill.
+ *
+ * "ASKS FOR IT HERE" = lists it AND has live roles naming it in this market.
+ * Until 2026-09-28 a listing alone was enough. The rebuild that day put Talent
+ * Acquisition on HR Executive's list at a 5% share with no live roles in
+ * Australia, and searching Talent Acquisition stopped opening its own lane —
+ * whose four rungs carried 43 live roles naming it. A listing is a threshold
+ * crossed somewhere in the window, in any market; a core with nothing live
+ * for the skill here is not where the card should send the reader.
  */
 export function laneForSkill(
   p: CareerPathways,
@@ -222,15 +233,17 @@ export function laneForSkill(
   core: string,
 ): string | null {
   const inFamily = p.nodes.filter((n) => n.family === family);
-  if (inFamily.some((n) => n.track === core && n.skills.some(([s]) => s === skill))) return null;
   const by = new Map<string, number>();
   for (const n of inFamily) {
-    if (n.track === core) continue;
     const v = n.markets[country]?.skillLive[skill];
     if (v) by.set(n.track, (by.get(n.track) ?? 0) + v);
   }
+  const coreAsks =
+    (by.get(core) ?? 0) > 0 &&
+    inFamily.some((n) => n.track === core && n.skills.some(([s]) => s === skill));
+  if (coreAsks) return null;
   let best: string | null = null;
-  for (const [t, v] of by) if (!best || v > (by.get(best) ?? 0)) best = t;
+  for (const [t, v] of by) if (t !== core && (!best || v > (by.get(best) ?? 0))) best = t;
   return best;
 }
 
@@ -315,6 +328,7 @@ export function careerCard(
       }),
       skills: n.skills.map(([s]) => s),
       skillLive: m.skillLive,
+      companies: m.companies ?? [],
     };
   });
 

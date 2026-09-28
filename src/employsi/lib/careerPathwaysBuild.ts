@@ -50,6 +50,9 @@ export const SERIES_MIN_DAYS = 14;
 const MIN_DURATION_ROLES = 8;
 /** Cities listed per market — the hotspot map's pins and bars. */
 const MAX_HUBS = 10;
+/** Roster companies listed per rung per market. The map fades every other
+ *  company, so this is the lit set; past a hundred it is most of a city. */
+const MAX_COMPANIES = 100;
 
 /** The default window, in days, ending at the archive's newest live row. */
 export const PATHWAY_DAYS = 90;
@@ -129,6 +132,9 @@ interface Role {
   node: string; // family|track|rung
   canonical: string;
   employer: string;
+  /** True when `employer` is a roster company id (the row carried
+   *  company_id), not a board's free-text employer name. */
+  roster: boolean;
   country: string | null;
   live: boolean;
   hub: string | null;
@@ -315,6 +321,7 @@ export class PathwayBuilder {
         node,
         canonical: this.intern(p.canonical),
         employer: this.intern(employer),
+        roster: !!r.company_id,
         country,
         hub: r.hub === null ? null : this.intern(r.hub),
         live,
@@ -433,9 +440,16 @@ export class PathwayBuilder {
     const hubs = new Map<string, number>();
     const skillLive: Record<string, number> = {};
     const employers = new Set<string>();
+    const roster = new Map<string, [number, number]>();
     let live = 0;
     for (const r of roles) {
       if (r.employer) employers.add(r.employer);
+      if (r.roster) {
+        const c = roster.get(r.employer) ?? [0, 0];
+        c[0]++;
+        if (r.live) c[1]++;
+        roster.set(r.employer, c);
+      }
       if (!r.live) continue;
       live++;
       if (r.hub) bump(hubs, r.hub);
@@ -451,6 +465,10 @@ export class PathwayBuilder {
       daysAdvertised: { median, n: durations.length },
       hubs: topN(hubs, MAX_HUBS),
       skillLive,
+      companies: [...roster]
+        .map(([id, [n, l]]): [string, number, number] => [id, n, l])
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, MAX_COMPANIES),
     };
   }
 
