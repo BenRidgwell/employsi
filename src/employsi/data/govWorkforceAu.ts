@@ -6,7 +6,6 @@
 // Sources, as at the run that produced this file:
 //   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-28
 //   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-28
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-28
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
@@ -20,6 +19,7 @@
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
+//   NSW: Multicultural NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   NSW: Ombudsman: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: State Library: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
@@ -32,6 +32,7 @@
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-28
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-28
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
@@ -101,6 +102,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-hunter-new-england-local-health-district": { now: 14117, prev: 13752, yoy: 2.7, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-icare-nsw": { now: 1850, prev: 1879, yoy: -1.5, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
   "nsw-gov-nepean-blue-mountains-local-health-district": { now: 5984, prev: 5548, yoy: 7.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-northern-sydney-local-health-district": { now: 8960, prev: 9057, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-ambulance": { now: 7509, prev: 7037, yoy: 6.7, asof: "Jun 2025", span: 1, unit: "fte" },

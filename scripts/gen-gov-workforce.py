@@ -408,8 +408,19 @@ def close_browser():
 # This is the same failure as the header assertion the line fallback skipped: a
 # check that is present, looks thorough, and does not cover the case in front of
 # it. Adding a name to this tuple is how the next doorman gets handled.
+# 'Client Challenge' IS THE THIRD DOORMAN FOUND IN ONE DAY, on
+# artgallery.nsw.gov.au — whose ROOT serves a normal 136 KB page while
+# /about-us/corporate-information/annual-reports/ answers 3,036 bytes titled
+# "Client Challenge". So a host can be half-open, and the tell is per-path.
+#
+# THREE TIMES IS A PATTERN AND THE LIST IS STILL THE MECHANISM. Each of these was
+# found because a caller reported "no documents on this page" for a page that
+# plainly has them, and each cost a probe. What they share is a tiny response
+# whose <title> is not the site's — worth remembering if a fourth turns up,
+# because a size-and-title heuristic would have caught all three without knowing
+# any brand name.
 CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
-             'Attention Required!', 'challenge-platform')
+             'Attention Required!', 'challenge-platform', 'Client Challenge')
 
 
 def _challenged(html):
@@ -2867,6 +2878,63 @@ NSW_AGENCY_REPORTS = {
     # translators per assignment who are not in the 118. The 118 is its ongoing
     # staff, the same kind of understatement the SES has with volunteers and the
     # Electoral Commission with election casuals.
+    # 16 on the ranking, and reaching it needed the THIRD interstitial of the day
+    # to be recognised first. artgallery.nsw.gov.au is HALF OPEN: its root serves a
+    # normal 136 KB page, while /about-us/corporate-information/annual-reports/
+    # answers 3,036 bytes titled "Client Challenge". So the listing page cannot be
+    # read — but its files sit on a datocms CDN that is wide open, and the 2023-24
+    # report downloads from there without a browser.
+    #
+    # 2024-25 IS NOT REACHABLE AND 2023-24 IS, so this card is a year behind, like
+    # Communities and Justice and Multicultural NSW. The newest report exists only
+    # on parliament.nsw.gov.au; the CDN filenames are opaque timestamps
+    # (1732502590-agnswannualreport23-24.pdf) and cannot be guessed forward.
+    #
+    # p82 "Staff profile": eight classification rows over four years, and the
+    # components reconcile in THREE COLUMNS EXACTLY — 413, 492, 572 — with the
+    # newest out by 0.6 because senior executives are carried as 7.4, a fractional
+    # FTE inside a head count table. `tol` is 1.0 for that and nothing wider — at
+    # 0.1 the spec is refused with "column 3 components sum to 582.4 against a
+    # stated Total of 583.0", which is the slack being real rather than assumed.
+    #
+    # AND BECAUSE ALL FOUR COLUMNS RECONCILE, THE HEADER IS WHAT PICKS THE YEAR.
+    # Pointed at the oldest column this spec returns 413 and passes every sum, so
+    # reconciliation cannot tell 2020-21 from 2023-24 here. Same division of labour
+    # the State Library spec turned out to have.
+    #
+    # THE BASIS IS NOT A CENSUS DATE AND THAT MATTERS FOR COMPARING CARDS. The
+    # table's own note: "Total headcount and effective full-time staff number
+    # figures refer to the number of employees PAID DURING THE FINANCIAL YEAR." So
+    # 583 counts everyone who drew pay across the year, churn included, where every
+    # other NSW card here is a head count on one June day. The report offers no
+    # census figure at all — its other row, effective full-time 385, carries the
+    # same cumulative basis — so the caveat cannot be avoided by picking the other
+    # number, only stated. The head count is taken because it is the row the eight
+    # components actually add up to.
+    'nsw-agnsw': dict(
+        label='NSW: Art Gallery of NSW',
+        agency='Art Gallery of New South Wales',
+        agency_id='nsw-gov-art-gallery-of-new-south-wales',
+        url='https://www.datocms-assets.com/42890/1732502590-agnswannualreport23-24.pdf',
+        needle='Staff profile',
+        # NO `$` ANCHORS HERE, UNLIKE THE STATE LIBRARY SPEC, and the difference is
+        # which path can read the page. pdfplumber extracts the Library's two
+        # tables, so its labels arrive as exactly "Total" and `^Total$` both matches
+        # and discriminates. It extracts NOTHING from this page, so only the line
+        # fallback is available — and there the text is "Total 413 492 572 583",
+        # which `^Total$` cannot match at all. A lookahead keeps the numbers
+        # unconsumed while still excluding the two decoys on the same page: "Totals
+        # 3 5 2.4 5" has no space after Total, and "Total headcount and effective
+        # full-time staff number figures refer to..." is followed by a word.
+        total=r'^Total(?=\s+\d)',
+        comp=r'^(?:Administration and clerical staff|Conservators|'
+             r'Curators and registrars|Education officers|General division staff|'
+             r'Librarians and archivists|Security staff|'
+             r'Public service senior executives)\b',
+        ncols=4, now_i=3, prev_i=2, sums=[(0,), (1,), (2,), (3,)], tol=1.0,
+        header=r'Classification\s+2020.21\s+2021.22\s+2022.23\s+2023.24',
+        proof=r'refer to the number of employees paid during the financial year',
+        unit='headcount', asof='Jun 2024'),
     'nsw-mnsw': dict(
         label='NSW: Multicultural NSW',
         agency='Multicultural NSW',
