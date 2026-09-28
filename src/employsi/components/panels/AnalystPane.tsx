@@ -18,6 +18,7 @@ import { chatReply, detectChat } from "../../lib/analystChat";
 import { INTENT_LABEL, type DataIntent } from "../../lib/analystIntent";
 import { describeQuery, followUpsFor, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
+import { runLlmTurn, type LlmMessage } from "../../lib/analystLlmClient";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
 
@@ -198,6 +199,8 @@ export function AnalystPane() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const nextId = useRef(1);
+  /** The conversational analyst's own transcript (tool calls included). */
+  const llmHistory = useRef<LlmMessage[]>([]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   /** Which prompt topic's menu is open, if any. */
   const [openTopic, setOpenTopic] = useState<string | null>(null);
@@ -255,6 +258,7 @@ export function AnalystPane() {
     setAlsoAsked(null);
     setActiveScope(null);
     setOpenTopic(null);
+    llmHistory.current = [];
   };
 
   const ask = async (raw: string) => {
@@ -262,6 +266,36 @@ export function AnalystPane() {
     if (!question || thinking) return;
     setThread((t) => [...t, { id: nextId.current++, role: "user", text: question }]);
     setDraft("");
+
+    /**
+     * The conversational analyst first (lib/analystLlmClient.ts). It reads the
+     * question in any wording, runs the same queries this pane runs below, and
+     * explains the result — with every figure checked back against them. When
+     * it steps aside (no key on this deployment, a failed call, today's limit)
+     * everything below answers exactly as it always has.
+     */
+    setThinking(true);
+    const llm = await runLlmTurn(llmHistory.current, question, {
+      scope,
+      localCity,
+      sector: activeSector === ALL_SECTORS ? undefined : activeSector,
+      companyIds: sectorIds,
+    }).catch(() => ({ fallback: null }));
+    setThinking(false);
+    if ("result" in llm) {
+      llmHistory.current = llm.history;
+      const { text, answer, query, note } = llm.result;
+      if (query) {
+        if (!sameScope(query.scope, scope)) setActiveScope(query.scope);
+        setCarried(query);
+        setAlsoAsked(null);
+      }
+      setThread((t) => [...t, { id: nextId.current++, role: "analyst", text, answer, note }]);
+      return;
+    }
+    if (llm.fallback) {
+      setThread((t) => [...t, { id: nextId.current++, role: "analyst", text: llm.fallback! }]);
+    }
 
     /**
      * Conversation before questions.
@@ -469,7 +503,7 @@ export function AnalystPane() {
                   {m.answer?.chart && (
                     <AnalystChartView
                       chart={m.answer.chart}
-                      title={m.text}
+                      title={m.answer.text}
                       source={m.answer.source}
                     />
                   )}
