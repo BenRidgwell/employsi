@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 283 of 862 Australian roster companies
-//        (261 matched on the group name, 22 on the employer name).
+// Filed: 285 of 862 Australian roster companies
+//        (262 matched on the group name, 23 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -89,12 +89,13 @@
 //     uni-university-of-new-england
 //     uni-university-of-wollongong
 //
-//   reported last year and not this one, so the reading is older (8):
+//   reported last year and not this one, so the reading is older (9):
 //     brisbane-crn
 //     melbourne-ann
 //     melbourne-pmv
 //     pls
 //     priv-bing-lee-electrics
+//     priv-linfox
 //     priv-mcnab-constructions
 //     sydney-ppt
 //     uni-university-of-technology-sydney
@@ -248,6 +249,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-kpmg": { now: 8785, prev: 9506, yoy: -7.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For KPMG Australian Service Trust
   "priv-leader-computers": { now: 296, prev: 330, yoy: -10.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: LEADER COMPUTERS PTY LTD
   "priv-life-without-barriers": { now: 7810, prev: 8101, yoy: -3.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Life Without Barriers
+  "priv-linfox": { now: 6525, prev: 6525, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // employer: Linfox Australia Pty Ltd
   "priv-loan-market": { now: 388, prev: 391, yoy: -0.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Loan Market Group Pty Ltd
   "priv-mater": { now: 10411, prev: 10411, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Mater Misericordiae Ltd
   "priv-mcnab-constructions": { now: 211, prev: 211, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // employer: Mcnab Constructions Pty Ltd
@@ -270,6 +272,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-people-first-bank": { now: 2056, prev: 2110, yoy: -2.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Heritage and People's Choice Limited
   "priv-perfection-fresh": { now: 315, prev: 323, yoy: -2.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Perfection Fresh Australia Pty Ltd
   "priv-perth-airport": { now: 463, prev: 463, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // employer: Perth Airport Pty Ltd
+  "priv-pharmacare": { now: 636, prev: 518, yoy: 22.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Pharm-A-Care Laboratories Pty. Limited
   "priv-programmed": { now: 16403, prev: 16403, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Programmed Maintenance Services Limited
   "priv-pwc-australia": { now: 6248, prev: 7020, yoy: -11.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For The Pricewaterhousecoopers Services Trust
   "priv-queensland-sugar": { now: 220, prev: 230, yoy: -4.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Queensland Sugar Limited

@@ -213,6 +213,65 @@ ALIAS = {
     # would mean publishing a 15,173 subtotal the register does not report. It is
     # 7.5% of the figure.
     "Programmed": "Programmed Maintenance Services Limited",
+    # ── TWO MORE THE REGISTER HELD, FOUND BY SUBSTRING RATHER THAN BY norm() ──
+    # Programmed was found by searching register names for ones CONTAINING the
+    # roster name, which norm() cannot do. Run over all 75 Australian private and
+    # listed cards still blank, that search returned six candidates: Programmed,
+    # these two, one already refused (Manildra), and two false positives where
+    # the substring was an accident ("Ateco" inside "STATECOVER", "Region" inside
+    # "Regional Express"). Worth recording that the sweep is nearly exhausted —
+    # the register is not hiding many more of these.
+    #
+    # BOTH WERE ALREADY REFUSED HERE, AND BOTH REFUSALS WERE RIGHT ABOUT THE
+    # NEWEST FILE AND WRONG ABOUT THE REGISTER. That is the lesson worth keeping:
+    # a refusal recorded from one year's file is a statement about that file.
+    # PharmaCare's read "ambiguous between 'Aspen Pharmacare Australia' and
+    # 'Pharm-A-Care Laboratories', two unrelated companies" — but norm()
+    # ("pharmacare") matches NEITHER of them, so nothing ever collided; the
+    # ambiguity was in the reader, and the card's own address settles it.
+    # Linfox's named Armaguard and the 2,309 correctly and never looked at the
+    # prior file, where the logistics company itself is reported.
+    #
+    # PHARMACARE IS PUNCTUATION AND NOTHING ELSE. The register writes
+    # "Pharm-A-Care Laboratories Pty. Limited", which norms to
+    # "pharm a care laboratories" against the roster's "pharmacare" — and the
+    # single-letter-joining rule above does not help, because it needs a run of
+    # at least two single letters and this has one. The group is 636 across three
+    # of its own entities (Pharm-A-Care Laboratories 476, PharmaCare Operations
+    # No. 2 128, subsidiaries 32), and 18 Jubilee Avenue Warriewood — the address
+    # on this card — is PharmaCare Laboratories. Aspen Pharmacare also matches the
+    # substring and is a different company; it is not used.
+    "PharmaCare": "Pharm-A-Care Laboratories Pty. Limited",
+    # LINFOX POINTS AT AN EMPLOYER, NOT ITS GROUP, AND THE GROUP IS WHY.
+    # 1,097 on the archived+live ranking — the largest card in the whole gap.
+    # "Fox Group Holdings Pty Ltd" is the Linfox family holding company and its
+    # CONTENTS WERE REPLACED between the two files while the name stayed put:
+    #
+    #   2023-24  7,781  Linfox Australia 6,525 · Bevchain 1,063 · Pi Operations 131
+    #   2024-25  2,309  Linfox Armaguard 1,696 · Prosegur Australia 579
+    #
+    # The first is the logistics business; the second is the cash-in-transit
+    # joint venture Armaguard formed with Prosegur, a Spanish company's Australian
+    # arm. All three logistics entities are absent from the ENTIRE 2024-25 file,
+    # not moved to another group. So the 2024-25 group total is not a Linfox that
+    # shrank by two thirds, it is a different set of companies under one holding
+    # name, and 2,309 on this card would be the failure this file's own header
+    # warns about — a real number, from a real filing, describing a different
+    # company. It would also read as −70% year on year.
+    #
+    # Pointing at the employer "Linfox Australia Pty Ltd" cannot drift that way:
+    # it names the Australian operating company, and because it is absent from the
+    # newest file the stale path files its last whole reading — 6,525 dated
+    # Jun 2024, with no change attached. That is also why the group is not used
+    # with a fallback: the fallback would be right this year and would silently
+    # start reading Armaguard and Prosegur the moment the logistics entities
+    # report again under that group.
+    #
+    # 6,525 IS AUSTRALIAN AND THE COMPANY'S OWN "24,000+ People" IS NOT. WGEA
+    # counts Australian employees of the reporting entity; the homepage figure is
+    # undated and spans Asia Pacific across the whole group. They are not the same
+    # measure and only one of them has a date.
+    "Linfox": "Linfox Australia Pty Ltd",
     # Professional services file through a service trust, never the brand.
     "EY": "The Trustee For Ernst & Young Services Trust",
     "PwC Australia": "The Trustee For The Pricewaterhousecoopers Services Trust",
@@ -379,14 +438,9 @@ REFUSED = {
                          "stores are separately owned franchises and the corporate "
                          "entity is small. Filing 489 as Chemist Warehouse would be "
                          "a real number for a fraction of the organisation",
-    "Linfox": "only 'Linfox Armaguard' (1,696), a separate cash-logistics business; "
-              "the Fox Group total of 2,309 is nowhere near Linfox Logistics and "
-              "would understate it by an order of magnitude",
     "Brisbane Catholic Education": "the only match is the whole Archdiocese of "
                                    "Brisbane (14,853), which is parishes and curia "
                                    "as well as schools",
-    "PharmaCare": "ambiguous between 'Aspen Pharmacare Australia' and "
-                  "'Pharm-A-Care Laboratories', two unrelated companies",
     "Peregrine": "its On The Run business was bought by Viva Energy in 2024, so "
                  "'On The Run Pty Ltd' (5,451) now sits inside the Viva group and "
                  "what remains of Peregrine is not separable from it",
