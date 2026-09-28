@@ -874,7 +874,7 @@ function buildSpecialityCard(
  * reader happens to be scrubbing would claim a monthly measurement — so the
  * card names the quarter the number actually belongs to.
  */
-function quarterLabelFor(month: string): string {
+export function quarterLabelFor(month: string): string {
   let best = ABS_QUARTERS[0];
   for (const q of ABS_QUARTERS) if (q <= month) best = q;
   return `${monthLabel(best)} quarter`;

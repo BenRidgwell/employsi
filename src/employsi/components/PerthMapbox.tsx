@@ -21,6 +21,13 @@ import {
 import { heatColor, rgbCss } from "../lib/color";
 import { logoFor } from "../lib/companyLogo";
 import { activeSkill, demandByCompanyAt } from "../lib/skillHeat";
+import {
+  localSupplyFor,
+  supplyNoun,
+  supplyScale,
+  SUPPLY_MIN_SCALE,
+  type LocalSupply,
+} from "../lib/localSupply";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
@@ -158,6 +165,9 @@ function setMarkerState(el: HTMLElement, isSelected: boolean, skillMiss: boolean
 // The figure under a company's name: how many of its live ads want the searched
 // skill. Removed entirely with no skill searched — there is no single number a
 // company marker could honestly show for "browsing".
+//
+// IN SUPPLY MODE THIS IS NOT AN AD COUNT AND MUST NOT READ AS ONE. See
+// setMarkerSupply, which owns that branch; this one only ever writes ads.
 function setMarkerCount(el: HTMLElement, demand: number, skillMode: boolean): void {
   const caption = el.querySelector(".mkcaption");
   if (!caption) return;
@@ -169,6 +179,53 @@ function setMarkerCount(el: HTMLElement, demand: number, skillMode: boolean): vo
   const node = existing ?? caption.appendChild(document.createElement("span"));
   node.className = "mkcount";
   node.textContent = `${demand.toLocaleString()} ${demand === 1 ? "ad" : "ads"}`;
+}
+
+/**
+ * Supply mode's pin: sized by the employer's total staff, and saying so.
+ *
+ * Three things are deliberate here.
+ *
+ * The label names the unit — "12,400 staff", never "12,400" and never anything
+ * skill-shaped — because the number is every occupation at that employer and a
+ * skill may well be searched at the same time. A pin that said "12,400" beside
+ * a Nursing search would be read as 12,400 nurses.
+ *
+ * Size carries the figure, colour carries nothing. Demand mode's heat gradient
+ * means "hiring this skill"; reusing it for headcount would make two different
+ * questions look like the same answer, so supply pins stay neutral and the glow
+ * stays off.
+ *
+ * A company with NO filed figure goes hollow rather than small. 671 of the 1,629
+ * plotted companies have none, and at the scale floor an absent headcount and a
+ * tiny employer are the same pin — which is the invented figure this codebase
+ * keeps getting bitten by, wearing a different hat.
+ */
+function setMarkerSupply(el: HTMLElement, sup: LocalSupply | null, max: number): void {
+  const inner = el.querySelector(".mk") as HTMLElement | null;
+  if (inner) {
+    inner.style.setProperty("--mkscale", String(sup ? supplyScale(sup.n, max) : SUPPLY_MIN_SCALE));
+    inner.classList.toggle("nofig", !sup);
+  }
+  const caption = el.querySelector(".mkcaption");
+  if (!caption) return;
+  const existing = caption.querySelector(".mkcount");
+  const node = existing ?? caption.appendChild(document.createElement("span"));
+  // `mknone` is the existing greyed-out "nothing here" pill (see mapMarker.ts),
+  // reused so an absent headcount looks like every other absence in this UI
+  // rather than like a small number.
+  node.className = sup ? "mkcount" : "mkcount mknone";
+  node.textContent = sup ? `${sup.n.toLocaleString()} ${supplyNoun(sup.unit)}` : "no filed figure";
+}
+
+// Undo everything setMarkerSupply did, for the switch back to demand mode. The
+// markers are created once and reused, so a scale left behind would silently
+// size the demand map by headcount.
+function clearMarkerSupply(el: HTMLElement): void {
+  const inner = el.querySelector(".mk") as HTMLElement | null;
+  if (!inner) return;
+  inner.style.removeProperty("--mkscale");
+  inner.classList.remove("nofig");
 }
 
 // Pill label: the company's name, word-shortened to keep the pill roughly its
@@ -411,7 +468,14 @@ function skillDemandOf(s: {
   skillMonths: SkillCompanyMonths | null;
   heatMonth: number;
   roleFocus: { companies: Record<string, number> } | null;
+  marketMode: "supply" | "demand";
 }): Record<string, number> | null {
+  // SUPPLY MODE HAS NO PER-COMPANY SKILL FIGURE, so the whole skill channel is
+  // off here — not recoloured, off. Everything downstream keys off this being
+  // null: no heat gradient, no glow, no lit/faded split, no ad count. Returning
+  // the demand map and painting it differently would leave ad data driving the
+  // supply view, which is the one thing these two modes exist to keep apart.
+  if (s.marketMode === "supply") return null;
   if (s.roleFocus) return s.roleFocus.companies;
   const sk = activeSkill(s.searchQuery);
   // AT the scrubbed month, so the pins follow the timeline the card scrubs.
@@ -457,6 +521,7 @@ export function PerthMapbox() {
   const skillMonths = useAppStore((s) => s.skillMonths);
   const heatMonth = useAppStore((s) => s.heatMonth);
   const roleFocus = useAppStore((s) => s.roleFocus);
+  const marketMode = useAppStore((s) => s.marketMode);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
@@ -489,12 +554,16 @@ export function PerthMapbox() {
   );
 
   const skillDemand = useMemo(() => {
+    // See skillDemandOf: supply mode turns the skill channel off rather than
+    // recolouring it. Kept in step with that function by keying off the same
+    // store field, so the two cannot disagree about which mode is on.
+    if (marketMode === "supply") return null;
     if (roleFocus) return roleFocus.companies;
     const sk = activeSkill(searchQuery);
     return sk
       ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
       : null;
-  }, [roleFocus, searchQuery, skillIndex, skillMonths, heatMonth]);
+  }, [marketMode, roleFocus, searchQuery, skillIndex, skillMonths, heatMonth]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -768,6 +837,16 @@ export function PerthMapbox() {
         setCompaniesVisible(true);
         const dmC = skillDemandOf(s);
         const maxC = dmC ? Math.max(1, ...placedRef.current.map((p) => dmC[p.company.id] || 0)) : 1;
+        // Supply mode sizes pins by filed headcount, normalised within THIS
+        // city's largest employer — so each city gets the full scale range
+        // rather than every pin outside Sydney sitting at the floor.
+        const supplyOn = s.marketMode === "supply";
+        const supC = supplyOn
+          ? new Map(
+              placedRef.current.map((p) => [p.company.id, localSupplyFor(p.company)] as const),
+            )
+          : null;
+        const supMax = supC ? Math.max(1, ...[...supC.values()].map((v) => v?.n ?? 0)) : 1;
         placedRef.current.forEach((p) => {
           const el = markersRef.current[p.company.id]?.getElement();
           if (!el) return;
@@ -786,8 +865,14 @@ export function PerthMapbox() {
           // clobbered. State and fade both go on the inner wrapper.
           setMarkerState(el, isSelected, skillMiss);
           setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
-          setMarkerCount(el, demand, !!dmC);
-          paintGlow(el, demand, maxC, !!dmC);
+          if (supC) {
+            setMarkerSupply(el, supC.get(p.company.id) ?? null, supMax);
+            paintGlow(el, 0, 1, false);
+          } else {
+            clearMarkerSupply(el);
+            setMarkerCount(el, demand, !!dmC);
+            paintGlow(el, demand, maxC, !!dmC);
+          }
         });
         focusUpdaterRef.current?.();
       };
@@ -1074,6 +1159,13 @@ export function PerthMapbox() {
       const maxD = skillDemand
         ? Math.max(1, ...placedRef.current.map((p) => skillDemand[p.company.id] || 0))
         : 1;
+      // Supply mode: pin size from filed headcount, normalised within this city.
+      // See setMarkerSupply.
+      const supplyOn = marketMode === "supply";
+      const supD = supplyOn
+        ? new Map(placedRef.current.map((p) => [p.company.id, localSupplyFor(p.company)] as const))
+        : null;
+      const supMaxD = supD ? Math.max(1, ...[...supD.values()].map((v) => v?.n ?? 0)) : 1;
       // Company markers only belong to the local city layer — when zoomed out to
       // the domestic/global overview they must all be hidden, or they'd float
       // over the overview. (This pass runs on every search/filter change, so it
@@ -1108,8 +1200,14 @@ export function PerthMapbox() {
         // logo + caption) on a skill search, restoring on deselect.
         setMarkerState(el, isSelected, skillMiss);
         setMarkerFade(el, isSelected, skillMiss, searchOk && !notSelected);
-        setMarkerCount(el, demand, !!skillDemand);
-        paintGlow(el, demand, maxD, !!skillDemand);
+        if (supD) {
+          setMarkerSupply(el, supD.get(c.id) ?? null, supMaxD);
+          paintGlow(el, 0, 1, false);
+        } else {
+          clearMarkerSupply(el);
+          setMarkerCount(el, demand, !!skillDemand);
+          paintGlow(el, demand, maxD, !!skillDemand);
+        }
       });
       // Re-apply the focus fade so a newly dimmed/undimmed pill keeps the
       // correct opacity without waiting for the next pan.
@@ -1118,7 +1216,12 @@ export function PerthMapbox() {
     apply();
     // role/localCity included: the session resolves after first paint, so the
     // coverage fade would otherwise never apply on a cold load into a city.
-  }, [selectedId, filterState, skillDemand, role, localCity]);
+    //
+    // marketMode included SEPARATELY from skillDemand, which is the subtle one:
+    // with no skill searched, skillDemand is null in BOTH modes, so switching
+    // supply/demand would not change it and this effect would never re-run — the
+    // pins would keep their old sizes until some unrelated filter moved.
+  }, [selectedId, filterState, skillDemand, marketMode, role, localCity]);
 
   useEffect(() => {
     // Hide companies the instant we're zoomed out, regardless of what

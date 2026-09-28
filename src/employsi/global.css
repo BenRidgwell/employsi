@@ -17737,3 +17737,39 @@ body {
 .panegrip:hover {
   opacity: 1;
 }
+
+/* ── Supply mode: the local pin's size IS the figure ─────────────────────── */
+/* Demand mode encodes the searched skill in the pin's COLOUR. Supply mode has
+   no per-company skill figure at all, so it drops that channel and uses size
+   for the one thing it does know — the employer's filed total headcount. Two
+   questions, two channels, and neither borrows the other's. */
+/* Scale the STAGE, never the whole marker. The caption carries both the company
+   name and the number, and shrinking those to 68% would make the small
+   employers the hardest ones on the map to read. Origin at the foot because the
+   stage sits ABOVE the marker's anchor point — scaling from the centre would
+   lift the pin off its own coordinate. */
+.mk-company .mkstage {
+  transform: scale(var(--mkscale, 1));
+  transform-origin: 50% 100%;
+  transition: transform 0.22s ease;
+}
+/* No filed headcount: hollow, not small. 671 of the 1,629 plotted companies have
+   none, and at the scale floor "we don't know" and "very few staff" are the same
+   pin — so the ones we don't know are drawn as an outline instead, which reads as
+   a gap in the data rather than as a measurement. */
+.mk-company.nofig .mkbody {
+  background: transparent;
+  border: 1.5px dashed #c4c4cc;
+  /* Drops the drop shadow — an outline should not sit on the map like a solid
+     object — but KEEPS the inset ring, which is the selected state. A plain
+     `box-shadow: none` here would make a company with no filed figure the one
+     company on the map that cannot be seen to be selected. */
+  box-shadow: inset 0 0 0 calc(var(--sel, 0) * 2px) #1c1c1e;
+}
+.mk-company.nofig .mklogo {
+  opacity: 0.32;
+  filter: grayscale(1);
+}
+.mk-company.nofig .mkshadow {
+  opacity: 0.25;
+}
