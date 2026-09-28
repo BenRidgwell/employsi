@@ -32,7 +32,18 @@ import {
   measureNoun,
   popularSkills,
 } from "../src/employsi/lib/skillHeat";
-import { rankedByEmployment, MIN_EMPLOYED } from "../src/employsi/lib/vacancyRate";
+import { rankedByEmployment, MIN_EMPLOYED, AU_RATE_HUBS } from "../src/employsi/lib/vacancyRate";
+import { COMPANIES } from "../src/employsi/data/companies";
+import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
+import { filedHeadcount } from "../src/employsi/lib/companyCard";
+import {
+  cityEmployment,
+  localSupplyFor,
+  supplyNoun,
+  supplyScale,
+  SUPPLY_MAX_SCALE,
+  SUPPLY_MIN_SCALE,
+} from "../src/employsi/lib/localSupply";
 import {
   centreOf,
   FRAME_ASPECT,
@@ -2413,6 +2424,160 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
   );
   check("one month is one month", eq(monthsBetween("2026-07", "2026-07"), ["2026-07"]));
   check("a reversed span is empty, not endless", eq(monthsBetween("2026-09", "2026-07"), []));
+}
+
+// ── the local layer in supply mode ──────────────────────────────────────────
+// Supply mode sizes a company pin by the employer's FILED total headcount, and
+// answers the searched skill at city level instead, because there is no
+// employees-by-company-by-skill source. Four ways that goes quietly wrong:
+//
+//   · the pin falls back to `Company.headcount`, which for the 805
+//     `illustrative` roster records is hash01(ticker + name) — so pin size
+//     would encode the company's NAME and look like a measurement.
+//   · a company with no filed figure lands at the size floor, where "we don't
+//     know" and "very few staff" are the same pin.
+//   · the city figure reads employmentFor for a non-ABS hub. Singapore answers
+//     there from EIGHT SSOC major groups, so it would print ~495,500 beside the
+//     word Nursing.
+//   · the label says "ads" — demand's noun on a supply figure, which is the
+//     conflation the whole mode exists to prevent.
+console.log("\nthe local supply layer measures employers, not their ads:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+
+  // A hash-derived headcount is not a measurement and must not size a pin. An
+  // illustrative record MAY still carry a figure — 140 of the 807 do — but only
+  // ever a filed one: the regulator or the annual report overrides the hash,
+  // never the reverse. perth-bgl is the case that shows why it matters, filing
+  // 226 staff against a hash value of 35,506.
+  const illus = COMPANIES.filter((c) => c.illustrative);
+  check("there are illustrative records to exclude", illus.length > 100, `${illus.length}`);
+  const hashLeak = illus.filter((c) => localSupplyFor(c)?.n === c.headcount);
+  check(
+    "no supply figure is ever the hashed headcount",
+    hashLeak.length === 0,
+    hashLeak
+      .slice(0, 3)
+      .map((c) => c.id)
+      .join(", "),
+  );
+  const unfiled = illus.filter((c) => localSupplyFor(c) && !filedHeadcount(c.id));
+  check(
+    "an illustrative company's figure only ever comes from a filing",
+    unfiled.length === 0,
+    unfiled
+      .slice(0, 3)
+      .map((c) => c.id)
+      .join(", "),
+  );
+
+  // Provenance: where a filed figure exists, that is the number shown — not the
+  // roster's own field, which may disagree with it.
+  const filedMismatch = COMPANIES.filter((c) => {
+    const f = filedHeadcount(c.id);
+    return f && localSupplyFor(c)?.n !== f.now;
+  });
+  check(
+    "a filed figure is the figure shown",
+    filedMismatch.length === 0,
+    `${filedMismatch.length}`,
+  );
+
+  // The supply figure must not be an ad count wearing a different label. These
+  // are independent quantities; if they ever coincide across the roster, the
+  // sources have been crossed.
+  // Not zero: sa-gov-renewal-sa genuinely files 183 staff and advertises 183
+  // roles, and one coincidence in 707 is a coincidence. What this catches is the
+  // systematic case — the two reading the same field — which would light up the
+  // whole roster at once, not one row of it.
+  const both = COMPANIES.filter((c) => localSupplyFor(c) && c.openRoles > 0);
+  const sameAsAds = both.filter((c) => localSupplyFor(c)!.n === c.openRoles);
+  check(
+    "a supply figure is not the company's ad count",
+    both.length > 50 && sameAsAds.length / both.length < 0.01,
+    `${sameAsAds.length} of ${both.length}`,
+  );
+
+  // Coverage, per city, so a regenerated headcount file that stopped joining
+  // shows up here rather than as a map of hollow pins.
+  const covered: string[] = [];
+  const bare: string[] = [];
+  const byId = new Map(COMPANIES.map((c) => [c.id, c] as const));
+  for (const [city, list] of Object.entries(CITY_COMPANIES)) {
+    const cos = list.map((e) => byId.get(e.id)).filter((c) => !!c);
+    if (!cos.length) continue;
+    const have = cos.filter((c) => localSupplyFor(c)).length;
+    (have / cos.length >= 0.5 ? covered : bare).push(`${city} ${have}/${cos.length}`);
+  }
+  // NAMED, not counted: the ten cities supply mode is actually for. A count
+  // would still pass if Sydney fell out and two others joined.
+  const wantCovered = [
+    "perth",
+    "melbourne",
+    "brisbane",
+    "adelaide",
+    "sydney",
+    "canberra",
+    "darwin",
+    "hobart",
+    "auckland",
+    "wellington",
+  ];
+  const missing = wantCovered.filter((c) => !covered.some((r) => r.startsWith(`${c} `)));
+  check(
+    "every AU capital and both NZ cities are at least half covered",
+    missing.length === 0,
+    missing.join(", "),
+  );
+  check("twelve cities clear half", covered.length >= 12, `${covered.length}`);
+  // The uncovered cities are a real state of the data (37 of 54 at last count,
+  // every one of them outside AU/NZ), not a failure — asserted so that a change
+  // which silently started inventing figures for them would move this number.
+  check("and the uncovered ones stay uncovered", bare.length >= 30, `${bare.length}`);
+
+  // Pin scale: monotonic, bounded, and root-shaped. Linear would put every
+  // company except the largest at the floor.
+  check(
+    "the largest employer gets the top of the scale",
+    supplyScale(35000, 35000) === SUPPLY_MAX_SCALE,
+  );
+  check("an absent figure gets the floor", supplyScale(0, 35000) === SUPPLY_MIN_SCALE);
+  let mono = true;
+  for (let n = 100; n < 35000; n += 250)
+    if (supplyScale(n + 250, 35000) < supplyScale(n, 35000)) mono = false;
+  check("a bigger employer never gets a smaller pin", mono);
+  // Root, not linear: the midpoint of the range must sit well above the floor.
+  const mid = supplyScale(35000 / 2, 35000);
+  const linearMid = SUPPLY_MIN_SCALE + (SUPPLY_MAX_SCALE - SUPPLY_MIN_SCALE) * 0.5;
+  check("the scale is root-shaped, not linear", mid > linearMid, mid.toFixed(3));
+
+  // The city figure: ABS hubs only.
+  const auHub = AU_RATE_HUBS.filter((h) => cityEmployment("Nursing", h, m) !== null);
+  check(
+    "every ABS capital answers for a covered skill",
+    auHub.length === AU_RATE_HUBS.length,
+    `${auHub.length}/${AU_RATE_HUBS.length}`,
+  );
+  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is a disclosed
+  // rate denominator, never a skill headcount — see cityEmployment.
+  check(
+    "singapore's major-group figure is not printed as a skill headcount",
+    cityEmployment("Nursing", "singapore", m) === null,
+  );
+  const outside = ["auckland", "wellington", "toronto", "houston", "london"];
+  check(
+    "a city with no occupation data returns nothing, not a neighbour's figure",
+    outside.every((c) => cityEmployment("Nursing", c, m) === null),
+  );
+  check("no skill searched, no city figure", cityEmployment(null, "perth", m) === null);
+
+  // The noun. Demand counts ads; supply counts people, and the two words must
+  // not cross. measureNoun owns the demand side; supplyNoun the other.
+  check(
+    "supply's noun is never an ad",
+    !/\bads?\b/.test(supplyNoun("headcount") + " " + supplyNoun("fte")),
+  );
+  check("fte is named as fte", supplyNoun("fte") === "FTE" && supplyNoun("headcount") === "staff");
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

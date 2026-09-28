@@ -2,6 +2,10 @@ import { useAppStore } from "../state/store";
 import { COMPANIES, type Company } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
+import { activeSkill } from "../lib/skillHeat";
+import { cityEmployment, localSupplyFor } from "../lib/localSupply";
+import { quarterLabelFor } from "../lib/skillCard";
 
 /**
  * The local layer's banner, from `Employsi Local View Banner.html`.
@@ -15,10 +19,18 @@ import { GLOBAL_HUB_LABEL } from "../data/geo";
  * Every figure is counted from the employers actually plotted on this city's
  * map, so it always describes what you are looking at rather than a fixed
  * Perth-wide total.
+ *
+ * IN SUPPLY MODE IT CARRIES THE SKILL FIGURE THE PINS CANNOT. There is no
+ * employees-by-company-by-skill source, so a company pin can only say how big
+ * the employer is (see lib/localSupply.ts). The searched skill is answered here
+ * instead, at the grain the data actually has: the whole city, from ABS.
  */
 export function LocalBanner() {
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const localCity = useAppStore((s) => s.localCity);
+  const marketMode = useAppStore((s) => s.marketMode);
+  const searchQuery = useAppStore((s) => s.searchQuery);
+  const heatMonth = useAppStore((s) => s.heatMonth);
 
   // Only on the local layer. The overview layers have their own summary (the
   // markers themselves), and this banner names a single city.
@@ -29,16 +41,52 @@ export function LocalBanner() {
     .map((c) => byId.get(c.id))
     .filter((c): c is Company => !!c);
 
-  const totalRoles = companies.reduce((a, c) => a + c.openRoles, 0);
-  const totalHeads = Math.round(companies.reduce((a, c) => a + c.headcount, 0) / 1000);
   const cityName =
     GLOBAL_HUB_LABEL[localCity] || localCity.charAt(0).toUpperCase() + localCity.slice(1);
 
-  const stats: [string, string][] = [
-    [companies.length.toLocaleString("en-AU"), "employers"],
-    [totalRoles.toLocaleString("en-AU"), "open roles"],
-    [`${totalHeads.toLocaleString("en-AU")}K`, `${cityName} workforce`],
-  ];
+  // FILED STAFF ONLY, and this used to sum `c.headcount` over every company.
+  // That field is derived from hash01(ticker + name) for the 805 `illustrative`
+  // roster records — so the "city workforce" figure was substantially a sum of
+  // hashes of company names, printed to the pixel as "142K". localSupplyFor
+  // returns null for those, and the count of employers behind the total is shown
+  // beside it so the figure is never mistaken for the city's whole workforce.
+  const filed = companies.map(localSupplyFor);
+  const filedStaff = filed.reduce((a, s) => a + (s?.n ?? 0), 0);
+  const filedCount = filed.filter((s) => !!s).length;
+
+  const stats: [string, string][] = [[companies.length.toLocaleString("en-AU"), "employers"]];
+
+  if (marketMode === "supply") {
+    stats.push([
+      filedStaff >= 1000
+        ? `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`
+        : filedStaff.toLocaleString("en-AU"),
+      `staff at ${filedCount.toLocaleString("en-AU")} filed`,
+    ]);
+    // The skill's employment for the whole city. Null outside the eight
+    // Australian capitals — 37 of the 54 local cities have no ABS occupation
+    // data and no filed headcount either — and a null is SAID, never filled in
+    // from a covered city.
+    const skill = activeSkill(searchQuery);
+    if (skill) {
+      const month = IVI_MONTHS[heatMonth] ?? "";
+      const emp = cityEmployment(skill, localCity, month);
+      stats.push(
+        emp === null
+          ? ["—", `no ${skill} employment for ${cityName}`]
+          : [emp.toLocaleString("en-AU"), `${skill} employed · ABS ${quarterLabelFor(month)}`],
+      );
+    }
+  } else {
+    stats.push([
+      companies.reduce((a, c) => a + c.openRoles, 0).toLocaleString("en-AU"),
+      "open roles",
+    ]);
+    stats.push([
+      `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`,
+      `staff at ${filedCount.toLocaleString("en-AU")} employers`,
+    ]);
+  }
 
   return (
     <div className="lvb" key={localCity} data-tour="banner">
