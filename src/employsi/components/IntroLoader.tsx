@@ -1,59 +1,35 @@
 import { useEffect, useRef, useState } from "react";
+import { CardLoader } from "./panels/CardLoader";
 
 /**
- * The intro animation that covers the app while it boots, from
- * `employsi-loader.html`.
+ * The loading screen that covers the app while it boots.
+ *
+ * WHAT IT SHOWS: the cards' own loader (panels/CardLoader) — the employsi
+ * mark sweeping its bars, with the stage caption under it — so the app opens
+ * on the same animation What's Trending and the other cards use while their
+ * data arrives. It replaced the skyline intro (`employsi-loader.html`) on
+ * 2026-09-28, keeping that intro's timing exactly: the same DWELL_MS floor,
+ * MAX_HOLD ceiling and fade, so only the picture changed. The component itself
+ * is reused rather than copied, so the two cannot drift apart.
  *
  * WHY THE HANDOFF IS NOT ON A TIMER
  * The brief is a loader that plays "whilst the screen/data loads in the
  * background", so the veil lifts when the app says it is ready rather than at a
  * fixed moment — a timer would hand off to a half-built map as often as to a
- * ready one.
- *
- * There is no build-up to protect any more. The previous design drew itself on
- * over 2.2s of choreography and the handoff had to wait for the last stroke;
- * this one is a standing composition with two loops in it, the sweep and the
- * pan, so DWELL_MS below is only a floor that stops the veil flashing past on a
- * warm load.
+ * ready one. DWELL_MS below is only a floor that stops the veil flashing past
+ * on a warm load.
  *
  * CEILING
  * `ready` is a best-effort signal, so it is never allowed to trap anyone: after
  * MAX_HOLD the veil lifts regardless. A user looking at a slightly unfinished
  * map can still use the app; a user looking at a permanent splash screen cannot.
- *
- * WHAT THIS CARRIES THAT THE DESIGN FILE DOES NOT, and why:
- *
- *  • The skyline is a file, not a data: URI. The design builds it in the page
- *    with buildSkyline() and inlines ~140KB into the document on every load.
- *    The drawing is deterministic, so scripts/gen-intro-skyline.js runs the
- *    same function once and writes public/assets/intro-skyline.svg — 11KB over
- *    the wire, and cached after the first load.
- *  • The skyline is anchored to its GROUND LINE rather than its sky. See
- *    .introsky in global.css.
- *  • A reduced-motion branch, and a breakpoint for phones. The design is one
- *    desktop canvas and carries neither.
  */
 
 /**
- * The floor on how long the veil stays up.
- *
- * Nothing is being protected from being cut off any more — the composition is
- * standing, not drawn on — so this is purely about not flashing. A veil that
- * appears and leaves inside 300ms on a warm load reads as a glitch rather than
- * as a loading screen, and the sweep below it would not complete one pass.
- *
- * 3800ms: TWO FULL PASSES of em-sweep, which is 1.9s each.
- *
- * THE VALUE IS A MULTIPLE OF THE SWEEP, NOT A ROUND NUMBER, and that is the
- * whole point of it. The bar reaches the end of its travel exactly as the veil
- * is released, so the stroke always finishes instead of being caught mid-way
- * and dissolved by the fade. 1900 (one pass) had the same property; 2900 was a
- * literal second more than that and broke it, landing about half way through
- * the second pass.
- *
- * So the values that work here are 1900, 3800, 5700 — anything else gives up
- * the alignment. If this needs to change again, move by a sweep, or change
- * em-sweep's duration alongside it.
+ * The floor on how long the veil stays up: 3800ms, the skyline intro's own
+ * value, kept when its picture was replaced so the length of the opening did
+ * not change with it. A veil that appears and leaves inside 300ms on a warm
+ * load reads as a glitch rather than as a loading screen.
  */
 const DWELL_MS = 3800;
 const MAX_HOLD = 6000;
@@ -62,11 +38,9 @@ export function IntroLoader({ ready }: { ready: boolean }) {
   const [built, setBuilt] = useState(false);
   const [out, setOut] = useState(false);
   const [gone, setGone] = useState(false);
-  // Reduced motion: the sweep and the 52s pan are both loops, which is exactly
-  // what this preference asks us not to play. Both are stopped in CSS; this
-  // state also drops the dwell, so the veil covers the boot and leaves as soon
-  // as the app is ready rather than holding a still picture for a sweep that is
-  // not running.
+  // Reduced motion: the loader is a loop, which is exactly what this
+  // preference asks us not to play, so the dwell is dropped and the veil
+  // covers the boot and leaves as soon as the app is ready.
   const reducedRef = useRef(false);
 
   useEffect(() => {
@@ -97,48 +71,7 @@ export function IntroLoader({ ready }: { ready: boolean }) {
 
   return (
     <div className={`introveil${out ? " is-out" : ""}`} aria-hidden="true">
-      <div className="introstage">
-        <div className="introlockup">
-          {/* The four rects of the employsi mark. Flat here — the previous
-              design drew them on individually and this one does not, so they
-              carry the design's opacities instead of its animation. */}
-          <svg
-            viewBox="24 24 72 72"
-            width="77"
-            height="77"
-            fill="currentColor"
-            className="intromark"
-            aria-hidden="true"
-          >
-            <rect x="24" y="24" width="15" height="72" rx="7.5" />
-            <rect x="24" y="24" width="40" height="15" rx="7.5" opacity=".45" />
-            <rect x="24" y="52.5" width="55" height="15" rx="7.5" opacity=".72" />
-            <rect x="24" y="81" width="72" height="15" rx="7.5" />
-          </svg>
-          <span className="introword">employsi</span>
-        </div>
-
-        {/* An indeterminate sweep, not a progress bar: nothing here knows how
-            far along the boot is, and a bar that filled would be claiming it
-            did. */}
-        {/* The caption that sat here — "explore the world of work." — was
-            removed on 2026-09-24. The stage is a centred column, so dropping
-            its last child made the column shorter at the bottom and the mark
-            and bar settle 15.5px LOWER on their own; that shift is the layout
-            re-centring, not a value anyone chose, which is why there is no
-            offset to find elsewhere. */}
-        <div className="introbar">
-          <span className="introbarfill" />
-        </div>
-      </div>
-
-      {/* The skyline across the bottom of the veil, panning slowly. The band is
-          exactly as tall as the artwork wants to be at this width, so the whole
-          drawing shows and its top sits flush — no mask, and nothing cropped.
-          See --introsky-h in global.css. */}
-      <div className="introband">
-        <img className="introsky" src="/assets/intro-skyline.svg" alt="" draggable={false} />
-      </div>
+      <CardLoader />
     </div>
   );
 }

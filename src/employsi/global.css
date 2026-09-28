@@ -15684,28 +15684,9 @@ body {
    two-layer globe. Its markup references none of them — they are superseded by
    the footage band — so they are not built here.                              */
 /* ── The intro loader ────────────────────────────────────────────────────────
-   From `employsi-loader.html`. See components/IntroLoader.tsx for what this
-   carries that the design file does not.
-
-   The design is one set of inline styles on a 1440-ish canvas; these are the
-   same numbers as classes, with two additions it has no need for — a
-   reduced-motion stop and a phone breakpoint. */
-@keyframes em-sweep {
-  0% {
-    left: -34%;
-  }
-  100% {
-    left: 100%;
-  }
-}
-@keyframes em-pan {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-13%);
-  }
-}
+   A full-screen white veil holding the cards' own loader (.ccload, see
+   panels/CardLoader.tsx); components/IntroLoader.tsx owns the timing. It
+   replaced the skyline intro on 2026-09-28. */
 @keyframes in-veil {
   0% {
     opacity: 1;
@@ -15720,25 +15701,14 @@ body {
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: grid;
-  place-items: center;
-  /* THE BAND'S HEIGHT IS DERIVED FROM THE ARTWORK, NOT CHOSEN.
-     The source is 2868x708, so at any width the drawing wants width x
-     708/2868 of height. Give the band exactly that and object-fit has nothing
-     to crop: the skyline sits flush with the band's top edge and no roofline
-     is sliced. Pick any other number and the difference is thrown away — the
-     old 34vh band around a 38vh image discarded 116px of drawing at 1440x860,
-     82px to the cover crop and another 34px to the band's own overflow, and
-     what showed above the cut was the veil's white. */
-  --introsky-w: max(115vw, 160vh);
-  --introsky-h: calc(var(--introsky-w) * 708 / 2868);
-  /* Lifts the lockup off centre so it sits in the white ABOVE the skyline
-     rather than on it — the same height as the band, so the two never meet. */
-  padding-bottom: var(--introsky-h);
-  box-sizing: border-box;
-  overflow: hidden;
   background: #ffffff;
   color: #1c1c1e;
+}
+/* The card loader's own wash is translucent over a card; over the veil it
+   has nothing to wash, and its blur would only cost a frame. */
+.introveil > .ccload {
+  background: transparent;
+  backdrop-filter: none;
 }
 .introveil.is-out {
   animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -15747,141 +15717,7 @@ body {
      during the handoff reaches the map, not the veil. */
   pointer-events: none;
 }
-/* stretch, not center: it is what makes the sweep bar span the lockup exactly,
-   so the rule is as wide as the mark and wordmark together and needs no width
-   of its own. */
-.introstage {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 30px;
-}
-.introlockup {
-  display: flex;
-  align-items: center;
-  gap: 27px;
-}
-.intromark {
-  display: block;
-  flex: none;
-}
-.introword {
-  font-size: 64px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1;
-}
-.introbar {
-  position: relative;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(128, 128, 128, 0.24);
-  overflow: hidden;
-}
-.introbarfill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 34%;
-  border-radius: 2px;
-  background: currentColor;
-  animation: em-sweep 1.9s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
-}
-.introband {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Exactly the artwork's own height at this width — see --introsky-h. A band
-     shorter than the image would clip the top off with overflow: hidden, which
-     is half of what the old 34vh did. */
-  height: var(--introsky-h);
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.62;
-}
-/*
- * NOTHING IS CROPPED ANY MORE, which is the point of deriving the band's height
- * from the artwork rather than picking one.
- *
- * The source is 2868x708. This used to be a 38vh image inside a 34vh band, and
- * BOTH numbers threw drawing away: object-fit: cover discarded 82px of 409 at
- * 1440x860 because the element was shorter than the image's aspect, and the
- * band then clipped 34px more off the element with overflow: hidden. 116px of
- * skyline gone, and the veil's white where it used to be — a hard horizontal
- * line straight through the rooflines.
- *
- * Height is now 100% of a band that is itself the artwork's natural height, so
- * the aspect matches exactly and cover has nothing left to trim.
- *
- * object-fit and object-position STAY. They crop nothing while the aspects
- * agree, and they are the thing that keeps the GROUND LINE on screen rather
- * than the sky if the artwork is ever replaced with one of a different shape.
- * `bottom: 0` for the same reason — the design's `-4vh` pushed 34px of the
- * ground line below the fold.
- */
-.introsky {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: var(--introsky-w);
-  /* WITHOUT THIS THE PAN TEARS. The app's reset carries `img { max-width: 100% }`,
-     which the design file has no equivalent of, and it clamps the width above
-     back to the viewport's. The two numbers are a matched pair: the image is
-     115vw wide and em-pan slides it 13% of that, which is 14.95vw — so the
-     right edge finishes at 100.05vw, a rounding error inside the frame. Clamp
-     the width to 100vw and the same 13% drags 13vw of white onto the right of
-     the screen. */
-  max-width: none;
-  height: 100%;
-  object-fit: cover;
-  object-position: center bottom;
-  display: block;
-  filter: grayscale(1) contrast(1.02);
-  /* THE NEGATIVE DELAY IS THE SPEED CONTROL, NOT THE DURATION.
-     The veil only lives 1.9s-6s (DWELL_MS/MAX_HOLD in IntroLoader.tsx), and
-     ease-in-out spends its first few percent almost stationary — measured at
-     1440x860, the design's 52s moved the skyline 0.6px across the whole dwell,
-     so the pan was there in the stylesheet and invisible on screen. Trimming
-     the duration alone does not fix that: 44s on its own is 0.8px.
-     Starting 14s in puts the visible window on the curve's cruising section —
-     measured in the browser at 9.1px/s, 15.8px of drift across the dwell at
-     1440x860 and 5.5px/s at 390x844. Gentle, but actually moving.
-     The travel stays -13% so the right-edge coverage above is untouched, and
-     the eased reversal at each end is kept — it just happens at 44s, long
-     after the veil has gone. */
-  animation: em-pan 44s ease-in-out -14s infinite alternate;
-}
-/* The design is a desktop canvas: 77px of mark, 27px of gap and a 64px wordmark
-   set about 390px wide, which is a whole phone. */
-@media (max-width: 680px) {
-  .introword {
-    font-size: 40px;
-  }
-  .intromark {
-    width: 50px;
-    height: 50px;
-  }
-  .introlockup {
-    gap: 16px;
-  }
-  .introstage {
-    gap: 22px;
-  }
-}
-/* Both loops stopped. The composition still stands; it just holds still, with
-   the sweep parked a third of the way across so the bar does not read as an
-   empty track. The veil's own fade is kept but shortened — it is a state
-   change rather than motion for its own sake, and leaving it out would make
-   the app appear with a hard cut. */
 @media (prefers-reduced-motion: reduce) {
-  .introbarfill,
-  .introsky {
-    animation: none;
-  }
-  .introbarfill {
-    left: 33%;
-  }
   .introveil.is-out {
     animation: in-veil 200ms linear both;
   }
@@ -17715,10 +17551,40 @@ body {
   }
 }
 /* The trending board's two columns need about 700px between them; under
-   that the columns stack and the board scrolls as one. */
+   that the columns stack and the board scrolls as one.
+
+   STACKED, EVERY ROW TAKES ITS CONTENT'S HEIGHT. Side by side, each column
+   is min-height:0 so the board fits one screen and the skills tile absorbs
+   the slack. Stacked, that same min-height:0 let the board's fixed height
+   squeeze the rows below their content — the left column's tiles spilled
+   out of their row and the skills tile painted over them (the risers tile
+   cut to a sliver, its heading clipped). max-content rows cannot be
+   squeezed; the board scrolls instead, and the skills tile keeps its own
+   internal scroll at a fixed height rather than stretching. */
 @container (max-width: 720px) {
   .trendpane .briefscroll {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: start;
+  }
+  .trendpane .smk {
+    flex: 0 0 auto;
+    height: 420px;
+  }
+}
+/* The skill rows: the name column is what gives when the card narrows, so
+   the sparkline goes first and the name and its sub-line wrap rather than
+   ellipsing to a letter. The change and the median stay — they are the
+   figures. */
+@container (max-width: 520px) {
+  .trendpane .smkspark,
+  .trendpane .smksparknone {
+    display: none;
+  }
+  .trendpane .smkname,
+  .trendpane .smksub {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 /* The resize grip: fixed to the card's bottom-right corner by the hook,
