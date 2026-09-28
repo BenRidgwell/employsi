@@ -82,9 +82,6 @@ AGENCIES = {
         name='Sydney Opera House', score=23, warm='https://www.sydneyoperahouse.com/',
         pages=['https://www.sydneyoperahouse.com/about-us/how-we-work/'
                'governance-policies-and-corporate-information/annual-reports']),
-    'ses': dict(
-        name='NSW State Emergency Service', score=26, warm='https://www.ses.nsw.gov.au/',
-        pages=['https://www.ses.nsw.gov.au/about-us/publications/']),
     'sport': dict(
         name='Office of Sport', score=26,
         pages=['https://www.sport.nsw.gov.au/corporate-information/annual-reports',
@@ -97,16 +94,33 @@ AGENCIES = {
         name='Service NSW', score=15, warm='https://www.service.nsw.gov.au/',
         url='https://www.service.nsw.gov.au/system/files/2025-12/Annual-Report-2025-SNSW_0.pdf',
         pages=[]),
+    # NOT reachable for this one: parliament.nsw.gov.au sits behind a Cloudflare
+    # interstitial that 120 s of warmed browser cannot clear, so its own annual
+    # report is unreadable from here even though it certainly exists there.
     'dps': dict(
-        name='Department of Parliamentary Services', score=23,
+        name='Department of Parliamentary Services', score=33,
         pages=['https://www.parliament.nsw.gov.au/about/Pages/annual-reports.aspx']),
+    # ── Their own domains. None of these has a section on nsw.gov.au, checked
+    # against its 33,068-URL sitemap 2026-09-28 — so the nsw.gov.au route that
+    # found Creative Industries and Trustee and Guardian cannot reach them, and
+    # each listing page below is a guess the probe reports on rather than trusts.
+    'ses': dict(
+        name='NSW State Emergency Service', score=30, warm='https://www.ses.nsw.gov.au/',
+        pages=['https://www.ses.nsw.gov.au/about-us/corporate-publications/',
+               'https://www.ses.nsw.gov.au/resources/',
+               'https://www.ses.nsw.gov.au/about-us/annual-reports/']),
     'ecnsw': dict(
-        name='NSW Electoral Commission', score=17, warm='https://elections.nsw.gov.au/',
-        pages=['https://elections.nsw.gov.au/about-us/reports/annual-reports']),
+        name='NSW Electoral Commission', score=22, warm='https://elections.nsw.gov.au/',
+        pages=['https://elections.nsw.gov.au/about-us/reports/annual-reports',
+               'https://elections.nsw.gov.au/about-us/our-reports']),
     'maas': dict(
-        name='Museum of Applied Arts and Sciences', score=19,
-        pages=['https://www.maas.museum/about/annual-reports/',
-               'https://powerhouse.com.au/about/annual-reports']),
+        name='Museum of Applied Arts and Sciences', score=20,
+        pages=['https://powerhouse.com.au/about/annual-reports',
+               'https://www.maas.museum/about/annual-reports/']),
+    'ombo': dict(
+        name='NSW Ombudsman', score=18, warm='https://www.ombo.nsw.gov.au/',
+        pages=['https://www.ombo.nsw.gov.au/news-and-publications/publications/annual-reports',
+               'https://www.ombo.nsw.gov.au/about-us/our-reports']),
     'ausmus': dict(
         name='Australian Museum', score=14,
         pages=['https://australian.museum/about/organisation/annual-reports/']),
