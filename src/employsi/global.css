@@ -17670,80 +17670,72 @@ body {
   height: min(100%, var(--pane-max-h));
 }
 
-/* The role the city map is highlighting (RoleFocusChip). Top-right of the map
-   frame: the career card covers the left and the centre, and the chip has to
-   stay readable while the card is open. Above the panes' scrim (44) so it can
-   be cleared without closing the card first. */
-.rolechip {
+/* ── Resizable cards ─────────────────────────────────────────────────────────
+   The analyst, career pathways, talent flows and what's trending cards can be
+   narrowed and shortened by the user (hooks/useDraggablePane.ts — the
+   designed size is the ceiling). Each card is a size container, and what was
+   laid out in fixed columns for the full width steps down as it narrows.
+   Everything else in them already flows: charts are viewBox + width:100%,
+   lists stack, and the career card's chart/hotspot row wraps on its own. */
+.analystpane,
+.cppane,
+.trendpane,
+.tfcard {
+  container-type: inline-size;
+}
+.cpstats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container (max-width: 520px) {
+  .cpstats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cpstats > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container (max-width: 400px) {
+  .cpstats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .anstats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The map's "drag to explore" hint is a hint, not content; the demand key
+   beside it is, so the hint gives way when the two no longer fit. */
+@container (max-width: 480px) {
+  .cpdraghint {
+    display: none;
+  }
+}
+@container (max-width: 460px) {
+  .anmultiples {
+    grid-template-columns: 1fr;
+  }
+}
+/* The trending board's two columns need about 700px between them; under
+   that the columns stack and the board scrolls as one. */
+@container (max-width: 720px) {
+  .trendpane .briefscroll {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The resize grip: fixed to the card's bottom-right corner by the hook,
+   outside the card so a card that scrolls cannot scroll it away. */
+.panegrip {
   position: fixed;
-  top: calc(var(--head-height) + 20px);
-  right: 36px;
-  z-index: 46;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  max-width: min(360px, calc(100vw - 32px));
-  padding: 9px 9px 9px 14px;
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  background: var(--raised-surface, #fff);
-  box-shadow: var(--raised-shadow);
-  font-size: 12.5px;
-  color: var(--text-primary);
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 55%, var(--neutral-400, #b4b4ba) 55% 62%, transparent 62% 72%, var(--neutral-400, #b4b4ba) 72% 79%, transparent 79%);
+  border-bottom-right-radius: 14px;
+  opacity: 0.8;
 }
-.rolechiptxt {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
-.rolechiplbl {
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-.rolechiptxt b {
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rolechipsub {
-  font-size: 11.5px;
-  color: var(--text-secondary);
-}
-.rolechipgo {
-  align-self: flex-start;
-  margin-top: 4px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-.rolechipgo:hover {
-  text-decoration: underline;
-}
-.rolechipx {
-  flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-subtle);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.rolechipx:hover {
-  background: var(--surface-hover, #f4f4f5);
+.panegrip:hover {
+  opacity: 1;
 }
 
 /* ── Supply mode: the local pin's size IS the figure ─────────────────────── */

@@ -1040,6 +1040,7 @@ export function WorldMapbox() {
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const roleFocus = useAppStore((s) => s.roleFocus);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const heatMonth = useAppStore((s) => s.heatMonth);
   const role = useAppStore((s) => s.role);
@@ -1182,14 +1183,27 @@ export function WorldMapbox() {
       const s = useAppStore.getState();
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
-      const skill = activeSkill(s.searchQuery);
+      // A ROLE picked on the career pathways card heats the map the way a
+      // skill search does, from the role's own live ads by city (the card's
+      // hiring hotspots). It stands in for the skill as the thing being heated;
+      // `skill` stays the real skill so the series-backed overlays below, which
+      // only exist per skill, are skipped for a role rather than misapplied.
+      const role = s.roleFocus;
+      const skill = role ? null : activeSkill(s.searchQuery);
+      const heatKey = role ? role.title : skill;
       // What the globe is coloured BY. The Supply/Demand switch decides the
       // dataset; the Vacancies/Per-1,000 toggle only ever describes demand, so
       // on the supply side it is overridden rather than combined — the same
       // rule the search box follows, so the two surfaces cannot disagree about
       // what is being shown.
-      const heatMode: DemandMode = s.marketMode === "supply" ? "employment" : s.demandMode;
-      let cityDemand = demandByCity(s.skillIndex, skill);
+      // A role's figures are live ads whatever the switch says: the pathways
+      // count ads, not employment or a rate, and the pins must name that unit.
+      const heatMode: DemandMode = role
+        ? "volume"
+        : s.marketMode === "supply"
+          ? "employment"
+          : s.demandMode;
+      let cityDemand = role ? { ...role.cities } : demandByCity(s.skillIndex, skill);
       // Overlay the real Jobs & Skills Australia IVI vacancy demand (whole
       // labour market, with monthly history) on top of the company/Adzuna
       // counts. Applied on the AU domestic view and on the global view (where
@@ -1239,7 +1253,7 @@ export function WorldMapbox() {
         s.domesticRegion,
         fs,
         demandForView,
-        !!skill,
+        !!heatKey,
         map.getZoom(),
         // Admins see every market live; end users see the covered ones.
         s.role === "admin",
@@ -1285,10 +1299,10 @@ export function WorldMapbox() {
       // no pulse). The demand blobs show only while a skill is active.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
       skillSrc?.setData(
-        buildSkillHeat(mode, s.domesticRegion, skill, demandForView, s.role === "admin"),
+        buildSkillHeat(mode, s.domesticRegion, heatKey, demandForView, s.role === "admin"),
       );
       if (map.getLayer(HALO_LAYER)) {
-        map.setLayoutProperty(HALO_LAYER, "visibility", skill ? "visible" : "none");
+        map.setLayoutProperty(HALO_LAYER, "visibility", heatKey ? "visible" : "none");
       }
     };
     rebuildMarkersRef.current = rebuildMarkers;
@@ -1628,7 +1642,8 @@ export function WorldMapbox() {
       const animateHalo = () => {
         if (map.getLayer(HALO_LAYER)) {
           const s = useAppStore.getState();
-          const active = !!activeSkill(s.searchQuery) && s.zoomedOut && !s.zoomingIn;
+          const active =
+            (!!s.roleFocus || !!activeSkill(s.searchQuery)) && s.zoomedOut && !s.zoomingIn;
           if (active) {
             const p = 0.5 - 0.5 * Math.cos(performance.now() / 620); // 0..1
             map.setPaintProperty(HALO_LAYER, "circle-radius", 17 + 13 * p);
@@ -1789,6 +1804,7 @@ export function WorldMapbox() {
     minGrowth,
     maxAttrition,
     searchQuery,
+    roleFocus,
     skillIndex,
     heatMonth,
     // The session resolves after first paint, so the initial markers are always

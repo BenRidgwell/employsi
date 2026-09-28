@@ -475,8 +475,14 @@ function skillDemandOf(s: {
   // null: no heat gradient, no glow, no lit/faded split, no ad count. Returning
   // the demand map and painting it differently would leave ad data driving the
   // supply view, which is the one thing these two modes exist to keep apart.
-  if (s.marketMode === "supply") return null;
+  //
+  // A ROLE PICKED ON THE CAREER CARD IS THE EXCEPTION, and comes first. It is
+  // an explicit question the reader asked — which employers advertised this
+  // role — answered in ads and labelled as ads, on every layer (the card only
+  // opens from the supply side, so gating it on demand mode would switch it
+  // off exactly where it is asked). Headcount pins return when it clears.
   if (s.roleFocus) return s.roleFocus.companies;
+  if (s.marketMode === "supply") return null;
   const sk = activeSkill(s.searchQuery);
   // AT the scrubbed month, so the pins follow the timeline the card scrubs.
   // Before the archive reaches, this is the live index unchanged — see
@@ -557,8 +563,8 @@ export function PerthMapbox() {
     // See skillDemandOf: supply mode turns the skill channel off rather than
     // recolouring it. Kept in step with that function by keying off the same
     // store field, so the two cannot disagree about which mode is on.
-    if (marketMode === "supply") return null;
     if (roleFocus) return roleFocus.companies;
+    if (marketMode === "supply") return null;
     const sk = activeSkill(searchQuery);
     return sk
       ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
@@ -840,7 +846,8 @@ export function PerthMapbox() {
         // Supply mode sizes pins by filed headcount, normalised within THIS
         // city's largest employer — so each city gets the full scale range
         // rather than every pin outside Sydney sitting at the floor.
-        const supplyOn = s.marketMode === "supply";
+        // Not while a career-card role is picked: see skillDemandOf.
+        const supplyOn = s.marketMode === "supply" && !s.roleFocus;
         const supC = supplyOn
           ? new Map(
               placedRef.current.map((p) => [p.company.id, localSupplyFor(p.company)] as const),
@@ -1161,7 +1168,7 @@ export function PerthMapbox() {
         : 1;
       // Supply mode: pin size from filed headcount, normalised within this city.
       // See setMarkerSupply.
-      const supplyOn = marketMode === "supply";
+      const supplyOn = marketMode === "supply" && !roleFocus;
       const supD = supplyOn
         ? new Map(placedRef.current.map((p) => [p.company.id, localSupplyFor(p.company)] as const))
         : null;
@@ -1221,7 +1228,7 @@ export function PerthMapbox() {
     // with no skill searched, skillDemand is null in BOTH modes, so switching
     // supply/demand would not change it and this effect would never re-run — the
     // pins would keep their old sizes until some unrelated filter moved.
-  }, [selectedId, filterState, skillDemand, marketMode, role, localCity]);
+  }, [selectedId, filterState, skillDemand, marketMode, roleFocus, role, localCity]);
 
   useEffect(() => {
     // Hide companies the instant we're zoomed out, regardless of what

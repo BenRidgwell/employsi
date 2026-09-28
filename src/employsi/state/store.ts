@@ -49,12 +49,21 @@ export interface AppState {
    *  redirect and the in-memory copy does not survive the round trip. */
   pendingCareerGoal: { id: string; title: string } | null;
   /**
-   * A role picked on the career pathways map, and the roster companies that
-   * advertised it in the pathways window (id → roles advertised). While set,
-   * the city map lights those companies and fades the rest, exactly as a
-   * skill search does — see PerthMapbox's skillDemandOf.
+   * A role picked on the career pathways card. While set, the map is heated
+   * by that role the way a skill search heats it, on every layer:
+   *   - globe and domestic (WorldMapbox): `cities`, the role's live ads by
+   *     city — the card's own hiring hotspots — as the per-city demand;
+   *   - local (PerthMapbox's skillDemandOf): `companies`, the roster companies
+   *     that advertised it in the pathways window, lit with their counts.
+   * It belongs to the card: closing the card clears it, and a skill search
+   * replaces it.
    */
-  roleFocus: { id: string; title: string; companies: Record<string, number> } | null;
+  roleFocus: {
+    id: string;
+    title: string;
+    companies: Record<string, number>;
+    cities: Record<string, number>;
+  } | null;
   /** A pathway node the career card should open on (the profile's "View
    *  pathway"); consumed by the card when it mounts. */
   careerFocus: string | null;
@@ -1109,8 +1118,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFlowView: (v) =>
     set(v ? { flowView: v, flowSampled: v.sampledCompanies } : { flowView: null }),
   closeAnalyst: () => set({ analystOpen: false }),
-  toggleCareer: () => set((s) => solo("careerOpen", !s.careerOpen)),
-  closeCareer: () => set({ careerOpen: false }),
+  toggleCareer: () =>
+    set((s) => ({
+      ...solo("careerOpen", !s.careerOpen),
+      ...(s.careerOpen ? { roleFocus: null } : {}),
+    })),
+  closeCareer: () => set({ careerOpen: false, roleFocus: null }),
   toggleDataQuality: () => set((s) => solo("dataQualityOpen", !s.dataQualityOpen)),
   closeDataQuality: () => set({ dataQualityOpen: false }),
 
