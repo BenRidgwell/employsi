@@ -818,6 +818,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             }}
           >
             <span
+              className="cpdraghint"
               style={{
                 padding: "5px 8px",
                 borderRadius: 999,
@@ -826,6 +827,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 letterSpacing: ".1em",
                 color: "var(--text-tertiary,#8e8e93)",
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               DRAG TO EXPLORE
@@ -843,6 +845,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 alignItems: "center",
                 gap: 6,
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               <span
@@ -1029,9 +1032,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
         </div>
 
         <div
+          className="cpstats"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
             gap: 1,
             background: "var(--border-subtle,#e5e5ea)",
             border: "1px solid var(--border-subtle,#e5e5ea)",
