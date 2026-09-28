@@ -49,7 +49,15 @@ async function pathways(): Promise<{ p: CareerPathways; source: "kv" | "bundled"
     const parsed = raw ? (JSON.parse(raw) as CareerPathways) : null;
     // A KV value written before the card's fields existed has no `markets`;
     // the bundled file does, so it wins until the tick rewrites the key.
-    if (parsed?.nodes?.length && parsed.nodes.every((n) => n.markets))
+    // Nor, until the tick has run with the builder that records them, does
+    // it carry each market's roster `companies` — which the map's role
+    // highlight reads — so a value without them loses to the bundled file too.
+    if (
+      parsed?.nodes?.length &&
+      parsed.nodes.every(
+        (n) => n.markets && Object.values(n.markets).every((m) => Array.isArray(m.companies)),
+      )
+    )
       next = { at: Date.now(), p: parsed, source: "kv" };
   } catch {
     // Off-Worker (vite dev) or no binding: fall through to the bundled file.

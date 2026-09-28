@@ -399,12 +399,20 @@ function filterStateOf(s: {
 
 // The live per-company demand lookup when a skill is the active search, else
 // null (maps fall back to the salary/growth metric).
+//
+// A ROLE picked on the career pathways map takes the same path: its companies
+// and how many of that role each advertised in the pathways window stand in
+// for skill demand, so the lit/faded pins, the glow and the count badge all
+// behave exactly as they do for a skill search. It wins over a skill because
+// it is the more recent, narrower question; clearing it returns to the skill.
 function skillDemandOf(s: {
   searchQuery: string;
   skillIndex: SkillIndex | null;
   skillMonths: SkillCompanyMonths | null;
   heatMonth: number;
+  roleFocus: { companies: Record<string, number> } | null;
 }): Record<string, number> | null {
+  if (s.roleFocus) return s.roleFocus.companies;
   const sk = activeSkill(s.searchQuery);
   // AT the scrubbed month, so the pins follow the timeline the card scrubs.
   // Before the archive reaches, this is the live index unchanged — see
@@ -448,6 +456,7 @@ export function PerthMapbox() {
   const skillIndex = useAppStore((s) => s.skillIndex);
   const skillMonths = useAppStore((s) => s.skillMonths);
   const heatMonth = useAppStore((s) => s.heatMonth);
+  const roleFocus = useAppStore((s) => s.roleFocus);
   const activeSectors = useAppStore((s) => s.activeSectors);
   const listingType = useAppStore((s) => s.listingType);
   const activeExchanges = useAppStore((s) => s.activeExchanges);
@@ -480,11 +489,12 @@ export function PerthMapbox() {
   );
 
   const skillDemand = useMemo(() => {
+    if (roleFocus) return roleFocus.companies;
     const sk = activeSkill(searchQuery);
     return sk
       ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
       : null;
-  }, [searchQuery, skillIndex, skillMonths, heatMonth]);
+  }, [roleFocus, searchQuery, skillIndex, skillMonths, heatMonth]);
 
   useEffect(() => {
     if (!containerRef.current) return;

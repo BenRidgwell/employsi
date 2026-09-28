@@ -231,6 +231,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   // opens the sign-in sheet and it is saved on return (store.requestCareerGoal).
   const goalId = useAppStore((s) => s.careerGoal);
   const requestCareerGoal = useAppStore((s) => s.requestCareerGoal);
+  const setRoleFocus = useAppStore((s) => s.setRoleFocus);
   const [pop, setPop] = useState(false);
   const [scrub, setScrub] = useState<number | null>(null);
   const [hub, setHub] = useState<string | null>(null);
@@ -339,6 +340,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setSelId(nodes[i].id);
     setScrub(null);
     center(i);
+    // Picking a role lights the companies that advertised it on the city
+    // map behind the card and fades the rest, like a skill search. Only on a
+    // pick: the card's own opening selection is not the reader's choice.
+    const o = nodes[i];
+    setRoleFocus({
+      id: o.id,
+      title: o.title,
+      companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
+    });
   };
   const nextOf = (i: number) => {
     const kid = nodes.findIndex((o) => o.parent === i);

@@ -48,6 +48,13 @@ export interface AppState {
    *  Kept in sessionStorage as well as here, because sign-in is an OAuth
    *  redirect and the in-memory copy does not survive the round trip. */
   pendingCareerGoal: { id: string; title: string } | null;
+  /**
+   * A role picked on the career pathways map, and the roster companies that
+   * advertised it in the pathways window (id → roles advertised). While set,
+   * the city map lights those companies and fades the rest, exactly as a
+   * skill search does — see PerthMapbox's skillDemandOf.
+   */
+  roleFocus: { id: string; title: string; companies: Record<string, number> } | null;
   /** A pathway node the career card should open on (the profile's "View
    *  pathway"); consumed by the card when it mounts. */
   careerFocus: string | null;
@@ -202,6 +209,7 @@ export interface AppState {
   /** Open the career card on one role. */
   openCareerAt: (id: string) => void;
   takeCareerFocus: () => string | null;
+  setRoleFocus: (f: AppState["roleFocus"]) => void;
   dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
@@ -520,6 +528,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   careerGoal: null,
   pendingCareerGoal: loadPendingGoal(),
   careerFocus: null,
+  roleFocus: null,
   toast: null,
   settingsOpen: false,
   alertsOpen: false,
@@ -700,6 +709,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (id) set({ careerFocus: null });
     return id;
   },
+  setRoleFocus: (f) => set({ roleFocus: f }),
   dismissToast: () => set({ toast: null }),
   openAuth: () =>
     set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
@@ -889,6 +899,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       maxAttrition: 16,
     }),
   toggleSkillQuery: (skill) => {
+    // A skill search is a new question about the map: the role highlight it
+    // would otherwise sit underneath goes.
+    if (get().roleFocus) set({ roleFocus: null });
     const s = get();
     const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
     if (on) {

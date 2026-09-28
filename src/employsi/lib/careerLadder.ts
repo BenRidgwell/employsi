@@ -2353,6 +2353,16 @@ export interface PathwayMarket {
   hubs: [string, number][];
   /** Live roles carrying each of the node's listed skills. */
   skillLive: Record<string, number>;
+  /**
+   * Roster companies that advertised this rung in the window:
+   * [company id, roles advertised, of those still live], most first.
+   *
+   * ROSTER COMPANIES ONLY. A board ad whose employer was never matched to a
+   * company on the map has a name here and no pin anywhere, so it cannot be
+   * highlighted and is left out rather than guessed at — `employers` above
+   * counts every employer, this lists the ones the map can show.
+   */
+  companies: [string, number, number][];
 }
 
 export interface PathwayEdge {
