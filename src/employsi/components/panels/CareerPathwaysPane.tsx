@@ -342,14 +342,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setSelId(nodes[i].id);
     setScrub(null);
     center(i);
-    // Picking a role lights the companies that advertised it on the city
-    // map behind the card and fades the rest, like a skill search. Only on a
-    // pick: the card's own opening selection is not the reader's choice.
+    // Picking a role heats the map behind the card by that role, as a skill
+    // search does, on whichever layer is showing (see store.roleFocus). Only
+    // on a pick: the card's own opening selection is not the reader's choice.
     const o = nodes[i];
     setRoleFocus({
       id: o.id,
       title: o.title,
       companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
+      cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
     });
   };
   const nextOf = (i: number) => {
