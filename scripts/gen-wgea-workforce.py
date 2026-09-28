@@ -458,11 +458,29 @@ REFUSED = {
     "CCI": "not in the register; 'cci' matches only Acciona entities",
     "Ateco": "not in the register; 'ateco' matches only StateCover Mutual",
     # Present, but not as this company.
+    # THE LARGEST CARD IN THE GAP (1,206), AND THE REFUSAL SURVIVED A HARD LOOK
+    # 2026-09-28 — including the one route that had changed since it was written.
     "Chemist Warehouse": "the only candidate is 'CW Retail Services Trust' at 489, "
-                         "which cannot be the employer behind 318 live ads — the "
+                         "which cannot be the employer behind 311 live ads — the "
                          "stores are separately owned franchises and the corporate "
                          "entity is small. Filing 489 as Chemist Warehouse would be "
-                         "a real number for a fraction of the organisation",
+                         "a real number for a fraction of the organisation. IT IS "
+                         "LISTED NOW AND THAT DOES NOT HELP: Sigma Healthcare "
+                         "(ASX: SIG) merged with the Chemist Warehouse Group on 13 "
+                         "February 2025 and is the parent, so an annual report "
+                         "exists where none did — but Sigma holds its own roster "
+                         "card, filed at 859, and putting the parent's figure here "
+                         "would count the same people twice. The register agrees "
+                         "they were separate reporters: WGEA's 2024-25 period runs "
+                         "1 April 2024 to 31 March 2025, almost all of it before "
+                         "the merger, and it carries Sigma Healthcare Limited and "
+                         "The Trustee For CW Retail Services Trust (489, and 405 "
+                         "the year before) as two groups. WHEN A CONSOLIDATED FILE "
+                         "LANDS, Sigma's card is the one that moves and this one "
+                         "stays a franchise network with no employer behind it. "
+                         "Sigma's own FY25 report could not be read from here to "
+                         "cross-check the 859 — investorcentre.sigmahealthcare.com.au "
+                         "answers 403 Access Denied to a warmed browser",
     "Brisbane Catholic Education": "the only match is the whole Archdiocese of "
                                    "Brisbane (14,853), which is parishes and curia "
                                    "as well as schools",
