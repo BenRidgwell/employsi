@@ -8,6 +8,7 @@
 //   NSW: Hunter Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Audit Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Director of Public Prosecutions: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
+//   NSW: Museums of History: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 101 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -111,6 +112,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-icare-nsw": { now: 1850, prev: 1879, yoy: -1.5, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
+  "nsw-gov-museums-of-history-nsw": { now: 483, prev: 456, yoy: 5.9, asof: "Jun 2025", span: 1 },
   "nsw-gov-nepean-blue-mountains-local-health-district": { now: 5984, prev: 5548, yoy: 7.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-northern-sydney-local-health-district": { now: 8960, prev: 9057, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-ambulance": { now: 7509, prev: 7037, yoy: 6.7, asof: "Jun 2025", span: 1, unit: "fte" },

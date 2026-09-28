@@ -812,6 +812,48 @@ NOT_IN_SOURCE = {
         'that link would stop resolving within hours. The stable route is the '
         'transparency.gov.au publication, which renders the same appendix as '
         'HTML rather than as a PDF, and the report-reading path only reads PDFs',
+    # ── Four NSW cards that are a filed department's own divisions ────────────
+    # ALL FOUR WERE SETTLED FROM TWO DOCUMENTS ALREADY IN THIS TABLE, without a
+    # single new fetch, and that is the point worth carrying forward: the reports
+    # filed for the departments name their divisions and their personnel-services
+    # clients, so several blank cards in a portfolio are answered by re-reading
+    # the one report the portfolio's head already supplies. It is the Destination
+    # NSW move, applied deliberately rather than stumbled on.
+    'nsw:Revenue NSW':
+        "INSIDE the Department of Customer Service figure, which is filed, and the "
+        "very table that figure comes from prints its own row: p71, \"Division "
+        "Full Time Equivalent (FTE) over time\", Revenue NSW 1,441.9 / 1,769.4 / "
+        "1,776.1 / 1,819.4 against a Total of 7,651.9 at 19 June 2025. So a real, "
+        "dated, precise figure exists for this card and filing it would put the "
+        "same 1,819.4 FTE on two cards. p15's organisation chart carries Revenue "
+        "NSW as one of the department's divisions, beside Digital.NSW and Fair "
+        "Trading. The division figure is available if the roster ever stops "
+        "carrying the department",
+    'nsw:State Insurance Regulatory Authority':
+        "INSIDE the same Department of Customer Service total, at 446.6 FTE on "
+        "that same p71 table (446.2 the year before). It is a separate ENTITY "
+        "rather than a division, and that does not change the answer: p151 lists "
+        "it among the \"entities within the Customer Service Portfolio that are "
+        "subject to personnel services agreements\", and p159 books $73.2 million "
+        "of personnel services revenue from it — DCS employs its people and "
+        "recharges the cost, so they are in the department's head count",
+    'nsw:Create NSW':
+        'INSIDE the Creative Industries, Tourism, Hospitality and Sport figure '
+        '(1,019 head count at 19 June 2025), which is filed. p14 of that report '
+        'lists the department\'s divisions and Create NSW is one of the five — '
+        'Office of the Secretary, Create NSW, Hospitality and Racing, 24-Hour '
+        'Screen and Sound, Corporate Services. Its employee-classification table '
+        'is by classification rather than by division, so no separate figure for '
+        'it is published; the department\'s is the only one there is',
+    'nsw:Liquor & Gaming NSW':
+        'INSIDE the same Creative Industries figure. It is an operating brand '
+        'within that department\'s Hospitality and Racing division rather than a '
+        'division in its own right — p36 and p42 report its work as the '
+        "department's, and p14's list of portfolio agencies that publish "
+        'SEPARATE annual reports names the Independent Liquor and Gaming '
+        'Authority and the NSW Independent Casino Commission, both distinct '
+        'bodies, and not L&GNSW. No figure for it alone is published anywhere in '
+        'the report',
     # ── Two NSW bodies whose people are DCCEEW's, stated in two documents ─────
     # THE FILED DEPARTMENT'S OWN REPORT NAMES THEM. DCCEEW's 2024-25 volume 1,
     # p53 under "Personnel services and employment arrangements": "In 2024–25,
@@ -3363,6 +3405,43 @@ NSW_AGENCY_REPORTS = {
         ncols=3, now_i=2, prev_i=1,
         header=r'2023\s+2024\s+2025',
         proof=r'Size of agency \(headcount\)',
+        unit='headcount', asof='Jun 2025'),
+    # p93 "Classification by full-time equivalent and headcount": four number
+    # columns — FTE and head count for 2023-24, then FTE and head count for
+    # 2024-25 — and a Total row of 354.58 / 456.00 / 350.08 / 483.00. The head
+    # count is column 3.
+    #
+    # NO COMPONENT SUM IS POSSIBLE AND THE REASON IS IN THE TABLE, not a
+    # shortcut. Two classifications exist in only one of the two years: Car
+    # Drivers reads "1.71 2.00 – –" and Chief Guide, Historic Houses Trust reads
+    # "– – 4.56 9.00". Both carry two numbers against four columns, so `ncols=4`
+    # cannot admit them, and a column sum over what is left comes to 474 against
+    # a stated 483 and 454 against 456 — off by exactly those two rows. A `sums`
+    # check here would reject a correct parse. The header is asserted instead,
+    # and it is worth being exact about what that does and does not buy. It
+    # proves the table's column ORDER is still FTE, Headcount, FTE, Headcount, so
+    # index 3 is still a head count and an edition that reordered the pairs fails
+    # here. It does NOT catch a spec that simply names the wrong index — measured:
+    # now_i=2 files 350.08, a perfectly clean parse of the FTE column. That one is
+    # caught by having read the table, which is why the figures are written above.
+    #
+    # NOT INSIDE ANY FILED DEPARTMENT, unlike Taronga. Its people come from a
+    # staff agency too — p170, "The staff agency provides personnel services to
+    # MHNSW and State Records Authority NSW" — but that agency is MHNSW's OWN,
+    # not a department's, and p14 of the Creative Industries report lists Museums
+    # of History NSW among the portfolio agencies that publish SEPARATE annual
+    # reports rather than among its five divisions. So this 483 is nobody else's.
+    'nsw-mhnsw': dict(
+        label='NSW: Museums of History',
+        agency='Museums of History NSW',
+        agency_id='nsw-gov-museums-of-history-nsw',
+        url='https://cdn.sanity.io/files/zl9du87e/production/'
+            '4d8c3cbc3fb090bb54e4880bc7670389fc81b8d4.pdf',
+        needle='Classification by full-time equivalent and headcount',
+        total=r'^Total\b',
+        ncols=4, now_i=3, prev_i=1,
+        header=r'Classification\s+FTE\s+Headcount\s+FTE\s+Headcount',
+        proof=r'census data as at 20 June 2024 and 19 June 2025',
         unit='headcount', asof='Jun 2025'),
 }
 
