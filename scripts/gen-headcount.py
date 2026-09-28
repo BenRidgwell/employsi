@@ -485,6 +485,45 @@ OWN_REPORT = {
 # anywhere near it. `asof` is not optional in Headcount, and dating a marketing
 # page to whenever it was last edited would be inventing the one fact that makes
 # a figure worth showing.
+# Listed companies the AGGREGATOR HAS NO EMPLOYEE SERIES FOR, keyed so a pass can
+# see the work was done. Every one was asked on 2026-09-26 and again in the run
+# that added this table; the header above ASX records the same measurement in
+# prose, and prose is exactly the problem — 20 of these 37 are not in the ticker
+# map at all, so nothing anywhere said they had been tried, and every accounting
+# of the gap has re-listed them as unexamined since.
+#
+# THIS IS NOT "no figure exists", AND THE DIFFERENCE MATTERS. It says the mirror
+# that fills 155 other cards has nothing for these tickers, which is a fact about
+# the mirror. Two were then checked at the source and are recorded properly in
+# NO_FIGURE_PUBLISHED below (Catalyst Metals, Perseus Mining); the rest have not
+# been read at their own reports and could still be filed that way.
+#
+# THIRTEEN OF THEM ARE THE SAME KIND OF ENTITY AND THAT IS THE NEXT THING TO
+# CHECK, not a reason to write down yet. AFI, ARG, BWP, CIP, CLW, CQR, HDN, L1G,
+# LSF, MXT, RGN, WAM and WLE are listed investment companies and REITs — trusts
+# and managed vehicles whose staff, where there are any, are employed by a
+# responsible entity or manager rather than by the listed entity. If that is what
+# their reports say, the honest card for most of them is not a head count at all.
+# Charter Hall Retail REIT was searched for the standard "does not have any
+# employees" wording and it was not found in what a search returns, so the
+# statement has to come from the documents themselves and none has been read.
+AGGREGATOR_HAS_NO_SERIES = {
+    # /quote/asx/<TK>/employees/ answers 404 for each of these — measured, not
+    # assumed, in the run that wrote this file.
+    'adelaide-afi': None, 'adelaide-ar3': None, 'adelaide-arg': None,
+    'adelaide-axe': None, 'adelaide-bgd': None, 'adelaide-pro': None,
+    'bmn': None, 'brisbane-dbi': None, 'cvn': None, 'cxo': None, 'del': None,
+    'dyl': None, 'gor': None, 'hgo': None, 'jms': None, 'melbourne-afi': None,
+    'melbourne-alx': None, 'melbourne-l1g': None, 'melbourne-lsf': None,
+    'mgt': None, 'perth-bwp': None, 'perth-cyl': None, 'perth-pdi': None,
+    'perth-rsg': None, 'perth-waf': None, 'pru': None, 'sgq': None,
+    'stx': None, 'sw1': None, 'sydney-cip': None, 'sydney-clw': None,
+    'sydney-cqr': None, 'sydney-hdn': None, 'sydney-mxt': None,
+    'sydney-nic': None, 'sydney-rgn': None, 'sydney-wam': None,
+    'sydney-wle': None,
+}
+
+
 NO_FIGURE_PUBLISHED = {
     # Checked at the SOURCE with a browser after the aggregator returned nothing
     # for all 37 remaining listed cards.
@@ -964,6 +1003,12 @@ def main():
               f'carries no total workforce figure:')
         for cid in sorted(NO_FIGURE_PUBLISHED):
             print(f'  {cid}: {NO_FIGURE_PUBLISHED[cid]}')
+    if AGGREGATOR_HAS_NO_SERIES:
+        # Printed as a COUNT, not a list. Thirty-seven ids is a screen of noise
+        # every run, and the useful question is whether the number moved.
+        print(f'\n{len(AGGREGATOR_HAS_NO_SERIES)} listed cards the aggregator '
+              f'carries no employee series for (see the table in this script for '
+              f'which, and for the REIT/LIC pattern among them)')
 
 
 if __name__ == '__main__':

@@ -812,6 +812,81 @@ NOT_IN_SOURCE = {
         'that link would stop resolving within hours. The stable route is the '
         'transparency.gov.au publication, which renders the same appendix as '
         'HTML rather than as a PDF, and the report-reading path only reads PDFs',
+    # ── Two NSW bodies whose people are DCCEEW's, stated in two documents ─────
+    # THE FILED DEPARTMENT'S OWN REPORT NAMES THEM. DCCEEW's 2024-25 volume 1,
+    # p53 under "Personnel services and employment arrangements": "In 2024–25,
+    # the department provided personnel services to the following entities:
+    # Biodiversity Conservation Trust, Jenolan Caves Reserve Trust, Lord Howe
+    # Island Board, Natural Resources Access Regulator, Taronga Conservation
+    # Society Australia." DCCEEW's head count is filed, so a figure on either of
+    # these cards puts the same people on two cards — the National Parks and
+    # Wildlife Service call, and the Destination NSW call, on evidence rather
+    # than on the shape of the cluster.
+    #
+    # WATERNSW IS DELIBERATELY NOT IN THAT LIST and it is the useful control.
+    # p13 of the same report carries it as a related agency, and the
+    # personnel-services list does not, which is what a state-owned corporation
+    # employing its own staff looks like from the department's side. That is why
+    # WaterNSW still needs its own report and is recorded below as blocked, while
+    # these two need none.
+    'nsw:Taronga Conservation Society Australia':
+        "INSIDE the DCCEEW head count, which is filed, and Taronga's own report "
+        'says so as plainly as the department\'s does: p109, "Since the '
+        'Administrative Arrangement Order 2023, all employees are under the '
+        'employment of DCCEEW, therefore salaries and wages, annual leave and '
+        'on-costs are classified as personnel services expenses". Its impact '
+        'pages do carry "1,044 total staff team members", in an infographic with '
+        'no as-at date anywhere near it, so even taken alone it could not be '
+        'filed — but the reason it is not filed is the double count',
+    'nsw:Natural Resources Access Regulator':
+        'INSIDE the DCCEEW head count, which is filed. Named in the same '
+        'personnel-services list as Taronga on p53 of the department\'s 2024-25 '
+        'report, so its people are DCCEEW employees. nrar.nsw.gov.au answers 403 '
+        'to this network as well, but that is not the reason — a reachable report '
+        'would still be reporting the same people',
+    # ── Three NSW state-owned corporations behind one Cloudflare, 2026-09-28 ──
+    # A CHALLENGE A WARMED BROWSER DOES NOT CLEAR, which is a different answer
+    # from every other Cloudflare host here and the reason it is written down
+    # rather than retried. The Northern Territory and Tasmania both sit behind
+    # "Just a moment" and both hand over inside thirty seconds; these three do
+    # not hand over at all. Measured with the wait raised to 180 SECONDS, six
+    # times the generator's cap: Forestry Corporation 28,844 bytes still
+    # challenged, Essential Energy 28,824 bytes still challenged. So raising the
+    # shared cap would buy nothing and cost every other host six times the wait —
+    # the cap stays at thirty.
+    #
+    # THREE UNRELATED DOMAINS AGREEING TO FOUR SIGNIFICANT FIGURES is the tell
+    # the CHALLENGE comment describes, and here it is again: 28,696 / 28,737 /
+    # 28,765 bytes on the first pass. One doorman, three hosts, and the useful
+    # conclusion is about the exit IP rather than about any of them.
+    #
+    # WaterNSW is HALF-OPEN, and that is worth separating from the other two: its
+    # ROOT clears in thirty seconds, and the request that follows for the report
+    # under /documents/publications/ is answered 403 anyway — 5,972 bytes where a
+    # PDF was expected, with the navigation fallback timing out. So the clearance
+    # is real and does not extend to the file path, which is the Art Gallery's
+    # per-path shape rather than a host that refuses browsers.
+    #
+    # All three reports are published and none was read. The remaining routes are
+    # a different exit IP, or the tabled-papers copy on parliament.nsw.gov.au,
+    # which is the host this file already records as closed.
+    'nsw:Essential Energy':
+        'behind a Cloudflare challenge this network cannot clear. A warmed '
+        'browser waited 180 s on its publications page and the content was still '
+        'the interstitial at 28,824 bytes; a plain fetch answers 403 in 5,754. '
+        'Nothing about whether it publishes a workforce figure is established — '
+        'the page was never read',
+    'nsw:Forestry Corporation of NSW':
+        'the same Cloudflare challenge as Essential Energy, byte for byte the '
+        'same interstitial, and the same 180 s with no clearance (28,844 bytes). '
+        'Its annual-reports page was never read',
+    'nsw:WaterNSW':
+        'HALF-OPEN. waternsw.com.au/ clears a Cloudflare challenge in 30 s '
+        'through a warmed browser, and the annual report under '
+        '/documents/publications/general-publications/annual-reports/ is answered '
+        '403 inside that cleared context — 5,972 bytes of challenge HTML where a '
+        'PDF was expected, with the navigation fallback timing out. The clearance '
+        'does not reach the file path',
     'tas:Whole of Government Programs':
         'A JOB-BOARD CATEGORY, NOT AN AGENCY, which is why no workforce figure '
         'can exist for it. jobs.tas.gov.au/agency/19 is titled "Whole of '
@@ -3177,6 +3252,118 @@ NSW_AGENCY_REPORTS = {
         ncols=2, now_i=1, prev_i=None, sums=[(0,), (1,)],
         proof=r'June\s*\n?\s*2025|DPIRD June 2025',
         unit='headcount', asof='Jun 2025'),
+    # ── State-owned corporations, 2026-09-28 ─────────────────────────────────
+    # A DIFFERENT SHAPE FROM THE DEPARTMENTS ABOVE, and it is the reason these
+    # were never reachable through `nsw`: the Workforce Profile covers the public
+    # service, and a state-owned corporation employs its own staff outside it.
+    # So there is no row to alias to and never was — only each corporation's own
+    # annual report, which is what this table already knows how to read.
+
+    # p86 prints TWO workforce tables one under the other and the wrong one is
+    # the one with more years in it. "Workforce numbers – full-time equivalent,
+    # 2020–21 to 2024–25" carries five columns and a Total of 3,967; "Workforce
+    # numbers – headcount, 2023–24 to 2024–25" carries two and a Total of 4,011.
+    # `ncols=2` is what separates them — the FTE rows have five numbers each and
+    # cannot qualify — and it is doing real work, because both tables reconcile
+    # against their own components and so `_reconciles` alone could not choose.
+    # The head count is taken, as everywhere else here that publishes both.
+    #
+    # BOTH COLUMNS ARE ASSERTED: 3,623 + 242 + 146 is 4,011 and 3,225 + 151 + 154
+    # is 3,530, exactly. Footnote 1 to the page dates them — "Staff numbers at
+    # 30 June 2025".
+    'nsw-sydwater': dict(
+        label='NSW: Sydney Water',
+        agency='Sydney Water',
+        agency_id='nsw-gov-sydney-water',
+        url='https://www.sydneywater.com.au/content/dam/sydneywater/documents/'
+            'sydney-water-annual-report-2024-25.pdf',
+        needle='Workforce numbers – headcount',
+        total=r'^Total\b',
+        comp=r'^Headcount – (?:permanent|temporary|part time)',
+        ncols=2, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        proof=r'Workforce numbers – headcount, 2023–24 to 2024–25',
+        unit='headcount', asof='Jun 2025'),
+    # p45 "Workforce profile": Headcount 2025 2024 — NEWEST COLUMN FIRST, which
+    # is the opposite of every NSW department above and the reason `now_i` is 0
+    # here. Getting that backwards would report a fall of 8 as a rise of 8 with
+    # both numbers real, which is the NSW Police column-order lesson.
+    #
+    # THE PAGE CARRIES THREE Total ROWS OF TWO NUMBERS: 568/560 under the gender
+    # rows, 568/560 again under the employment-type rows, and 551/545 under a
+    # Full time equivalent heading. `comp` names the gender rows alone so the FTE
+    # table cannot reconcile against them, and `stated` is the page's own prose —
+    # "We have 568 employees working across eight divisions" — which is the
+    # independent quantity that rules out filing 551 as a head count.
+    'nsw-huntwater': dict(
+        label='NSW: Hunter Water',
+        agency='Hunter Water',
+        agency_id='nsw-gov-hunter-water',
+        url='https://www.hunterwater.com.au/documents/assets/src/uploads/'
+            'documents/Annual-Reports-Past-Reports/Annual-report-2024-25.pdf',
+        needle='Workforce profile',
+        total=r'^Total\b',
+        comp=r'^(?:Males|Females|Non-binary)\b',
+        ncols=2, now_i=0, prev_i=1, sums=[(0,), (1,)],
+        stated=r'We have ([\d,]+) employees',
+        proof=r'Headcount 2025 2024',
+        unit='headcount', asof='Jun 2025'),
+    # THE FIRST HTML REPORT IN THIS TABLE, and the reason the `html` branch above
+    # exists. The Audit Office publishes /annual-report/annual-report-2024-25 as
+    # a page; the PDFs linked from it are appendices one to nine, so a spec
+    # pointed at any of them would be reading a fragment.
+    #
+    # ITS "Our people" section states all four numbers in ONE sentence: "the
+    # number of full-time equivalent employees at 30 June 2025 was 348, higher
+    # than 337 last year and the employee headcount was 359, higher than 346 last
+    # year." The head count is taken, and taking it needs no judgement about
+    # column order because the sentence names each figure — which is exactly why
+    # the html branch demands both years in one match.
+    #
+    # `stated` IS NOT USED AND CANNOT BE. The page's overview panel gives "348
+    # full-time equivalent employees at 30 June 2025", which is the FTE, so a
+    # cross-check against it would fail against a head count that is perfectly
+    # correct. The sentence is the source and the FTE beside it is the decoy.
+    'nsw-audit': dict(
+        label='NSW: Audit Office',
+        agency='Audit Office of New South Wales',
+        agency_id='nsw-gov-audit-office-of-new-south-wales',
+        url='https://www.audit.nsw.gov.au/annual-report/annual-report-2024-25',
+        html=True,
+        find=r'employee headcount was ([\d,]+), higher than ([\d,]+) last year',
+        now_g=1, prev_g=2,
+        proof=r'full.time equivalent employees at 30 June 2025 was [\d,]+',
+        unit='headcount', asof='Jun 2025'),
+    # p118, the Workforce Diversity appendix every NSW agency files: "1. Size of
+    # agency (headcount) 2023 2024 2025 / Non-casual Headcount as Census Date
+    # 956 970 1,089". The published change beside it is 12.3%, and 1,089 against
+    # 970 is 12.27%, so the pair reads correctly — but it is NOT wired as
+    # `change_i`, which reads a fourth column in the SAME row. Here the change is
+    # its own row, so the header assertion is the column guard instead.
+    #
+    # THAT CHANGE ROW IS ALSO A TRAP AND THE LOOKAHEAD IS WHY. Its label is
+    # "Non-casual Headcount as Census Date (year on year %)" — a PREFIX of the
+    # figure row's label, carrying three numbers exactly like it, so a bare
+    # `^Non-casual Headcount as Census Date` matches both and the later match
+    # wins. That would have filed 12.3 as a workforce. The lookahead refuses any
+    # continuation into a bracket.
+    #
+    # IT DOES NOT DOUBLE COUNT DCJ, whose 25,643 is also filed. The page names
+    # the split itself — "Portfolio: Communities and Justice / Reporting Entity:
+    # Office of the Director of Public Prosecutions" — so the ODPP files its own
+    # appendix as its own reporting entity, and the department's figure is the
+    # department's employees.
+    'nsw-odpp': dict(
+        label='NSW: Director of Public Prosecutions',
+        agency='Office of the Director of Public Prosecutions',
+        agency_id='nsw-gov-office-of-the-director-of-public-prosecutions',
+        url='https://www.odpp.nsw.gov.au/sites/default/files/2025-11/'
+            'ODPP_Annual_Report_2024-2025.pdf',
+        needle='Size of agency (headcount)',
+        total=r'^Non-casual Headcount as Census Date(?!\s*\()',
+        ncols=3, now_i=2, prev_i=1,
+        header=r'2023\s+2024\s+2025',
+        proof=r'Size of agency \(headcount\)',
+        unit='headcount', asof='Jun 2025'),
 }
 
 
@@ -3279,6 +3466,44 @@ def _nsw_agency(spec):
     """
     import io as _io
     import pdfplumber
+
+    # ── `html`: AN AGENCY WHOSE ANNUAL REPORT IS A WEB PAGE, NOT A PDF ───────
+    # The Audit Office of New South Wales publishes its report as HTML —
+    # /annual-report/annual-report-2024-25 is the report, and the PDFs beside it
+    # are appendices. Everything below assumes a PDF and raises "not a PDF" on
+    # such a host, which reads as a broken link rather than as a different
+    # format, and that is what this branch is for.
+    #
+    # IT IS DELIBERATELY STRICTER THAN THE TABLE PATH, NOT LOOSER. There are no
+    # rulings to find a table by and no components to reconcile, so the one thing
+    # standing between a number and a card is the regex — and so the spec must
+    # capture BOTH years in ONE match. That is what makes a column-order mistake
+    # impossible here: there are no columns, only the document's own sentence
+    # saying which figure is which year. `proof` is still asserted, and the match
+    # must be unique, for the same reasons as everywhere else.
+    if spec.get('html'):
+        page = fetch(spec['url'], warm=spec.get('warm'),
+                     via_browser=bool(spec.get('render')), render=bool(spec.get('render')))
+        text = re.sub(r'<(script|style)\b[^>]*>.*?</\1>', ' ', page, flags=re.S | re.I)
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = (text.replace('&nbsp;', ' ').replace('&amp;', '&')
+                    .replace('&#8217;', "'").replace('&rsquo;', "'")
+                    .replace('‑', '-').replace('–', '-'))
+        text = ' '.join(text.split())
+        if not re.search(spec['proof'], text):
+            raise RuntimeError(f"{spec['label']}: the page no longer says "
+                               f"{spec['proof']!r}, so {spec['asof']} cannot be shown "
+                               f"to be its date")
+        hits = list(re.finditer(spec['find'], text))
+        if len(hits) != 1:
+            raise RuntimeError(f"{spec['label']}: {spec['find']!r} matched "
+                               f"{len(hits)} times, not once — ambiguous, nothing filed")
+        now = _num(hits[0].group(spec.get('now_g', 1)))
+        prev = (_num(hits[0].group(spec['prev_g']))
+                if spec.get('prev_g') else None)
+        if now <= 0 or (prev is not None and prev <= 0):
+            raise RuntimeError(f"{spec['label']}: parsed {now}/{prev}")
+        return {spec['agency']: (now, prev)}, spec['asof'], spec['unit']
 
     # `warm` FOR A HOST THAT 403s A PLAIN FETCH. transport.nsw.gov.au refuses
     # urllib outright and serves the same file to a browser that has loaded its
