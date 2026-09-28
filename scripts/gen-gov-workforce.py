@@ -87,6 +87,25 @@ ALIAS = {
     # department's own 4,931 public servants. Both rows are real and they are
     # different workforces; this maps the schools card to the schools one.
     "Government schools": "Department of Education (teaching service and school support employees)",
+    # VIC: A RENAME, NOW ESTABLISHED RATHER THAN GUESSED. This card sat in
+    # NOT_IN_SOURCE with a reason that said exactly what it did not know — "the
+    # source has 'Wage Inspectorate Victoria' (66) and nothing named Workforce
+    # Inspectorate. Whether that is a rename is not established here, and a score
+    # would have taken it — the AFL/AFL Sports Ready trap". It is a rename: Wage
+    # Inspectorate Victoria became Workforce Inspectorate Victoria on 12 December
+    # 2025, and vic.gov.au carries an "About Workforce Inspectorate" page for the
+    # same body. So the caution was right and the answer is now evidence.
+    #
+    # THE FIGURE IS Jun 2024, EIGHTEEN MONTHS BEFORE THE RENAME, which the card's
+    # own asof states — the same date every other Victorian card carries.
+    #
+    # `Labour Hire Licensing Authority` (101) IS A SEPARATE ROW IN THE SAME
+    # SOURCE AND IS NOT ADDED. The December 2025 changes route labour-hire
+    # reporting to the renamed body, which invites summing the two to 167 —
+    # and whether that authority was folded in, or merely reports to it, is not
+    # established here. That is the same caution that kept this card blank,
+    # applied one level down rather than abandoned now that a match exists.
+    "Workforce Inspectorate Victoria": "Wage Inspectorate Victoria",
     # ── New Zealand ────────────────────────────────────────────────────────
     # Te Kawa Mataaho writes the legal name; the roster writes what the job ads
     # say. Each was read off the two CSVs, not guessed.
@@ -622,6 +641,30 @@ NOT_IN_SOURCE_JURISDICTION = {
            "search stopped going through the sitemap",
 }
 
+# THE WHOLE LIST WAS RE-CHECKED 2026-09-28, the same way the WGEA refusals were
+# — and unlike those, it came back almost clean. That is worth recording so the
+# next pass does not spend an afternoon re-running it.
+#
+# The method: for every card still blank in a jurisdiction, search that source's
+# OWN row names for one CONTAINING the roster name, which neither norm() nor an
+# exact lookup can do. Over Queensland's 38 rows against its 22 blank cards and
+# Victoria's 261 against its 20, every hit was a coincidence of substring —
+# "Racing Integrity Commission" against the Integrity Commissioner, "Royal
+# Melbourne Hospital" against the Melbourne Recital Centre, "Victorian School
+# Building Authority" against the Victorian Building Authority — and the four
+# that looked real were already described correctly here:
+#
+#   Victorian Institute of Forensic Medicine   its row IS there and is half the
+#                                              body; the reason already says so
+#   State Revenue Office                       inside a DTF row that names it
+#   Building and Plumbing Commission           created from the VBA after Jun 2024
+#   Workforce Inspectorate Victoria            a rename, now established — moved
+#                                              to ALIAS above
+#
+# So these reasons were written against the source rather than against one
+# lookup, which is exactly what the WGEA list had not been. Three of those four
+# would have been filed by a careless sweep, and each would have put one body's
+# staff on another body's card.
 NOT_IN_SOURCE = {
     # ── APS: read off the sheet itself, 2026-09-27 ────────────────────────────
     # WHY ALL FIVE AT ONCE. These are every gov-aps card left in the gap, and
@@ -950,10 +993,6 @@ NOT_IN_SOURCE = {
         'created after Jun 2024',
 
     # ── Victoria: a near name that is NOT this body ────────────────────────
-    'vic:Workforce Inspectorate Victoria':
-        "the source has 'Wage Inspectorate Victoria' (66) and nothing named "
-        'Workforce Inspectorate. Whether that is a rename is not established '
-        'here, and a score would have taken it — the AFL/AFL Sports Ready trap',
     'vic:Royal Melbourne Hospital':
         "the source's unit is 'Melbourne Health' (9,983), the health service "
         'that operates the hospital AND NorthWestern Mental Health. The roster '
