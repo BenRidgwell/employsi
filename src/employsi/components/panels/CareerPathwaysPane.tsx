@@ -144,9 +144,8 @@ export function CareerPathwaysPane() {
    * CLICK outside the card closes it (press and release without moving, as
    * the scrim's onClick did), while scrolling and panning reach the map.
    *
-   * The rail, the mobile tab bar and the toast are exempt, as they were above
-   * the scrim:
-   * their buttons already swap cards themselves.
+   * The rail, the mobile tab bar and the toast are exempt, as they sat above
+   * the scrim: their buttons already swap cards themselves.
    */
   useEffect(() => {
     if (!open) return;
