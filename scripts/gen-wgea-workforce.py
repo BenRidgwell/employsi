@@ -381,6 +381,33 @@ ALIAS = {
 # Companies deliberately NOT matched, with the measurement that decided it.
 # These are here so the next person does not re-derive them, and so the count
 # of "no source" rows is a statement rather than a gap in the alias table.
+# EVERY REFUSAL HERE WAS RE-CHECKED AGAINST BOTH FILES, 2026-09-28, and two of
+# them did not survive it. A refusal is a statement about the register, and
+# these were written from whatever the newest file happened to say.
+#
+#   Tennis Australia — "no entity in the register; 'tennis' matches nothing at
+#   all". True of 2024-25 and false of 2023-24, where Tennis Australia Limited
+#   is a single-member group of 863. No alias was ever needed: norm() already
+#   maps the roster name and the register name onto "tennis australia", so
+#   deleting the refusal is the whole fix and the stale path dates it Jun 2024.
+#
+#   CJD Equipment — "not in the register". It is, in BOTH files: "C J D
+#   Equipment Pty Ltd", 543 and 564. That refusal predates the rule a few lines
+#   above in norm() that joins runs of single letters, which was added for NHP
+#   and ABC Tissue and silently fixed this one too. Nothing re-read the
+#   refusals afterwards, so the card stayed blank for a reason that had stopped
+#   being true.
+#
+# The others were re-checked the same way and hold: Walker Corporation still
+# collides with a different family's Walker Group Holdings, Australian Rare
+# Earths still only matches Lynas, Region Group still only matches Regional
+# Express and unrelated "Regional" employers, Ateco is still an accident of
+# "STATECOVER", and Manildra still cannot be shown to hold only its own
+# entities.
+#
+# THE CHECK IS TWO LINES AND IT IS WORTH RE-RUNNING whenever a new file lands:
+# for each refused name, look up norm(name) in both years' group and employer
+# indexes, and search both years' names for one CONTAINING it.
 REFUSED = {
     # ── Near names that would each have filed a REAL figure for the WRONG
     # company. Recorded rather than left out, because the next pass over this
@@ -422,9 +449,7 @@ REFUSED = {
     # legal name the company is known to use. Several are large enough that the
     # Act should reach them, so absence here is a fact about the register rather
     # than a conclusion about the employer.
-    "Tennis Australia": "no entity in the register; 'tennis' matches nothing at all",
     "Sydney Tools": "not in the register",
-    "CJD Equipment": "not in the register",
     "QCoal": "not in the register",
     "Apco Service Stations": "not in the register; the near names are Bapcor and "
                              "Tapco, unrelated companies",

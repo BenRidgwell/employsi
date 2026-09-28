@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 285 of 862 Australian roster companies
-//        (262 matched on the group name, 23 on the employer name).
+// Filed: 287 of 862 Australian roster companies
+//        (264 matched on the group name, 23 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -89,7 +89,7 @@
 //     uni-university-of-new-england
 //     uni-university-of-wollongong
 //
-//   reported last year and not this one, so the reading is older (9):
+//   reported last year and not this one, so the reading is older (10):
 //     brisbane-crn
 //     melbourne-ann
 //     melbourne-pmv
@@ -97,6 +97,7 @@
 //     priv-bing-lee-electrics
 //     priv-linfox
 //     priv-mcnab-constructions
+//     priv-tennis-australia
 //     sydney-ppt
 //     uni-university-of-technology-sydney
 //
@@ -214,6 +215,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-calvary-health-care": { now: 17810, prev: 17387, yoy: 2.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Little Company Of Mary Health Care Limited
   "priv-canberra-airport": { now: 212, prev: 228, yoy: -7.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Capital Airport Group Pty Limited
   "priv-cbh-group": { now: 1928, prev: 1893, yoy: 1.8, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Co-Operative Bulk Handling Limited
+  "priv-cjd-equipment": { now: 543, prev: 564, yoy: -3.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: C J D Equipment Pty Ltd
   "priv-clayton-utz": { now: 1502, prev: 1500, yoy: 0.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Clayton Utz
   "priv-cmv-group": { now: 2041, prev: 2041, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Commercial Motor Vehicles Pty Ltd
   "priv-competitive-foods": { now: 25255, prev: 23491, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Competitive Foods Australia Pty Ltd
@@ -297,6 +299,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-talent-international": { now: 298, prev: 282, yoy: 5.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Talent International Holdings Pty Ltd
   "priv-teachers-health-fund": { now: 473, prev: 440, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Teachers Federation Health Ltd
   "priv-team-global-express": { now: 6129, prev: 6450, yoy: -5.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Team Global Express Pty Ltd
+  "priv-tennis-australia": { now: 863, prev: 863, yoy: null, asof: "Jun 2024", span: 0, unit: "headcount" },  // group: Tennis Australia Limited
   "priv-teys-australia": { now: 3450, prev: 3450, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Teys Australia Pty Ltd
   "priv-thiess": { now: 5440, prev: 4855, yoy: 12.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Thiess Pty Ltd
   "priv-thomas-foods-international": { now: 124, prev: 99, yoy: 25.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Thomas Foods International Pty Limited
