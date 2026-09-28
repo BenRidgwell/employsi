@@ -1376,8 +1376,25 @@ def load_sa():
 
     # "Name  a  b  c  d", where each of the four is a number or an em/hyphen
     # dash. A dash means the agency did not exist in that period — Housing and
-    # Urban Development reads "- - 323 338" — and those are skipped rather than
-    # read as zero.
+    # Urban Development reads "- - 323 338" — and a dash is never read as zero.
+    #
+    # A DASH IN THE EARLIER PAIR NO LONGER DROPS THE ROW, and this loader
+    # dropping it is why two of South Australia's fourteen departments looked
+    # absent from a report that names them. Housing and Urban Development and
+    # State Development were both created on 1 July 2024, so the June 2024
+    # columns are dashes and the June 2025 columns are real — and the row was
+    # skipped whole, which reads from the outside exactly like a source that
+    # does not carry the agency. It was nearly written down as one: the 98 rows
+    # this loader returned were dumped precisely to explain those two cards, and
+    # the explanation would have been a refusal naming a fact about the PDF that
+    # is not true of it.
+    #
+    # `prev` MAY BE None ALL THE WAY THROUGH — main() has supported it since
+    # Western Australia restructured its departments, and the card shows the
+    # figure with no delta. This loader predates that support and kept the
+    # stricter rule after it arrived. The dash is still never a zero and a dash
+    # in the LATER pair still drops the row, because that is an agency with no
+    # current reading at all.
     ROW = re.compile(r'^(.{4,80}?)\s+([\d,]+|[-–])\s+([\d,]+|[-–])\s+([\d,]+|[-–])\s+([\d,]+|[-–])$')
     SECTION = 'FULL-TIME EQUIVALENT AND TOTAL WORKFORCE HEADCOUNT'
     out = {}
@@ -1394,10 +1411,11 @@ def load_sa():
                 if name.upper() != name.lower() and name.isupper():
                     continue                      # a header row, not an agency
                 prev_hc, now_hc = m.group(3), m.group(5)
-                if not prev_hc[0].isdigit() or not now_hc[0].isdigit():
-                    continue                      # did not exist in one period
+                if not now_hc[0].isdigit():
+                    continue                      # no reading for the later June
                 out.setdefault(name, (int(now_hc.replace(',', '')),
-                                      int(prev_hc.replace(',', ''))))
+                                      int(prev_hc.replace(',', ''))
+                                      if prev_hc[0].isdigit() else None))
     return out, f'Jun {year}', 'headcount'
 
 
@@ -3574,7 +3592,16 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
                 skipped += 1
                 continue
             now = sum(x[0] for x in parts)
-            prev = sum(x[1] for x in parts)
+            # A MEMBER WITH NO PRIOR READING MAKES THE WHOLE PRIOR SUM UNUSABLE,
+            # not smaller. Summing the members that do have one would compare a
+            # group of N against a group of N-1 and report the missing member as
+            # growth — the membership-change trap this block already refuses when
+            # a member is absent outright. South Australia can now produce a
+            # member with prev None (a department created between the two Junes),
+            # so this is reachable rather than theoretical, and the alternative
+            # was a TypeError taking down every jurisdiction in the run.
+            prev = (None if any(x[1] is None for x in parts)
+                    else sum(x[1] for x in parts))
             for member in spec:
                 consumed[pre].add(norm(member))
             summed.append((a['id'], len(parts), now))

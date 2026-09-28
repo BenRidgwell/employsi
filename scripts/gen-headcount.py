@@ -243,6 +243,120 @@ OWN_REPORT = {
                    ncols=5, idx=4)],
         proof=r'2022 2023 2024 2025 2026',
         span=1, asof='Mar 2026'),
+    # ── The six NZX companies left in the gap, 2026-09-28 ─────────────────────
+    #
+    # WHY THEY WERE ALL STILL BLANK, and it is one fact rather than six: the
+    # aggregator carries NZX companies under no path at all. The note above
+    # NZ_VIA_ASX records the measurement — /quote/nzx/<TK>/ 404s, and so does
+    # /quote/asx/<TK>/ for every NZ company except Xero, whose primary listing is
+    # the ASX. So FCG, MFT, ATM, SKC, IFT and CNU were never reachable through
+    # the route that fills 155 other cards, and their own reports are the source.
+    #
+    # FOUR OF THE SIX ARE FILED HERE. Infratil and Chorus are not, and each is
+    # recorded in NO_FIGURE_PUBLISHED / FETCH-blocked notes below rather than
+    # left looking unexamined.
+
+    # THE FIGURE IS AN FTE, AND IT IS THE FIRST ONE IN THIS FILE. p62: "We
+    # directly employ 11,721 people on a full-time equivalent basis, with 89.9%
+    # of those based in New Zealand." The appendix on p236 heads the same total
+    # "REGION REPORTING (FTE)" and reaches it three independent ways — by region
+    # 10,536 + 887 + 298, permanent + temporary 11,472 + 249, and full-time +
+    # part-time 11,364 + 357 — all three exactly 11,721. `unit='fte'` is what
+    # keeps the tile from calling it a head count.
+    #
+    # NO PRIOR YEAR, AND THE REPORT ITSELF SAYS WHY. FY25 reads 16,215 against
+    # this year's 11,721, which is a −27.7% that never happened: Fonterra sold
+    # Mainland Group during FY26. The appendix note on p242 is explicit —
+    # "employees of Mainland Group are included in FY24 and FY25 people reporting
+    # but not in FY26 data taken as a snapshot on 31 July 2026 (after the
+    # divestment had taken place)" — and adds that "comparative periods may not
+    # be reported on a consistent basis". A publisher stating that its own
+    # comparative is a different scope is the clearest possible case of the rule
+    # against comparing two readings measured different ways.
+    #
+    # THAT SAME NOTE IS THE DATE. Nothing beside the prose figure dates it, and
+    # the Co-op's balance date is 31 July, so `doc_proof` holds the spec to the
+    # sentence that says 31 July 2026 — if a future report moves the snapshot,
+    # the load fails rather than re-dating a figure.
+    'nz-fonterra-co-operative-group': dict(
+        url='https://view.publitas.com/8079/3380480/pdfs/'
+            '22c762e4-da6e-4796-be8c-567b894b8a67.pdf',
+        needle='We directly employ',
+        find=r'We directly employ ([\d,]+) people on',
+        proof=r'full-time equivalent basis',
+        doc_proof=r'snapshot on 31 July 2026',
+        unit='fte', asof='Jul 2026'),
+    # A FULL TILE, because the report prints both years side by side. p13, the
+    # operating-statistics spread, carries a TEAM NUMBERS panel headed "THIS YEAR
+    # LAST YEAR": New Zealand 2,896 / 2,925, Australia 2,696 / 2,705, Europe
+    # 3,079 / 3,083, Americas 1,693 / 1,872, Asia 475 / 545, Total Group 10,839 /
+    # 11,130. Both columns reconcile exactly against their own five regions, and
+    # `sums` asserts the first one, which is what ties column 1 to the figure
+    # filed rather than trusting the header alone.
+    #
+    # THE 2.8% ON THE KEY-ACHIEVEMENTS PAGE IS NOT PEOPLE GROWTH. p4 sets "$5.38b
+    # / 10,839" beside "Group Operating Revenue 2.8%" and the word "People", laid
+    # out so the percentage reads as the change in the number next to it. It is
+    # the revenue change; team numbers FELL 2.6% this year. Deriving a prior year
+    # from it would have published a rise where the report states a fall, which is
+    # why the prior year is read from the panel and not reconstructed.
+    'nz-mainfreight': dict(
+        url='https://www.mainfreight.com/getcontentasset/'
+            '9f6d081f-03d5-4e1d-a2be-992dd1ca826c/'
+            'dfc3d011-8f63-43f6-9ed8-4b444333a1d0/'
+            'mainfreight-2026-annual-report.pdf?language=en',
+        needle='TEAM NUMBERS',
+        find=r'Total Group ([\d,]+) ([\d,]+)',
+        col=1, prev_col=2,
+        sums=[dict(what='the five regional team numbers',
+                   labels=['New Zealand', 'Australia', 'Europe', 'Americas', 'Asia'],
+                   ncols=2, idx=0)],
+        proof=r'THIS YEAR LAST YEAR',
+        doc_proof=r'for the year ended 31 March 2026',
+        span=1, asof='Mar 2026'),
+    # p37 "Key metrics data": Gender (as at 30 June 2026) totals 694 team
+    # members, and the same page reaches 694 twice more — by age (75 + 492 + 127)
+    # and by tenure (353 + 189 + 152). Both are asserted, because the page also
+    # carries a COHORT column whose four rows sum to 695: footnote 1 says the CEO
+    # is counted as both a Director and an ELT member, so that column is the one
+    # breakdown here that does not close, and a spec reading it would be one out.
+    #
+    # NO PRIOR YEAR, STATED BY THE PUBLISHER. Footnote 4 to that table: "The
+    # year-on-year comparison is not directly comparable due to the acquisition of
+    # a2 Pōkeno and the divestment of MVM in FY26." The variance columns beside
+    # each row are percentage-point moves in the gender split, not changes in the
+    # count, so nothing on the page offers a comparable level anyway.
+    'nz-the-a2-milk-company': dict(
+        url='https://assets-au-01.kc-usercontent.com/'
+            'bca3e5d5-83bd-02bf-1c27-acb036630e5b/'
+            '34913ff7-ef71-4f17-bdad-f8dc25ec4433/FY26%20Annual%20Report.pdf',
+        needle='Key metrics data',
+        find=r'Total (\d+) \d+ \d+% \d+ \d+%',
+        sums=[dict(what='the three age bands',
+                   labels=['Under 30', '30 to 50', 'Over 50'], ncols=1, idx=0),
+              dict(what='the three tenure bands',
+                   labels=['0–2 Years', '2–5 Years', '5+ Years'], ncols=1, idx=0)],
+        proof=r'Gender \(as at 30 June 2026\)',
+        asof='Jun 2026'),
+    # TWO TOTALS ON ONE PAGE, AND THE SMALLER ONE IS THE TRAP. p24's diversity
+    # snapshot gives "No. of employees 4,689 (FY25: 4,592)", footnoted as
+    # including full-time, part-time and casual. Eleven lines below, the gender
+    # composition table's own "Total workforce" row reads 2180 + 2458 = 4,638
+    # (FY25: 4,513) — 51 fewer, because footnote 4 says that row excludes anyone
+    # who identifies as gender diverse or declined to identify. Both are labelled
+    # as of 30 June 2026 and either would look right on a card; only the first is
+    # the workforce. The regex reads the snapshot row by its column shape — the
+    # count, two percentages and two ages, with the FY25 line beneath it — so it
+    # cannot drift onto the gender table.
+    'nz-skycity-entertainment-group': dict(
+        url='https://www.skycityentertainmentgroup.com/media/wombx0ml/'
+            'skycity-annual-report-2026.pdf',
+        needle='DIVERSITY SNAPSHOT',
+        find=r'Oldest employee\n([\d,]+) [\d.]+% [\d.]+% \d+ years \d+ years\n'
+             r'\(FY25: ([\d,]+)\)',
+        col=1, prev_col=2,
+        proof=r'workforce as of 30 June 2026',
+        span=1, asof='Jun 2026'),
 }
 
 
@@ -415,9 +529,12 @@ def own_report(cid, spec):
         if total != now:
             raise RuntimeError(f'{cid}: {part["what"]} sum to {total:,} against a '
                                f'stated {now:,} — the column or the rows are wrong')
-    return {'now': now, 'prev': prev, 'asof': spec['asof'],
-            'yr': int(re.search(r'(20\d\d)', spec['asof']).group(1)),
-            'span': spec.get('span', 0) if prev else 0}
+    row = {'now': now, 'prev': prev, 'asof': spec['asof'],
+           'yr': int(re.search(r'(20\d\d)', spec['asof']).group(1)),
+           'span': spec.get('span', 0) if prev else 0}
+    if spec.get('unit'):
+        row['unit'] = spec['unit']
+    return row
 
 
 SENT = re.compile(
@@ -660,8 +777,16 @@ def main():
         # nobody. The interface above already declares it optional for exactly
         # this case; the own-report path is the first thing here to use it.
         prev_s = '' if not v.get('prev') else f"prev: {v['prev']}, "
+        # `unit` IS WRITTEN ONLY WHERE THE DOCUMENT SAID FTE, and the default is
+        # the honest one: everything the aggregator carries is a head count, and
+        # every row here was a head count until Fonterra. Its appendix is headed
+        # "REGION REPORTING (FTE)" and its prose says "11,721 people on a
+        # full-time equivalent basis" — filing that with no unit would have put an
+        # FTE on a tile labelled Headcount, which is the same mislabelling the
+        # Queensland bulletin already forced this field to exist for.
+        unit_s = '' if not v.get('unit') else f", unit: {v['unit']!r}"
         L.append(f"  {cid!r}: {{ now: {v['now']}, {prev_s}yoy: {yoy_s}, "
-                 f"asof: {short(v['asof'])!r}, span: {span} }},")
+                 f"asof: {short(v['asof'])!r}, span: {span}{unit_s} }},")
     L.append('};')
     L.append('')
     open(OUT, 'w').write('\n'.join(L))
