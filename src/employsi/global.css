@@ -17572,9 +17572,9 @@ body {
     height: 420px;
   }
 }
-/* The skill rows: the name column is what gives when the card narrows, so
-   the sparkline goes first and the name and its sub-line wrap rather than
-   ellipsing to a letter. The change and the median stay — they are the
+/* The skill rows (and the risers/fallers rows, same shape): the name column
+   is what gives when the card narrows, so the sparkline goes first and the
+   name and its sub-line wrap rather than ellipsing to a letter. The change and the median stay — they are the
    figures. */
 @container (max-width: 520px) {
   .trendpane .smkspark,
@@ -17582,7 +17582,9 @@ body {
     display: none;
   }
   .trendpane .smkname,
-  .trendpane .smksub {
+  .trendpane .smksub,
+  .trendpane .mvrname,
+  .trendpane .mvrsub {
     white-space: normal;
     overflow-wrap: anywhere;
   }
