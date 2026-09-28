@@ -109,7 +109,52 @@ export interface AnalystChartMultiples {
   panels: MultiplePanel[];
 }
 
-export type AnalystChart = AnalystChartLine | AnalystChartScatter | AnalystChartMultiples;
+/**
+ * A consulting-slide bar chart for answers read straight off the D1 archive,
+ * set after a Bain & Company exhibit: an ACTION TITLE stating the finding, a
+ * measure label with its unit, bold value labels on every bar, recessive
+ * everything else. Columns for a handful of categories (then vs now, a skill
+ * vs its market, the pay quartiles); rows for rankings, whose labels are too
+ * long to sit under a column.
+ *
+ * What is deliberately NOT carried over from that slide: its second y-axis
+ * (the deal-count line). A dual-axis chart lets the two scales be set so any
+ * two lines cross wherever the author likes; an answer with two measures gets
+ * two charts instead. And its red: here red means a decline, so the emphasis
+ * is ink and colour is only ever the direction of a change.
+ *
+ * Every value on it is one the answer already computed — the builder receives
+ * numbers, never queries — so the chart and the prose cannot disagree.
+ */
+export interface BarDatum {
+  label: string;
+  value: number;
+  /** The value as printed on the bar ("$95k", "1,204", "41d"). */
+  display: string;
+  /** The answer's subject: drawn in ink, the rest in grey. */
+  emphasis?: boolean;
+  /** A small secondary figure under the value, e.g. a change "+12%". */
+  note?: string;
+  /** Colours `note` as a decline. */
+  down?: boolean;
+}
+
+export interface AnalystChartBars {
+  kind: "bars";
+  orient: "column" | "row";
+  /** The takeaway, as a Bain action title. */
+  title: string;
+  /** What the bars measure, with the unit. */
+  measure: string;
+  bars: BarDatum[];
+  /** A dashed reference, e.g. the market median a ranking is read against. */
+  reference?: { value: number; label: string };
+  /** Columns only: the change from the first bar to the last, bracketed. */
+  change?: { text: string; down?: boolean };
+}
+
+export type AnalystChart =
+  AnalystChartLine | AnalystChartScatter | AnalystChartMultiples | AnalystChartBars;
 
 export interface AnalystAnswer {
   intent: string;
@@ -694,18 +739,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       const top = eligible.slice(0, 6);
       const all = usable.map((p) => p.annual).sort((a, b) => a - b);
       const market = quantile(all, 0.5);
-      const max = top[0].med;
       const prem = (m: number) => Math.round(((m - market) / market) * 100);
-      const bars: AnalystBar[] = top.map((e) => {
-        const d = prem(e.med);
-        return {
-          name: withParent(e.name),
-          // Proportional from zero: a bar twice as long is twice the pay.
-          pct: Math.round((e.med / max) * 100),
-          v: `${money(e.med, cur)} · ${e.n} ads`,
-          down: d < 0,
-        };
-      });
       const lead = top[0];
       const leadPrem = prem(lead.med);
       const tail = top[top.length - 1];
@@ -745,7 +779,29 @@ export const askAnalyst = createServerFn({ method: "POST" })
             down: leadPrem < 0,
           },
         ],
-        bars,
+        // Proportional from zero, so a bar twice as long is twice the pay, and
+        // read against the market median every premium above is measured from.
+        chart: {
+          kind: "bars",
+          orient: "row",
+          title:
+            tied.length > 1
+              ? `${tied.length} skills share the top advertised pay in ${label}`
+              : `${withParent(lead.name)} carries the highest advertised pay in ${label}`,
+          measure: `Median advertised salary by skill, ${cur} a year · ads per skill`,
+          bars: top.map((e) => {
+            const d = prem(e.med);
+            return {
+              label: withParent(e.name),
+              value: e.med,
+              display: money(e.med, cur),
+              emphasis: e.med === lead.med,
+              note: `${d > 0 ? "+" : d < 0 ? "−" : ""}${Math.abs(d)}% · ${e.n} ads`,
+              down: d < 0,
+            };
+          }),
+          reference: { value: market, label: `${label} median ${money(market, cur)}` },
+        },
         source: `Advertised salaries by skill · ${usable.length} live ads disclose pay and name a skill · at least ${MIN_PER_SKILL} per skill ranked · ${archiveNote}`,
       };
     }
@@ -826,6 +882,42 @@ export const askAnalyst = createServerFn({ method: "POST" })
                   },
                 ]),
           ],
+          // Market first, skill second, so the bracket reads as the premium the
+          // skill carries over it. No chart when the market side is too thin
+          // to quote: a column with nothing behind it would be the invented
+          // figure the prose already declines to give.
+          ...(scopeMed === null || prem === null
+            ? {}
+            : {
+                chart: {
+                  kind: "bars" as const,
+                  orient: "column" as const,
+                  title:
+                    prem === 0
+                      ? `${withParent(askedSkill)} advertises level with ${label}'s market`
+                      : `${withParent(askedSkill)} advertises ${Math.abs(prem)}% ${prem > 0 ? "above" : "below"} ${label}'s market`,
+                  measure: `Median advertised salary, ${cur} a year`,
+                  bars: [
+                    {
+                      label: `All of ${label}`,
+                      value: scopeMed,
+                      display: money(scopeMed, cur),
+                      note: `${scopeVals.length} ads`,
+                    },
+                    {
+                      label: withParent(askedSkill),
+                      value: median,
+                      display: money(median, cur),
+                      emphasis: true,
+                      note: `${vals.length} ads`,
+                    },
+                  ],
+                  change: {
+                    text: `${prem > 0 ? "+" : prem < 0 ? "−" : ""}${Math.abs(prem)}%`,
+                    down: prem < 0,
+                  },
+                },
+              }),
           source: `Advertised salaries on live ads naming ${askedSkill} · ${vals.length} of the ${scopeVals.length} that disclose pay in ${label} · ${archiveNote}`,
         };
       }
@@ -837,6 +929,19 @@ export const askAnalyst = createServerFn({ method: "POST" })
           { k: "25th percentile", v: money(p25, cur) },
           { k: "75th percentile", v: money(p75, cur) },
         ],
+        // The quartiles as three columns, the median in ink: the spread is
+        // the finding a single median hides.
+        chart: {
+          kind: "bars",
+          orient: "column",
+          title: `Advertised pay in ${label} centres on ${money(median, cur)} a year`,
+          measure: `Advertised annual salary, ${cur} · ${vals.length} ads that publish a figure`,
+          bars: [
+            { label: "25th percentile", value: p25, display: money(p25, cur) },
+            { label: "Median", value: median, display: money(median, cur), emphasis: true },
+            { label: "75th percentile", value: p75, display: money(p75, cur) },
+          ],
+        },
         source: `Advertised salaries on live ads · ${vals.length} of ${live} disclose pay · ${archiveNote}`,
       };
     }
@@ -884,19 +989,6 @@ export const askAnalyst = createServerFn({ method: "POST" })
           source: archiveNote,
         };
       }
-      const max = top[0][1];
-      const bars: AnalystBar[] = top.map(([name, n]) => {
-        const prev = before[name] || 0;
-        const delta = canCompare && prev > 0 ? Math.round(((n - prev) / prev) * 100) : null;
-        return {
-          // A speciality only reaches here when the skill it narrows did not,
-          // so the bar says which one it is a slice of.
-          name: withParent(name),
-          pct: Math.round((n / max) * 100),
-          v: delta === null ? `${n}` : `${n} · ${delta > 0 ? "+" : ""}${delta}%`,
-          down: delta !== null && delta < 0,
-        };
-      });
       const lead = top[0];
       const leadName = withParent(lead[0]);
       const changeNote = canCompare
@@ -905,7 +997,31 @@ export const askAnalyst = createServerFn({ method: "POST" })
       return {
         intent,
         text: `The most demanded skill in ${label} right now is ${leadName}, named in ${plural(lead[1], "live ad")}.${changeNote}`,
-        bars,
+        chart: {
+          kind: "bars",
+          orient: "row",
+          title: `${leadName} is the most demanded skill in ${label}`,
+          measure: canCompare
+            ? `Live ads naming each skill, ${fmtDay(asOf)} · change since ${fmtDay(then)}`
+            : `Live ads naming each skill, ${fmtDay(asOf)}`,
+          bars: top.map(([name, n]) => {
+            const prev = before[name] || 0;
+            const delta = canCompare && prev > 0 ? Math.round(((n - prev) / prev) * 100) : null;
+            return {
+              // A speciality only reaches here when the skill it narrows did
+              // not, so the bar says which one it is a slice of.
+              label: withParent(name),
+              value: n,
+              display: n.toLocaleString("en-US"),
+              emphasis: name === lead[0],
+              note:
+                delta === null
+                  ? undefined
+                  : `${delta > 0 ? "+" : delta < 0 ? "−" : ""}${Math.abs(delta)}%`,
+              down: delta !== null && delta < 0,
+            };
+          }),
+        },
         source: `Skills extracted from live ad titles · ${archiveNote}`,
       };
     }
@@ -993,18 +1109,25 @@ export const askAnalyst = createServerFn({ method: "POST" })
         };
       }
       const slowest = ranked.slice(0, 5);
-      const max = slowest[0].med || 1;
-      const bars: AnalystBar[] = slowest.map((s) => ({
-        name: withParent(s.name),
-        pct: Math.round((s.med / max) * 100),
-        v: `${s.med}d · ${s.n}`,
-      }));
       const fastest = ranked[ranked.length - 1];
       const overall = median(all);
       return {
         intent,
         text: `In ${label}, ads naming ${withParent(slowest[0].name)} stayed up longest — a median of ${plural(slowest[0].med, "day")} from posting to coming down, against ${plural(overall, "day")} across the market. The quickest of the skills with enough ads to rank is ${withParent(fastest.name)} at ${plural(fastest.med, "day")}. Read that as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn, and I can't tell those apart. It's measured from each ad's own posted date over ${plural(all.length, "ad")} that have since come down.`,
-        bars,
+        chart: {
+          kind: "bars",
+          orient: "row",
+          title: `${withParent(slowest[0].name)} ads stay up longest in ${label}`,
+          measure: "Median days from posting to coming down · closed ads per skill",
+          bars: slowest.map((s) => ({
+            label: withParent(s.name),
+            value: s.med,
+            display: `${s.med}d`,
+            emphasis: s === slowest[0],
+            note: `${s.n} ads`,
+          })),
+          reference: { value: overall, label: `Market median ${overall}d` },
+        },
         stats: [
           { k: "Median days advertised", v: String(overall) },
           { k: "Slowest skill", v: `${slowest[0].name} · ${slowest[0].med}d` },
@@ -1056,6 +1179,45 @@ export const askAnalyst = createServerFn({ method: "POST" })
         pct: Math.round((Number(e.n) / max) * 100),
         v: String(e.n),
       }));
+      // The chart is the direction when there is one — the two days the
+      // prose compares, as columns with the change bracketed — and the
+      // employers when there is not, so it never draws a trend the guard
+      // above refused to state.
+      const chart: AnalystChart | undefined =
+        pct !== null
+          ? {
+              kind: "bars",
+              orient: "column",
+              title: `${label}'s live roles ${pct >= 0 ? "rose" : "fell"} ${Math.abs(pct).toFixed(1)}% in ${plural(window, "day")}`,
+              measure: "Live roles on the day",
+              bars: [
+                { label: fmtDay(then), value: prior, display: prior.toLocaleString("en-US") },
+                {
+                  label: fmtDay(asOf),
+                  value: live,
+                  display: live.toLocaleString("en-US"),
+                  emphasis: true,
+                },
+              ],
+              change: {
+                text: `${pct >= 0 ? "+" : "−"}${Math.abs(pct).toFixed(1)}%`,
+                down: pct < 0,
+              },
+            }
+          : employers.length >= 2
+            ? {
+                kind: "bars",
+                orient: "row",
+                title: `${String(employers[0].company)} advertises the most live roles in ${label}`,
+                measure: `Live roles by employer, ${fmtDay(asOf)}`,
+                bars: employers.map((e, i) => ({
+                  label: String(e.company),
+                  value: Number(e.n) || 0,
+                  display: (Number(e.n) || 0).toLocaleString("en-US"),
+                  emphasis: i === 0,
+                })),
+              }
+            : undefined;
       const dirText =
         pct === null
           ? `There isn't enough history for this scope yet to give you a direction, so that's the level on its own.`
@@ -1076,7 +1238,10 @@ export const askAnalyst = createServerFn({ method: "POST" })
             v: String(new Set(employers.map((e) => e.company)).size || employers.length),
           },
         ],
-        bars,
+        chart,
+        // The employer list stays under a direction chart; when the employers
+        // ARE the chart it would only repeat it.
+        bars: chart?.kind === "bars" && chart.orient === "row" ? undefined : bars,
         source: archiveNote,
       };
     }

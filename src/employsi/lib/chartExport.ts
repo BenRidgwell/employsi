@@ -296,6 +296,130 @@ function drawMultiples(
   });
 }
 
+/**
+ * The D1 answers' exhibit (AnalystChartBars), drawn as the pane draws it:
+ * measure label, bars proportional from zero, a bold value on every bar,
+ * ink for the subject and grey for the rest, red only for a decline. The
+ * action title is the sheet's headline — see renderChartSheet.
+ */
+function drawBars(
+  c: CanvasRenderingContext2D,
+  chart: Extract<AnalystChart, { kind: "bars" }>,
+  top: number,
+  h: number,
+) {
+  const GREY = "#8e8e93";
+  const DOWN = "#97332b";
+  const max = Math.max(1, ...chart.bars.map((b) => b.value), chart.reference?.value ?? 0);
+
+  c.fillStyle = MID;
+  c.font = "500 16px ui-sans-serif, system-ui, sans-serif";
+  c.textAlign = "left";
+  c.fillText(chart.measure, PAD, top + 16);
+  const T = top + 44;
+  const B = top + h - 40;
+
+  if (chart.orient === "column") {
+    const n = chart.bars.length;
+    const slot = (W - PAD * 2) / n;
+    const bw = Math.min(150, slot * 0.56);
+    const plotT = T + 64; // room for the bracket and the value labels
+    const cx = (i: number) => PAD + slot * i + slot / 2;
+    const y = (v: number) => B - (v / max) * (B - plotT);
+    c.strokeStyle = "#d1d1d6";
+    c.lineWidth = 1;
+    c.beginPath();
+    c.moveTo(PAD, B + 0.5);
+    c.lineTo(W - PAD, B + 0.5);
+    c.stroke();
+    chart.bars.forEach((b, i) => {
+      c.fillStyle = b.emphasis ? INK : GREY;
+      const yy = y(b.value);
+      c.beginPath();
+      c.roundRect(cx(i) - bw / 2, yy, bw, Math.max(2, B - yy), [6, 6, 0, 0]);
+      c.fill();
+      c.fillStyle = INK;
+      c.font = "700 22px ui-sans-serif, system-ui, sans-serif";
+      c.textAlign = "center";
+      c.fillText(b.display, cx(i), yy - 12);
+      c.fillStyle = MID;
+      c.font = "500 15px ui-sans-serif, system-ui, sans-serif";
+      c.fillText(b.label, cx(i), B + 24);
+      if (b.note) {
+        c.fillStyle = b.down ? DOWN : LIGHT;
+        c.font = "500 13px ui-monospace, Menlo, monospace";
+        c.fillText(b.note, cx(i), B + 42);
+      }
+    });
+    if (chart.change && n >= 2) {
+      const tallest = Math.min(...chart.bars.map((b) => y(b.value)));
+      const by = tallest - 46;
+      c.strokeStyle = "#b4b4ba";
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(cx(0), by + 14);
+      c.lineTo(cx(0), by);
+      c.lineTo(cx(n - 1), by);
+      c.lineTo(cx(n - 1), by + 14);
+      c.stroke();
+      c.font = "700 18px ui-sans-serif, system-ui, sans-serif";
+      const tw = c.measureText(chart.change.text).width + 20;
+      const mx = (cx(0) + cx(n - 1)) / 2;
+      c.fillStyle = "#ffffff";
+      c.fillRect(mx - tw / 2, by - 12, tw, 24);
+      c.fillStyle = chart.change.down ? DOWN : INK;
+      c.textAlign = "center";
+      c.fillText(chart.change.text, mx, by + 6);
+    }
+    return;
+  }
+
+  // Rows.
+  const labelW = 300;
+  const noteW = 150;
+  const L = PAD + labelW;
+  const R = W - PAD - noteW - 90; // room for the value past the bar's end
+  const rowH = Math.min(52, (B - T) / (chart.bars.length + (chart.reference ? 1 : 0)));
+  const x = (v: number) => L + (v / max) * (R - L);
+  chart.bars.forEach((b, i) => {
+    const cy = T + rowH * i + rowH / 2;
+    c.fillStyle = INK;
+    c.font = "500 17px ui-sans-serif, system-ui, sans-serif";
+    c.textAlign = "left";
+    const lbl = wrap(c, b.label, labelW - 20)[0] ?? b.label;
+    c.fillText(lbl, PAD, cy + 6);
+    c.fillStyle = b.emphasis ? INK : GREY;
+    c.beginPath();
+    c.roundRect(L, cy - 12, Math.max(2, x(b.value) - L), 24, [0, 6, 6, 0]);
+    c.fill();
+    c.fillStyle = INK;
+    c.font = "700 18px ui-sans-serif, system-ui, sans-serif";
+    c.fillText(b.display, x(b.value) + 10, cy + 6);
+    if (b.note) {
+      c.fillStyle = b.down ? DOWN : LIGHT;
+      c.font = "500 14px ui-monospace, Menlo, monospace";
+      c.textAlign = "right";
+      c.fillText(b.note, W - PAD, cy + 5);
+    }
+  });
+  if (chart.reference) {
+    const rx = Math.round(x(chart.reference.value)) + 0.5;
+    const bottom = T + rowH * chart.bars.length;
+    c.strokeStyle = LIGHT;
+    c.lineWidth = 1.5;
+    c.setLineDash([6, 5]);
+    c.beginPath();
+    c.moveTo(rx, T - 4);
+    c.lineTo(rx, bottom + 8);
+    c.stroke();
+    c.setLineDash([]);
+    c.fillStyle = MID;
+    c.font = "500 14px ui-monospace, Menlo, monospace";
+    c.textAlign = x(chart.reference.value) > (L + R) / 2 ? "right" : "left";
+    c.fillText(chart.reference.label, rx + (c.textAlign === "right" ? -8 : 8), bottom + 26);
+  }
+}
+
 /** Draw the whole export sheet: mark, title, chart, source, disclaimer. */
 export function renderChartSheet(
   chart: AnalystChart,
@@ -321,17 +445,30 @@ export function renderChartSheet(
   c.textAlign = "left";
   c.fillText("employsi", PAD + 48, 58);
 
-  c.fillStyle = MID;
-  c.font = "500 18px ui-sans-serif, system-ui, sans-serif";
-  const t = wrap(c, title, W - PAD * 2);
-  t.slice(0, 2).forEach((ln, i) => c.fillText(ln, PAD, HEAD - 12 + i * 24));
+  // The exhibit's headline is its ACTION TITLE, bold, as on the slide it is
+  // set after; the other kinds keep the answer's sentence as a subtitle.
+  const bars = chart.kind === "bars";
+  c.fillStyle = bars ? INK : MID;
+  c.font = bars
+    ? "700 24px ui-sans-serif, system-ui, sans-serif"
+    : "500 18px ui-sans-serif, system-ui, sans-serif";
+  const t = wrap(c, bars ? chart.title : title, W - PAD * 2);
+  // The bold headline sits a line lower than the subtitle did, clear of the
+  // wordmark above it.
+  const ty = bars ? HEAD + 2 : HEAD - 12;
+  t.slice(0, 2).forEach((ln, i) => c.fillText(ln, PAD, ty + i * (bars ? 30 : 24)));
 
-  const top = HEAD + (t.length > 1 ? 24 : 8);
+  const top = HEAD + (t.length > 1 ? (bars ? 44 : 24) : bars ? 16 : 8);
   if (chart.kind === "line") drawLine(c, chart, top, body - 20);
   else if (chart.kind === "scatter") drawScatter(c, chart, top, body - 20);
+  else if (chart.kind === "bars") drawBars(c, chart, top, body - 20);
   else drawMultiples(c, chart, top, body - 20);
 
-  // Footer: hairline, then the source and the disclaimer.
+  // Footer: hairline, then the source and the disclaimer. Alignment is reset
+  // first: a drawer may finish with centred or right-aligned text (the scatter
+  // and the bars both do), and the footer's left-anchored lines would then
+  // hang off the left edge of the sheet.
+  c.textAlign = "left";
   const fy = H - FOOT + 12;
   c.strokeStyle = LINE;
   c.lineWidth = 1;

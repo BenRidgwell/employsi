@@ -830,6 +830,207 @@ body {
 .anbarv.down {
   color: var(--red-700);
 }
+
+/* ── The D1 answers' exhibit, set after a Bain & Company slide ──────────────
+   An action title that states the finding, the measure with its unit, bold
+   value labels on every bar, and nothing else competing: no gridlines, no
+   value axis (every bar is labelled, so an axis would only repeat them).
+   Emphasis is INK and the rest a Bain grey; red is kept for a decline only,
+   because that is what red means everywhere else in this pane. */
+.anbain {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.anbainhd {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.anbaintitle {
+  font: 600 15px/1.3 "Mona Sans Variable", "Mona Sans", system-ui, sans-serif;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.anbainmeasure {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.anbainval {
+  font: 700 13px/1 Inter, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.anbainnote {
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.anbainnote.down {
+  color: var(--red-700);
+}
+/* A reference line can pass behind a row's value; the value keeps a knock-out
+   so the dashes never run through the figure. */
+.anbaintrack .anbainval {
+  position: relative;
+  z-index: 1;
+  padding: 0 2px;
+  background: var(--surface-card, #fff);
+}
+.anbainrows .anbainnote {
+  justify-self: end;
+}
+
+/* Columns: value above, bar from a shared baseline, label below. */
+.anbaincols {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding-top: 30px; /* room for the change bracket over the tallest column */
+}
+.anbaincol {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.anbaincolplot {
+  width: 100%;
+  height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-strong);
+}
+.anbaincolbar {
+  width: min(64%, 72px);
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: #8e8e93;
+}
+.anbaincolbar.em {
+  background: var(--neutral-900);
+}
+.anbaincollbl {
+  max-width: 100%;
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* Bain's bracket over a then/now pair: a thin hook from one column's centre
+   to the other's, with the change sitting on it. */
+.anbainbracket {
+  position: absolute;
+  top: 10px;
+  height: 10px;
+  border: 1px solid var(--border-strong);
+  border-bottom: 0;
+  display: flex;
+  justify-content: center;
+}
+.anbainchange {
+  transform: translateY(-50%);
+  padding: 0 8px;
+  background: var(--surface-card, #fff);
+  font: 700 12.5px/1 Inter, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.anbainchange.down {
+  color: var(--red-700);
+}
+
+/* Rows: label, bar with its value just past the end, then the note.
+   ONE grid for every row (the rows are display:contents), so every track is
+   the same width. Each row was its own grid until 2026-09-28, and the note
+   column — sized to its own content per row — made each track a different
+   length: the bars stopped sharing a scale, and the reference line sat at a
+   different x on every row. */
+.anbainrows {
+  display: grid;
+  grid-template-columns: minmax(0, 118px) minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+}
+.anbainrow {
+  display: contents;
+}
+.anbainrowlbl {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--text-primary);
+  /* Two lines before it truncates: a skill name is the row's identity. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.anbaintrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+}
+.anbainrowbar {
+  height: 14px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+  background: #8e8e93;
+}
+.anbainrowbar.em {
+  background: var(--neutral-900);
+}
+.anbainrefseg {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 0;
+  border-left: 1.5px dashed var(--neutral-500);
+  pointer-events: none;
+}
+.anbainreflbl {
+  min-height: 18px;
+}
+.anbainreflbl .anbaintrack {
+  height: 18px;
+}
+.anbainrefseg.tail {
+  top: 0;
+  bottom: 60%;
+}
+.anbainreftext {
+  position: absolute;
+  top: 5px;
+  padding: 0 4px;
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* The figures as a table, for screen readers only. */
+.anbainsr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* Every answer names the dataset it came from — the whole point of this pane. */
 .ansource {
   display: flex;

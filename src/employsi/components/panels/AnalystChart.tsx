@@ -2,9 +2,11 @@ import { useState } from "react";
 import { exportChart, type ExportFormat } from "../../lib/chartExport";
 import type {
   AnalystChart as Chart,
+  AnalystChartBars,
   AnalystChartLine,
   AnalystChartMultiples,
   AnalystChartScatter,
+  BarDatum,
 } from "../../lib/analystFn";
 
 /**
@@ -244,6 +246,153 @@ function Multiples({ chart }: { chart: AnalystChartMultiples }) {
   );
 }
 
+/**
+ * The D1 answers' bar chart, set as a Bain exhibit — see AnalystChartBars.
+ *
+ * HTML rather than SVG: the pane is narrow and its width varies, and a row's
+ * label has to wrap or truncate as text does, which an SVG with a fixed view
+ * box cannot. Bars are proportional FROM ZERO in both orientations, so a bar
+ * twice as long is twice the value; a reference line shares the same scale.
+ * Every bar carries its value, which is the exhibit's convention and also
+ * what makes the grey (under 3:1 against the card) safe to use for marks.
+ */
+function barTip(b: BarDatum): string {
+  return `${b.label}: ${b.display}${b.note ? ` (${b.note})` : ""}`;
+}
+
+function BarsChart({ chart }: { chart: AnalystChartBars }) {
+  const max = Math.max(1, ...chart.bars.map((b) => b.value), chart.reference?.value ?? 0);
+  // Rows print the value just past the bar's end, so the scale runs over the
+  // track less a gutter the widest label fits in; the reference uses the
+  // same, or it would sit on a different axis from the bars it is read with.
+  const along = (v: number) => `calc(${Math.max(0, v / max).toFixed(4)} * (100% - 54px))`;
+
+  return (
+    <figure className={`anbain ${chart.orient}`}>
+      <figcaption className="anbainhd">
+        <span className="anbaintitle">{chart.title}</span>
+        <span className="anbainmeasure">{chart.measure}</span>
+      </figcaption>
+
+      {chart.orient === "column" ? (
+        <div className="anbaincols" aria-hidden>
+          {chart.change && chart.bars.length >= 2 && (
+            // Bain's bracket: spans the first column's centre to the last's,
+            // riding above the taller of the two, with the change on it.
+            <div
+              className="anbainbracket"
+              style={{
+                left: `${50 / chart.bars.length}%`,
+                right: `${50 / chart.bars.length}%`,
+              }}
+            >
+              <span className={`anbainchange${chart.change.down ? " down" : ""}`}>
+                {chart.change.text}
+              </span>
+            </div>
+          )}
+          {chart.bars.map((b) => (
+            <div key={b.label} className="anbaincol" title={barTip(b)}>
+              <div className="anbaincolplot">
+                <span className="anbainval">{b.display}</span>
+                <span
+                  className={`anbaincolbar${b.emphasis ? " em" : ""}`}
+                  // Over the plot less the value label above it, so the
+                  // tallest column's figure stays inside the plot.
+                  style={{
+                    height: `calc(${Math.max(0, b.value / max).toFixed(4)} * (100% - 22px))`,
+                  }}
+                />
+              </div>
+              <span className="anbaincollbl">{b.label}</span>
+              {b.note && <span className={`anbainnote${b.down ? " down" : ""}`}>{b.note}</span>}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="anbainrows" aria-hidden>
+          {chart.bars.map((b) => (
+            // The row is display:contents (one shared grid), so it has no box
+            // to hover: the tooltip rides on the label and the track instead.
+            <div key={b.label} className="anbainrow">
+              <span className="anbainrowlbl" title={barTip(b)}>
+                {b.label}
+              </span>
+              <span className="anbaintrack" title={barTip(b)}>
+                <span
+                  className={`anbainrowbar${b.emphasis ? " em" : ""}`}
+                  style={{ width: along(b.value) }}
+                />
+                <span className="anbainval">{b.display}</span>
+                {/* The reference is drawn inside every track rather than as
+                    one overlay, so it shares the bars' x-scale exactly
+                    whatever width the label column takes. */}
+                {chart.reference && (
+                  <span className="anbainrefseg" style={{ left: along(chart.reference.value) }} />
+                )}
+              </span>
+              <span className={`anbainnote${b.down ? " down" : ""}`}>{b.note ?? ""}</span>
+            </div>
+          ))}
+          {chart.reference && (
+            <div className="anbainrow anbainreflbl">
+              <span />
+              <span className="anbaintrack">
+                <span
+                  className="anbainrefseg tail"
+                  style={{ left: along(chart.reference.value) }}
+                />
+                <span
+                  className="anbainreftext"
+                  style={{
+                    left: along(chart.reference.value),
+                    // Anchored right of the line in the left half, left of it
+                    // in the right half, so the label never runs off the card.
+                    transform: chart.reference.value / max > 0.55 ? "translateX(-100%)" : undefined,
+                  }}
+                >
+                  {chart.reference.label}
+                </span>
+              </span>
+              <span />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* The same figures as a table, for a screen reader: the drawn bars are
+          aria-hidden, and a chart whose numbers only exist as geometry is one
+          a reader without sight cannot check. */}
+      <table className="anbainsr">
+        <caption>
+          {chart.title}. {chart.measure}.
+        </caption>
+        <tbody>
+          {chart.bars.map((b) => (
+            <tr key={b.label}>
+              <th scope="row">{b.label}</th>
+              <td>{b.display}</td>
+              {b.note !== undefined && <td>{b.note}</td>}
+            </tr>
+          ))}
+          {chart.reference && (
+            <tr>
+              <th scope="row">Reference</th>
+              <td>{chart.reference.label}</td>
+            </tr>
+          )}
+          {chart.change && (
+            <tr>
+              <th scope="row">Change</th>
+              <td>{chart.change.text}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </figure>
+  );
+}
+
 const FORMATS: { key: ExportFormat; label: string }[] = [
   { key: "png", label: "PNG" },
   { key: "jpeg", label: "JPEG" },
@@ -348,6 +497,7 @@ export function AnalystChartView({
       )}
       {chart.kind === "scatter" && <ScatterChart chart={chart} />}
       {chart.kind === "multiples" && <Multiples chart={chart} />}
+      {chart.kind === "bars" && <BarsChart chart={chart} />}
       <ExportMenu chart={chart} title={title} source={source} />
     </div>
   );

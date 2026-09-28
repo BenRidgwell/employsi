@@ -425,7 +425,13 @@ console.log("\nthe area split is offered only when there is a subject to split:"
       // Sites that only COUNT are not rankings and have nothing to dedupe; a
       // ranking is one that sorts by the value it is about to present.
       const site = src.slice(at, at + 600);
-      const isRanking = site.includes(".sort(") && !site.includes("[0];");
+      // "Picks the top one" is a sort whose OWN result is indexed —
+      // `.sort(...)[0];` — not any `[0];` in the window. The looser test
+      // misread the skills ranking as a count on 2026-09-28, when moving its
+      // bar-building into the chart brought an unrelated `top[0];` inside
+      // these 600 characters: the guard stopped checking a real ranking
+      // because of how far away some other line happened to sit.
+      const isRanking = site.includes(".sort(") && !/\.sort\([^;]*\)\[0\];/.test(site);
       if (isRanking) {
         ranked++;
         // The dedupe wraps the ranking, so it sits just before the map is read.
