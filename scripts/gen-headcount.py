@@ -10,7 +10,7 @@ Only keeps figures dated in the last ~2 filing years so stale entries are
 dropped rather than shown wrong. Companies not resolved keep their existing
 fallback figure in the card (buildPanel).
 """
-import re, json, sys, time, urllib.request
+import re, json, subprocess, sys, time, urllib.request
 
 ROOT = __file__.rsplit('/scripts/', 1)[0]
 OUT = f'{ROOT}/src/employsi/data/companyHeadcount.ts'
@@ -510,7 +510,7 @@ OWN_REPORT = {
 AGGREGATOR_HAS_NO_SERIES = {
     # /quote/asx/<TK>/employees/ answers 404 for each of these — measured, not
     # assumed, in the run that wrote this file.
-    'adelaide-afi': None, 'adelaide-ar3': None, 'adelaide-arg': None,
+    'adelaide-ar3': None, 'adelaide-arg': None,
     'adelaide-axe': None, 'adelaide-bgd': None, 'adelaide-pro': None,
     'bmn': None, 'brisbane-dbi': None, 'cvn': None, 'cxo': None, 'del': None,
     'dyl': None, 'gor': None, 'hgo': None, 'jms': None, 'melbourne-afi': None,
@@ -865,6 +865,44 @@ def read_existing():
     return rows
 
 
+def stray_keys():
+    """Warn about a recorded reason whose key is not a roster company id.
+
+    A KEY THAT NAMES NO CARD IS COMPLETELY SILENT, which is why this exists and
+    why gen-gov-workforce.py has had the same guard for a while: the lookup
+    misses, the card falls back to no figure, and the reason someone measured and
+    wrote down is never printed or matched by anything. The table then looks
+    maintained while saying nothing.
+
+    IT CAUGHT ONE THE HOUR IT WAS WRITTEN. AGGREGATOR_HAS_NO_SERIES was typed
+    from a list of 38 ids and one of them, 'adelaide-afi', does not exist —
+    the Australian Foundation Investment Company is 'melbourne-afi', which was
+    also in the table. So the file carried a dead entry and a live one for the
+    same company and nothing could have said so.
+
+    Prints rather than raises, and skips quietly when bun is unavailable: this is
+    a hygiene check on comments, not a reason to fail a run that has 151 real
+    figures in it.
+    """
+    try:
+        ids = set(json.loads(subprocess.run(
+            ['bun', '-e', 'import { COMPANIES } from "./src/employsi/data/companies";'
+                          'console.log(JSON.stringify(COMPANIES.map(c => c.id)));'],
+            cwd=ROOT, capture_output=True, text=True, check=True, timeout=120).stdout))
+    except Exception as e:                                        # noqa: BLE001
+        print(f'\n  (roster id check skipped: {type(e).__name__})', file=sys.stderr)
+        return
+    for name, table in (('OWN_REPORT', OWN_REPORT),
+                        ('NO_FIGURE_PUBLISHED', NO_FIGURE_PUBLISHED),
+                        ('AGGREGATOR_HAS_NO_SERIES', AGGREGATOR_HAS_NO_SERIES)):
+        bad = sorted(k for k in table if k not in ids)
+        if bad:
+            print(f'\n  {name}: {len(bad)} key(s) name no roster company — the '
+                  f'entry is dead and will never print or match:', file=sys.stderr)
+            for k in bad:
+                print(f'      {k}', file=sys.stderr)
+
+
 def main():
     data = {}
     existing = read_existing()
@@ -1009,6 +1047,7 @@ def main():
         print(f'\n{len(AGGREGATOR_HAS_NO_SERIES)} listed cards the aggregator '
               f'carries no employee series for (see the table in this script for '
               f'which, and for the REIT/LIC pattern among them)')
+    stray_keys()
 
 
 if __name__ == '__main__':
