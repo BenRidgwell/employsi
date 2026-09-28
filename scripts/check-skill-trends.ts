@@ -29,6 +29,7 @@ import {
   demandLevel,
   iviCityChangeAt,
   iviCityDemandAt,
+  measureNoun,
   popularSkills,
 } from "../src/employsi/lib/skillHeat";
 import { rankedByEmployment, MIN_EMPLOYED } from "../src/employsi/lib/vacancyRate";
@@ -2209,6 +2210,20 @@ console.log("\nthe supply side measures employment, not vacancies:");
     "a skill with no ABS series shows no figure",
     none.employed === null && none.spark === null,
     `${none.employed} / ${none.spark}`,
+  );
+
+  // ── THE UNIT FOLLOWS THE MODE ────────────────────────────────────────────
+  // The map pin drew ABS employment on the supply side and called it
+  // "137,312 ads" — right colour, right number, wrong noun, and nothing about
+  // that looks broken. Reported from a live preview. Every surface printing one
+  // of these figures asks measureNoun rather than writing the word, so this is
+  // the one place the word can be wrong.
+  check("employment is never called ads", measureNoun("employment", 137312) === "employed");
+  check("a single vacancy is an ad", measureNoun("volume", 1) === "ad");
+  check("several vacancies are ads", measureNoun("volume", 2) === "ads");
+  check(
+    "no mode borrows another's noun",
+    new Set(["volume", "rate", "employment"].map((m) => measureNoun(m as never, 5))).size === 3,
   );
 }
 
