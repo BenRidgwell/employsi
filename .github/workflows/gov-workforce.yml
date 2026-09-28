@@ -163,7 +163,14 @@ jobs:
           DUMP: ${{ inputs.dump_source }}
         run: |
           set -o pipefail
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls \
+          # THE LIST GREW FROM TEN NSW AGENCIES TO TWENTY-FIVE ON 2026-09-28 and
+          # this line is the only place that decides which of them a scheduled
+          # run refreshes. A source missing from it is NOT dropped — the KEPT
+          # path preserves its rows and the generated file's header says so —
+          # it simply never refreshes again, which is a card going quietly
+          # stale rather than visibly blank. That is the harder failure to see,
+          # so the list is kept in step with NSW_AGENCY_REPORTS.
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
