@@ -409,6 +409,25 @@ def fetch(url, binary=False, via_browser=False, warm=None, expect=None, render=F
             if e.code not in (401, 403, 405, 429, 503):
                 raise
             print(f'  (HTTP {e.code}, retrying through a browser: {url[:70]})', file=sys.stderr)
+        # A CONNECTION RESET IS A REFUSAL TOO, AND IT WAS NOT REACHING THE
+        # FALLBACK. HTTPError was caught and URLError was not, so a host that
+        # drops the connection instead of answering 403 propagated straight out
+        # — and these hosts do both. Measured 2026-09-28: transport.nsw.gov.au
+        # answered "[Errno 104] Connection reset by peer" on a run where the same
+        # URL had served 8.3 MB through a warmed browser an hour earlier, so
+        # Transport for NSW — the largest card on the NSW route — failed to
+        # refresh with the one mechanism that can read it never being tried.
+        # CLAUDE.md already records the reset signature for fire.nsw.gov.au and
+        # for South Australia and Victoria; it is the same doorman, not a
+        # different failure.
+        #
+        # This CANNOT swallow a real error: a URL that is simply wrong 404s,
+        # which is an HTTPError with a code not in the list above and still
+        # raises. What reaches here is a transport-level refusal, and the browser
+        # is the answer to exactly that.
+        except urllib.error.URLError as e:
+            print(f'  ({e.reason}, retrying through a browser: {url[:70]})',
+                  file=sys.stderr)
 
     ctx = _browser_ctx()
     if render:
