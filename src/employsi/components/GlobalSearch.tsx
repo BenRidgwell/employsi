@@ -452,11 +452,25 @@ export function GlobalSearch() {
   };
 
   const showSuggest = focused && !!q && !cardSkill;
-  // Chips show on an empty focused field, and stay up while a skill is
-  // selected so the chosen one can carry its selected state and the rest stay
-  // one click away.
+  /**
+   * Chips show on an empty focused field, and stay up while one of THEM is the
+   * selected skill — so the chosen chip can carry its selected state and the
+   * other five stay one click away.
+   *
+   * THE SECOND HALF USED TO BE ANY ACTIVE SKILL, and that is what made them
+   * noise. Search something the row does not offer — Human Resources, say —
+   * and six unrelated chips stayed under the field, none of them lit, none of
+   * them what was asked for. They were a row of suggestions being shown after
+   * the moment for suggesting had passed.
+   *
+   * So the row survives a search only when the search landed ON it. Clearing
+   * the field brings it back (the effect above drops `carded`, so the empty
+   * focused branch takes over), which is the other way a reader asks for
+   * suggestions again.
+   */
   const skillActive = !!cardSkill && q === cardSkill.toLowerCase();
-  const showChips = (focused && !q && !cardSkill) || skillActive;
+  const chipSelected = skillActive && popularSkills.some((s) => s.toLowerCase() === q);
+  const showChips = (focused && !q && !cardSkill) || chipSelected;
   const noMatch = searched && !cardSkill && !!q;
 
   return (
