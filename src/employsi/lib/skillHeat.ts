@@ -237,6 +237,16 @@ export function demandPercentile(
   idx: SkillIndex | null,
   mode: DemandMode = "volume",
 ): number {
+  if (mode === "employment") {
+    // Where this skill's WORKFORCE sits among the workforces, not where its
+    // vacancies sit among vacancies. Unlike the rate branch this ignores
+    // `global`, because ABS employment is national by construction — there is
+    // no separate global ranking to fall back to.
+    const v = EMPLOY_LATEST[skill];
+    if (v === undefined || !EMPLOY_SORTED.length) return 0;
+    const below = EMPLOY_SORTED.filter((x) => x < v).length;
+    return (below / EMPLOY_SORTED.length) * 100;
+  }
   if (!global && mode === "rate") {
     const v = RATE_LATEST[skill];
     if (v === undefined || !RATE_SORTED.length) return 0;
