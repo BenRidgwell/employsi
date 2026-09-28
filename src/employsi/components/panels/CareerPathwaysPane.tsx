@@ -135,14 +135,46 @@ export function CareerPathwaysPane() {
   const open = useAppStore((s) => s.careerOpen);
   const close = useAppStore((s) => s.closeCareer);
   const dragRef = useDraggablePane<HTMLDivElement>(open);
+
+  /**
+   * CLICK-AWAY WITHOUT A SCRIM. The other cards close on a transparent
+   * full-screen .panescrim, and so did this one until 2026-09-28 — but that
+   * layer also swallowed every wheel and drag, so with a role picked the map
+   * behind could not be zoomed out to see its heat at another layer. Here a
+   * CLICK outside the card closes it (press and release without moving, as
+   * the scrim's onClick did), while scrolling and panning reach the map.
+   *
+   * The rail, the mobile tab bar and the toast are exempt, as they were above
+   * the scrim:
+   * their buttons already swap cards themselves.
+   */
+  useEffect(() => {
+    if (!open) return;
+    let down: { x: number; y: number; outside: boolean } | null = null;
+    const exempt = (t: EventTarget | null) =>
+      t instanceof Element && !!t.closest(".cppane, .actionrail, .mobiletabbar, .toast");
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY, outside: !exempt(e.target) };
+    };
+    const onUp = (e: PointerEvent) => {
+      const d = down;
+      down = null;
+      if (!d?.outside || exempt(e.target)) return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) close();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointerup", onUp, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("pointerup", onUp, true);
+    };
+  }, [open, close]);
+
   if (!open) return null;
   return (
-    <>
-      <div className="panescrim" onClick={close} />
-      <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
-        <CareerCard onClose={close} />
-      </div>
-    </>
+    <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
+      <CareerCard onClose={close} />
+    </div>
   );
 }
 
