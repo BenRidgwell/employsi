@@ -357,6 +357,120 @@ OWN_REPORT = {
         col=1, prev_col=2,
         proof=r'workforce as of 30 June 2026',
         span=1, asof='Jun 2026'),
+    # ── Three federal agencies the APS Employment Database cannot carry ───────
+    #
+    # THEY ARE NOT A MATCHING PROBLEM, WHICH IS THE NATURAL FIRST THOUGHT AND
+    # COSTS AN AFTERNOON. gen-gov-workforce.py's ALIAS header records the
+    # measurement against all 101 published APSC agencies: eleven roster cards
+    # are absent under every spelling, because that sheet is an APS Act census
+    # and these employ under their own statutes — the Australian Federal Police
+    # Act, the Science and Industry Research Act, the Reserve Bank Act. No alias
+    # can ever reach them, so their own annual reports are the only route, and
+    # this is where the machinery for reading an annual report already lives.
+    #
+    # `filedHeadcount` CHECKS COMPANY_HEADCOUNT FIRST, so an `aps-` row here
+    # fills the card the gov generator correctly cannot. The gov generator still
+    # names each of them in NOT_IN_SOURCE, because "absent from the APSC census"
+    # stays true and is the fact a future pass needs told.
+
+    # p158, Table A.5 "Employee numbers by functional area – over 5 years":
+    # 2024-25 head count 5,998 against 2023-24's 6,618. Its own components sum
+    # to both exactly — 1,782 + 1,622 + 266 + 72 + 6 + 775 + 237 + 20 + 1,088 +
+    # 130 for this year, and the 2023-24 column likewise — but `sums` CANNOT be
+    # used here and the reason is the whole point of `cross` above: the table is
+    # printed as two column groups on one page, so every component label appears
+    # twice and each would match ambiguously. The check is the prose on p20
+    # instead: "On 30 June 2025 we had 5,998 people employed (full-time
+    # equivalent of 5,676)".
+    #
+    # THE HEAD COUNT IS TAKEN, NOT THE FTE, and the table prints both one line
+    # apart — 5,998 against 5,675.88. The prose sentence names which is which,
+    # which is also why it is the right cross-check rather than a decoration.
+    'aps-csiro': dict(
+        url='https://www.csiro.au/-/media/About/AnnualReport/Files/2024-25/'
+            '25-00169_CORP_REPORT_AnnualReport2024-25_WEB_251022.pdf',
+        needle='Employee numbers by functional area',
+        find=r'FUNCTIONAL AREA 2023–24 %F 2023–24 2024–25 %F 2024–25[\s\S]*?'
+             r'Total headcount ([\d,]+) [\d.]+ ([\d,]+) [\d.]+',
+        col=2, prev_col=1,
+        proof=r'Table A\.5: Employee numbers by functional area',
+        cross=r'On 30 June 2025 we had ([\d,]+) people employed '
+              r'\(full-time equivalent of [\d,]+\)',
+        span=1, asof='Jun 2025'),
+    # p144: "At 30 June 2025, we had 2,039 employees (excluding Note Printing
+    # Australia Limited; Graph 3.2.1 and Table 3.2.1), equating to 2,000
+    # full-time equivalent employees." Read from the prose because TABLE 3.2.1
+    # IS PRINTED ROTATED — pdfplumber returns its header as one character per
+    # line ("laicnaniF", "eliforP") and no usable rows at all, so there is no
+    # table here to parse however the spec is written.
+    #
+    # `proof` PINS WHICH OF THE TWO NUMBERS IN THAT SENTENCE IS BEING FILED. It
+    # gives a head count and an FTE eight words apart, 2,039 and 2,000, and the
+    # clause naming the FTE is what shows 2,039 is not it.
+    #
+    # NO PRIOR YEAR, THOUGH THE SENTENCE ALMOST OFFERS ONE: it says the figure
+    # "represents a 15 per cent increase in our workforce compared with 30 June
+    # 2024". Dividing by 1.15 gives 1,773, and any value from 1,765 to 1,781
+    # rounds to the same 15 per cent — a reconstruction whose last two digits
+    # are invented. The graph beside it carries the series and prints no numbers.
+    #
+    # NOTE PRINTING AUSTRALIA IS OUTSIDE THE FIGURE, deliberately and by the
+    # Bank's own wording. Its 304 permanent staff (p67) are a subsidiary the
+    # roster does not carry, so nothing here is missing them twice over.
+    'aps-reserve-bank-of-australia': dict(
+        url='https://www.rba.gov.au/publications/annual-reports/rba/2025/pdf/'
+            'rba-annual-report-2025.pdf',
+        needle='At 30 June 2025, we had',
+        find=r'At 30 June 2025, we had ([\d,]+) employees',
+        proof=r'equating to [\d,]+ full-time equivalent',
+        cross=r'As at 30 June 2025, we had ([\d,]+) staff',
+        asof='Jun 2025'),
+    # p125, Table B3 "Employees by sworn status, band level and gender, as at
+    # 30 June 2025": a Total row of fourteen numbers ending 8,328. Cross-checked
+    # against p64, "The AFP had 8,328 staff as at 30 June 2025", which then
+    # breaks it into the same three subtotals the table prints — 3,578 police
+    # officers, 838 protective service officers, 3,912 unsworn staff, summing to
+    # 8,328 in both places.
+    #
+    # NO PRIOR YEAR, AND IT IS RECONSTRUCTIBLE, WHICH IS WHY THE OMISSION IS
+    # WRITTEN DOWN RATHER THAN LEFT IMPLICIT. The appendix gives 2023-24 only
+    # split in two — Table B6 ongoing and Table B7 non-ongoing — and this year's
+    # B4 + B5 do sum to B3's total, so the construction is the report's own and
+    # demonstrably sound. It needs a spec that can add two tables on different
+    # pages, which this path cannot do yet; a figure with no delta is the honest
+    # interim, not a guess.
+    'aps-australian-federal-police': dict(
+        url='https://www.afp.gov.au/sites/default/files/2025-10/'
+            'AFPAnnualReport2024-25.pdf',
+        needle='Employees by sworn status, band level and gender',
+        find=r'\nTotal (?:[\d,]+ ){13}([\d,]+)',
+        proof=r'band level and gender, as at 30 June 2025',
+        cross=r'The AFP had ([\d,]+) staff as at 30 June 2025',
+        asof='Jun 2025'),
+    # p59, under "Workforce composition": "As at 30 June 2025, APRA had 897
+    # employees on a permanent or fixed-term contract basis, compared with 870 at
+    # the end of the 2024 financial year." Both years in one sentence on one
+    # stated basis, which is the strongest shape any of these reports offers —
+    # there is no cross-check because there is nothing independent to check
+    # against: 897 appears exactly twice in 139 pages, here and inside a
+    # prepayments figure of 6,897.
+    #
+    # THE BASIS CLAUSE IS IN `proof` BECAUSE IT IS THE SCOPE, NOT DECORATION.
+    # Permanent or fixed-term excludes casuals and contractors, and the p60
+    # tables that add to the same 897 — 718 ongoing plus 179 non-ongoing, both
+    # headed "Employee statistics (by headcount)" — are the two categories the
+    # clause names and nothing else. A report that later widened the sentence to
+    # all engagement types would be a different measure at the same date.
+    'aps-australian-prudential-regulation-authority': dict(
+        url='https://www.apra.gov.au/system/files/2025-10/'
+            'APRA%20Annual%20Report%202024-25.pdf',
+        needle='Workforce composition',
+        find=r'As at 30 June 2025, APRA had ([\d,]+) employees on a permanent or\s+'
+             r'fixed-term contract basis,\s+compared with ([\d,]+) at the end of the '
+             r'2024 financial year',
+        col=1, prev_col=2,
+        proof=r'on a permanent or\s+fixed-term contract basis',
+        span=1, asof='Jun 2025'),
 }
 
 
@@ -403,6 +517,29 @@ NO_FIGURE_PUBLISHED = {
     'nz-reserve-bank-of-new-zealand':
         'Cloudflare interstitial does NOT clear for this host even warmed, over '
         'twelve waits; rbnz.govt.nz also 403s a plain fetch on every path tried',
+    # ── The two NZX companies the other four left behind, 2026-09-28 ──────────
+    # BOTH REPORTS ARE KNOWN TO EXIST AND NEITHER IS READABLE FROM HERE, which is
+    # a different fact from the rest of this list and is written as one.
+    'nz-infratil':
+        'infratil.com answers 403 to every path tried, root included — 16,512 '
+        'bytes from a SafeLine WAF (server: Tengine, an sl-session cookie, assets '
+        'under /.safeline/). That is a FOURTH interstitial beyond the three '
+        'gen-gov-workforce.py records, and the only one whose <title> is empty, '
+        'so the size-and-title tell those three share does not apply to it. The '
+        'FY2026 annual report is published — infratil.com/for-investors/'
+        'annual-reports/annual-report-2026/ is indexed — and the page holding it '
+        'is behind the same 403',
+    'nz-chorus':
+        'the FY26 annual report is located exactly: NZX announcement 478352, '
+        'attachment 475174, labelled "3. Chorus FY26 Annual Report". '
+        'api.nzx.com serves it with an Akamai "Access Denied" 403 to this '
+        'network, with a browser User-Agent and the announcement page as referer '
+        'alike. Its own site cannot supply it either: company.chorus.co.nz is a '
+        'Nuxt app with SSR off — /investors/financial-reports is in its sitemap '
+        'and the HTML a fetch returns is the empty app shell, so the report links '
+        'exist only after the page runs. Contentful holds the FY25 file under '
+        'assets.ctfassets.net/7urik9yedtqc/nzx-doc-450318/, so the FY26 asset '
+        'almost certainly has a sibling id, and guessing an id is not finding one',
     'nz-mercury-nz':
         'site clears and renders, but no annual-report PDF is reachable from its '
         'navigation',
@@ -505,6 +642,37 @@ def own_report(cid, spec):
     now = g(spec.get('col', 1))
     if now <= 0:
         raise RuntimeError(f'{cid}: parsed a non-positive figure ({now})')
+
+    # A SECOND STATEMENT OF THE SAME NUMBER, ELSEWHERE IN THE DOCUMENT, and the
+    # reason it is a separate mechanism from `sums` is CSIRO. Its Table A.5 is
+    # printed as two column groups on one page, five years then two, so every
+    # component label — "Research scientists/engineers", "Technical services" —
+    # appears TWICE on that page and `sums` refuses an ambiguous label. The
+    # reconciliation that would have caught a wrong-column read was therefore
+    # unavailable on the one table that most needed it: its two groups differ
+    # only in which years they carry.
+    #
+    # So the check is made against the report's own prose instead. CSIRO p20:
+    # "On 30 June 2025 we had 5,998 people employed (full-time equivalent of
+    # 5,676)" — a dated sentence, on a different page, stating the figure the
+    # table's last column must equal. A spec that read 2023-24 would land on
+    # 6,618 and fail here rather than filing a figure a year stale.
+    #
+    # WHOLE-DOCUMENT, LIKE `doc_proof`, because the point is that it is somewhere
+    # else; and EXACTLY ONCE, because two sentences stating different totals mean
+    # the document does not agree with itself and neither is safe to file.
+    if spec.get('cross'):
+        with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+            whole = '\n'.join((pg.extract_text() or '') for pg in pdf.pages)
+        found = list(re.finditer(spec['cross'], whole))
+        if len(found) != 1:
+            raise RuntimeError(f'{cid}: the cross-check {spec["cross"]!r} matched '
+                               f'{len(found)} times in the document, not once')
+        said = int(found[0].group(1).replace(',', ''))
+        if said != now:
+            raise RuntimeError(f'{cid}: the table gives {now:,} and the document '
+                               f'states {said:,} for the same workforce — one of '
+                               f'them is the wrong year or the wrong column')
     prev = spec.get('prev')
     if spec.get('prev_col'):
         prev = g(spec['prev_col'])

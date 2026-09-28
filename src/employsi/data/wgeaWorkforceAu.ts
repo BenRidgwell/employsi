@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 287 of 862 Australian roster companies
-//        (264 matched on the group name, 23 on the employer name).
+// Filed: 290 of 862 Australian roster companies
+//        (267 matched on the group name, 23 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -109,7 +109,7 @@
 //     sydney-cgf
 //     sydney-eos
 //
-//   in only one of the two files (14):
+//   in only one of the two files (15):
 //     igo
 //     jellinbah
 //     ltr
@@ -118,6 +118,7 @@
 //     mmi
 //     nt-gov-batchelor-institute-of-indigenous-tertiary-education
 //     perth-vau
+//     priv-agnvet-management-services
 //     priv-midfield
 //     priv-perth-airport
 //     priv-raa
@@ -199,6 +200,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-abn-group": { now: 1980, prev: 1971, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee for ABN Service Trust
   "priv-adco-constructions": { now: 610, prev: 693, yoy: -12.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // employer: Adco Constructions Pty Ltd
   "priv-afl": { now: 3958, prev: 3958, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Australian Football League
+  "priv-agnvet-management-services": { now: 455, prev: 455, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: AG N VET MANAGEMENT SERVICES PTY LIMITED
   "priv-akd": { now: 843, prev: 878, yoy: -4.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Associated Kiln Driers Pty. Limited
   "priv-alto": { now: 528, prev: 528, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Altomonte Holdings Pty Ltd
   "priv-ara": { now: 3344, prev: 3344, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: ARA Group Limited
@@ -218,6 +220,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-cjd-equipment": { now: 543, prev: 564, yoy: -3.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: C J D Equipment Pty Ltd
   "priv-clayton-utz": { now: 1502, prev: 1500, yoy: 0.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Clayton Utz
   "priv-cmv-group": { now: 2041, prev: 2041, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Commercial Motor Vehicles Pty Ltd
+  "priv-cnw-electrical": { now: 902, prev: 848, yoy: 6.4, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: CNW Pty Ltd
   "priv-competitive-foods": { now: 25255, prev: 23491, yoy: 7.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Competitive Foods Australia Pty Ltd
   "priv-cotton-on-group": { now: 10234, prev: 10100, yoy: 1.3, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Trustee For Cotton On Clothing Trust
   "priv-craig-mostyn": { now: 1261, prev: 1095, yoy: 15.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Craig Mostyn & Co Pty Ltd
@@ -244,6 +247,7 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "priv-hbf": { now: 1495, prev: 1654, yoy: -9.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: HBF Health Limited
   "priv-hcf": { now: 1637, prev: 1575, yoy: 3.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: The Hospitals Contribution Fund Of Australia Ltd
   "priv-herbert-smith-freehills": { now: 2968, prev: 1782, yoy: 66.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Herbert Smith Freehills
+  "priv-hutchies-builders": { now: 1909, prev: 1870, yoy: 2.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: J. Hutchinson Pty. Ltd.
   "priv-j-j-richards-sons": { now: 3144, prev: 3051, yoy: 3.0, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: J.J. Richards & Sons Pty Ltd
   "priv-kane-constructions": { now: 510, prev: 472, yoy: 8.1, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Kane Constructions Pty Ltd
   "priv-kennards-hire": { now: 2078, prev: 1651, yoy: 25.9, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Kennards Hire Pty Limited

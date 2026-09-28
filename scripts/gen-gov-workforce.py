@@ -419,8 +419,21 @@ def close_browser():
 # whose <title> is not the site's — worth remembering if a fourth turns up,
 # because a size-and-title heuristic would have caught all three without knowing
 # any brand name.
+#
+# THE FOURTH TURNED UP, AND IT DEFEATS THE HEURISTIC THE PARAGRAPH ABOVE WAS
+# PLEASED WITH. infratil.com answers every path — root included — with 16,512
+# bytes from a SafeLine WAF: `server: Tengine`, an `sl-session` cookie, assets
+# under /.safeline/, and `<title id="slg-title"></title>` EMPTY, filled in by
+# script. So the tell that "would have caught all three without knowing any brand
+# name" is a title this one does not have. The marker is the path instead.
+#
+# It is listed even though it arrives as HTTP 403, which `fetch` already raises
+# on: a WAF configured to answer 200 with the same body is one setting away, and
+# then the body is all there is to go on. Measured 2026-09-28 while looking for
+# Infratil's FY2026 annual report.
 CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
-             'Attention Required!', 'challenge-platform', 'Client Challenge')
+             'Attention Required!', 'challenge-platform', 'Client Challenge',
+             '/.safeline/', 'slg-title')
 
 
 def _challenged(html):
@@ -755,6 +768,59 @@ NOT_IN_SOURCE = {
         'INSIDE the Industry, Science and Resources figure (5,730) for the same '
         'reason as Geoscience Australia — a listed entity whose staff are that '
         "department's APS employees, with no row of its own in Table 2",
+    # ── The last six of the eleven, written down 2026-09-28 ───────────────────
+    # FOUR OF THESE CARDS ARE NOW FILLED, AND THE REASON STILL BELONGS HERE.
+    # "Absent from APSC Table 2" stays true of all six however the card is
+    # filled, and it is the fact that stops the next pass hunting for an alias.
+    # What changed is the answer to "so what fills it": gen-headcount.py's
+    # OWN_REPORT now reads four of these agencies' own annual reports, and
+    # `filedHeadcount` checks COMPANY_HEADCOUNT before this file. Each reason
+    # names its figure so the two generators can be seen to agree.
+    'aps:Australian Federal Police':
+        'employed under the Australian Federal Police Act, not the Public '
+        'Service Act, so Table 2 cannot carry it. FILLED from its own annual '
+        'report instead — 8,328 staff as at 30 June 2025, stated twice in the '
+        'document (Table B3 and the prose on p64, which breaks the same total '
+        'into 3,578 police officers, 838 protective service officers and 3,912 '
+        'unsworn staff)',
+    'aps:Reserve Bank of Australia':
+        'employed under the Reserve Bank Act and outside the APS entirely, so '
+        'it is not in Table 2 and never will be. FILLED from its own annual '
+        'report — 2,039 employees at 30 June 2025, excluding Note Printing '
+        'Australia, whose 304 staff the roster does not carry',
+    'aps:CSIRO':
+        'employed under the Science and Industry Research Act, so the APS Act '
+        'census does not reach it. FILLED from its own annual report — 5,998 '
+        'head count at 30 June 2025 against 6,618 the year before',
+    'aps:Australian Prudential Regulation Authority':
+        'employed under the APRA Act, the same basis as ASIC, so Table 2 is '
+        'silent on it while carrying every Treasury-portfolio body that IS APS. '
+        'FILLED from its own annual report — 897 employees on a permanent or '
+        'fixed-term basis at 30 June 2025 against 870 a year earlier',
+    # AND THESE TWO ARE STILL BLANK, for two different reasons.
+    'aps:Australian Space Agency':
+        'NOT AN AGENCY IN ITS OWN RIGHT — it is a branch of the Department of '
+        'Industry, Science and Resources, so its people are inside that '
+        "department's 5,730, which is filed. There is no separate annual report "
+        'to read and filing a figure here would double count, the same call as '
+        'Geoscience Australia and IP Australia in the same portfolio',
+    'aps:Australian Sports Commission':
+        'a corporate Commonwealth entity outside the APS Act, so absent from '
+        'Table 2 like the others here. Its own annual report DOES carry staffing '
+        'statistics and is not filed only because the PDF is served from an '
+        'Azure blob URL carrying an expiring SAS signature — a spec pinned to '
+        'that link would stop resolving within hours. The stable route is the '
+        'transparency.gov.au publication, which renders the same appendix as '
+        'HTML rather than as a PDF, and the report-reading path only reads PDFs',
+    'tas:Whole of Government Programs':
+        'A JOB-BOARD CATEGORY, NOT AN AGENCY, which is why no workforce figure '
+        'can exist for it. jobs.tas.gov.au/agency/19 is titled "Whole of '
+        "Government Programs\" — the roster's Tasmanian cards come from that "
+        'board\'s agency list — and the State Service workforce report names '
+        'seventeen agencies, every one of them a real department or authority, '
+        'with nothing of this name among them. Roles advertised under it are '
+        'employed by whichever agency runs the program, so their people are '
+        'already inside one of the seventeen',
     # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
     'sa:TAFE SA':
         'not reachable. Its own site answers 404 at every annual-report path '

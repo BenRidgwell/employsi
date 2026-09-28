@@ -4,11 +4,12 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-28
-//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-28
+//   South Australia: 101 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
+//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-28
+//   Tasmania: 17 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-28
 //   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
@@ -32,11 +33,10 @@
 //   NSW: Service NSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-28
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-28
-//   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
-//   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
-//   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
+//   Victoria: 261 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
 //
 // An agency the source does not report is ABSENT, never zero — the card shows
 // an em dash and says no figure was collected. See the generator for which
@@ -280,9 +280,11 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-department-for-education": { now: 33489, prev: 32935, yoy: 1.7, asof: "Jun 2025", span: 1 },
   "sa-gov-department-for-energy-and-mining": { now: 377, prev: 317, yoy: 18.9, asof: "Jun 2025", span: 1 },
   "sa-gov-department-for-environment-and-water": { now: 1419, prev: 1427, yoy: -0.6, asof: "Jun 2025", span: 1 },
+  "sa-gov-department-for-housing-and-urban-development": { now: 338, yoy: null, asof: "Jun 2025", span: 1 },
   "sa-gov-department-for-infrastructure-and-transport": { now: 2503, prev: 2281, yoy: 9.7, asof: "Jun 2025", span: 1 },
   "sa-gov-department-of-human-services": { now: 3282, prev: 3199, yoy: 2.6, asof: "Jun 2025", span: 1 },
   "sa-gov-department-of-primary-industries-and-regions": { now: 892, prev: 892, yoy: 0.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-department-of-state-development": { now: 436, yoy: null, asof: "Jun 2025", span: 1 },
   "sa-gov-department-of-the-premier-and-cabinet": { now: 407, prev: 539, yoy: -24.5, asof: "Jun 2025", span: 1 },
   "sa-gov-department-of-treasury-and-finance": { now: 1465, prev: 1264, yoy: 15.9, asof: "Jun 2025", span: 1 },
   "sa-gov-education-standards-board": { now: 62, prev: 51, yoy: 21.6, asof: "Jun 2025", span: 1 },
@@ -305,6 +307,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "sa-gov-limestone-coast-landscape-board": { now: 43, prev: 49, yoy: -12.2, asof: "Jun 2025", span: 1 },
   "sa-gov-murraylands-and-riverland-landscape-board": { now: 78, prev: 81, yoy: -3.7, asof: "Jun 2025", span: 1 },
   "sa-gov-northern-and-yorke-landscape-board": { now: 42, prev: 40, yoy: 5.0, asof: "Jun 2025", span: 1 },
+  "sa-gov-office-for-early-childhood-development": { now: 118, yoy: null, asof: "Jun 2025", span: 1 },
   "sa-gov-office-for-recreation-sport-and-racing": { now: 105, prev: 90, yoy: 16.7, asof: "Jun 2025", span: 1 },
   "sa-gov-office-of-the-commissioner-for-public-sector-employment": { now: 50, prev: 54, yoy: -7.4, asof: "Jun 2025", span: 1 },
   "sa-gov-office-of-the-sa-productivity-commission": { now: 12, prev: 13, yoy: -7.7, asof: "Jun 2025", span: 1 },

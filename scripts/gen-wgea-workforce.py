@@ -165,6 +165,31 @@ ALIAS = {
     "GPT Group": "GPT Management Holdings Limited",           # the corporate half of the GPT staple
     "Pinnacle Investment Management": "Pinnacle Investment Management Group Limited",
     "Abacus Storage King": "Abacus Storage Operations Limited",  # via Storage King Management
+    # ── Three of the seventeen private cards left unexamined, 2026-09-28 ────
+    # Each found by searching the 2024-25 register's 9,363 distinct names for a
+    # SUBSTRING of the roster name rather than for a normalised equality, which
+    # is the same two-way method that recovered Linfox, Tennis Australia, CJD
+    # Equipment and PharmaCare from the refusal list. All three are
+    # single-employer groups — group name identical to employer name — so the
+    # scope cannot pick the wrong index and no group membership can change
+    # underneath them.
+    #
+    # "AG N VET" IS WHY norm() COULD NOT REACH IT. Its initialism rule joins runs
+    # of SINGLE letters, "n h p" into "nhp", but here one letter sits between two
+    # words: 'agnvet management services' against 'ag n vet management services'.
+    # The register's name is otherwise identical, spelling included. Retail Trade,
+    # 250-499, and present in the 2024-25 file only.
+    "AGnVET Management Services": "AG N VET MANAGEMENT SERVICES PTY LIMITED",
+    # CNW's legal entity carries no trading word at all, so "CNW Electrical"
+    # could never equal it. Wholesale Trade, 500-999, in both files.
+    "CNW Electrical": "CNW Pty Ltd",
+    # "Hutchies" IS THE COMPANY'S OWN NICKNAME, not a near name — Hutchinson
+    # Builders brands itself that way and its reporting entity is J. Hutchinson
+    # Pty Ltd. Construction, 1000-4999, in both files. Worth being explicit that
+    # this is not the Walker Corporation trap: the check is that the register
+    # holds "Hutchison Ports Australia" and "The Hutchins School" as well, and
+    # neither is a builder — division and size both point at the one entity.
+    "Hutchies Builders": "J. Hutchinson Pty. Ltd.",
     # ── Private employers no earlier pass had searched ──────────────────────
     # The private route's fifteen largest were each read and refused, correctly,
     # and these two were never in that set. Both are substantial.
@@ -409,6 +434,70 @@ ALIAS = {
 # for each refused name, look up norm(name) in both years' group and employer
 # indexes, and search both years' names for one CONTAINING it.
 REFUSED = {
+    # ── The rest of the seventeen unexamined private cards, searched 2026-09-28 ─
+    # THE SEARCH IS RECORDED SO IT IS NOT REPEATED. Every distinct name in the
+    # 2024-25 file — 9,363 of them across both name columns — was matched against
+    # a SUBSTRING of each roster name, not against norm() equality, which is the
+    # method that recovered four names from this very list. Three of the
+    # seventeen came back and are aliases above; these fourteen are what the same
+    # search did NOT find, with the nearest thing it did find named so the next
+    # pass can see it was looked at rather than skipped.
+    #
+    # ABSENCE HERE IS NOT A CONTRADICTION. The Act covers non-public-sector
+    # employers of 100 or more, so a private company can be absent for two
+    # ordinary reasons — it is smaller than that, or it reports under a parent
+    # whose name shares nothing with the brand on the card — and this data cannot
+    # tell which. Neither is written down as though it were established.
+    "ATI Global": "no name in either name column contains \"ATI\" as a word. "
+                  "The near misses are SAI Global, Rapid Global, HKA Global and "
+                  "DRA Global, four unrelated businesses sharing one suffix",
+    "Australian Panels": "the register's only \"panel\" names are Kingspan "
+                         "Insulated Panels, Melbourne Fibreglass Panels and "
+                         "Speedpanel Systems — three manufacturers, none of them "
+                         "this one",
+    "Choices Flooring": "neither half of the name reaches it. \"Flooring\" gives "
+                        "ANZ Flooring, Quest Flooring and Premium Floors "
+                        "Australia; \"Choices\" gives Housing Choices Australia "
+                        "and MSI Reproductive Choices. Five real employers, no "
+                        "overlap",
+    "Refuelling Solutions": "the only \"refuel\" name is Air Refuel Pty Ltd, "
+                            "filed under Transport rather than as a fuel "
+                            "distributor — a different business",
+    "Creation Homes": "nothing contains \"creation\"; the matches are on "
+                      "\"recreation\" and are two bowls and recreation clubs",
+    "Australian Consolidated Milk": "six dairy employers are in the register — "
+                                    "Australian Fresh Milk Holdings, Tatura Milk "
+                                    "Industries, BDD Milk, New Zealand Milk "
+                                    "(Australasia) and both a2 Milk entities — "
+                                    "and none of them is ACM",
+    "BAC Holdings": "no name contains \"BAC\" as a word. The nearest is Bacova "
+                    "Holdings, which is a different company and not a near name "
+                    "so much as a coincidence of three letters",
+    "BIG4 Holiday Parks": "nothing matches \"BIG4\" or \"BIG 4\" under any "
+                          "spacing. The only holiday-parks name is Discovery "
+                          "Holiday Parks, a separate operator — the Kennards "
+                          "shape exactly. BIG4 is a franchisor whose parks are "
+                          "independently owned, so a register figure for it would "
+                          "not be the workforce the card implies either",
+    "ColCap": "no name contains \"colcap\" or \"col cap\"",
+    "Consolidated Travel": "fourteen travel employers are in the register — "
+                           "Flight Centre, Corporate Travel Management, Intrepid, "
+                           "Entrada, Ignite and the rest — and Consolidated "
+                           "Travel is not among them under any of them",
+    "NGP Group": "THE NEAREST NAME IS A HOLDING VEHICLE AND TAKING IT WOULD BE A "
+                 "LEAP. The register has \"N G P Investments (No 2) Pty Ltd\", "
+                 "Retail Trade, under 250 — the division fits a fuel and "
+                 "convenience retailer, and \"(No 2)\" says there is at least one "
+                 "other vehicle, so whether this entity holds the group's staff "
+                 "or a slice of them is not established. Filing it would put an "
+                 "unknown fraction of a workforce on the card",
+    "Northwestern Roads": "nothing matches. The \"north west\" names are Busways "
+                          "North West, North West Alliance and two community "
+                          "care bodies, none of them a road builder",
+    "Perron Group": "no name in either column contains \"perron\". The close "
+                    "matches by token are Perigon Group, Personnel Group and "
+                    "Primero Group, three unrelated businesses",
+    "SMRM Holdings": "no name contains \"SMRM\"",
     # ── Near names that would each have filed a REAL figure for the WRONG
     # company. Recorded rather than left out, because the next pass over this
     # register will surface all of them again, and a token score would take
