@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "deploy:preview": "npm run build && npx wrangler deploy --name employsi-preview",
+    "deploy:site-preview": "npm run build && npx wrangler deploy --name employsi-site-preview",
     "lint": "eslint .",
     "typecheck": "npm run typecheck:app && npm run typecheck:workers",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
