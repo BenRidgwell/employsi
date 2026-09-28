@@ -763,6 +763,20 @@ NOT_IN_SOURCE = {
     # These are the others among the twelve that carry 82% of the route's ads,
     # and each of these reasons is a measurement rather than "no source row", so
     # the next pass starts from what was already established.
+    # ALREADY MEASURED, FROM A DOCUMENT READ FOR ANOTHER CARD. No probing needed:
+    # the Creative Industries report filed on this route states it outright.
+    'nsw:Destination NSW':
+        "INSIDE the Creative Industries, Tourism, Hospitality and Sport figure "
+        "(1,019), which is filed. Its p46 says so in as many words: \"As at 19 "
+        "June 2025, Destination NSW had 177.8 full-time equivalent (FTE) staff "
+        "which equates to a headcount of 187 staff (this number is already "
+        "included in the department's total workforce figure)\", and p13 adds "
+        "that it \"is a statutory body under the Destination NSW Act 2011 but is "
+        "not a staff agency\" — its people are employed by the department. So a "
+        "real, dated, precise figure exists for this card and filing it would put "
+        "the same 187 people on two cards, which is the National Parks and "
+        "Wildlife Service call inside DCCEEW. A separate figure is available if "
+        "the roster ever stops carrying the department",
     'nsw:Museum of Applied Arts and Sciences':
         'its 2024-25 annual report exists and only the BLOCKED host has it. '
         'Measured 2026-09-28: parliament.nsw.gov.au/tp/files/192296 carries the '
@@ -2832,6 +2846,39 @@ NSW_AGENCY_REPORTS = {
     # The basis is asserted rather than the number: staff "employed under the
     # provisions of the Government Sector Employment Act 2013", which is the same
     # scope the Electoral Commission's table uses.
+    # 13 on the ranking, and the only card on this route filed from a 2023-24
+    # document — because MULTICULTURAL NSW PUBLISHED NO ANNUAL REPORT FOR 2024-25.
+    # Its own annual-reports page lists nine reports up to 2023-24 and then an
+    # "Annual Information Statement 2024-25", which NSW allows a smaller agency to
+    # file instead. That statement was read, all 45 pages: it carries People
+    # Matter survey percentages and employee-related EXPENSES and no staff count
+    # anywhere, so the 2023-24 report is the newest document with a figure in it.
+    #
+    # p26 "Staffing 2020–21 2021–22 2022–23 2023–24" over one row, "Number of
+    # employees 67 79 105 118". Four consecutive years, so 105 -> 118 is a real
+    # one-year change.
+    #
+    # THE $243,000-PER-HEAD PUZZLE IS WHY THIS WAS CHECKED TWICE AND WHY THE
+    # CAVEAT IS HERE. Employee-related expenses are $28.6 million against 118
+    # people, which is implausible for an agency and is exactly the shape of a
+    # number that turns out to be counting something else. It is not: the page
+    # names the "Crown Employees (Interpreters and Translators, Multicultural NSW)
+    # Award 2021", so Multicultural NSW pays a panel of interpreters and
+    # translators per assignment who are not in the 118. The 118 is its ongoing
+    # staff, the same kind of understatement the SES has with volunteers and the
+    # Electoral Commission with election casuals.
+    'nsw-mnsw': dict(
+        label='NSW: Multicultural NSW',
+        agency='Multicultural NSW',
+        agency_id='nsw-gov-multicultural-nsw',
+        url='https://multicultural.nsw.gov.au/wp-content/uploads/2024/11/'
+            'Multicultural-NSW-Annual-Report-2023-24.pdf',
+        needle='Number of employees',
+        total=r'^Number of employees\b',
+        ncols=4, now_i=3, prev_i=2,
+        header=r'Staffing\s+2020\s*.\s*21.*2023\s*.\s*24',
+        proof=r'2023-24 Financial Year',
+        unit='headcount', asof='Jun 2024'),
     'nsw-ombo': dict(
         label='NSW: Ombudsman',
         agency='NSW Ombudsman',
