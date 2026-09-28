@@ -20,8 +20,8 @@
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
+//   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: State Library: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Electoral Commission: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
 //   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-28
@@ -30,6 +30,7 @@
 //   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
 //   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-28
 //   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-28
+//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   Tasmania: 17 agencies published as at Jun 2024 — KEPT, not refreshed this run
@@ -107,6 +108,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-health-pathology": { now: 4867, prev: 4810, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
+  "nsw-gov-nsw-state-emergency-service": { now: 628, prev: 691, yoy: -9.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-trustee-and-guardian": { now: 728, prev: 720, yoy: 1.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-office-of-sport": { now: 405, prev: 404, yoy: 0.2, asof: "Jun 2025", span: 1, unit: "fte" },
