@@ -1408,6 +1408,30 @@ const RAW_SKILLS: SkillDef[] = [
       "counselling",
       "counselor",
       "counseling",
+
+      // "commercial" is this skill's broadest term and "Commercial Cleaner" is
+      // its worst collision — the bare word reaches a cleaning job and files it
+      // among the lawyers. Measured over the archive 2026-09-28: 12 distinct
+      // titles, 21 rows, every one of them a cleaning role.
+      //
+      // EXCEPTED ON THE CLEANING WORD, NOT ON "commercial clean", because the
+      // phrase is not always contiguous — "Commercial Full-Time Day Cleaner" and
+      // "Commercial Part-Time Evening Cleaner" put the shift between the two
+      // words, and a phrase except would have quietly kept those two while
+      // looking like it had fixed the class.
+      //
+      // Safe as a blanket rule here: every archived title holding "cleaner" or
+      // "cleaning" AND a commercial/legal word is a cleaning-operations role —
+      // "Cleaning Operations Manager", "Cleaning Services Manager" — and not one
+      // is a commercial or legal job. Checked before adding this, because an
+      // except suppresses the WHOLE skill for the title.
+      //
+      // The same collision at ANZSCO4 is corrected separately, in OVERRIDE in
+      // gen-ivi-skill-demand.py, where code 8112 "Cleaner - commercial" was
+      // handing this skill 136,859 employed Australians. Two mechanisms because
+      // there are two inputs: a classification label and a scraped ad title.
+      "cleaner",
+      "cleaning",
     ],
   },
   // ── Commercial & Legal · specialities ──────────────────────────────────
@@ -3309,7 +3333,32 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Cleaning",
     terms: [
       "cleaner",
+      // "cleaning" WAS MISSING, and the speciality note below already asserted
+      // it was here ("'cleaner' and 'cleaning' are this skill's own core
+      // terms"), so the gap was invisible to anyone reading for it. Terms match
+      // at the start of a word, so "cleaner" cannot reach "Cleaning Manager",
+      // "Cleaning Technician" or "Post Renovation Cleaning" — measured
+      // 2026-09-28: of 1,174 archived titles holding "clean", 210 mapped to NO
+      // skill at all, and the cleaning-operations managers among them were the
+      // work this skill is named for.
+      //
+      // It cannot over-reach into the cleanroom titles that share the stem:
+      // "Cleanroom Operator" and "Clean Room Assembler" do not start a word with
+      // "cleaning", and semiconductor work is not this skill.
+      "cleaning",
+      // "cleanliness" is Marriott's word for the job — "Hotel Cleanliness
+      // Expert" is 67 archived rows on its own, and 126 rows over 54 titles
+      // mapped to NO skill because neither "cleaner" nor "cleaning" reaches it.
+      "cleanliness",
       "housekeeper",
+      // AND "housekeeping" WAS MISSING BESIDE "housekeeper", the same inflection
+      // gap as cleaner/cleaning and by far the largest: 535 rows over 215 titles
+      // with no skill at all, measured 2026-09-28. "Housekeeping Attendant" and
+      // "Assistant Housekeeping Manager" are the shapes — hotel and hospital
+      // room work, which is what this skill is for. The ones that did map landed
+      // on Leadership & Coordination alone, so a housekeeping manager counted as
+      // a manager and not as cleaning at all.
+      "housekeeping",
       "laundry",
       "caretaker",
       "handyperson",
@@ -3331,6 +3380,16 @@ const RAW_SKILLS: SkillDef[] = [
       "facilities coordinator",
       "facilities officer",
       "facilities supervisor",
+    ],
+    except: [
+      // Semiconductor process work names cleaning steps that are not cleaning
+      // services: "Process Engineer (Wafer Cleaning and Lamination)" and
+      // "MSAT / CQ Engineer (Cleaning / SIP Validation)" are the two in the
+      // archive, both reached by the "cleaning" term added above. The cleanroom
+      // titles beside them were never claimed and still are not, so this only
+      // makes that boundary hold for the word "cleaning" too.
+      "wafer",
+      "semicon",
     ],
   },
 
