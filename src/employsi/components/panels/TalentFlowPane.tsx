@@ -9,6 +9,7 @@ import { CardLoader } from "./CardLoader";
 import { IconClose } from "../ActionIcons";
 import { logoFor } from "../../lib/companyLogo";
 import { cityLabel } from "../../data/mapboxWorldGeo";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
 
 /**
  * The talent-flow card: the right-hand panel of the "Talent Flows 3D" design,
@@ -131,7 +132,15 @@ function RowLogo({ id, code, name }: { id: string | null; code: string; name: st
  * rows explain the modes; the mode buttons beside the card appear once there
  * is a company for them to switch.
  */
-function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }) {
+function TalentFlowHome({
+  city,
+  onClose,
+  paneRef,
+}: {
+  city: string;
+  onClose: () => void;
+  paneRef: React.Ref<HTMLElement>;
+}) {
   const modes: [string, string, ReactNode][] = [
     [
       "Inflow",
@@ -161,7 +170,7 @@ function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }
     ],
   ];
   return (
-    <aside className="tfcard" aria-label="Talent flows">
+    <aside className="tfcard" aria-label="Talent flows" ref={paneRef}>
       <div
         style={{
           flex: "none",
@@ -296,6 +305,7 @@ export function TalentFlowPane() {
   const setFocus = useAppStore((s) => s.setFlowFocus);
   const setFlowView = useAppStore((s) => s.setFlowView);
   const close = useAppStore((s) => s.closeFlows);
+  const dragRef = useDraggablePane<HTMLElement>(open, picked ? "flow" : "home");
   const [q, setQ] = useState("");
   // The handle's month index, or null for the latest (where it starts).
   const [tlIdx, setTlIdx] = useState<number | null>(null);
@@ -352,7 +362,8 @@ export function TalentFlowPane() {
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
   if (!open) return null;
-  if (!picked) return <TalentFlowHome city={cityLabel(localCity)} onClose={close} />;
+  if (!picked)
+    return <TalentFlowHome city={cityLabel(localCity)} onClose={close} paneRef={dragRef} />;
 
   const name = view?.focus.name
     ? (COMPANY_BY_ID[focus]?.name ?? view.focus.name)
@@ -519,7 +530,7 @@ export function TalentFlowPane() {
         })}
       </div>
 
-      <aside className="tfcard" aria-label="Talent flows">
+      <aside className="tfcard" aria-label="Talent flows" ref={dragRef}>
         {/* What's Trending's loader, used the same way: over the card while a
             company's flows are first arriving, not on a refetch of data the
             card is already showing. */}

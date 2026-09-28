@@ -21,6 +21,7 @@ import { SKILL_PARENT, searchSkillMatches } from "../../data/skillsTaxonomy";
 import { describeSkills } from "../../lib/describeSkills";
 import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -133,11 +134,12 @@ function glowStyle(ads: number, max: number): CSSProperties & { "--cpglow": stri
 export function CareerPathwaysPane() {
   const open = useAppStore((s) => s.careerOpen);
   const close = useAppStore((s) => s.closeCareer);
+  const dragRef = useDraggablePane<HTMLDivElement>(open);
   if (!open) return null;
   return (
     <>
       <div className="panescrim" onClick={close} />
-      <div className="cppane" role="dialog" aria-label="Career pathways">
+      <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
         <CareerCard onClose={close} />
       </div>
     </>
