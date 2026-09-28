@@ -135,14 +135,45 @@ export function CareerPathwaysPane() {
   const open = useAppStore((s) => s.careerOpen);
   const close = useAppStore((s) => s.closeCareer);
   const dragRef = useDraggablePane<HTMLDivElement>(open);
+
+  /**
+   * CLICK-AWAY WITHOUT A SCRIM. The other cards close on a transparent
+   * full-screen .panescrim, and so did this one until 2026-09-28 — but that
+   * layer also swallowed every wheel and drag, so with a role picked the map
+   * behind could not be zoomed out to see its heat at another layer. Here a
+   * CLICK outside the card closes it (press and release without moving, as
+   * the scrim's onClick did), while scrolling and panning reach the map.
+   *
+   * The rail, the mobile tab bar and the toast are exempt, as they sat above
+   * the scrim: their buttons already swap cards themselves.
+   */
+  useEffect(() => {
+    if (!open) return;
+    let down: { x: number; y: number; outside: boolean } | null = null;
+    const exempt = (t: EventTarget | null) =>
+      t instanceof Element && !!t.closest(".cppane, .actionrail, .mobiletabbar, .toast");
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY, outside: !exempt(e.target) };
+    };
+    const onUp = (e: PointerEvent) => {
+      const d = down;
+      down = null;
+      if (!d?.outside || exempt(e.target)) return;
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) close();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointerup", onUp, true);
+    return () => {
+      document.removeEventListener("pointerdown", onDown, true);
+      document.removeEventListener("pointerup", onUp, true);
+    };
+  }, [open, close]);
+
   if (!open) return null;
   return (
-    <>
-      <div className="panescrim" onClick={close} />
-      <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
-        <CareerCard onClose={close} />
-      </div>
-    </>
+    <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
+      <CareerCard onClose={close} />
+    </div>
   );
 }
 
@@ -342,14 +373,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setSelId(nodes[i].id);
     setScrub(null);
     center(i);
-    // Picking a role lights the companies that advertised it on the city
-    // map behind the card and fades the rest, like a skill search. Only on a
-    // pick: the card's own opening selection is not the reader's choice.
+    // Picking a role heats the map behind the card by that role, as a skill
+    // search does, on whichever layer is showing (see store.roleFocus). Only
+    // on a pick: the card's own opening selection is not the reader's choice.
     const o = nodes[i];
     setRoleFocus({
       id: o.id,
       title: o.title,
       companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
+      cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
     });
   };
   const nextOf = (i: number) => {
@@ -786,6 +818,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             }}
           >
             <span
+              className="cpdraghint"
               style={{
                 padding: "5px 8px",
                 borderRadius: 999,
@@ -794,6 +827,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 letterSpacing: ".1em",
                 color: "var(--text-tertiary,#8e8e93)",
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               DRAG TO EXPLORE
@@ -811,6 +845,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 alignItems: "center",
                 gap: 6,
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               <span
@@ -997,9 +1032,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
         </div>
 
         <div
+          className="cpstats"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
             gap: 1,
             background: "var(--border-subtle,#e5e5ea)",
             border: "1px solid var(--border-subtle,#e5e5ea)",
