@@ -51,6 +51,8 @@ import json
 import re
 import sys
 
+import openpyxl
+
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from skills_taxonomy import load_categories  # noqa: E402
 
@@ -129,6 +131,34 @@ OCC_COLS = [
     'Labourers',
 ]
 
+# ── the occupation-by-region tilt ───────────────────────────────────────────
+# The monthly release's occupation columns are NATIONAL. The quarterly
+# "vacancies by occupation" workbook carries each occupation SPLIT BY REGION —
+# AKL and WLG among ten — so the two together give what neither gives alone:
+# monthly movement, tilted to each city's own occupation trend.
+#
+# Its sheet lays the eight occupations out in blocks of ten region columns, AKL
+# first and WLG tenth, dated by quarter-END month and based at Dec 2010 = 100
+# for every one of the sixteen region x occupation cells.
+TILT_SHEET = 'Data'
+TILT_BLOCK = {
+    'Managers': 1, 'Professionals': 11, 'Trades and Technical': 21,
+    'Community Services': 31, 'Clerical_Admin': 41, 'Sales': 51,
+    'Machinery_Drivers': 61, 'Labourers': 71,
+}
+TILT_REGION_OFFSET = {'auckland': 0, 'wellington': 9}
+# The monthly release's ANZSCO names → the workbook's shorter block headings.
+OCC_TO_TILT = {
+    'Managers': 'Managers',
+    'Professionals': 'Professionals',
+    'Technicians and Trades Workers': 'Trades and Technical',
+    'Community and Personal Service Workers': 'Community Services',
+    'Clerical and Administrative Workers': 'Clerical_Admin',
+    'Sales Workers': 'Sales',
+    'Machinery Operators and Drivers': 'Machinery_Drivers',
+    'Labourers': 'Labourers',
+}
+
 # skillsTaxonomy `cat` → ANZSCO major group. CARRIED OVER UNCHANGED from the
 # quarterly generator, under its old group names, so that this rewrite changes
 # the SOURCE and nothing else. Note that nothing maps to Managers: management
@@ -170,6 +200,39 @@ def load_ivi_months():
     return json.loads(m.group(1))
 
 
+def quarter_of(ym):
+    """'2013-05' → '2013-06', the quarter-END month the workbook is dated by."""
+    y, mo = ym.split('-')
+    return f'{y}-{((int(mo) - 1) // 3) * 3 + 3:02d}'
+
+
+def read_tilt(path):
+    """(city, workbook occupation) → {quarter-end 'YYYY-MM': index}, Dec 2010 = 100."""
+    wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+    if TILT_SHEET not in wb.sheetnames:
+        raise SystemExit(f'{path}: no {TILT_SHEET!r} sheet — is this the by-occupation workbook?')
+    out = {(c, occ): {} for c in TILT_REGION_OFFSET for occ in TILT_BLOCK}
+    for row in wb[TILT_SHEET].iter_rows(values_only=True):
+        if not row or not hasattr(row[0], 'strftime'):
+            continue
+        ym = row[0].strftime('%Y-%m')
+        for occ, col in TILT_BLOCK.items():
+            for city, off in TILT_REGION_OFFSET.items():
+                v = row[col + off] if col + off < len(row) else None
+                if isinstance(v, (int, float)):
+                    out[(city, occ)][ym] = float(v)
+    empty = [k for k, v in out.items() if not v]
+    if empty:
+        raise SystemExit(f'no quarterly values for {empty[:3]} — check the column layout')
+    # Every cell must be based at 100 in the same quarter, or the tilt is being
+    # taken between two differently-based series and is a ratio of nothing.
+    base = min(min(v) for v in out.values())
+    off_base = {k: v[base] for k, v in out.items() if abs(v.get(base, 0) - 100) > 1e-9}
+    if off_base:
+        raise SystemExit(f'{base} is not the common base: {list(off_base.items())[:3]}')
+    return out, base
+
+
 def read_jol(path):
     """month 'YYYY-MM' → {'total': float, 'city': float, occupation: float}."""
     out = {}
@@ -205,24 +268,90 @@ def read_jol(path):
     return out
 
 
-def main(path):
+def main(path, tilt_path):
     skills = load_skills()
     nat = load_ivi_national()
     months = load_ivi_months()
     jol = read_jol(path)
     have = sorted(jol)
     first_nz, last_nz = have[0], have[-1]
+    tilt_raw, tilt_base = read_tilt(tilt_path)
+    tilt_quarters = sorted(next(iter(tilt_raw.values())))
+
+    # ── the tilt, quarter by quarter ────────────────────────────────────────
+    # A city's occupation index divided by the NATIONAL one for the same
+    # occupation and quarter, both rebased to the workbook's base. It is what
+    # the monthly national movement is multiplied by, and it is 1 at the base
+    # quarter for every city and occupation by construction.
+    #
+    # The national side is the mean of the quarter's three monthly values.
+    # Taking the quarter-end month instead would compare a quarterly average
+    # against a single month, and December alone — the deepest month of the NZ
+    # year — against a quarter containing it.
+    def nat_quarter(occ, q):
+        vals = [jol[m][occ] for m in have if quarter_of(m) == q]
+        return sum(vals) / len(vals) if vals else None
+
+    nat_base = {occ: nat_quarter(occ, tilt_base) for occ in OCC_COLS}
+    missing_base = [o for o, v in nat_base.items() if not v]
+    if missing_base:
+        raise SystemExit(f'{tilt_base}: monthly release has no values for {missing_base}')
+
+    tilt = {}
+    for (city, wocc), byq in tilt_raw.items():
+        occ = next(o for o, w in OCC_TO_TILT.items() if w == wocc)
+        for q, regional in byq.items():
+            nat_q = nat_quarter(occ, q)
+            if not nat_q:
+                continue
+            national = nat_q / nat_base[occ] * 100
+            if national <= 0:
+                continue
+            tilt[(city, occ, q)] = regional / national
+
+    # Before the workbook begins there is no per-occupation regional signal, so
+    # the city's TOTAL carries the deviation instead — rebased so that it equals
+    # 1 at the base quarter, where the occupation tilt also equals 1.
+    #
+    # THAT REBASING IS THE POINT, not tidiness. The two methods do not meet on
+    # their own: the total-based factor is around 0.5 at the splice and the
+    # occupation tilt is exactly 1, so switching between them mid-series would
+    # have doubled every NZ city overnight in December 2010 and drawn it as a
+    # hiring boom. Rebasing makes the join continuous, and everything after the
+    # splice is ratio-normalised to the anchor anyway, so the pre-period is the
+    # only part it moves.
+    total_factor_at_base = {}
+    for hub in CITY_ANCHOR:
+        base_months = [m for m in have if quarter_of(m) == tilt_base]
+        if not base_months:
+            raise SystemExit(f'monthly release does not reach {tilt_base}')
+        total_factor_at_base[hub] = sum(jol[m][hub] / jol[m]['total'] for m in base_months) / len(
+            base_months
+        )
+
+    last_quarter = tilt_quarters[-1]
 
     def occ_index(hub, group, ym):
         """A hub's index for one occupation group, or None before the series.
 
-        National occupation movement, rescaled to that city's own total. See the
-        docstring: the mix is the country's, the level is the city's.
+        National monthly occupation movement, tilted by that city's own
+        occupation trend for the quarter — see the note above the tilt.
         """
         rec = jol.get(ym)
         if rec is None:
             return None
-        return rec[group] * rec[hub] / rec['total']
+        q = quarter_of(ym)
+        if q < tilt_base:
+            # Pre-workbook: the city's total, rebased to join at the splice.
+            return rec[group] * (rec[hub] / rec['total']) / total_factor_at_base[hub]
+        # Past the workbook's last quarter the tilt is held rather than
+        # extrapolated. It is a slow-moving ratio — a city's occupation mix does
+        # not turn over in a quarter — and the alternative is inventing a trend
+        # in it from nothing.
+        f = tilt.get((hub, group, min(q, last_quarter)))
+        if f is None:
+            return None
+        return rec[group] * f
 
     # The most recent month the AXIS and the RELEASE agree on. The release runs
     # a month ahead of IVI_MONTHS today (2026-08 vs 2026-07); anchoring on a
@@ -294,12 +423,19 @@ def main(path):
     L.append('//')
     L.append('// The release\'s eight occupation columns are the ANZSCO major groups — NZ shares')
     L.append('// the classification with Australia, so no crosswalk is needed. They are NATIONAL,')
-    L.append('// though, and only the totals are regional, so Auckland\'s series is the national')
-    L.append('// occupation movement rescaled month by month to Auckland\'s own total index:')
-    L.append('// the MIX is the country\'s, the LEVEL is the city\'s. Present-day skill levels are')
-    L.append('// anchored to a realistic Auckland online-vacancy level and split by the AU')
-    L.append('// JSA/IVI national mix. Aligned to the IVI_MONTHS axis; months before 2007-05')
-    L.append('// are zero.')
+    L.append('// so each city\'s movement is the national monthly series TILTED by that city\'s')
+    L.append('// own occupation trend, from MBIE\'s quarterly vacancies-by-occupation-by-region')
+    L.append('// workbook (Dec 2010 = 100). The tilt is a city\'s occupation index over the')
+    L.append('// national one for the same quarter, so it is 1 at the base and carries only the')
+    L.append('// divergence: Wellington\'s clerical advertising has grown against Auckland\'s')
+    L.append('// while its management advertising has fallen, and the national mix showed')
+    L.append('// neither. Before Dec 2010 the city\'s TOTAL carries the deviation instead,')
+    L.append('// rebased to join continuously at the splice.')
+    L.append('//')
+    L.append('// LEVELS come from outside both releases, which are indices: Auckland from a')
+    L.append('// realistic online-vacancy level, Wellington from Stats NZ filled jobs as a')
+    L.append('// share of Auckland\'s. Skills are split by the AU JSA/IVI national mix.')
+    L.append('// Aligned to the IVI_MONTHS axis; months before 2007-05 are zero.')
     L.append('')
     L.append(f"export const NZ_MONTH = '{anchor_ym}';")
     L.append("export const NZ_SOURCE =")
@@ -336,6 +472,7 @@ def main(path):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        sys.exit('usage: gen-nz-vacancy-demand.py path/to/jol-monthly.csv')
-    main(sys.argv[1])
+    if len(sys.argv) != 3:
+        sys.exit('usage: gen-nz-vacancy-demand.py path/to/jol-monthly.csv '
+                 'path/to/jol-by-occupation.xlsx')
+    main(sys.argv[1], sys.argv[2])

@@ -185,5 +185,52 @@ for (const c of COUNTRIES) {
   );
 }
 
+// ── New Zealand's occupation-by-region tilt ─────────────────────────────────
+// Auckland and Wellington are driven by the NATIONAL monthly occupation series,
+// so without a tilt every skill in the same ANZSCO group would sit at one fixed
+// Wellington:Auckland ratio for all time — the two cities would be the same
+// picture at two sizes. The quarterly by-region workbook is what breaks that,
+// and dropping it would not fail anything else here: the arrays stay the right
+// length, nothing goes flat, and the current map still matches the series.
+//
+// Measured against the workbook: Wellington's clerical advertising runs at
+// 0.218 of Auckland's in 2014 and 0.261 by 2024, while management falls from
+// 0.286 to 0.251. So the ratio has to MOVE, and it has to move differently for
+// different occupation groups.
+console.log("\nNew Zealand's two cities are not one picture at two sizes:");
+{
+  const ratios = (skill: string): number[] => {
+    const a = NZ_SERIES[skill]?.auckland;
+    const w = NZ_SERIES[skill]?.wellington;
+    if (!a || !w) return [];
+    const out: number[] = [];
+    for (let i = 0; i < a.length; i++) if (a[i] > 0 && w[i] > 0) out.push(w[i] / a[i]);
+    return out;
+  };
+  const spread = (r: number[]) => (r.length ? Math.max(...r) / Math.min(...r) : 1);
+  // Two skills in DIFFERENT ANZSCO groups, so the check also fails if the tilt
+  // is applied but with one group's numbers used for every group.
+  const admin = ratios("Administration & Office Support");
+  const mgmt = ratios("General Management");
+  check(
+    "the Wellington:Auckland ratio moves over time",
+    spread(admin) > 1.2,
+    `admin ratio spans only ${spread(admin).toFixed(2)}x`,
+  );
+  // Rounding to whole ads makes small series jitter, so the two groups are
+  // compared on their trend rather than month to month: the mean ratio over the
+  // first and last five years apart.
+  const mean = (r: number[]) => r.reduce((t, v) => t + v, 0) / (r.length || 1);
+  const early = (r: number[]) => mean(r.slice(0, 60));
+  const late = (r: number[]) => mean(r.slice(-60));
+  const adminMove = late(admin) / early(admin);
+  const mgmtMove = late(mgmt) / early(mgmt);
+  check(
+    "and moves differently for different occupation groups",
+    Math.abs(adminMove - mgmtMove) > 0.05,
+    `clerical ${adminMove.toFixed(3)} vs management ${mgmtMove.toFixed(3)}`,
+  );
+}
+
 console.log(failed ? `\n${failed} check(s) failed` : "\nall vacancy-series checks passed");
 process.exit(failed ? 1 : 0);
