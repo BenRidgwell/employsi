@@ -676,6 +676,73 @@ if (ACCOUNT && DB && TOKEN) {
   }
 }
 
+// ── A broad term must not reach another trade, and an inflection must not be
+// missed ────────────────────────────────────────────────────────────────────
+// Terms match at the START of a word, which cuts both ways and both cuts were
+// live at once in Cleaning & Facilities. "commercial" on Commercial & Legal
+// reached "Commercial Cleaner" and filed a cleaning job among the lawyers; and
+// "cleaner", "housekeeper" could not reach "Cleaning Manager" or "Housekeeping
+// Attendant", so 661 archived rows of hotel and hospital room work carried no
+// skill at all. One is a false positive, the other a silent miss, and neither
+// shows up as anything on a card — the skill simply reads as a market nobody
+// hires in, or one where lawyers mop floors.
+//
+// Titles are verbatim from the archive, with the counts measured 2026-09-28.
+{
+  const MUST: [string, string][] = [
+    // [title, skill it must carry]
+    ["Commercial Cleaner", "Cleaning & Facilities"],
+    ["Commercial Cleaner (FT) – Shopping Centre", "Cleaning & Facilities"],
+    ["Cleaning Manager | Fortescue | 5:2", "Cleaning & Facilities"],
+    ["Assistant Cleaning Operations Manager", "Cleaning & Facilities"],
+    ["2nd Shift Cleaning Technician", "Cleaning & Facilities"],
+    ["Hotel Cleanliness Expert", "Cleaning & Facilities"],
+    ["Hotel Cleanliness Expert (Housekeeping Attendant)", "Cleaning & Facilities"],
+    ["Assistant Director of Housekeeping", "Cleaning & Facilities"],
+  ];
+  const MUST_NOT: [string, string][] = [
+    // The false positive itself, in the three shapes the archive holds: the
+    // contiguous phrase, the shift wedged between the two words (which a phrase
+    // except would have missed), and the reversed form.
+    ["Commercial Cleaner", "Commercial & Legal"],
+    ["Commercial Full-Time Day Cleaner (Brisbane, QLD)", "Commercial & Legal"],
+    ["Cleaner - Commercial", "Commercial & Legal"],
+    ["Residential and Commercial cleaning", "Commercial & Legal"],
+    // Semiconductor process work names a cleaning step and is not this trade.
+    ["Process Engineer (Wafer Cleaning and Lamination)", "Cleaning & Facilities"],
+    // And the term must still do its real job: these ARE commercial roles.
+    ["Commercial Manager", "Cleaning & Facilities"],
+    ["Commercial Finance Analyst", "Cleaning & Facilities"],
+  ];
+  const bad: string[] = [];
+  for (const [title, skill] of MUST) {
+    const got = skillsForText(title);
+    if (!got.includes(skill)) bad.push(`"${title}" should carry ${skill}, got [${got.join(", ")}]`);
+  }
+  for (const [title, skill] of MUST_NOT) {
+    const got = skillsForText(title);
+    if (got.includes(skill))
+      bad.push(`"${title}" must NOT carry ${skill}, got [${got.join(", ")}]`);
+  }
+  // "Commercial Manager" and "Commercial Finance Analyst" are the reason the
+  // except is on the cleaning word rather than on "commercial": the term has to
+  // keep working for the 1,800-odd commercial titles that are this skill.
+  const keeps = ["Commercial Manager", "Commercial Finance Analyst", "Commercial Analyst"].filter(
+    (t) => !skillsForText(t).includes("Commercial & Legal"),
+  );
+  for (const t of keeps) bad.push(`"${t}" lost Commercial & Legal — the except is too broad`);
+  if (bad.length) {
+    failed = true;
+    console.error("✗ Term reach / inflection:");
+    for (const b of bad) console.error(`   ${b}`);
+  } else {
+    console.log(
+      `✓ ${MUST.length + MUST_NOT.length + 3} measured titles keep their trade ` +
+        "(cleaning vs commercial, and both inflections of each term).",
+    );
+  }
+}
+
 if (failed) {
   console.error(
     "\nFix: add new match terms to the EXISTING def for that skill, " +
