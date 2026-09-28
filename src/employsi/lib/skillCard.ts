@@ -1,7 +1,9 @@
 import { ALL_SKILLS, SKILL_CATEGORY, SKILL_CHILDREN, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
-import { demandLevel, demandPercentile, type DemandTone } from "./skillHeat";
+import { demandLevel, demandPercentile, type DemandMode, type DemandTone } from "./skillHeat";
+import { employmentFor } from "./vacancyRate";
+import { ABS_QUARTERS, ABS_SOURCE } from "../data/absOccupationSupply";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillArchiveTrend } from "./jobHistoryFn";
 import { demandAt, skillHistory, vacanciesAt } from "./marketHistory";
@@ -36,6 +38,15 @@ export interface SkillCard {
   tone: DemandTone;
   /** 0–100 position on the Low → High scale, at the scrubbed month. */
   percentile: number;
+  /**
+   * Employed persons at the scrubbed month on the SUPPLY side, or null.
+   *
+   * Non-null only in employment mode. It is not a second reading of
+   * `openRoles`: one counts job ads, the other counts people, and the card
+   * shows exactly one of them so the two can never sit side by side wearing
+   * the same units.
+   */
+  employed: number | null;
   /** Published vacancies at the scrubbed month, or null with no coverage. */
   openRoles: number | null;
   /** YYYY-MM the card is currently resolved to. */
@@ -812,6 +823,7 @@ function buildSpecialityCard(
     tone: badge.tone,
     percentile: demandPercentile(skill, true, idx, "volume"),
     openRoles: now,
+    employed: null,
     month: IVI_MONTHS[mi],
     monthLabel: monthLabel(IVI_MONTHS[mi]),
     change,
@@ -830,12 +842,138 @@ function buildSpecialityCard(
   };
 }
 
+/**
+ * The card on the SUPPLY side: employed persons, and nothing measured in ads.
+ *
+ * WHY THIS IS A SEPARATE BUILDER rather than a few swapped labels. Every figure
+ * on the demand card is a vacancy — the band, the percentile marker, the
+ * headline count, the sparkline and the sentence under it. Relabelling that as
+ * employment would leave five vacancy measurements under an employment
+ * heading, which is worse than the wrong word: the word is visible and the
+ * measurement is not.
+ *
+ * So each one is rebuilt from ABS EQ08:
+ *
+ *  · the band and the marker rank this skill's WORKFORCE among workforces
+ *  · the count is employed persons nationally at the scrubbed month
+ *  · the line is the national employment series, quarterly as ABS publishes it
+ *  · the sentence names the quarter, because a quarterly figure dated to a
+ *    month would imply a monthly measurement nobody made
+ *
+ * The median salary cell is left where it is, still advertised pay from the ad
+ * archive, and still labelled as advertised — it is the only pay figure here
+ * and the label is what keeps it from reading as a wage the ABS measured.
+ *
+ * Australia only, like everything else on this side. A skill ABS does not carry
+ * says so rather than borrowing the demand card's numbers.
+ */
+/**
+ * The ABS quarter a scrubbed month falls in, as words.
+ *
+ * Employment is quarterly. Labelling a quarterly figure with the month the
+ * reader happens to be scrubbing would claim a monthly measurement — so the
+ * card names the quarter the number actually belongs to.
+ */
+function quarterLabelFor(month: string): string {
+  let best = ABS_QUARTERS[0];
+  for (const q of ABS_QUARTERS) if (q <= month) best = q;
+  return `${monthLabel(best)} quarter`;
+}
+
+function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null): SkillCard {
+  const parent = SKILL_PARENT[skill];
+  const atPresent = mi === TIMELINE_SPAN;
+  const month = IVI_MONTHS[mi];
+  const badge = demandLevel(skill, true, idx, "employment");
+  const employed = employmentFor(skill, "national", month);
+
+  // The national series, sampled at the same months the timeline scrubs. ABS is
+  // quarterly, so consecutive months repeat — that is the measurement, and
+  // smoothing it would draw a line through numbers nobody published.
+  const series: number[] = [];
+  let from = -1;
+  for (let i = 0; i <= mi; i++) {
+    const v = employmentFor(skill, "national", IVI_MONTHS[i]);
+    series.push(v ?? 0);
+    if (from < 0 && v !== null) from = i;
+  }
+  const spark = from >= 0 && mi > from ? sparkPaths(series, from, mi) : null;
+
+  // Four quarters back, so the move is year-on-year rather than a quarter's
+  // seasonality. CHANGE_MONTHS is the vacancy card's window and is not reused:
+  // twelve weeks of a quarterly series is one step or none.
+  const YOY_MONTHS = 12;
+  const before =
+    mi >= YOY_MONTHS ? employmentFor(skill, "national", IVI_MONTHS[mi - YOY_MONTHS]) : null;
+  const change =
+    employed !== null && before !== null && before > 0
+      ? ((employed - before) / before) * 100
+      : null;
+  const up = change !== null && change >= 0.35;
+  const down = change !== null && change <= -0.35;
+
+  const people = employed === null ? "" : `${Math.round(employed).toLocaleString("en-US")} people`;
+  const qtr = employed === null ? "" : quarterLabelFor(month);
+
+  let summaryLead = "";
+  let summaryPct = "";
+  let summaryTail = "";
+  if (employed === null) {
+    summaryLead = `The ABS does not publish employment for the occupations carrying ${skill}, so there is no workforce figure to show. Switch to demand for its vacancy series.`;
+  } else if (change === null) {
+    summaryLead = `${people} work in occupations carrying ${skill} across Australia, ${qtr}.`;
+    summaryTail = ` Too little history before it to measure a move.`;
+  } else {
+    summaryLead = up
+      ? "The workforce is up "
+      : down
+        ? "The workforce is down "
+        : "The workforce is flat, ";
+    summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
+    summaryTail = ` over the year to the ${qtr} — ${people} in occupations carrying ${skill} across Australia. ABS Labour Force, not an ad count.`;
+  }
+
+  return {
+    skill,
+    icon: skillIcon(skill, parent),
+    levelLabel: badge.label,
+    tone: badge.tone,
+    percentile: demandPercentile(skill, true, idx, "employment"),
+    openRoles: null,
+    employed,
+    month,
+    monthLabel: monthLabel(month),
+    change,
+    spark: spark?.line ?? null,
+    sparkArea: spark?.area ?? null,
+    summaryLead,
+    summaryPct,
+    summaryTail,
+    atPresent,
+    sources: [ABS_SOURCE],
+    // A speciality has no ABS series of its own — EQ08 stops at ANZSCO4 and the
+    // taxonomy's children sit below it — so from here the useful chip is the
+    // parent whose workforce this one is part of, and siblings otherwise.
+    related: parent ? [parent] : categorySiblings(skill),
+    relatedLabel: parent ? "Part of" : "Related",
+    spanLabel: null,
+    basis: "agency",
+  };
+}
+
 export function buildSkillCard(
   skill: string,
   monthIndex: number,
   idx: SkillIndex | null = null,
   trend: SkillArchiveTrend | null = null,
+  mode: DemandMode = "volume",
 ): SkillCard {
+  if (mode === "employment")
+    return buildEmploymentCard(
+      skill,
+      Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex))),
+      idx,
+    );
   if (SKILL_PARENT[skill])
     return buildSpecialityCard(
       skill,
@@ -888,6 +1026,7 @@ export function buildSkillCard(
     tone: at?.level ?? "lo",
     percentile: at?.percentile ?? 0,
     openRoles: now,
+    employed: null,
     month: IVI_MONTHS[mi],
     monthLabel: monthLabel(IVI_MONTHS[mi]),
     change,

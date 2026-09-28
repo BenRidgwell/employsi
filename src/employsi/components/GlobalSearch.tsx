@@ -286,9 +286,9 @@ export function GlobalSearch() {
   const card = useMemo(
     () =>
       cardSkill && !cardBlocked
-        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null)
+        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null, demandMode)
         : null,
-    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend],
+    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend, demandMode],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the
@@ -671,21 +671,44 @@ export function GlobalSearch() {
               />
             </div>
             <div className="gsscalekeys">
-              <span className="gskey lo">Low</span>
-              <span className="gskey mid">Moderate</span>
-              <span className="gskey hi">High</span>
+              {/* The scale ranks workforces against workforces on the supply
+                  side, so Low/Moderate/High — which read as demand — become a
+                  size. */}
+              <span className="gskey lo">{demandMode === "employment" ? "Small" : "Low"}</span>
+              <span className="gskey mid">
+                {demandMode === "employment" ? "Mid-sized" : "Moderate"}
+              </span>
+              <span className="gskey hi">{demandMode === "employment" ? "Large" : "High"}</span>
             </div>
           </div>
 
           <div className="gsstats">
             <div className="gsstat">
-              <span className="gsstatk">Open roles</span>
+              {/* ONE COUNT, NEVER BOTH. On the supply side the card carries
+                  employed persons and `openRoles` is null; on the demand side
+                  the reverse. Showing the pair together would put ads and
+                  people side by side in identically-styled cells, which is the
+                  conflation the separate builders exist to prevent. */}
+              <span className="gsstatk">
+                {demandMode === "employment" ? "Employed" : "Open roles"}
+              </span>
               <span className="gsstatv">
-                {card.openRoles === null ? "—" : card.openRoles.toLocaleString("en-US")}
+                {demandMode === "employment"
+                  ? card.employed === null
+                    ? "—"
+                    : card.employed.toLocaleString("en-US")
+                  : card.openRoles === null
+                    ? "—"
+                    : card.openRoles.toLocaleString("en-US")}
               </span>
             </div>
             <div className="gsstat">
-              <span className="gsstatk">Median salary</span>
+              {/* Named as ADVERTISED on the supply side. It comes from the ad
+                  archive either way, and beside an ABS headcount an unqualified
+                  "Median salary" would read as a wage the ABS measured. */}
+              <span className="gsstatk">
+                {demandMode === "employment" ? "Median advertised" : "Median salary"}
+              </span>
               {/* Advertised pay comes from the live ad archive, so it only has a
                   value at the present end of the timeline. */}
               <span className="gsstatv">{card.atPresent && pay ? formatPay(pay) : "—"}</span>
@@ -738,25 +761,11 @@ export function GlobalSearch() {
               employment by occupation, which exists for Australia only, so
               offering the switch on a skill it cannot answer would be a control
               that silently does nothing. */}
-          {/* SUPPLY SIDE: one read-out, no toggle. Vacancies and per-1,000 are
-              both readings of DEMAND, so offering them here would be two
-              controls arguing about what the card measures. The figure is the
-              ABS employed stock — the same number the rate divides by, shown as
-              a level. Australia only, like the rate, and absent rather than
-              zeroed where ABS has no cell. */}
-          {marketMode === "supply" && (
-            <div className="gsmode" role="group" aria-label="Employment measure">
-              <button type="button" className="on" disabled>
-                Employed
-              </button>
-              <span className="gsmodeval">
-                {cardEmployed !== null && cardEmployed !== undefined
-                  ? `${cardEmployed.toLocaleString("en-AU")} people do this work · AU only`
-                  : "No ABS employment figure for this skill"}
-              </span>
-            </div>
-          )}
-
+          {/* NO MEASURE ROW ON THE SUPPLY SIDE. There is nothing to toggle —
+              Vacancies and Per-1,000 are both readings of demand — and the
+              employment figure is already in the stat row above with the
+              quarter named under it. A second copy in a control-shaped box
+              would read as a different measurement. */}
           {marketMode !== "supply" && cardRate !== null && (
             <div className="gsmode" role="group" aria-label="Demand measure">
               <button

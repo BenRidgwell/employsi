@@ -24,6 +24,7 @@ import {
 } from "../src/employsi/lib/jobHistoryFn";
 import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct } from "../src/employsi/lib/chart";
 import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
+import { buildSkillCard } from "../src/employsi/lib/skillCard";
 import {
   demandLevel,
   iviCityChangeAt,
@@ -2168,6 +2169,46 @@ console.log("\nthe supply side measures employment, not vacancies:");
     "employment values are not the vacancy values",
     sameValue.length === 0,
     sameValue.slice(0, 4).join(", "),
+  );
+
+  // ── THE CARD SAYS WHAT IT MEASURES ───────────────────────────────────────
+  // The supply card is a separate builder, not relabelled demand. If it ever
+  // fell back to the vacancy path the words would still read "workforce" while
+  // every figure underneath counted job ads — the failure that is invisible
+  // precisely because the label is the part that looks right.
+  const mi = IVI_MONTHS.length - 1;
+  for (const sk of ["Nursing", "Administration & Office Support"]) {
+    const sup = buildSkillCard(sk, mi, null, null, "employment");
+    const dem = buildSkillCard(sk, mi, null, null, "volume");
+    check(`${sk}: supply card carries employment`, (sup.employed ?? 0) > 0, `${sup.employed}`);
+    // Exactly one count per card, never both.
+    check(`${sk}: supply card carries no ad count`, sup.openRoles === null, `${sup.openRoles}`);
+    check(`${sk}: demand card carries no employment`, dem.employed === null, `${dem.employed}`);
+    check(
+      `${sk}: the two cards disagree, as they must`,
+      sup.employed !== dem.openRoles && sup.levelLabel !== dem.levelLabel,
+      `${sup.levelLabel} / ${dem.levelLabel}`,
+    );
+    // The words have to match the numbers.
+    // The disclaimer is stripped before the test: the copy ends "ABS Labour
+    // Force, not an ad count", which names ads in order to rule them out. A
+    // check that failed on its own disclaimer would push the copy to drop the
+    // one sentence stating where the number came from.
+    const words = `${sup.summaryLead}${sup.summaryTail}`
+      .toLowerCase()
+      .replace("not an ad count", "");
+    check(
+      `${sk}: supply copy says workforce, not ads`,
+      /workforce|people/.test(words) && !/\bads?\b|openings|vacanc/.test(words),
+      words.slice(0, 90),
+    );
+  }
+  // A skill ABS does not carry says so rather than borrowing demand's numbers.
+  const none = buildSkillCard("Metallurgy", mi, null, null, "employment");
+  check(
+    "a skill with no ABS series shows no figure",
+    none.employed === null && none.spark === null,
+    `${none.employed} / ${none.spark}`,
   );
 }
 
