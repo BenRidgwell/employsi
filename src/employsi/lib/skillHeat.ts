@@ -647,3 +647,21 @@ export function popularSkills(
     .map(([name]) => name);
   return ranked.length ? ranked : ALL_SKILLS.slice(0, n);
 }
+
+/**
+ * What a figure produced under a given mode is CALLED.
+ *
+ * It exists because the unit is the part that goes wrong silently. The world
+ * map drew ABS employment on the supply side and labelled it "137,312 ads" —
+ * right colour, right number, wrong noun, and nothing about that looks broken.
+ * The card had the same shape of bug a commit earlier.
+ *
+ * So every surface that prints one of these numbers asks here rather than
+ * writing the word itself, and the word cannot be left behind when the mode
+ * changes.
+ */
+export function measureNoun(mode: DemandMode, n: number): string {
+  if (mode === "employment") return "employed";
+  if (mode === "rate") return "per 1,000";
+  return n === 1 ? "ad" : "ads";
+}
