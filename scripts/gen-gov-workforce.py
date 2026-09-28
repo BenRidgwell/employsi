@@ -2726,6 +2726,114 @@ NSW_AGENCY_REPORTS = {
     # FY25's components sum exactly (513.88 + 155.68 = 669.56) and FY24's do not
     # (499.94 + 167.99 = 667.93 against a stated 667.64, out by 0.29). That is in
     # the document; it is why no component sum is asserted here.
+    # 22 on the archived+live ranking. p43 "Table 11: Staff numbers as at 30 June
+    # 2025", whose PRIOR YEAR IS IN BRACKETS ON EVERY CELL — "The numbers in
+    # brackets are as at 30 June 2024 for comparison" — so one line carries both
+    # readings and the Total row parses as six numbers rather than three:
+    #
+    #     Total 108 (140) 71 (96) 179 (236)
+    #
+    # 179 against 236, a fall of 24% the report explains itself: funding
+    # constraints, a restructure announced in the reporting year, and temporary
+    # contracts expiring after the 2024 local government elections.
+    #
+    # THE ROW SUMS ARE EXACT AND THE COLUMN SUMS ARE NOT, so both are asserted and
+    # the tolerance is sized for the second. Female + Male = Total holds in each
+    # year (108 + 71 = 179, 140 + 96 = 236), while the 2025 category column sums
+    # to 178 against a stated 179 — the male column is out by one in the document
+    # and the total carries it. The 2024 column is exact. Same one-off shape as
+    # icare and the Office of Sport.
+    #
+    # THIS IS THE PERMANENT WORKFORCE AND THE CARD SHOULD NOT BE READ AS MORE.
+    # The table counts only staff engaged under the Government Sector Employment
+    # Act, and the page above it says "over 20,000 additional staff required at
+    # statewide elections" plus contractors. It also excludes the Public Office
+    # Holder, the Statutory Authority's members, the Audit and Risk Committee,
+    # secondments out and long-term leave. 179 is the standing organisation.
+    # 14 on the ranking. p68 PRINTS AN FTE TABLE AND A HEAD COUNT TABLE WITH
+    # IDENTICAL ROW LABELS — managers, professionals, technicians, right down the
+    # occupational classification — so `^Total` would have matched the FTE table's
+    # row first and filed 271.4 as a head count. Two things stop that: pdfplumber
+    # separates the two tables, and TWO INDEPENDENT CHECKS each exclude the wrong
+    # one. Their total rows are named differently — "Total (non-casual)" is the
+    # FTE one, the head count one is exactly "Total", which `^Total$` matches and
+    # the other cannot — and the header assertion rejects any table not headed
+    # "Headcount 2024 Headcount 2025".
+    #
+    # THE HEADER IS THE ONE DOING THE WORK, measured rather than assumed: loosened
+    # to `^Total` this spec still returns 329, because the FTE table is thrown out
+    # on its header before its total row is ever read. Its components would
+    # otherwise have passed — they sum to 275.3 against a stated 275.1, inside the
+    # default tolerance — so reconciliation alone would NOT have caught it. The
+    # `$` is the second line of defence, not the first.
+    #
+    # Components sum EXACTLY in both years — 21+170+51+3+79+11 = 335 and
+    # 22+168+50+3+78+8 = 329 — while the FTE table's 2024 column is out by 0.2.
+    # That is another reason to take the head count here.
+    #
+    # AN ANNUAL AVERAGE, like the Office of Sport and unlike every census-date
+    # card: the table's own note says "Average annual headcount shows data
+    # averaged over the" reporting period. Non-casual only, per the FTE table's
+    # label; the prose on p25 gives 271 FTE, which is the other table's 271.4.
+    'nsw-slnsw': dict(
+        label='NSW: State Library',
+        agency='State Library of New South Wales',
+        agency_id='nsw-gov-state-library-of-new-south-wales',
+        url='https://www.sl.nsw.gov.au/sites/default/files/2025-11/annual_report_24-25.pdf',
+        needle='AVERAGE HEADCOUNT',
+        total=r'^Total$',
+        comp=r'^(?:managers|professionals|technicians and trades workers|'
+             r'community and personal service workers|'
+             r'clerical and administrative workers|sales workers)$',
+        ncols=2, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        header=r'Headcount 2024\s+Headcount 2025',
+        proof=r'Average annual headcount shows data averaged',
+        unit='headcount', asof='Jun 2025'),
+    # 14 on the ranking. p76 Table A.1 "Staff profile": three years of head count
+    # at 30 June — 310 / 319 / 347 — and the prose beside it states the newest
+    # outright: "As at 30 June 2025 the Australian Museum employed 347 staff, with
+    # a full time equivalent (FTE) of 287.72." `stated` holds the parse to that
+    # sentence, so the column and the prose have to agree.
+    #
+    # THE HEADER ROW IS GARBLED AND STILL USABLE. pdfplumber interleaves the table
+    # caption into it — "S in t a c f l f a h ss e i a fi d c c a o ti u o n n t
+    # FY2022-23 FY2023-24 FY2024-25" — because a neighbouring table is typeset
+    # beside it. The year labels survive intact, which is all the assertion needs.
+    'nsw-ausmus': dict(
+        label='NSW: Australian Museum',
+        agency='Australian Museum',
+        agency_id='nsw-gov-australian-museum',
+        url='https://media.australian.museum/media/dd/documents/'
+            'Australian_Museum_Annual_Report_24-25.2601b86.pdf',
+        needle='headcount at 30 June',
+        total=r'^Staff \(headcount at 30 June\)',
+        ncols=3, now_i=2, prev_i=1,
+        # ANCHORED ON THE TAIL OF THE SENTENCE, NOT ITS HEAD, because the page
+        # typesets two text columns and pdfplumber interleaves them: "the
+        # Australian Museum employed" is followed on the SAME line by "The AM has
+        # strengthened its commitment to serving", and "347 staff, with a full
+        # time equivalent" begins the next. A pattern reading forward from
+        # "employed" matches nothing; one reading back from "staff, with a full
+        # time equivalent" is unaffected by where the line breaks fall.
+        stated=r'([\d,]+) staff, with a full time equivalent',
+        header=r'FY2022-23\s+FY2023-24\s+FY2024-25',
+        proof=r'As at 30 June 2025 the Australian Museum employed',
+        unit='headcount', asof='Jun 2025'),
+    'nsw-ecnsw': dict(
+        label='NSW: Electoral Commission',
+        agency='NSW Electoral Commission',
+        agency_id='nsw-gov-nsw-electoral-commission',
+        url='https://elections.nsw.gov.au/getmedia/f9303618-790c-4cd3-9e56-0b396a842617/'
+            'nswec-2024-25-annual-report-acc.pdf',
+        warm='https://elections.nsw.gov.au/',
+        needle='Staff numbers as at 30 June 2025',
+        total=r'^Total\b',
+        comp=r'^(?:Senior executives \(equivalent\)\*?|Ongoing officers|Temporary officers)',
+        ncols=6, now_i=4, prev_i=5,
+        sums=[(0, 2, 4), (1, 3, 5), (4,), (5,)], tol=1.5,
+        header=r'Staff category\s+Female\s+Male\s+Total',
+        proof=r'numbers in brackets are as at 30 June 2024',
+        unit='headcount', asof='Jun 2025'),
     'nsw-soh': dict(
         label='NSW: Sydney Opera House',
         agency='Sydney Opera House',
