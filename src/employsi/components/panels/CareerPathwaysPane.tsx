@@ -22,6 +22,7 @@ import { describeSkills } from "../../lib/describeSkills";
 import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -136,38 +137,8 @@ export function CareerPathwaysPane() {
   const close = useAppStore((s) => s.closeCareer);
   const dragRef = useDraggablePane<HTMLDivElement>(open);
 
-  /**
-   * CLICK-AWAY WITHOUT A SCRIM. The other cards close on a transparent
-   * full-screen .panescrim, and so did this one until 2026-09-28 — but that
-   * layer also swallowed every wheel and drag, so with a role picked the map
-   * behind could not be zoomed out to see its heat at another layer. Here a
-   * CLICK outside the card closes it (press and release without moving, as
-   * the scrim's onClick did), while scrolling and panning reach the map.
-   *
-   * The rail, the mobile tab bar and the toast are exempt, as they sat above
-   * the scrim: their buttons already swap cards themselves.
-   */
-  useEffect(() => {
-    if (!open) return;
-    let down: { x: number; y: number; outside: boolean } | null = null;
-    const exempt = (t: EventTarget | null) =>
-      t instanceof Element && !!t.closest(".cppane, .actionrail, .mobiletabbar, .toast");
-    const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY, outside: !exempt(e.target) };
-    };
-    const onUp = (e: PointerEvent) => {
-      const d = down;
-      down = null;
-      if (!d?.outside || exempt(e.target)) return;
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) close();
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("pointerup", onUp, true);
-    return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("pointerup", onUp, true);
-    };
-  }, [open, close]);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, close, ".cppane");
 
   if (!open) return null;
   return (
