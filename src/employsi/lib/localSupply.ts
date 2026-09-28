@@ -1,6 +1,8 @@
 import type { Company } from "../data/companies";
 import { filedHeadcount } from "./companyCard";
-import { AU_RATE_HUBS, employmentFor } from "./vacancyRate";
+import { AU_RATE_HUBS, employmentFor, NZ_SUPPLY_CITIES } from "./vacancyRate";
+import { NZ_GROUP_NAME, NZ_SKILL_GROUP, NZ_SUPPLY_YEARS } from "../data/nzOccupationSupply";
+import { quarterLabelFor } from "./skillCard";
 
 /**
  * WHAT THE LOCAL LAYER CAN HONESTLY SAY IN SUPPLY MODE.
@@ -81,24 +83,78 @@ export function supplyScale(n: number, max: number): number {
 }
 
 /**
+ * WHAT A CITY'S EMPLOYMENT FIGURE ACTUALLY COUNTS.
+ *
+ * `label` is the point of this type. Australia's source is ANZSCO UNIT groups,
+ * so the figure really is the searched skill and may be shown under its name.
+ * New Zealand's finest published occupation grain is ANZSCO SUB-MAJOR, so the
+ * figure is every skill in that group at once — 37,644 "Health Professionals" in
+ * Auckland is every nurse, doctor, pharmacist, dentist, physiotherapist and
+ * radiographer in the region, and printing it beside the word Nursing would be
+ * false. So the label travels WITH the number, and the caller renders the label.
+ *
+ * That is the whole mechanism keeping a coarse source usable: name the group and
+ * the figure is true; name the skill and it is not.
+ */
+export interface CityEmployment {
+  n: number;
+  /** The name to show. The skill itself only when grain is "occupation". */
+  label: string;
+  grain: "occupation" | "group";
+  /** Reporting period, e.g. "Feb 2026 quarter" or "2023 Census". */
+  asof: string;
+  source: string;
+}
+
+/**
  * The searched skill's employment for a whole city, or null.
  *
- * This is the only skill-aligned employment figure the local layer has, and it
- * exists for the eight Australian capitals and nowhere else. Null here means the
- * banner SAYS so; it is never approximated from a covered city.
+ * Two sources, at two grains, and the difference is carried rather than hidden:
  *
- * AU_RATE_HUBS IS THE GATE, NOT A SHORTCUT, and dropping it would print a wrong
- * number rather than none. employmentFor also answers for "singapore", from
- * SingStat M182081 — but that table is EIGHT SSOC MAJOR GROUPS, so it reads
- * 495,500 for Nursing because Nursing, Legal and Software Engineering all share
- * "Professionals" (see the generated file's header). As a rate DENOMINATOR that
- * coarseness is disclosed and survivable, which is what employmentFor was
- * written for. As a headcount printed beside a skill's name it is simply false —
- * Singapore does not employ 495,500 nurses — so this caller takes the
- * occupation-level hubs only.
+ *   · the eight Australian capitals, from ABS EQ08 at unit-group grain -> the
+ *     skill's own figure, labelled with the skill;
+ *   · Auckland and Wellington, from the 2023 Census at sub-major grain -> the
+ *     ANZSCO group's figure, labelled with the group.
+ *
+ * SINGAPORE IS STILL EXCLUDED, and that is not an oversight. SingStat M182081 is
+ * EIGHT SSOC majors — it reads 495,500 for Nursing because Nursing, Legal and
+ * Software Engineering share "Professionals". The same group-labelling could in
+ * principle rescue it, but eight groups is coarse enough that the label would be
+ * doing all the work and the number almost none; NZ's 43 are a different
+ * proposition. employmentFor still uses it as a disclosed rate denominator.
+ *
+ * Everywhere else returns null, and the banner SAYS so rather than reaching for
+ * a covered city's figure.
  */
-export function cityEmployment(skill: string | null, city: string, month: string): number | null {
+export function cityEmployment(
+  skill: string | null,
+  city: string,
+  month: string,
+): CityEmployment | null {
   if (!skill) return null;
-  if (!AU_RATE_HUBS.includes(city)) return null;
-  return employmentFor(skill, city, month);
+  if (AU_RATE_HUBS.includes(city)) {
+    const n = employmentFor(skill, city, month);
+    return n === null
+      ? null
+      : { n, label: skill, grain: "occupation", asof: quarterLabelFor(month), source: "ABS" };
+  }
+  if (NZ_SUPPLY_CITIES.includes(city)) {
+    const n = employmentFor(skill, city, month);
+    const group = NZ_SKILL_GROUP[skill];
+    const label = group ? NZ_GROUP_NAME[group] : null;
+    // No label means no group, which means no figure either — but assert it
+    // rather than assume, because a figure shown without its group name is the
+    // exact thing this type exists to prevent.
+    if (n === null || !label) return null;
+    return { n, label, grain: "group", asof: nzCensusAsof(month), source: "Stats NZ" };
+  }
+  return null;
+}
+
+/** Which census the figure came from, given the month the timeline is scrubbed to. */
+function nzCensusAsof(month: string): string {
+  const year = month.slice(0, 4);
+  let best = "";
+  for (const y of NZ_SUPPLY_YEARS) if (y <= year) best = y;
+  return best ? `${best} Census` : "2023 Census";
 }

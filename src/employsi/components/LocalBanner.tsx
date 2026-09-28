@@ -5,7 +5,6 @@ import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { activeSkill } from "../lib/skillHeat";
 import { cityEmployment, localSupplyFor } from "../lib/localSupply";
-import { quarterLabelFor } from "../lib/skillCard";
 
 /**
  * The local layer's banner, from `Employsi Local View Banner.html`.
@@ -63,18 +62,22 @@ export function LocalBanner() {
         : filedStaff.toLocaleString("en-AU"),
       `staff at ${filedCount.toLocaleString("en-AU")} filed`,
     ]);
-    // The skill's employment for the whole city. Null outside the eight
-    // Australian capitals — 37 of the 54 local cities have no ABS occupation
-    // data and no filed headcount either — and a null is SAID, never filled in
-    // from a covered city.
+    // The skill's employment for the whole city, from ABS in the Australian
+    // capitals and the 2023 Census in Auckland and Wellington. Null everywhere
+    // else, and a null is SAID rather than filled in from a covered city.
+    //
+    // THE LABEL COMES FROM THE FIGURE, NOT FROM THE SEARCH BOX. New Zealand's
+    // grain is the ANZSCO sub-major group, so a Nursing search there returns the
+    // Health Professionals total and must say "Health Professionals" — see
+    // CityEmployment. Writing `skill` here would turn a true number into a false
+    // sentence, which is the one thing that type exists to stop.
     const skill = activeSkill(searchQuery);
     if (skill) {
-      const month = IVI_MONTHS[heatMonth] ?? "";
-      const emp = cityEmployment(skill, localCity, month);
+      const emp = cityEmployment(skill, localCity, IVI_MONTHS[heatMonth] ?? "");
       stats.push(
         emp === null
           ? ["—", `no ${skill} employment for ${cityName}`]
-          : [emp.toLocaleString("en-AU"), `${skill} employed · ABS ${quarterLabelFor(month)}`],
+          : [emp.n.toLocaleString("en-AU"), `${emp.label} employed · ${emp.source} ${emp.asof}`],
       );
     }
   } else {
