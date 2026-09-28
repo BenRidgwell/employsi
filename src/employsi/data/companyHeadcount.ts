@@ -70,7 +70,7 @@ export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'ilu': { now: 1000, prev: 1000, yoy: 0.0, asof: 'Dec 2025', span: 1 },
   'ltr': { now: 302, prev: 289, yoy: 4.5, asof: 'Jun 2026', span: 1 },
   'mah': { now: 8796, prev: 10220, yoy: -13.9, asof: 'Jun 2026', span: 1 },
-  'melbourne-4dx': { now: 124, prev: 145, yoy: -14.5, asof: 'Jun 2025', span: 1 },
+  'melbourne-4dx': { now: 181, prev: 124, yoy: 46.0, asof: 'Jun 2026', span: 1 },
   'melbourne-ann': { now: 15000, prev: 15000, yoy: 0.0, asof: 'Jun 2026', span: 1 },
   'melbourne-anz': { now: 40072, prev: 42698, yoy: -6.2, asof: 'Mar 2026', span: 1 },
   'melbourne-ben': { now: 4601, prev: 4762, yoy: -3.4, asof: 'Jun 2026', span: 1 },

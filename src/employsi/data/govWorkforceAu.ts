@@ -4,28 +4,28 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   APS (federal): 101 agencies published as at Dec 2025 — refreshed 2026-09-27
-//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-27
-//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — refreshed 2026-09-27
-//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-27
-//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: icare: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Service NSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-27
-//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-27
-//   New Zealand health: 21 agencies published as at 31 March 2026 — refreshed 2026-09-27
-//   Western Australia: 57 agencies published as at 2025-26 — refreshed 2026-09-27
+//   Victoria: 261 agencies published as at Jun 2024 — refreshed 2026-09-28
+//   APS (federal): 101 agencies published as at Dec 2025 — KEPT, not refreshed this run
+//   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
+//   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   New Zealand: 103 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: icare: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Service NSW: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   New Zealand health: 21 agencies published as at 31 March 2026 — KEPT, not refreshed this run
+//   Western Australia: 57 agencies published as at 2025-26 — KEPT, not refreshed this run
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   South Australia: 98 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Northern Territory: 28 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -394,5 +394,6 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-victorian-ombudsman": { now: 92, prev: 118, yoy: -22.0, asof: "Jun 2024", span: 1 },
   "vic-gov-west-gippsland-healthcare-group": { now: 1344, prev: 1252, yoy: 7.3, asof: "Jun 2024", span: 1 },
   "vic-gov-western-health": { now: 11606, prev: 10196, yoy: 13.8, asof: "Jun 2024", span: 1 },
+  "vic-gov-workforce-inspectorate-victoria": { now: 66, prev: 76, yoy: -13.2, asof: "Jun 2024", span: 1 },
   "vic-gov-worksafe": { now: 1903, prev: 1816, yoy: 4.8, asof: "Jun 2024", span: 1 },
 };
