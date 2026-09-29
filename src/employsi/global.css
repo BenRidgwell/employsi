@@ -17726,3 +17726,30 @@ body {
     transform: none;
   }
 }
+
+/* ── The globe crossing between Supply and Demand ────────────────────────── */
+/* The heat blobs fade through their own Mapbox paint transition (see
+   HEAT_OPACITY and the heatMarket effect). The hub markers cannot: Mapbox
+   rewrites a marker ROOT's style.opacity every frame for the globe's occlusion
+   fade, so anything set there is gone by the next frame. The inner wrapper is
+   the same element every other marker state on this map is applied to. */
+.worldmount .mk {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.worldmount.heatswap .mk {
+  opacity: 0;
+  /* Settles in place rather than sliding: a hub marker sits ON its coordinate
+     and a lateral move would read as the city itself shifting. */
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .worldmount .mk {
+    transition: none;
+  }
+  .worldmount.heatswap .mk {
+    opacity: 1;
+    transform: none;
+  }
+}
