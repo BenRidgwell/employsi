@@ -24,7 +24,7 @@ personal information.
   providers operate internationally, so information may be processed outside
   Australia.
 - **We make our practices readily available.** Ask us what we hold about you, have
-  it corrected, or have your account deleted: privacy@employsi.com.au. We respond
+  it corrected, or have your account deleted: support@employsi.com.au. We respond
   within 30 days, and you may contact the Office of the Australian Information
   Commissioner (oaic.gov.au) if you are not satisfied.
 

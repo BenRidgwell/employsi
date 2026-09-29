@@ -7,7 +7,7 @@ wanted for a due-diligence questionnaire or a DPA.
 
 ## Before publishing: the contact address must actually receive
 
-The policy names **privacy@employsi.com.au**. Measured 2026-09-29, the domain has
+The policy names **support@employsi.com.au**. Measured 2026-09-29, the domain has
 **no MX records**, so that address bounces. Cloudflare Email Routing (free,
 receive-only) is the chosen route and has to be enabled in the dashboard before
 the policy goes live — a published policy naming a bouncing privacy address is
