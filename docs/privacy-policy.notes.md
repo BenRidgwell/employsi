@@ -1,6 +1,32 @@
 # Where the privacy policy's claims come from
 
-Companion to `privacy-policy.draft.md`. Every factual claim in that document was
+Companion to `privacy-policy.md`, which is the short principles-style policy we
+publish. A long-form version was drafted first and retired in favour of it; it is
+in git history at `f620a7d` (`docs/privacy-policy.draft.md`) if the detail is ever
+wanted for a due-diligence questionnaire or a DPA.
+
+## Still to decide before publishing
+
+- **Entity name, ABN, privacy contact email, last-updated date** — the `[CONFIRM]`
+  markers in the policy.
+- **Retention periods.** The policy says we keep information "only as long as
+  necessary" and names the one limit that actually exists (30-day sessions). No
+  retention or deletion job exists for anything else — see below.
+- **Career-movement data (the pseudonymised career-flow records) needs legal
+  advice.** Pseudonymised data derived from identifiable source records may still
+  be personal information under the Privacy Act 1988 (Cth), and collecting it may
+  engage APP 5 notification obligations that are impractical for people we never
+  contact. The design reduces that risk — one-way key, no names, titles, links or
+  free text — but does not remove it. This is the highest-risk part of the product
+  from a privacy standpoint and the policy's wording on it should be reviewed
+  rather than taken as settled.
+- **Cookie consent banner** — our view is the sign-in cookie is strictly necessary
+  and the local-storage items are not cross-site tracking, but take advice if you
+  intend to market into the EU or UK.
+- **Whether to name the third-party data provider** behind the career-movement
+  collection. The short policy does not; a longer one would have to.
+
+ Every factual claim in that document was
 read out of this repository on 2026-09-29 rather than assumed, and this file says
 where from — so that a change which falsifies one can be found, and so the next
 person to touch the policy does not have to re-derive it.
