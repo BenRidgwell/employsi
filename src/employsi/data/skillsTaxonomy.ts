@@ -112,6 +112,17 @@ const RAW_SKILLS: SkillDef[] = [
       "fixed plant",
       "processing maintenance",
     ],
+    except: [
+      // "SITE Reliability Engineer" IS NOT A MINING JOB, and "reliability
+      // engineer" above claimed all 208 archived rows of it. The two senses
+      // separate cleanly on the word "site": without it the employers are BHP,
+      // Alcoa, Evolution Mining, Fortescue and BlueScope; with it they are
+      // Google, TCS, Macquarie and CBA. Measured 2026-09-29 over 219 rows.
+      //
+      // Excepted here rather than narrowing the term, because "reliability
+      // engineer" is the right term for the 468 industrial rows that keep it.
+      "site reliability",
+    ],
   },
 
   // ── Oil, gas & energy ──────────────────────────────────────────────────
@@ -731,7 +742,12 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Cloud & DevOps",
     cat: "Digital",
-    terms: ["cloud", "aws", "azure", "devops", "kubernetes"],
+    // "site reliability" and "sre" are here as well as on the speciality below,
+    // because a speciality only matches inside a parent the title already
+    // claimed — and none of cloud/aws/azure/devops/kubernetes appears in "Site
+    // Reliability Engineer". The child could never fire, so the 219 rows went to
+    // mining by default rather than being contested.
+    terms: ["cloud", "aws", "azure", "devops", "kubernetes", "site reliability", "sre "],
   },
 
   // ── Cloud & DevOps · specialities ────────────────────────────────────────────────────
@@ -759,7 +775,10 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Cloud & DevOps",
     // 49 titles. The gate holds back 204, nearly all of them "platform" used of
     // a business platform rather than an engineering one.
-    terms: ["site reliability", "sre", "platform engineer"],
+    // "sre " with the trailing space, not a bare "sre": the term anchors the START
+    // of a word, so the bare form claims "Sreekanth Consulting" and every other
+    // name beginning those three letters. Same idiom as "physio " and "hv ".
+    terms: ["site reliability", "sre ", "platform engineer"],
   },
   {
     skill: "Cybersecurity",

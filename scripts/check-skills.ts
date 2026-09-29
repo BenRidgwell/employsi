@@ -732,6 +732,17 @@ if (ACCOUNT && DB && TOKEN) {
     ["F&B Supervisor", "Hospitality & Food Service"],
     ["F and B Attendant", "Hospitality & Food Service"],
     ["F&B Service Expert", "Hospitality & Food Service"],
+
+    // "reliability engineer" is a MINING term and it claimed all 208 archived
+    // rows of "Site Reliability Engineer". The two senses split on one word:
+    // without "site" the employers are BHP, Alcoa, Fortescue and BlueScope;
+    // with it they are Google, TCS, Macquarie and CBA.
+    ["Site Reliability Engineer", "Cloud & DevOps"],
+    ["Site Reliability Engineer", "Site Reliability & Platform"],
+    ["SRE Manager", "Cloud & DevOps"],
+    // The industrial sense must survive the fix — it is the term's real job.
+    ["Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Maintenance Engineer", "Fixed Plant Maintenance"],
   ];
   const MUST_NOT: [string, string][] = [
     // The false positive itself, in the three shapes the archive holds: the
@@ -759,6 +770,13 @@ if (ACCOUNT && DB && TOKEN) {
     // "site engineer" must not reach the SRE / web senses of the word.
     ["Facebook Engineer", "Hospitality & Food Service"],
     ["Website Engineer", "Construction Management"],
+    // Mining must not take the SRE sense back.
+    ["Site Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Senior Site Reliability Engineer", "Fixed Plant Maintenance"],
+    // ...and "sre" must carry its trailing space, or it claims every name
+    // starting with those three letters.
+    ["Sreekanth Consulting", "Cloud & DevOps"],
+    ["Sreekanth Consulting", "Site Reliability & Platform"],
   ];
   const bad: string[] = [];
   for (const [title, skill] of MUST) {
