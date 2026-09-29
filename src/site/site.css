@@ -649,6 +649,29 @@
   width: 18px;
   height: 18px;
 }
+.ws-footer .mark {
+  flex-wrap: wrap;
+}
+/* A hairline between the copyright and the ABN, the same grey as the text. */
+.ws-footer-abn {
+  padding-left: 10px;
+  border-left: 1px solid var(--ws-border-subtle);
+}
+.ws-footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 6px;
+}
+.ws-footer-social a {
+  display: inline-flex;
+  color: var(--ws-text-3);
+  transition: color 0.15s;
+}
+.ws-footer .ws-footer-social a:hover {
+  color: var(--ws-text);
+  text-decoration: none;
+}
 .ws-footer nav {
   display: flex;
   gap: 24px;
