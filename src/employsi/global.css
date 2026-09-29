@@ -17684,3 +17684,45 @@ body {
     display: none;
   }
 }
+
+/* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
+/* The card stays open across the switch and cross-fades its contents, rather
+   than swapping every figure on one frame — which read as a different card
+   rather than the same one answering a different question.
+
+   THE TITLE ROW IS DELIBERATELY EXEMPT. The skill's name and icon are identical
+   in both modes, so fading them would be animating the one thing that did not
+   change, and the card would look like it had reloaded — the opposite of
+   staying open. Everything that DOES differ fades: the workforce/demand band,
+   the scale keys, the series, the stat rows and the copy. `.gscardactions` is
+   named separately because it lives inside the header with the title. */
+.gscard > *:not(.gscardhd),
+.gscard .gscardactions {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gscard.swapping > *:not(.gscardhd),
+.gscard.swapping .gscardactions {
+  opacity: 0;
+  /* Settles rather than slides: the card is pinned to a corner and a lateral
+     move would read as it leaving. Same reasoning as .railswapl's scale. */
+  transform: scale(0.985);
+}
+/* The card must not resize under the fade, or the corner it is pinned to would
+   jump while the contents are invisible. Supply and demand bodies differ by a
+   row, so the height is held for the duration of the swap. */
+.gscard.swapping {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gscard > *:not(.gscardhd),
+  .gscard .gscardactions {
+    transition: none;
+  }
+  .gscard.swapping > *:not(.gscardhd),
+  .gscard.swapping .gscardactions {
+    opacity: 1;
+    transform: none;
+  }
+}

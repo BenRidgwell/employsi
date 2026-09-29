@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 /**
  * Invariants for the company card's per-skill demand reconstruction
  * (foldSkillRows in src/employsi/lib/jobHistoryFn.ts).
@@ -2754,6 +2755,64 @@ console.log("\nthe NZ supply figure names its group, not the skill:");
     .flatMap((s) => ["auckland", "wellington"].map((c) => cityEmployment(s, c, m)))
     .filter((r) => r && r.n < NZ_MIN_EMPLOYED);
   check("no figure is below the rounding floor", tooSmall.length === 0, `${tooSmall.length}`);
+}
+
+// ── the skill card survives a Supply/Demand switch ──────────────────────────
+// The card stays mounted across the switch already; what this protects is that
+// its CONTENTS cross-fade instead of changing on one frame. Two ways it breaks
+// back, both of which look like a tidy-up:
+//
+//   · buildSkillCard is handed the live mode again instead of the lagged one,
+//     so every figure flips before the fade and the animation animates nothing;
+//   · the title row loses its exemption, so the card fades its own name — the
+//     one thing identical in both modes — and reads as having reloaded.
+console.log("\nthe skill card cross-fades rather than blinking:");
+{
+  const src = readFileSync("src/employsi/components/GlobalSearch.tsx", "utf8");
+  const css = readFileSync("src/employsi/global.css", "utf8");
+
+  check("the card is built from the lagged mode", /buildSkillCard\([^)]*cardMode\)/.test(src));
+  check(
+    "...and the live mode no longer reaches it",
+    !/buildSkillCard\([^)]*demandMode\)/.test(src),
+  );
+  check("the lagged mode is in the card's deps", /archiveTrend,\s*cardMode\]/.test(src));
+  check("a swap state drives the class", /gscard\$\{swapping \? " swapping" : ""\}/.test(src));
+  check("the fade is timed by one constant", /const CARD_SWAP_MS = (\d+)/.test(src));
+
+  // The CSS half: the title row must be excluded, and the duration must agree
+  // with the JS timer or the content flips mid-fade or after it has come back.
+  const rule = css.slice(css.indexOf(".gscard.swapping"));
+  check("the swap rule exists", rule.length > 0);
+  // SCOPED TO THE LIVE RULE, not the whole file: the reduced-motion block below
+  // repeats the same selector, so an unscoped test passes even after the real
+  // exemption is deleted. That is exactly how this assertion first failed to
+  // catch its own regression.
+  // The region is found from the rule OUTWARDS, not from the top of the file:
+  // global.css carries other prefers-reduced-motion blocks long before this one,
+  // so slicing at the first of them cut the rule out of the search entirely and
+  // failed the assertion against correct CSS.
+  const swapAt = css.indexOf(".gscard.swapping > ");
+  const rmAt = css.indexOf("@media (prefers-reduced-motion", swapAt);
+  const live = swapAt < 0 ? "" : css.slice(swapAt, rmAt < 0 ? undefined : rmAt);
+  check(
+    "the title row is exempt from the fade",
+    /\.gscard\.swapping > \*:not\(\.gscardhd\)/.test(live),
+  );
+  check("...and so is nothing else in the header", /\.gscard\.swapping \.gscardactions/.test(live));
+  const ms = Number(/const CARD_SWAP_MS = (\d+)/.exec(src)?.[1] ?? 0);
+  const cssMs = Number(
+    /\.gscard > \*:not\(\.gscardhd\)[\s\S]{0,160}?opacity (\d+)ms/.exec(css)?.[1] ?? 0,
+  );
+  check(
+    "the CSS fade and the JS timer agree",
+    ms > 0 && cssMs > 0 && Math.abs(ms - cssMs) <= 20,
+    `js ${ms}ms vs css ${cssMs}ms`,
+  );
+  check(
+    "reduced motion turns the fade off rather than leaving it invisible",
+    /prefers-reduced-motion[\s\S]{0,400}\.gscard\.swapping[\s\S]{0,120}opacity: 1/.test(css),
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
