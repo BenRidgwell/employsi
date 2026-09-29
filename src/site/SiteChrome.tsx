@@ -41,12 +41,42 @@ export function SiteNav({ current }: { current?: "product" }) {
   );
 }
 
+const SOCIAL = [
+  {
+    label: "LinkedIn",
+    href: "https://www.linkedin.com/company/employsi/",
+    path: "M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.55V9h3.57v11.45Z",
+  },
+  {
+    label: "X",
+    href: "https://x.com/employsi",
+    path: "M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.66l-5.21-6.82-5.97 6.82H1.67l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z",
+  },
+];
+
 export function SiteFooter() {
   return (
     <footer className="ws-footer">
       <div className="mark">
         <img src="/site/mark.svg" alt="" width={18} height={18} />
         <span className="ws-eyebrow">© 2026 employsi</span>
+        <span className="ws-eyebrow ws-footer-abn">ABN 59 964 624 290</span>
+        <span className="ws-footer-social">
+          {SOCIAL.map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`employsi on ${l.label}`}
+              title={l.label}
+            >
+              <svg width={15} height={15} viewBox="0 0 24 24" aria-hidden>
+                <path fill="currentColor" d={l.path} />
+              </svg>
+            </a>
+          ))}
+        </span>
       </div>
       <nav aria-label="Footer">
         <PrivacyPopover />
