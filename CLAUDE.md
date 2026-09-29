@@ -762,8 +762,16 @@ blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
   `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
   are not set up; without the third the webhook answers 503 and Stripe retries.
 - **Previews write the production D1**, so use TEST keys on them.
-- **Nothing gates `/app` on a subscription yet.** Status is recorded and shown
-  on `/login`; enforcing it is a separate decision.
+- **`/app` is paywalled where payments are configured** (`getAppAccess` in
+  `billingFn.ts`, run by the route's `beforeLoad`): signed-out visitors go to
+  `/login`, signed-in ones without an `active`/`trialing` subscription to the
+  Payment step. A Worker without Stripe keys stays open (the app preview, and
+  production until its live keys are set); `ADMIN_EMAILS` always pass. It
+  gates the PAGE only — the data server functions stay callable.
+- **The success URL carries `session_id`**, and the paywall confirms that
+  Checkout Session with Stripe directly (`recordCheckoutSession`), because the
+  customer arrives before the webhook and would otherwise be bounced back to
+  pay again.
 
 ### Map layers
 

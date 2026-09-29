@@ -186,6 +186,47 @@ async function recordSubscription(
 }
 
 /**
+ * Record a just-completed Checkout Session straight from Stripe, without
+ * waiting for its webhook.
+ *
+ * Checkout redirects the customer to /app the moment they pay; the
+ * checkout.session.completed webhook is sent at about the same time and can
+ * land a few seconds AFTER them. The /app paywall reads the table the webhook
+ * writes, so without this a customer who had just paid could be bounced back
+ * to the Payment step. The success URL carries the session id
+ * ({CHECKOUT_SESSION_ID}); this fetches that session from Stripe and, if it is
+ * complete and belongs to the signed-in user, writes the same row the webhook
+ * would. The webhook still arrives and writes it again — same values, so the
+ * two cannot disagree.
+ *
+ * Returns true only when the session is this user's and is complete.
+ */
+export async function recordCheckoutSession(
+  e: BillingEnv,
+  db: D1Like,
+  sessionId: string,
+  userId: string,
+): Promise<boolean> {
+  if (!e.STRIPE_SECRET_KEY || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return false;
+  const session = await stripeRequest<{
+    status?: string;
+    client_reference_id?: string | null;
+    subscription?: unknown;
+  }>(e.STRIPE_SECRET_KEY, "GET", `/v1/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  // Someone else's session id in the URL proves nothing about this user.
+  if (session.client_reference_id !== userId || session.status !== "complete") return false;
+  const subId = idOf(session.subscription);
+  if (!subId) return false;
+  const sub = await stripeRequest<StripeSubscription>(
+    e.STRIPE_SECRET_KEY,
+    "GET",
+    `/v1/subscriptions/${encodeURIComponent(subId)}`,
+  );
+  await recordSubscription(db, sub, userId);
+  return !!sub.status && LIVE_STATUSES.has(sub.status);
+}
+
+/**
  * POST /api/billing/webhook. Takes the raw Request because the signature is
  * over the exact body bytes — this is why it is mounted in server.ts ahead of
  * the router, like /api/auth and /api/events, rather than as a server function.

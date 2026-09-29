@@ -240,10 +240,13 @@ function Steps({ at }: { at: 0 | 1 }) {
  * Payments makes Stripe the merchant of record — so the card says that instead
  * of printing a total that would be wrong for most visitors.
  */
-function PaymentStep({ billing, onBack }: { billing: BillingState; onBack: () => void }) {
+function PaymentStep({ billing, onSignOut }: { billing: BillingState; onSignOut: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const offer = billing.offer;
+  // Stripe knows a status for them (canceled, unpaid, past_due…): they have
+  // subscribed before, and this is a renewal, not a first sign-up.
+  const lapsed = !!billing.status;
 
   const pay = async () => {
     if (busy) return;
@@ -268,10 +271,16 @@ function PaymentStep({ billing, onBack }: { billing: BillingState; onBack: () =>
 
   return (
     <>
-      <Steps at={1} />
-      <div style={{ marginTop: 28 }}>
-        <h1>Payment.</h1>
-        <p className="sub">Review your subscription, then pay through Stripe.</p>
+      {/* A returning subscriber is not "creating an account": no step bar, and
+          the copy says what actually happened to their subscription. */}
+      {!lapsed && <Steps at={1} />}
+      <div style={{ marginTop: lapsed ? 0 : 28 }}>
+        <h1>{lapsed ? "Renew your subscription." : "Payment."}</h1>
+        <p className="sub">
+          {lapsed
+            ? "Your previous subscription has ended. Renew it through Stripe to open the map again."
+            : "Review your subscription, then pay through Stripe."}
+        </p>
       </div>
       {billing.payments && offer ? (
         <div className="ws-providers" style={{ gap: 16 }}>
@@ -305,9 +314,12 @@ function PaymentStep({ billing, onBack }: { billing: BillingState; onBack: () =>
             {!busy && <span aria-hidden>→</span>}
           </button>
           {error && <p className="ws-msg err">{error}</p>}
-          <button type="button" className="ws-linkbtn" onClick={onBack}>
-            Back
-          </button>
+          <p className="swap" style={{ marginTop: 8 }}>
+            Not you?{" "}
+            <button type="button" onClick={onSignOut}>
+              Sign out
+            </button>
+          </p>
         </div>
       ) : (
         <>
@@ -361,11 +373,17 @@ function SignIn({ initial }: { initial: Mode }) {
 
   if (session?.user) {
     if (billingPending) return skeleton;
-    // Signed in and choosing "Create account" (or arriving back from the
-    // sign-up redirect, which returns to ?mode=create): the Payment step,
-    // unless they already subscribe.
-    if (mode === "create" && billing && !billing.active) {
-      return <PaymentStep billing={billing} onBack={() => setMode("login")} />;
+    // Signed in without a live subscription, where payments are set up: the
+    // Payment step, whichever tab they came from. /app is closed to them
+    // (getAppAccess), so "Open the map" would only bounce them back here.
+    // Admins are exempt from the paywall and skip it.
+    if (billing && billing.payments && !billing.active && !billing.exempt) {
+      return (
+        <PaymentStep
+          billing={billing}
+          onSignOut={() => void signOut().finally(() => void refetch())}
+        />
+      );
     }
     return (
       <>
@@ -390,13 +408,8 @@ function SignIn({ initial }: { initial: Mode }) {
             Subscription active
             {billing.currentPeriodEnd ? `, paid until ${fmtDate(billing.currentPeriodEnd)}` : ""}.
           </p>
-        ) : billing?.payments ? (
-          <p className="swap">
-            No subscription yet.{" "}
-            <button type="button" onClick={() => setMode("create")}>
-              Start your subscription
-            </button>
-          </p>
+        ) : billing?.exempt ? (
+          <p className="fine">Administrator access, no subscription needed.</p>
         ) : null}
         <p className="swap">
           Not you?{" "}

@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { getAuth, type AuthEnv } from "./auth";
+import { roleForEmail } from "./roles";
 import {
   LIVE_STATUSES,
   billingDb,
   billingEnv,
   paymentsConfigured,
+  recordCheckoutSession,
   subscriptionFor,
 } from "./billing";
 import { StripeError, stripeRequest } from "./stripeApi";
@@ -40,6 +42,8 @@ export interface BillingState {
   active: boolean;
   /** Unix seconds; the end of the period already paid for. */
   currentPeriodEnd: number | null;
+  /** An administrator (ADMIN_EMAILS): passes the paywall without paying. */
+  exempt: boolean;
 }
 
 /**
@@ -113,6 +117,7 @@ export const getBillingState = createServerFn({ method: "GET" }).handler(
       status: null,
       active: false,
       currentPeriodEnd: null,
+      exempt: !!user && roleForEmail(e as never, user.email) === "admin",
     };
     const db = billingDb(e);
     if (!user || !db) return base;
@@ -176,7 +181,10 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
           mode: "subscription",
           line_items: [{ price: e!.STRIPE_PRICE_ID!, quantity: 1 }],
           managed_payments: { enabled: true },
-          success_url: `${origin}/app?checkout=success`,
+          // {CHECKOUT_SESSION_ID} is filled in by Stripe; the /app paywall uses
+          // it to confirm the payment itself rather than race the webhook
+          // (recordCheckoutSession in billing.ts).
+          success_url: `${origin}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${origin}/login?mode=create`,
           client_reference_id: user.id,
           metadata: { user_id: user.id },
@@ -201,3 +209,50 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
     }
   },
 );
+
+/**
+ * Who may open /app, decided on the server.
+ *
+ * THE PAYWALL. employsi is a subscription product: with payments configured
+ * on this Worker, the map is for signed-in users with a live subscription
+ * (active / trialing, per Stripe, as recorded by the webhook). Everyone else
+ * is sent to /login — to sign in, or to the Payment step if they are signed in
+ * without one (never subscribed, cancelled, or lapsed).
+ *
+ * THE GATE ONLY CLOSES WHERE IT CAN BE PASSED. On a Worker without Stripe
+ * configured — the app preview, and production until its live keys are set —
+ * there is no way to subscribe, so there is nothing to gate on and the app
+ * stays open exactly as before. Administrators (ADMIN_EMAILS) always pass, so
+ * the people running the product can use it without paying for it.
+ *
+ * This gates the PAGE. The data server functions the map calls stay callable
+ * without a subscription, as several of them already are from the public
+ * marketing pages (the landing counters, the skills ticker).
+ */
+export type AppAccess = { allowed: true } | { allowed: false; to: "signin" | "subscribe" };
+
+export const getAppAccess = createServerFn({ method: "GET" })
+  // The Checkout Session id Stripe appends to the success URL, when arriving
+  // straight from payment. Optional: every other visit sends nothing.
+  .validator((data?: { checkoutSessionId?: string }) => data ?? {})
+  .handler(async ({ data }): Promise<AppAccess> => {
+    const e = await billingEnv();
+    if (!paymentsConfigured(e)) return { allowed: true };
+    const user = await sessionUser();
+    if (!user) return { allowed: false, to: "signin" };
+    if (roleForEmail(e as never, user.email) === "admin") return { allowed: true };
+    const db = billingDb(e);
+    // The subscription table is the source of truth. If it cannot be read the
+    // visitor is sent to /login, which will show them their actual state —
+    // failing closed on a paywall, rather than open.
+    if (!db) return { allowed: false, to: "subscribe" };
+    const row = await subscriptionFor(db, user.id).catch(() => null);
+    if (row?.status && LIVE_STATUSES.has(row.status)) return { allowed: true };
+    // Just back from paying, ahead of the webhook: confirm with Stripe.
+    const sid = data?.checkoutSessionId;
+    if (sid) {
+      const paid = await recordCheckoutSession(e!, db, sid, user.id).catch(() => false);
+      if (paid) return { allowed: true };
+    }
+    return { allowed: false, to: "subscribe" };
+  });
