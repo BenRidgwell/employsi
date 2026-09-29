@@ -13,6 +13,35 @@ M182081 gives EIGHT SSOC major groups:
     Craftsmen & Related Trades · Plant & Machine Operators · Cleaners &
     Labourers
 
+EIGHT IS ALL SINGAPORE PUBLISHES, and that was searched for rather than assumed
+— re-checked 2026-09-29 because the New Zealand work found a finer table than
+its first pass did, so it was worth asking whether this one had missed one too.
+It had not:
+
+  · SingStat Table Builder returns 147 occupation tables. EVERY employment-by-
+    occupation table among them is 1-digit SSOC: M182081 (this one, occupation x
+    industry), M182171 (occupation x age), M182181/M182191 (the same split by
+    sex), and the census/GHS tables C020137, C020151, C020217. Searching the
+    catalogue for "SSOC" surfaces no additional table.
+  · General Household Survey 2025 (C020137) confirms it independently: nine
+    columns, the same eight groups plus "Others".
+  · stats.mom.gov.sg, where MOM's detailed statistical tables live, is behind a
+    WAF and answers 403 from this sandbox even with a browser User-Agent. Same
+    obstacle shape as mbie.govt.nz. So if a 2-digit table exists there it cannot
+    be read from here — that is a limit of this environment, not a finding about
+    the data.
+
+M182081 DOES cross occupation with 16 industries, which is 144 cells rather than
+8, and that was considered as a refinement and REJECTED. "Professionals in
+Information & Communications" sounds like a sharper denominator for Software
+Engineering than "Professionals", but it is not a subset relationship: it drops
+every software engineer in a bank (Financial & Insurance Services) while adding
+every non-software professional in InfoComm. A clean superset can be labelled
+honestly — every software engineer who is a professional is inside
+"Professionals" — whereas a cross-section that both omits and admits members
+cannot. Choosing one industry per skill would also be arbitrary for most of
+them: accountants, marketers and HR professionals sit in all sixteen.
+
 So a Singapore skill's denominator is the whole major group its work sits in.
 Software Engineering, Medical Practice and Legal all divide by "Professionals"
 — 624,400 people. WHAT THAT MEANS FOR THE RATE, stated plainly rather than
@@ -72,6 +101,10 @@ GROUP_SKILLS: dict[str, list[str]] = {
         'Real Estate & Property', 'Education Leadership',
     ],
     'Professionals': [
+        # SSOC 2421 Management and Organisation Analysts — the same place the NZ
+        # mapping sends Strategy (ANZSCO 2247). It was the one parent skill with
+        # no SSOC group at all, so Singapore had no rate for it.
+        'Strategy',
         'Software Engineering', 'Cloud & DevOps', 'Data Analytics', 'Data Engineering',
         'Data Science & Machine Learning', 'IT & Systems', 'Cybersecurity',
         'Telecommunications', 'Medical Practice', 'Pharmacy', 'Mental Health & Counselling',
