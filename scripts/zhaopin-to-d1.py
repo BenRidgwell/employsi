@@ -66,6 +66,14 @@ PROXY = _opt('--proxy', None)
 PROXY_LIST = _opt('--proxy-list', None)
 NO_SKILLS = '--no-skills' in args
 SOLVE = '--solve' in args
+# --cffi: fetch Zhaopin over plain HTTPS with a spoofed Chrome TLS fingerprint
+# (curl_cffi `impersonate`), through SCRAPE_PROXY. See the block above
+# cffi_fetch() for why this exists and what it replaces.
+VIA_CFFI = '--cffi' in args
+# Which curl_cffi browser profile to present. chrome131 is what the upstream
+# tool ships; exposed as a flag because the profile is the whole mechanism, so
+# re-testing a different one must not need a code change.
+IMPERSONATE = _opt('--impersonate', 'chrome131')
 MIN_DELAY = float(_opt('--min-delay', 6))
 MAX_DELAY = float(_opt('--max-delay', 18))
 
@@ -223,6 +231,89 @@ def upsert(t: dict, jobs: list) -> int:
     return written
 
 
+# ── the curl_cffi transport ──────────────────────────────────────────────────
+# WHY THIS EXISTS. The Oxylabs path below has returned nothing since 2026-08-28:
+# `oxylabs auth failed (401)` on every one of 93 companies, six consecutive red
+# scheduled runs to 2026-09-29. That is the account being rejected, not a quota
+# (which is a 429), and the same credential took Indeed down on the same day.
+#
+# WHAT IT BORROWS. jiangyuxue666/job-market-analyzer (MIT) reaches Zhaopin with
+# no proxy and no browser at all: curl_cffi presenting Chrome's TLS fingerprint
+# (`impersonate="chrome131"`), then CSS selectors over the returned markup. The
+# fingerprint is the whole trick — Zhaopin's wall reads the TLS ClientHello, and
+# a stock Python client is identifiable before it has sent a single header.
+#
+# WHAT IT ADDS, AND WHY IT HAS TO. That technique ALONE does not clear the wall
+# from a non-China datacentre address. Measured 2026-09-29 from CI's address
+# class, with the impersonation confirmed live (JA3 differs per profile, so the
+# spoofed hello really does reach the far end):
+#
+#   sou.zhaopin.com / www.zhaopin.com   "Security Verification", 1,930 bytes
+#   fe-api /search/positions (POST)     HTTP 200, isVerification=1, 0 results
+#   fe-api /c/i/sou (legacy GET)        HTTP 200, numTotal=0, empty on every
+#                                       parameter variant tried
+#   fe-api /city-page/user-city         HTTP 200, REAL DATA
+#
+# That last line is what rules out a blanket ban on the address: the host
+# answers us, it just will not serve job results. The upstream tool is a
+# Chinese-language tool for domestic use and carries no proxy layer because its
+# author never needed one — from inside China the fingerprint is the only wall.
+#
+# So this pairs its fingerprint with the address the site wants:
+# SCRAPE_PROXY_COUNTRY=cn, which http_fetch folds onto the IPRoyal password.
+# Neither half is expected to work alone.
+def cffi_fetch(url: str):
+    """(text, status) for a Zhaopin URL, or ('', code) — never raises.
+
+    Returns the body even on a non-200 so the caller can tell a challenge page
+    from an empty one; a swallowed error here reads downstream as "this company
+    has no vacancies", which is the failure mode this feed already has a
+    red-on-zero-rows guard for.
+    """
+    try:
+        from curl_cffi import requests as cffi_requests
+    except ImportError:
+        sys.exit('--cffi needs curl_cffi: pip install curl_cffi')
+    import http_fetch
+    proxy = http_fetch.scrape_proxy_url()
+    kw = {'headers': _CFFI_HEADERS, 'impersonate': IMPERSONATE, 'timeout': 40}
+    if proxy:
+        kw['proxies'] = {'http': proxy, 'https': proxy}
+    try:
+        r = cffi_requests.get(url, **kw)
+        return r.text or '', r.status_code
+    except Exception as e:
+        sys.stderr.write(f'  fetch failed: {type(e).__name__}: {str(e)[:120]}\n')
+        return '', 0
+
+
+# zh-CN first, and a sou.zhaopin.com referer, exactly as the upstream tool sends
+# them — a Chinese board reading an en-US Accept-Language from a Chinese address
+# is a mismatch it can price in.
+_CFFI_HEADERS = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    'Referer': 'https://sou.zhaopin.com/',
+}
+
+# The marker of the interstitial measured above. Naming it lets one run say
+# "challenged" rather than "0 jobs", which is the difference between knowing the
+# exit was refused and thinking Chinese employers stopped hiring.
+_CHALLENGE = ('Security Verification', '安全验证', '验证码')
+
+
+def cffi_parse(html: str):
+    """(jobs, which_parser). Tries both readings of the page — see
+    parse_cards_html() in the tools module for why both exist."""
+    jobs = zp.parse_search_html(html)
+    if jobs:
+        return jobs, '__INITIAL_STATE__'
+    jobs = zp.parse_cards_html(html)
+    if jobs:
+        return jobs, 'cards'
+    return [], ''
+
+
 def main() -> int:
     targets = load_targets()
     if not targets and not ONLY:
@@ -240,6 +331,124 @@ def main() -> int:
     if not HEADFUL and not PROFILE:
         sys.stderr.write('  tip: first run with --headful --profile <dir> to clear Zhaopin\'s '
                          'security check by hand; the profile then reuses the solved session.\n')
+
+    # ── curl_cffi path (TLS impersonation + a China exit) ─────────────────────
+    # CHECKED BEFORE THE OXYLABS GATE BELOW, and that ordering is the point: the
+    # Oxylabs branch fires on `OXYLABS_USERNAME` merely being SET, so with a
+    # dead-but-present secret in CI it captures every run and 401s. An explicit
+    # flag has to win over an implicit credential.
+    if VIA_CFFI:
+        from urllib.parse import quote
+        from concurrent.futures import ThreadPoolExecutor
+        import threading, http_fetch
+        sel = targets[:LIMIT] if LIMIT < len(targets) else targets
+        exit_label = http_fetch.proxy_label()
+        country = (os.environ.get('SCRAPE_PROXY_COUNTRY') or '').lower()
+        if exit_label == 'direct':
+            sys.stderr.write(
+                '  WARNING: SCRAPE_PROXY is unset, so this runs from the runner\'s own\n'
+                '  address. Measured 2026-09-29: that address gets a Security\n'
+                '  Verification page, not results. Expect zero rows and a red run.\n')
+        elif country != 'cn':
+            sys.stderr.write(
+                f'  WARNING: SCRAPE_PROXY_COUNTRY={country or "(unset)"}, not cn. The\n'
+                '  fingerprint alone was measured insufficient; Zhaopin wants a\n'
+                '  Chinese address too.\n')
+        sys.stderr.write(f'  via curl_cffi impersonate={IMPERSONATE} through {exit_label} '
+                         f'(country={country or "default"}) — {len(sel)} companies, '
+                         f'no browser.\n')
+        lock = threading.Lock()
+        # `reach` counts companies that actually returned ROWS. The SOLVE
+        # branch returns before `empty` is ever incremented, so deriving
+        # reachability as done-minus-empty reported "3 of 3 returned listings
+        # (0 in total)" — a green-looking tick on a walk that collected nothing,
+        # which is the exact failure the red-on-zero guard below exists to stop.
+        st = {'fetch': 0, 'new': 0, 'empty': 0, 'done': 0, 'reach': 0,
+              'challenged': 0, 'parsers': {}}
+
+        def work(t):
+            jobs, seen, challenged = [], set(), False
+            for pg in range(1, MAX_PAGES + 1):
+                url = f"https://sou.zhaopin.com/?kw={quote(t['kw'])}&jl={t['cityId']}&p={pg}"
+                html, code = cffi_fetch(url)
+                if not html:
+                    break
+                # SAY "CHALLENGED", NOT "0 JOBS". The interstitial is a 200 with
+                # a normal-looking body, so without this the run reports a quiet
+                # employer and the summary blames the roster instead of the exit.
+                if any(m in html for m in _CHALLENGE):
+                    challenged = True
+                    break
+                page_jobs, which = cffi_parse(html)
+                if which:
+                    with lock:
+                        st['parsers'][which] = st['parsers'].get(which, 0) + 1
+                new = 0
+                for j in page_jobs:
+                    k = (j['t'], j['loc'])
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    jobs.append(j)
+                    new += 1
+                if new == 0:
+                    break
+            if SOLVE:
+                with lock:
+                    st['fetch'] += len(jobs); st['done'] += 1
+                    if jobs:
+                        st['reach'] += 1
+                    if challenged:
+                        st['challenged'] += 1
+                flag = 'CHALLENGED' if challenged else ('reachable ✓' if jobs else 'NOTHING')
+                sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} jobs · {flag} ({t["kw"]})\n')
+                return
+            if not jobs:
+                with lock:
+                    st['empty'] += 1; st['done'] += 1
+                    if challenged:
+                        st['challenged'] += 1
+                sys.stderr.write(f'  {t["id"]:22}   0 jobs'
+                                 f'{" · CHALLENGED" if challenged else ""} ({t["kw"]})\n')
+                return
+            have = existing_titles(t['id'])
+            fresh = [j for j in jobs if norm(j['t']) not in have]
+            written = upsert(t, fresh) if fresh else 0
+            with lock:
+                st['fetch'] += len(jobs); st['new'] += written; st['done'] += 1
+            sys.stderr.write(f'  {t["id"]:22} {len(jobs):3} zhaopin · {written:3} new '
+                             f'({len(jobs) - len(fresh)} already archived)\n')
+
+        with ThreadPoolExecutor(max_workers=max(1, CONCURRENCY)) as ex:
+            list(ex.map(work, sel))
+
+        # WHICH PARSER READ THE PAGE IS THE POINT OF THE FIRST REAL RUN. Two are
+        # shipped because nobody could load a results page to tell; this line is
+        # how that gets settled, so it prints even on a walk that collected
+        # nothing.
+        parsers = ', '.join(f'{k}×{v}' for k, v in st['parsers'].items()) or 'none matched'
+        sys.stderr.write(f'\nParser that read the pages: {parsers}\n')
+        if st['challenged']:
+            sys.stderr.write(
+                f'{st["challenged"]} of {st["done"]} companies got the Security '
+                f'Verification interstitial rather than results — that is the EXIT '
+                f'being refused, not the roster being quiet. A cn exit is what this '
+                f'transport needs; check SCRAPE_PROXY_COUNTRY and whether the pool '
+                f'actually has Chinese addresses.\n')
+        if SOLVE:
+            sys.stderr.write(f'\n{st["reach"]} of {st["done"]} companies returned '
+                             f'listings via curl_cffi ({st["fetch"]} in total).\n')
+            return 0 if st['fetch'] else 2
+        sys.stderr.write(f'\nDone (curl_cffi via {exit_label}). {st["fetch"]} listings '
+                         f'fetched, {st["new"]} new rows archived, {st["empty"]} companies '
+                         f'with 0 jobs.\n')
+        if sel and not st['fetch']:
+            sys.stderr.write(
+                f'FAILED: {len(sel)} targets walked and not one listing fetched. '
+                f'See the challenge count and parser line above — they separate '
+                f'"the exit was refused" from "the markup moved".\n')
+            return 2
+        return 0
 
     # ── Oxylabs Web Scraper API path (no browser / no proxy) ──────────────────
     # When OXYLABS_USERNAME is set we fetch Zhaopin's rendered search page through

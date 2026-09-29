@@ -1,10 +1,46 @@
-# Daily Zhaopin (智联招聘) → D1 archive (hosted, via the Oxylabs Web Scraper API).
+# Daily Zhaopin (智联招聘) → D1 archive.
 #
-# Zhaopin's anti-bot blocks datacenter IPs and needs JS + a China exit. This
-# fetches each company's rendered search page through the Oxylabs Web Scraper
-# API (geo China + JS render + anti-bot bypass) and parses the embedded
-# __INITIAL_STATE__ job records — no Playwright, runs on an ordinary GitHub
-# runner. Verified end-to-end.
+# THE SCHEDULED FEED HAS COLLECTED NOTHING SINCE 2026-08-28. Every run ends
+#
+#     oxylabs auth failed (401) — check OXYLABS_USERNAME/PASSWORD
+#
+# on all 93 companies — six consecutive red scheduled runs to 2026-09-29. That
+# is the ACCOUNT being rejected, not the plan quota (which is a 429), and the
+# same credential took Indeed down the same day. The run going red is the guard
+# working; it has simply been red for a month.
+#
+# `transport: cffi` IS THE REPLACEMENT BEING TESTED, and it is dispatch-only
+# until a run proves it. It borrows the technique in jiangyuxue666/job-market-
+# analyzer (MIT): curl_cffi presenting Chrome's TLS fingerprint
+# (`impersonate=chrome131`), no browser and no paid unblocker. Zhaopin's wall
+# reads the TLS ClientHello, so a stock Python client is refused before it sends
+# a header.
+#
+# THE FINGERPRINT ALONE IS NOT ENOUGH, which is the measurement that shapes this
+# workflow. From CI's address class on 2026-09-29, with the impersonation
+# confirmed live (JA3 varies per profile, so the spoofed hello does reach the
+# far end):
+#
+#   sou.zhaopin.com / www.zhaopin.com   "Security Verification", 1,930 bytes
+#   fe-api /search/positions (POST)     HTTP 200, isVerification=1, 0 results
+#   fe-api /c/i/sou (legacy GET)        HTTP 200, numTotal=0 on every variant
+#   fe-api /city-page/user-city         HTTP 200, REAL DATA
+#
+# The last line rules out a blanket ban on the address — the host answers, it
+# just will not serve job results. The upstream tool carries no proxy because
+# it is a domestic Chinese tool: from inside China the fingerprint is the only
+# wall. So this pairs it with SCRAPE_PROXY_COUNTRY=cn.
+#
+# WHETHER THE POOL HAS CHINESE ADDRESSES IS THE OPEN QUESTION. IPRoyal targeting
+# is accepted syntactically (http_fetch folds _country-cn onto the password);
+# nobody here has confirmed it resolves to a mainland exit. The run says so
+# plainly: it counts companies that got the interstitial and reports them as
+# CHALLENGED rather than as employers with no vacancies.
+#
+# TWO PARSERS SHIP, DELIBERATELY. No one has loaded a real results page since
+# the credential died, so the feed tries the __INITIAL_STATE__ reading that
+# worked under Oxylabs AND the upstream tool's CSS-selector reading, then prints
+# which one fired. Delete the loser once a real run has spoken.
 #
 # Required repo secrets:
 #   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
@@ -17,9 +53,36 @@
 name: zhaopin-archive
 
 on:
+  # STILL SCHEDULED ON THE OXYLABS PATH, which is dead — so this fires nightly
+  # and goes red nightly. That is deliberate for now: the replacement has not
+  # been proven from a runner, and silently retiring the schedule would turn a
+  # visibly broken feed into an invisibly absent one. Point the schedule at
+  # `cffi` once a dispatch has collected rows through a cn exit.
   schedule:
     - cron: '30 20 * * *' # 20:30 UTC daily — staggered after Indeed
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      transport:
+        description: 'cffi = curl_cffi TLS impersonation via SCRAPE_PROXY (needs a cn exit); oxylabs = the Web Scraper API (401 since 2026-08-28)'
+        type: choice
+        options: [cffi, oxylabs]
+        default: cffi
+      proxy_country:
+        description: 'SCRAPE_PROXY exit country. cn is what Zhaopin wants; blank uses the pool default'
+        type: string
+        default: 'cn'
+      impersonate:
+        description: 'curl_cffi browser profile (the fingerprint IS the mechanism)'
+        type: string
+        default: 'chrome131'
+      limit:
+        description: 'Companies to walk (blank = all)'
+        type: string
+        default: ''
+      solve:
+        description: 'Reachability only — print reachable/CHALLENGED per company, write nothing to D1'
+        type: boolean
+        default: false
 
 concurrency:
   group: zhaopin-archive
@@ -37,12 +100,51 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      - name: Scrape Zhaopin → D1 (Oxylabs)
+      # curl_cffi carries its own libcurl-impersonate build; lxml is what the
+      # card parser reads markup with. Unpinned deliberately — the TLS profiles
+      # ship in the package, so when Chrome moves, a fresh release is the fix
+      # and a pin is the thing that breaks.
+      - name: Install curl_cffi
+        if: ${{ (inputs.transport || 'oxylabs') == 'cffi' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install curl_cffi beautifulsoup4 lxml
+          python -c "import curl_cffi, bs4, lxml; print('curl_cffi', curl_cffi.__version__)"
+
+      - name: Scrape Zhaopin → D1
         env:
           OXYLABS_USERNAME: ${{ secrets.OXYLABS_USERNAME }}
           OXYLABS_PASSWORD: ${{ secrets.OXYLABS_PASSWORD }}
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          # A CHINESE BOARD WANTS A CHINESE ADDRESS. http_fetch folds this onto
+          # the IPRoyal password as _country-cn; the script warns loudly if it
+          # is anything else, because the fingerprint alone was measured
+          # insufficient and a run without this reads as "Zhaopin is empty".
+          SCRAPE_PROXY_COUNTRY: ${{ inputs.proxy_country || 'cn' }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         # All ~94 roster companies; up to 8 pages each (early-stop on no new ads).
-        run: python scripts/zhaopin-to-d1.py --max-pages 8 --concurrency 8
+        #
+        # A SCHEDULED FIRE GETS NO `inputs` — a workflow_dispatch default does
+        # not apply to a cron run — so the fallback below is what the nightly
+        # run reads. It is 'oxylabs' ON PURPOSE: that keeps the schedule on the
+        # path this file has always run until the replacement is proven, rather
+        # than quietly promoting an untested transport by way of a default.
+        run: |
+          TRANSPORT="${{ inputs.transport || 'oxylabs' }}"
+          if [ "$TRANSPORT" = "cffi" ]; then
+            if [ -z "$SCRAPE_PROXY" ]; then
+              echo "SCRAPE_PROXY is not set. Measured 2026-09-29: the runner's own"
+              echo "address gets a Security Verification page rather than results,"
+              echo "so this would only collect challenges."
+              exit 1
+            fi
+            python scripts/zhaopin-to-d1.py --cffi --max-pages 8 --concurrency 4 \
+              --impersonate '${{ inputs.impersonate || 'chrome131' }}' \
+              ${{ inputs.solve && '--solve' || '' }} \
+              ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}
+            exit $?
+          fi
+          python scripts/zhaopin-to-d1.py --max-pages 8 --concurrency 8 \
+            ${{ inputs.limit != '' && format('--limit {0}', inputs.limit) || '' }}

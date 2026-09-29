@@ -30,6 +30,8 @@ on:
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
       - 'scripts/test_company_alias.py'
+      - 'scripts/test_zhaopin_parsers.py'
+      - 'tools/zhaopin-company-scraper/zhaopin_company_scraper.py'
       - 'scripts/talent_flows.py'
       - 'scripts/test_talent_flows.py'
       - 'scripts/collect-talent-flows.py'
@@ -79,6 +81,13 @@ jobs:
         with:
           bun-version: latest
 
+      # The Zhaopin card parser reads markup through bs4/lxml, and its test
+      # SKIPS ITS ASSERTIONS when they are missing rather than failing. Without
+      # this step that skip is invisible: the job goes green having tested only
+      # the half of the file that was already covered.
+      - name: Install parser dependencies
+        run: pip install beautifulsoup4 lxml
+
       - name: Job-extraction parser tests
         run: python scripts/test_jobs_extract.py
 
@@ -114,6 +123,18 @@ jobs:
       # exists.
       - name: Employer attribution gate holds its measured pairs
         run: python scripts/test_company_alias.py
+
+      # Zhaopin ships TWO readings of a results page — the __INITIAL_STATE__ JSON
+      # that worked under Oxylabs and the CSS-selector reading ported from
+      # jiangyuxue666/job-market-analyzer — because nobody has been able to load
+      # a real page since the credential died on 2026-08-28. This does not assert
+      # which is current; it asserts each reads the shape it claims, into the
+      # dict upsert() expects, and that a SECURITY VERIFICATION page parses to
+      # nothing from both. The interstitial is an HTTP 200 with an ordinary
+      # body, so a parser that scraped one stray element out of it would file
+      # invented vacancies on a real company's card and the run would go green.
+      - name: Zhaopin parsers read their shapes, and reject a challenge page
+        run: python scripts/test_zhaopin_parsers.py
 
       # A company added to the roster appears on the map immediately, whether or
       # not any job board is searched for it — so without this, a new employer

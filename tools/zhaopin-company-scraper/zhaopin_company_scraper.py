@@ -102,6 +102,88 @@ def parse_result(r: dict) -> dict | None:
     }
 
 
+# ── the CARD parser ──────────────────────────────────────────────────────────
+# A SECOND way to read the same page, and it exists because we cannot tell from
+# here which one is right.
+#
+# parse_search_html() below reads window.__INITIAL_STATE__, which is what the
+# Oxylabs-rendered page carried when this feed was last verified. The upstream
+# tool this is ported from — jiangyuxue666/job-market-analyzer (MIT) — instead
+# reads server-rendered markup with explicit CSS selectors, and it is current
+# enough that its author ships it as a working scraper.
+#
+# BOTH ARE KEPT AND BOTH ARE TRIED, because no one here has seen a real Zhaopin
+# results page since the Oxylabs credential died on 2026-08-28: every address
+# available from CI gets a "Security Verification" interstitial instead (1,930
+# bytes, measured 2026-09-29). Writing one parser on a guess about markup nobody
+# can currently load is exactly the move this repo's conventions forbid — so the
+# caller runs whichever returns rows and REPORTS WHICH ONE DID. The first real
+# run through a China exit is what settles it, and the log line is the answer.
+#
+# Delete the loser once that run has spoken. Keeping both forever would be two
+# parsers nobody is sure about instead of one that was measured.
+_CARD_SEL = '.joblist-box__item'
+
+
+def parse_cards_html(html: str) -> list:
+    """Parse server-rendered sou.zhaopin.com markup into the same job dicts.
+
+    Selectors are the upstream tool's, unchanged, so a future breakage can be
+    diffed against it rather than re-derived: .joblist-box__item wraps a card,
+    .jobinfo__name the title, .jobinfo__salary the pay, .companyinfo__name the
+    employer, and .jobinfo__other-info-item is an ORDERED triple of
+    location · experience · education.
+
+    Returns [] rather than raising when bs4 is missing or the markup does not
+    match, so the caller can fall through to the other parser.
+    """
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return []
+    try:
+        soup = BeautifulSoup(html, 'lxml')
+    except Exception:
+        soup = BeautifulSoup(html, 'html.parser')
+
+    out, seen = [], set()
+    for item in soup.select(_CARD_SEL):
+        title_el = item.select_one('.jobinfo__name')
+        if not title_el:
+            continue
+        title = re.sub(r'\s+', ' ', title_el.get_text(strip=True)).strip()
+        if not title:
+            continue
+        company_el = item.select_one('.companyinfo__name')
+        company = company_el.get_text(strip=True) if company_el else ''
+
+        # The first other-info item is "city·district"; the archive wants the
+        # whole string, matching what parse_result() stores for the JSON path.
+        others = item.select('.jobinfo__other-info-item')
+        loc = others[0].get_text(strip=True) if others else ''
+
+        salary_el = item.select_one('.jobinfo__salary')
+        salary = salary_el.get_text(strip=True) if salary_el else ''
+
+        # The card has no dedicated link element in the upstream selectors, so
+        # take the first anchor that points at a Zhaopin job. A missing URL is
+        # not a reason to drop a real vacancy — upsert() stores '' happily.
+        url = ''
+        for a in item.select('a[href]'):
+            href = (a.get('href') or '').strip()
+            if 'zhaopin.com' in href or href.startswith('//'):
+                url = 'https:' + href if href.startswith('//') else href
+                break
+
+        k = (title, company, loc)
+        if k in seen:
+            continue
+        seen.add(k)
+        out.append({'t': title, 'company': company, 'loc': loc,
+                    'salary': salary or None, 'url': url, 'date': ''})
+    return out
+
+
 def parse_search_html(html: str) -> list:
     """Parse a rendered sou.zhaopin.com page (as returned by the Oxylabs Web
     Scraper API) into job dicts — the no-browser counterpart of scrape_company.

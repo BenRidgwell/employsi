@@ -997,6 +997,64 @@ trap that is reachable, not a repair.
 impostors — and runs in `scraper-check.yml`. None of it would fail visibly in
 the app, which is the point of asserting it.
 
+### Zhaopin lost its unblocker, and TLS impersonation is only half a fix (2026-09-29)
+
+**The feed has archived nothing since 2026-08-28.** Every scheduled run ends
+`oxylabs auth failed (401)` on all 93 companies — six consecutive red runs to
+2026-09-29. The account is being rejected, not the quota (that is a 429), and
+the same credential took Indeed down the same day. The run going red is the
+guard working; it has just been red for a month.
+
+**The technique borrowed.** `jiangyuxue666/job-market-analyzer` (MIT) reads
+Zhaopin with no browser and no paid unblocker: `curl_cffi` presenting Chrome's
+TLS fingerprint (`impersonate="chrome131"`), then CSS selectors over the markup.
+The fingerprint is the mechanism — Zhaopin's wall reads the TLS ClientHello, so
+a stock Python client is refused before it sends a header.
+
+**IT IS NOT SUFFICIENT FROM OUR ADDRESS, and that is the measurement that
+matters.** From CI's address class, 2026-09-29:
+
+| Target | Result |
+| --- | --- |
+| `sou.zhaopin.com`, `www.zhaopin.com` | "Security Verification", 1,930 bytes |
+| `fe-api /search/positions` (POST) | HTTP 200, `isVerification: 1`, 0 results |
+| `fe-api /c/i/sou` (legacy GET) | HTTP 200, `numTotal: 0` on every variant |
+| `fe-api /city-page/user-city` | HTTP 200, **real data** |
+
+That last row is what rules out a blanket ban on the address: the host answers
+us, it just will not serve job results.
+
+**The obvious objection was checked first.** This sandbox's egress proxy
+re-terminates TLS, which would have destroyed the impersonation and made the
+whole test meaningless. It does not: JA3 hashes differ per profile
+(`chrome131` → `9b7dcdf3…`, `safari17_0` → `773906b0…`), so the spoofed hello
+reaches the far end. The refusal is real, not an artifact.
+
+The upstream tool carries no proxy layer because it is a domestic Chinese tool —
+from inside China the fingerprint is the only wall. So `--cffi` pairs it with
+`SCRAPE_PROXY_COUNTRY=cn`. **Whether IPRoyal's pool actually has mainland exits
+is unconfirmed**; the targeting flag is accepted syntactically and nothing more
+is known. The walk reports companies that got the interstitial as CHALLENGED
+rather than as employers with no vacancies, so one dispatch answers it.
+
+**Two parsers ship on purpose.** Nobody has loaded a real results page since the
+credential died, so writing one parser on a guess about markup no one can
+currently see is exactly what this repo's conventions forbid. The feed tries the
+`__INITIAL_STATE__` reading that worked under Oxylabs and the upstream tool's
+card reading, then prints which one fired. Delete the loser once a real run has
+spoken — keeping both forever is two parsers nobody is sure about instead of one
+that was measured.
+
+`scripts/test_zhaopin_parsers.py` guards what is ours rather than what is
+Zhaopin's: that each parser reads its shape into the dict `upsert()` expects,
+and that **a challenge page parses to nothing from both**. The interstitial is an
+HTTP 200 with an ordinary body, so a parser that scraped one stray element out
+of it would file invented vacancies on a real company's card, green.
+
+**The schedule still runs the Oxylabs path and still goes red nightly.** That is
+deliberate until the replacement is proven from a runner: retiring the schedule
+would turn a visibly broken feed into an invisibly absent one.
+
 ### What each of the five would actually need
 
 Two groups, and they are not the same problem.
