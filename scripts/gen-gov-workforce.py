@@ -1448,8 +1448,51 @@ NOT_IN_SOURCE = {
         "inside Transport and Main Roads' 6,573, and 210 is a component being "
         'called a total. The first objection goes away if the next edition '
         'agrees with itself; the second does not',
+    # ── THE PUBLIC GUARDIAN: A FIGURE IN HAND AND A QUESTION IN THE WAY ─────
+    # Its reason was "no row names it; independent statutory office, outside the
+    # collection", and its report is on its own host, unchallenged. Read
+    # 2026-09-29, p38: "On 30 June 2025, OPG had a core establishment of 337.9
+    # full-time equivalent positions and employed a total of 372 people."
+    #
+    # SO WHY IS THIS STILL A REFUSAL. Because 372 might already be inside the
+    # Department of Justice's 4,629, and nothing read so far says either way.
+    # OPG sits in the Justice portfolio, its own publication scheme links "DoJ
+    # Annual Reports" beside its own, and its report references the "DoJ
+    # Workplace Psychological Health and Safety Strategy" — all consistent with
+    # either arrangement. p38 adds that "OPG staff are employed under the Public
+    # Sector Act 2022, except for community visitors, who are appointed under the
+    # Public Guardian Act 2014", which names the EMPLOYING ACT and not the
+    # employing agency. Taronga turned on exactly this distinction and the
+    # earlier entry for it got the distinction wrong.
+    #
+    # THE DOCUMENT THAT SETTLES IT IS KNOWN AND IS BEHIND THE DOORMAN: the
+    # Department of Justice's own annual report, whose workforce note names what
+    # its figure covers the way DCCEEW's Table 7 note does. justice.qld.gov.au
+    # links it at publications.qld.gov.au/dataset/2025-26-doj-annual-report,
+    # which answers `202 and zero bytes` to a plain fetch — the AWS WAF challenge
+    # — so it needs the browser the workflow drives. That URL is in
+    # qld-agency-probe.py for the next round.
+    #
+    # 337.9 IS AN ESTABLISHMENT, NOT AN ACTUAL, and would be the wrong figure
+    # even if the double-count question resolved: it is funded positions. 372 is
+    # a head count, which would also make this the only Queensland card not in
+    # FTE.
     'qld:Office of the Public Guardian':
-        'no row names it; independent statutory office, outside the collection',
+        'ITS REPORT IS READ AND THE FIGURE IS 372, AND THE OBSTACLE IS NOT '
+        'REACHABILITY. publicguardian.qld.gov.au serves the 2024-25 annual '
+        'report and p38 says: "On 30 June 2025, OPG had a core establishment of '
+        '337.9 full-time equivalent positions and employed a total of 372 '
+        'people." What is not established is whether those 372 are already '
+        "inside the Department of Justice's 4,629. OPG is in the Justice "
+        'portfolio and its report says its staff "are employed under the Public '
+        'Sector Act 2022" — which names the employing ACT, not the employing '
+        'agency, and Taronga turned on exactly that distinction. The document '
+        "that would settle it is the Department of Justice's own annual report, "
+        'at publications.qld.gov.au/dataset/2025-26-doj-annual-report, which '
+        'answers 202 and zero bytes to a plain fetch and needs the browser. Note '
+        'also that 337.9 is an ESTABLISHMENT of funded positions rather than an '
+        'actual FTE, so 372 head count would be the figure — and the only '
+        'Queensland card not in FTE',
     'qld:QLeave':
         'no row names it; the portable long service leave authority is a '
         'statutory body, outside the collection',
