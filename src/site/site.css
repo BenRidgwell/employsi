@@ -669,8 +669,11 @@
   text-align: center;
   gap: 24px;
 }
-.ws-intro h1 {
-  max-width: 820px;
+/* Smaller than the site's .ws-display.lg (56px) on request: this headline
+   is a long sentence, and at the full size it outweighed the journey below. */
+.ws-intro h1.ws-display {
+  max-width: 700px;
+  font-size: clamp(30px, 3.2vw, 46px);
 }
 .ws-sides {
   display: inline-flex;
@@ -688,16 +691,20 @@
   border: 0;
   cursor: pointer;
   font-family: var(--ws-sans);
-  font-size: clamp(17px, 1.55vw, 22px);
+  font-size: clamp(15px, 1.25vw, 18px);
   font-weight: 600;
   letter-spacing: -0.01em;
-  padding: clamp(10px, 1vw, 14px) clamp(20px, 2.4vw, 34px);
+  padding: clamp(9px, 0.8vw, 11px) clamp(18px, 1.9vw, 26px);
   border-radius: 999px;
   background: transparent;
   color: var(--ws-text-3);
   transition:
     background 0.25s var(--ws-ease),
     color 0.25s var(--ws-ease);
+}
+.ws-sides button svg {
+  width: 18px;
+  height: 18px;
 }
 .ws-sides button[aria-pressed="true"] {
   background: var(--ws-n900);
