@@ -1537,6 +1537,28 @@ def load_qld():
 
 
 # ── South Australia ─────────────────────────────────────────────────────────
+#
+# THE WHOLE JURISDICTION IS CLOSED TO THE AUTHORING SANDBOX, not just this
+# source's host, and that is worth knowing before spending an afternoon on a
+# South Australian card. Measured 2026-09-29 with a WARMED BROWSER, which is the
+# fallback that clears the Northern Territory and Tasmania:
+#
+#     publicsector.sa.gov.au   still challenged after 30 s   28,768 bytes
+#     agd.sa.gov.au            still challenged after 30 s   28,994 bytes
+#     safework.sa.gov.au       still challenged after 30 s   28,756 bytes
+#
+# One Cloudflare configuration, three hosts, and the same interstitial size as
+# the three NSW state-owned corporations recorded in NOT_IN_SOURCE (28,696 to
+# 28,844) — so this is a property of the exit IP rather than of any of them, and
+# 180 seconds was already shown not to help on the NSW three.
+#
+# WHAT THAT MEANS FOR THE TEN SOUTH AUSTRALIAN CARDS STILL BLANK. Each would be
+# answered by its own agency's annual report or by a statement in the Attorney-
+# General's Department's, and none of those documents can be fetched from here.
+# The route is the GitHub runner, where this loader already works — the workflow
+# has SA probe steps for exactly this reason — so a probe step that fetches a
+# couple of SA agency reports and prints what it finds is the next move, not
+# another attempt from this machine.
 def load_sa():
     """OCPSE Workforce Information Report — per-agency FTE and HEADCOUNT.
 

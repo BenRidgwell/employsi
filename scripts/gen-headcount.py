@@ -579,6 +579,26 @@ NO_FIGURE_PUBLISHED = {
         'exist only after the page runs. Contentful holds the FY25 file under '
         'assets.ctfassets.net/7urik9yedtqc/nzx-doc-450318/, so the FY26 asset '
         'almost certainly has a sibling id, and guessing an id is not finding one',
+    # A PRIVATE NZ COMPANY, and the only one of these whose ROSTER DOMAIN is the
+    # problem as well. The card carries domain todd.com, which is a parked
+    # placeholder — 832 bytes titled "todd.com is almost here!". The company is at
+    # todd.co.nz and toddcorporation.com, both serving the same 293,922-byte site.
+    # That is exactly what check-company-live.ts exists to surface and it is worth
+    # fixing on the roster separately from this figure.
+    #
+    # The site links one document, "Todd 2025 Report on Sustainable Development",
+    # 46 pages, and it was read: no group head count, no FTE, no workforce total.
+    # The only people numbers in it are a partnership anecdote and "More than 180
+    # people, representing" at an event. Nothing else on the site carries a staff
+    # figure, and a private company files no annual report.
+    'nz-todd-corporation':
+        'private, and its own site publishes no workforce figure. The one document '
+        'it links — the 2025 Report on Sustainable Development, 46 pages — was '
+        'downloaded and read and carries no group head count or FTE; its only '
+        'people numbers are an event attendance ("More than 180 people") and a '
+        'partnership anecdote. Note also that the roster domain todd.com is a '
+        'PARKED PLACEHOLDER (832 bytes, "todd.com is almost here!"); the company '
+        'is at todd.co.nz and toddcorporation.com',
     'nz-mercury-nz':
         'site clears and renders, but no annual-report PDF is reachable from its '
         'navigation',
