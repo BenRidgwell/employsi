@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Environment Protection Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   APS: Australian Securities and Investments Commission: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Environment Protection Authority: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: Taronga Conservation Society Australia: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: Powerhouse (Museum of Applied Arts and Sciences): 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: TAFE NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -78,6 +79,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "aps-australian-pesticides-and-veterinary-medicines-authority": { now: 235, prev: 224, yoy: 4.9, asof: "Dec 2025", span: 1 },
   "aps-australian-public-service-commission": { now: 444, prev: 466, yoy: -4.7, asof: "Dec 2025", span: 1 },
   "aps-australian-radiation-protection-and-nuclear-safety-agency": { now: 185, prev: 179, yoy: 3.4, asof: "Dec 2025", span: 1 },
+  "aps-australian-securities-and-investments-commission": { now: 2544, yoy: null, asof: "Jun 2025", span: 1 },
   "aps-australian-taxation-office": { now: 21186, prev: 21389, yoy: -0.9, asof: "Dec 2025", span: 1 },
   "aps-australian-trade-and-investment-commission": { now: 714, prev: 657, yoy: 8.7, asof: "Dec 2025", span: 1 },
   "aps-australian-transaction-reports-and-analysis-centre": { now: 798, prev: 613, yoy: 30.2, asof: "Dec 2025", span: 1 },

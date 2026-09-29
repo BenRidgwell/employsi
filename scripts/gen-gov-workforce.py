@@ -747,18 +747,24 @@ NOT_IN_SOURCE = {
         'against all 101 rows, which do carry the Office of National '
         'Intelligence (441) and the Inspector-General of Intelligence and '
         'Security (51), both of which ARE APS. Its own annual report is the '
-        'only route left',
+        'only route left, AND THAT ROUTE WAS TRIED 2026-09-29: asd.gov.au '
+        'answers 403 (2,789 bytes) to this network over HTTP/1.1 as well as '
+        'HTTP/2, and transparency.gov.au — the Commonwealth portal that '
+        'carries APS annual reports and is the obvious fallback — is a React '
+        'app that returns the SAME 692-byte shell for every path, sitemap.xml '
+        'included, so a plain fetch reaches nothing there either. Its data '
+        'comes from data.transparency.gov.au, which DOES serve this network '
+        '(22.5 MB from /api/datasets/simplified); whether that API carries '
+        'report TEXT rather than financial tables is not established and is '
+        'the next thing to ask',
     'aps:Australian Security Intelligence Organisation':
         'employed under the ASIO Act rather than the Public Service Act, so it '
         'is absent from APSC Table 2 by construction, the same as the Australian '
-        'Signals Directorate. Its own annual report is the only route left',
-    'aps:Australian Securities and Investments Commission':
-        'ASIC staff are employed under the ASIC Act, not the Public Service '
-        'Act, so the APSC census does not cover them. Table 2 does carry the '
-        'other Treasury-portfolio bodies that ARE APS — the ACCC (1,882), the '
-        'ABS (3,791), the ATO (21,186) — which is what shows the absence is '
-        'ASIC\'s employment basis and not a gap in the sheet',
-    # THESE TWO ARE THE OPPOSITE PROBLEM: not absent, but already counted.
+        'Signals Directorate. Its own annual report is the only route left, and '
+        'asio.gov.au answers 403 to this network too — 2,789 bytes, byte-identical '
+        "to asd.gov.au's refusal, which is one configuration across both hosts "
+        'rather than two coincidences. The transparency.gov.au note on the '
+        'Signals Directorate entry applies here unchanged',
     'aps:Geoscience Australia':
         'INSIDE the Industry, Science and Resources figure (5,730), which is '
         "filed. Its people are APS employees of that department, and Table 2's "
@@ -1079,6 +1085,84 @@ NOT_IN_SOURCE = {
         "administrative unit to report. The runner's read agrees from the other "
         'side — energymining.sa.gov.au answered 200 and 442 lines, and not one of '
         'them names an Office of Hydrogen Power at all',
+    # ── THE LAST FIVE SOUTH AUSTRALIAN CARDS, SETTLED 2026-09-29 ────────────
+    # Three rounds of runner probes and the answer to every one of them turned
+    # out to be a sentence in a document, not a number. Two sit in the
+    # Attorney-General's Department (filed at 1,688) and three in the Department
+    # for Education (33,489); none of the five publishes a workforce total.
+    #
+    # ROUND THREE IS WHAT DID IT, and what it did was stop matching patterns.
+    # Rounds one and two asked the AGD report for lines about employment and got
+    # lines about employment — all of them about AGD's own staff. Round three
+    # dumped p8-13 WHOLE, and p9 carries a list nobody would have written a
+    # pattern for: "The following areas of AGD submit their own annual reports".
+    # A list of nine names, one of them the Employment Tribunal.
+    'sa:SafeWork SA':
+        'A BRANCH OF THE ATTORNEY-GENERAL\'S DEPARTMENT, which its own site says '
+        'in those words: safework.sa.gov.au\'s Annual Activity Report opens "Who '
+        'we are" with "SafeWork SA is a branch of the Attorney General\'s '
+        'Department", and the same page links AGD\'s annual report as the report '
+        'that covers it. That is why the workforce report has no row — it reports '
+        'administrative units and SafeWork SA is not one — and why its people are '
+        'inside AGD\'s 1,688, which is filed. Its own Annual Activity Report is a '
+        'set of web pages, one titled "Developing our people", and none of them '
+        'carries a staff number: 749 lines on that page and not one matches a '
+        'head-count pattern. Corroborated from AGD\'s side, where SafeWork SA '
+        'appears in the department\'s own financial statements as a revenue line '
+        '("SafeWork SA prescribed fee 29 948 29 217") rather than as an entity',
+    'sa:SA Employment Tribunal':
+        'ITS STAFF ARE ASSIGNED, NOT EMPLOYED, and both documents say so. AGD\'s '
+        'annual report p9 lists SAET among "the following areas of AGD [that] '
+        'submit their own annual reports" — an AREA of the department, alongside '
+        'the Public Trustee, Ombudsman SA and State Records SA — so its people '
+        'are inside AGD\'s 1,688, which is filed. SAET\'s own 2024-25 report '
+        '(saet.sa.gov.au, 14 pages) confirms it from the other end and publishes '
+        'NO staff figure at all: its "Organisation of the Tribunal" is a list of '
+        'appointees — eight presidential members, four registrars, eighteen '
+        'commissioners — under one line, "Staff assigned to SAET pursuant to s 74 '
+        'of the SAET Act". Appointees are not employees and assigned staff belong '
+        'to the department that assigned them',
+    # ── And three offices in the Department for Education's orbit ────────────
+    # All three say the same thing about themselves in almost the same words,
+    # and none of the three is an administrative unit, which is why the workforce
+    # report has no row for any of them. They differ in how much they publish
+    # about their own staff, and NONE publishes a total.
+    'sa:Commissioner for Children and Young People':
+        'NOT AN ADMINISTRATIVE UNIT, AND NO TOTAL PUBLISHED. Its own 2023-24 '
+        'report p71: "The CCYP is administratively and operationally funded and '
+        'supported by the Government of South Australia through the Department '
+        'for Education", with a Service Level Agreement covering injury '
+        'management, ICT and financial services. The Department for Education is '
+        'filed at 33,489 and the workforce report has no CCYP row, which is '
+        'consistent with its people being counted there. What its report '
+        'publishes about its own staff is an ORG CHART with an FTE against each '
+        'position (SAES2 1FTE, Office Manager SAES1 1FTE, ASO8 1FTE, ASO7 0.85FTE '
+        'and so on) and no total; the only counted figure is two executives. '
+        'Adding the boxes up would be this codebase inventing a workforce out of '
+        'a diagram',
+    'sa:Guardian for Children and Young People':
+        'THE SAME ARRANGEMENT AS THE CCYP, IN ALMOST THE SAME WORDS. Its 2023-24 '
+        'report p68: "The Guardian for Children and Young People, Training Centre '
+        'Visitor, Child and Young Person Visitor and Youth Orders Visitor is '
+        'administratively funded and supported by the Government of South '
+        'Australia through the Department for Education" — filed at 33,489, with '
+        'no Guardian row in the workforce report. Its structure section is an org '
+        'chart with NO numbers on it at all, not even the FTEs the CCYP prints: '
+        'four statutory offices over a business manager, an administration '
+        'officer, four principals, two senior advocates, a senior policy adviser '
+        'and "Advocate x 4" and "Advocate x 3". Seventeen boxes and no total',
+    'sa:Child Death and Serious Injury Review Committee':
+        'A COMMITTEE OF FIVE SUPPORT STAFF, AND THE DEPARTMENT FOR EDUCATION '
+        'EMPLOYS THEM. Its 2023-24 report p36 is the plainest of the three: "The '
+        'Minister for Education, Training and Skills is responsible for the '
+        'administration of the provisions governing the Committee. FINANCIAL AND '
+        'HUMAN RESOURCE MANAGEMENT SUPPORT IS PROVIDED BY THE DEPARTMENT FOR '
+        'EDUCATION" — human resource management, not just funding, which is '
+        'stronger than what the CCYP and Guardian reports say. DfE is filed at '
+        '33,489. The report then names the five people who supported the '
+        'Committee with an FTE each (0.7, 1.0, 1.0, 0.6, 1.0), two of them '
+        'part-year, which is a list of individuals rather than a workforce and is '
+        'not a figure to file even if there were no double count',
     # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
     'sa:TAFE SA':
         'not reachable. Its own site answers 404 at every annual-report path '
@@ -1094,7 +1178,7 @@ NOT_IN_SOURCE = {
         'Public Service Commission instead it would read as the PSC having no '
         'answer, which is the wrong reason for the right outcome',
     # ── NSW: the rest of the top twelve, each tried 2026-09-25 ────────────────
-    # Six NSW agencies now come from their own annual report (NSW_AGENCY_REPORTS).
+    # Six NSW agencies now come from their own annual report (AGENCY_REPORTS).
     # These are the others among the twelve that carry 82% of the route's ads,
     # and each of these reasons is a measurement rather than "no source row", so
     # the next pass starts from what was already established.
@@ -2742,7 +2826,15 @@ def load_healthnz():
     return rows, '31 March 2026', 'headcount'
 
 
-# ── NSW agencies, one annual report at a time ────────────────────────────────
+# ── Agencies that come one annual report at a time ───────────────────────────
+#
+# NAMED FOR WHAT IT IS RATHER THAN WHERE IT STARTED. This table and its reader
+# were called NSW_AGENCY_REPORTS and _nsw_agency because every spec in them was
+# a NSW agency; nothing in either is NSW-specific. `jurisdiction_of` consults
+# AGENCY_ROUTE before it looks at an id's prefix, so a spec's `agency_id` may
+# belong to any jurisdiction and the row lands on the right card either way.
+# Renamed 2026-09-29, when the first Commonwealth specs were added — a table
+# whose name says NSW is a table nobody thinks to use for Queensland.
 #
 # WHY THIS IS NOT ONE LOADER. NSW's Workforce Profile stops at PORTFOLIO — the
 # note in NOT_IN_SOURCE_JURISDICTION records all four sources probed and what
@@ -2780,7 +2872,52 @@ def load_healthnz():
 # summed and must equal the Total row the report prints for itself, column by
 # column, and a date string must be found on the page or the load fails. A
 # report that gets restyled breaks loudly instead of going stale quietly.
-NSW_AGENCY_REPORTS = {
+AGENCY_REPORTS = {
+    # ── THE FIRST COMMONWEALTH SPEC, WHICH IS WHY THIS TABLE WAS RENAMED ─────
+    # ASIC's reason was right about why the census misses it — "ASIC staff are
+    # employed under the ASIC Act, not the Public Service Act, so the APSC census
+    # does not cover them" — and ended "its own annual report is the only route
+    # left" without anyone taking it. asic.gov.au serves the 2024-25 report at
+    # 5,227,398 bytes, unchallenged.
+    #
+    # p213, Table 19 "Industrial arrangements for ASIC employees as at 30 June
+    # 2025": classification against instrument, "Total 85 2249 189 21 2544".
+    # Note 1 says what that last column is — "calculated on the total headcount
+    # as at 30 June rather than the full-time equivalent (FTE)". A head count,
+    # at a date, said to be one.
+    #
+    # NOT TABLES 15 AND 16, WHICH LOOK LIKE THE OBVIOUS CHOICE AND ARE NOT. They
+    # are "Combined totals by gender and employment type" for 2024-25 and
+    # 2023-24, with a prior year this spec would love to have — and their own
+    # footnotes disqualify them twice over: "Represents the average staffing
+    # level (ASL). The ASL averages full-time equivalent (FTE) staffing numbers
+    # over an annual period. It is not a point in time calculation", and
+    # "Excludes employees who returned to ASIC from the ATO as part of a
+    # Machinery of Government change". So their 1,951 is an FTE average over a
+    # partial workforce, against a head count of 2,544 for the whole of it. That
+    # is a 30% gap between two numbers in the same appendix, and taking the one
+    # with a prior year attached would have been the wrong figure for a better-
+    # shaped card. The card shows a level and no change.
+    #
+    # `row_sum_i` IS NEW AND IS THE ONLY GUARD AVAILABLE HERE. The classification
+    # rows cannot be `comp` because each has a different number of populated
+    # cells — SES is "61 6 67", EXEC 2 is "781 7 16 804" — and `ncols` is one
+    # number for the whole spec. What the row does have is its own arithmetic:
+    # 85 + 2,249 + 189 + 21 = 2,544. Pointed at a component column instead, the
+    # spec fails with "columns [0, 1, 2, 3] of the row sum to 2,544.0 against the
+    # 2,249.0 in column 1".
+    'aps-asic': dict(
+        label='APS: Australian Securities and Investments Commission',
+        agency='Australian Securities and Investments Commission',
+        agency_id='aps-australian-securities-and-investments-commission',
+        url='https://download.asic.gov.au/media/llbhx4al/'
+            'asic-2025-annual-report-full-report.pdf',
+        needle='Industrial arrangements for ASIC employees as at 30 June 2025',
+        total=r'^Total\b',
+        ncols=5, now_i=4, prev_i=None, row_sum_i=(0, 1, 2, 3),
+        header=r'SECTION 120 ENTERPRISE ENTERPRISE FLEXIBLE',
+        proof=r'Industrial arrangements for ASIC employees as at 30 June 2025',
+        unit='headcount', asof='Jun 2025'),
     # 184 live ads, the largest single card in the NSW route.
     # p55 "Table 5 Number of FTE officers and employees by gender": the Totals
     # row is eight numbers, 2023-24 then 2024-25, each F/M/X/Total. The prose
@@ -4391,10 +4528,15 @@ NSW_AGENCY_REPORTS = {
 
 
 # Roster id -> its own source key. THE SAME MOVE AS `nzhealth` BELOW and for the
-# same reason: these five have their own date and their own unit, so routing
-# them to `nsw` would look up names the NSW Health appendix never held and then
-# report the miss as the appendix's fault.
-NSW_AGENCY_ROUTE = {v['agency_id']: k for k, v in NSW_AGENCY_REPORTS.items()}
+# same reason: each of these has its own date and its own unit, so routing one
+# to its jurisdiction's bulk source would look up a name that source never held
+# and then report the miss as the source's fault.
+#
+# IT IS ALSO WHAT LETS A SPEC BE NON-NSW. `jurisdiction_of` checks this map
+# FIRST, before any prefix rule, so an `aps-` or `qld-gov-` agency_id here is
+# routed to its own report rather than to the APSC census or the Queensland
+# workbook that does not carry it.
+AGENCY_ROUTE = {v['agency_id']: k for k, v in AGENCY_REPORTS.items()}
 
 
 def jurisdiction_of(cid):
@@ -4413,11 +4555,11 @@ def jurisdiction_of(cid):
     deleting what another machine's run filed — so the derivation cannot live in
     two places.
     """
-    if cid in NSW_AGENCY_ROUTE:
+    if cid in AGENCY_ROUTE:
         # Its figure comes from the agency's OWN annual report. Routed here
         # rather than to `nsw`, which is the NSW Health appendix and could never
         # name a non-health agency.
-        return NSW_AGENCY_ROUTE[cid]
+        return AGENCY_ROUTE[cid]
     if cid.startswith('aps-'):
         return 'aps'
     # `aps-` and `nz-` have no `-gov-` segment, so the split would return the
@@ -4481,8 +4623,8 @@ def _reconciles(spec, total, comps):
     return None
 
 
-def _nsw_agency(spec):
-    """One NSW agency annual report -> ({agency: (now, prev)}, asof, unit).
+def _agency_report(spec):
+    """One agency's own annual report -> ({agency: (now, prev)}, asof, unit).
 
     The spec's regexes were each measured against the live document and are
     commented with the page they were read off. This re-reads it every run.
@@ -4806,6 +4948,27 @@ def _nsw_agency(spec):
                                f"{got:.1f}{unit_s} change, against the {want:.1f}"
                                f"{unit_s} the table publishes beside them — the "
                                f"wrong pair was read")
+    # `row_sum_i`: THE TOTAL ROW'S OWN ARITHMETIC, WHERE THERE ARE NO COMPONENTS
+    # TO SUM. ASIC's Table 19 crosses classification against industrial
+    # instrument — "Total 85 2249 189 21 2544" — so the figure is the last cell
+    # and the four before it add to it. Its classification rows cannot be used as
+    # `comp` because each has a different number of populated cells (SES has
+    # three, EXEC 2 has four), and `ncols` is one number for the whole spec.
+    #
+    # SO THE CHECK MOVES INTO THE ROW. It is weaker than `sums` — it proves the
+    # row is internally consistent, not that the right row was read — and it is
+    # exactly as strong as the thing it guards: a spec that grabbed a different
+    # five-number line would have to find one whose first four columns happen to
+    # total its fifth. Same family as `change_abs`: use the document's own
+    # arithmetic when the document gives no second quantity.
+    if spec.get('row_sum_i'):
+        got = sum(total[i] for i in spec['row_sum_i'])
+        want = total[spec['now_i']]
+        if abs(got - want) > spec.get('tol', 0.6):
+            raise RuntimeError(f"{spec['label']}: columns {list(spec['row_sum_i'])} "
+                               f"of the row sum to {got:,.1f} against the "
+                               f"{want:,.1f} in column {spec['now_i']} — the row "
+                               f"does not add up, so it is not the row")
     if spec.get('stated'):
         if stated is None:
             raise RuntimeError(f"{spec['label']}: the page no longer states a total "
@@ -4856,12 +5019,12 @@ SOURCES = {
     # found, which took six rounds and is the more useful half of the story.
     'nt': ('Northern Territory', load_nt, 1),
     'tas': ('Tasmania', load_tas, 1),
-    # ONE ENTRY PER NSW ANNUAL REPORT, built from NSW_AGENCY_REPORTS above.
+    # ONE ENTRY PER NSW ANNUAL REPORT, built from AGENCY_REPORTS above.
     # Each is its own source because each has its own date and its own unit —
     # see the comment on that table. functools.partial rather than a closure in
     # a loop, so every entry does not end up bound to the last spec.
-    **{k: (v['label'], functools.partial(_nsw_agency, v), 1)
-       for k, v in NSW_AGENCY_REPORTS.items()},
+    **{k: (v['label'], functools.partial(_agency_report, v), 1)
+       for k, v in AGENCY_REPORTS.items()},
     # A SEPARATE SOURCE FROM `nz` ON PURPOSE, not a few more rows on it. The
     # PSC publishes FTE and Health NZ publishes a head count, and one `unit`
     # is carried per source — merging them would label 11,473 people as FTE on
@@ -4953,7 +5116,7 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     # text, so that is what gets parsed.
     _dupes = {}
     for _tbl in ('NOT_IN_SOURCE', 'NOT_IN_SOURCE_JURISDICTION', 'ALIAS',
-                 'NSW_AGENCY_REPORTS'):
+                 'AGENCY_REPORTS'):
         for _node in ast.walk(ast.parse(Path(__file__).read_text(encoding='utf-8'))):
             if not (isinstance(_node, ast.Assign) and len(_node.targets) == 1
                     and isinstance(_node.targets[0], ast.Name)

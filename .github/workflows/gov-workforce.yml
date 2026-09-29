@@ -170,7 +170,7 @@ jobs:
           # it simply never refreshes again, which is a card going quietly
           # stale rather than visibly blank. That is the harder failure to see,
           # so the list is kept in step with NSW_AGENCY_REPORTS.
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw,nsw-tco,nsw-premiers,nsw-trains,nsw-dphi,nsw-pdnsw,nsw-forestry,nsw-icac,nsw-essential,nsw-waternsw,nsw-landcom,nsw-ipart,nsw-rfs,nsw-tafensw,nsw-maas,nsw-taronga,nsw-epa \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw,nsw-tco,nsw-premiers,nsw-trains,nsw-dphi,nsw-pdnsw,nsw-forestry,nsw-icac,nsw-essential,nsw-waternsw,nsw-landcom,nsw-ipart,nsw-rfs,nsw-tafensw,nsw-maas,nsw-taronga,nsw-epa,aps-asic \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
@@ -207,33 +207,31 @@ jobs:
         continue-on-error: true
         run: python scripts/sa-workforce-probe.py
 
+      # THE SOUTH AUSTRALIAN AGENCY PROBE USED TO RUN HERE AND IS GONE, 2026-09-29.
+      # It took three rounds and settled all five cards it existed for — the
+      # reasons are in NOT_IN_SOURCE and the citations are in
+      # scripts/sa-agency-probe.py, which is kept as the re-check. With no
+      # question left to ask it was 45 s of log nobody reads, so it is a
+      # by-hand script now, the same treatment as check-company-live.ts:
+      #
+      #     python3 scripts/sa-agency-probe.py
+      #
+      # One of its six documents still needs a runner — safework.sa.gov.au 403s
+      # the authoring sandbox — so if that probe alone prints a refusal, that is
+      # the expected result rather than a stale citation.
+
       # New South Wales publishes no downloadable workforce profile any more —
       # the PSC page carries none even rendered. Its Local Health Districts
       # carry two thirds of the jurisdiction's live ads, and a health annual
       # report's appendix is where staff numbers by organisation usually sit.
-      # TEN SOUTH AUSTRALIAN CARDS ARE BLANK AND EVERY ANSWER IS ON A HOST THIS
-      # REPO'S AUTHORING SANDBOX CANNOT REACH. Measured 2026-09-29 with a warmed
-      # browser — the fallback that clears the Northern Territory and Tasmania —
-      # publicsector.sa.gov.au, agd.sa.gov.au and safework.sa.gov.au all stayed
-      # behind the same Cloudflare challenge at ~28.8 KB, and 180 seconds was
-      # already shown not to help on the equivalent NSW hosts. It is the exit IP.
       #
-      # The runner is the other side of that, and the log is the channel — the
-      # same one that got South Australia's 98 source rows out of here. This asks
-      # WHO EMPLOYS each body rather than how many people it has, because these
-      # are statutory offices whose staff sit inside a department already filed.
-      #
-      # ROUND ONE (2026-09-29, run 36551128127) SETTLED FOUR AND PROVED THE
-      # CHANNEL: agd.sa.gov.au served 3.9 MB of PDF to the runner where this
-      # sandbox gets an interstitial. Round two asks the Attorney-General's
-      # report the employment question directly, with page numbers and context,
-      # and asks four hosts for their ROOT — round one's paths were guesses and
-      # four of them 404'd, which measured the guess rather than the site.
-      - name: Probe the remaining South Australian bodies
-        if: always()
-        continue-on-error: true
-        run: python scripts/sa-agency-probe.py
-
+      # THE FIRST SENTENCE NEEDS CORRECTING, 2026-09-29. There IS a downloadable
+      # file: psc.nsw.gov.au redirects into the Premier's Department on
+      # nsw.gov.au, which serves 2025-additional-workforce-profile-data.xlsx.
+      # What it does not carry is an AGENCY breakdown — 22 tables, by service,
+      # salary grade, age, region, LGA, tenure and gender, and by agency nowhere.
+      # So the conclusion holds and the reason for it was wrong; the note above
+      # AGENCY_REPORTS in gen-gov-workforce.py has the measurement.
       - name: Probe the NSW Health annual report appendix
         if: always()
         continue-on-error: true

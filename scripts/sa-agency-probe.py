@@ -1,55 +1,54 @@
 #!/usr/bin/env python3
-"""Who employs the staff of the remaining South Australian bodies? Run on a runner.
+"""Who employs the staff of the remaining South Australian bodies? CLOSED.
 
-    python3 scripts/sa-agency-probe.py            # all of them
+    python3 scripts/sa-agency-probe.py            # re-check every citation
     python3 scripts/sa-agency-probe.py agd        # one, by key
 
-WHY THIS IS A WORKFLOW STEP AND NOT A LOCAL SCRIPT. South Australian cards are
-blank and the answer to each is in a document the authoring sandbox cannot
-fetch. Measured 2026-09-29 with a WARMED BROWSER, which is the fallback that
-clears the Northern Territory and Tasmania:
+ALL FIVE CARDS THIS EXISTED FOR ARE SETTLED, 2026-09-29, and NOT_IN_SOURCE in
+gen-gov-workforce.py carries the reasons. This file is kept as the re-check: the
+documents below are the ones those reasons quote, so a run that stops matching
+is a run telling you a citation has gone stale.
+
+IT IS NOT IN gov-workforce.yml ANY MORE, because it has no question left to ask
+and 45 s of log nobody reads is not free. Run it by hand — same treatment as
+check-company-live.ts.
+
+── WHAT THE THREE ROUNDS COST AND WHAT EACH BOUGHT ─────────────────────────
+
+WHY A RUNNER AT ALL. Measured with a WARMED BROWSER, the fallback that clears
+the Northern Territory and Tasmania:
 
     publicsector.sa.gov.au   still challenged after 30 s   28,768 bytes
     agd.sa.gov.au            still challenged after 30 s   28,994 bytes
     safework.sa.gov.au       still challenged after 30 s   28,756 bytes
 
-One Cloudflare configuration, three hosts, and 180 seconds was already shown not
-to help on the equivalent NSW hosts. It is a property of the exit IP rather than
-of any of them, and gen-gov-workforce.py's `load_sa` already works on the runner.
-So the log is the channel, exactly as it was for South Australia's 98 source rows.
+One Cloudflare configuration, three hosts, and 180 s was already shown not to
+help on the equivalent NSW hosts. The runner reads all of them.
 
-WHAT IS BEING ASKED IS NOT "how many people". These are statutory offices whose
-staff, where any exist, are employed by a department that is ALREADY FILED — so
-the useful output is the sentence that says whose.
+ROUND ONE matched NAMES and proved the channel: agd.sa.gov.au served 3,965,128
+bytes of PDF. Every one of the five bodies is named in it, and a name is not an
+answer — "SafeWork SA prescribed fee 29 948 29 217" is a revenue line. It also
+settled two cards outright and killed two more from a direction nobody expected:
+mac.sa.gov.au and salotteries.com.au do not RESOLVE from a clean runner.
 
-── WHAT ROUND ONE MEASURED, 2026-09-29, run 36551128127 ─────────────────────
+ROUND TWO asked the employment question directly, with context and page numbers,
+and got AGD talking about its own staff — correctly and uselessly. Its real
+value was negative: four of round one's five paths had 404'd, which measured my
+guesses, so round two asked each host for its ROOT and printed its report links.
+Every SA host serves the runner.
 
-THE RUNNER READS agd.sa.gov.au FINE: HTTP 200, 3,965,128 bytes of PDF where this
-sandbox gets an interstitial. That settles the channel question for every SA
-host below and is the reason this file is worth a second round rather than a
-refusal.
+ROUND THREE STOPPED MATCHING AND STARTED READING. `pages` dumps a range whole,
+and AGD p9 turned out to carry a list no pattern would have been written for —
+"The following areas of AGD submit their own annual reports", nine names, one of
+them the Employment Tribunal. That one line settled SAET. SafeWork SA fell to a
+sentence on its own site ("SafeWork SA is a branch of the Attorney General's
+Department"), and the other three to one paragraph each in their own reports,
+all of which this sandbox can fetch directly — they are WordPress hosts, not the
+challenged *.sa.gov.au ones.
 
-TWO CARDS WERE SETTLED BY IT AND ARE GONE FROM PROBES:
-
-  landscape  landscape.sa.gov.au is titled "Landscape Boards SA" and says
-             "There are nine landscape boards across South Australia" — the
-             eight regional boards plus Green Adelaide. It is the boards'
-             shared site, not a body with its own staff.
-  hydrogen   energymining.sa.gov.au answered 200 and matched NOTHING, which is
-             consistent with the public record: the Office of Hydrogen Power
-             ceased to function in 2025 and its responsibilities went to the
-             Department for Energy and Mining.
-
-AND TWO DNS FAILURES THAT ARE EVIDENCE RATHER THAN NOISE. mac.sa.gov.au and
-salotteries.com.au both answered `Name or service not known` from a clean
-runner — not a 403, not a timeout, no such host. Both cards were already
-retired on the public record in the previous commit; a name that no longer
-resolves is the same finding arriving from a second direction.
-
-FOUR OF THE FIVE REMAINING BODIES 404'd ON A GUESSED PATH, which is a
-measurement of my guess and not of the site. Round two asks for each host's
-ROOT and prints its annual-report links, so round three can name the document
-instead of guessing it.
+THE LESSON IS THE SHAPE OF ROUND THREE. A pattern written in advance can only
+find an answer phrased the way you already expected. When the question is "what
+is this body", the sentence that answers it is in a section you have to read.
 """
 import io
 import re
@@ -80,59 +79,51 @@ COUNT = [r'(?i)(?:head ?count|full.time equivalent|\bFTE\b)[^.]{0,60}\d',
          r'(?i)\b\d[\d,]{1,5}\b[^.]{0,40}(?:staff|employees|people)\b']
 
 PROBES = {
-    # ── ROUND THREE. Round two answered the "where is the document" question for
-    # every host and answered the employment question for none of them, so this
-    # round follows the links round two printed.
+    # THE FIVE CITATIONS, one per settled card. Each `proof` pattern is the
+    # sentence the reason in NOT_IN_SOURCE quotes, so a probe that prints nothing
+    # is a citation that has gone stale rather than a body that has changed.
     #
-    # WHAT ROUND TWO ACTUALLY SETTLED, and it is not nothing: all six hosts serve
-    # this runner (200 at 331,760 / 41,016 / 144,101 / 286,947 / 184,081 bytes,
-    # and the AGD PDF again at 3,965,128), so nothing below is a reachability
-    # question any more. Each of the four statutory offices links its own annual
-    # reports and SafeWork SA publishes an Annual Activity Report as a set of web
-    # pages — one of them titled "Developing our people".
-    #
-    # AND THE AGD REPORT DOES NOT CARRY THE ANSWER IN PROSE. Read with context
-    # and page numbers it says its own employees "are employed under Part 7 of
-    # the Public Sector Act 2009" and that it "is an administrative unit acting
-    # on behalf of the Crown" — about itself, twice, in the financial statements.
-    # The one sentence about an attached office is about a body that is NOT one
-    # of the five: p9, "The Office of the Commissioner for Public Sector
-    # Employment (OCPSE) became an attached office to the Department of the
-    # Premier and Cabinet (DPC) effective from 1 July 2024". That is a machinery
-    # change in a list of machinery changes, so the list itself is worth reading
-    # whole rather than one matched line at a time — hence `pages`.
+    # AGD p9's list is what settled the Employment Tribunal, and it is asked for
+    # as a PAGE RANGE rather than a pattern on purpose — see the note at the top.
     'agd-structure': dict(
         url='https://www.agd.sa.gov.au/__data/assets/pdf_file/0005/1200686/'
             'Final-Annual-Report-2024-25.pdf',
-        pages=(8, 13), pats=[]),
-    # The four statutory offices' own annual-report LISTINGS, so round four can
-    # name a document. Each was printed by round two as the one report-ish link
-    # on the site's root.
-    'gcyp-list': dict(url='https://gcyp.sa.gov.au/resource-type/annual-reports/',
-                      links=True, pats=WHO + COUNT),
-    'ccyp-list': dict(url='https://www.ccyp.com.au/agendas-reports/',
-                      links=True, pats=WHO + COUNT),
-    'cdsirc-list': dict(url='https://cdsirc.sa.gov.au/annual-reports/',
-                        links=True, pats=WHO + COUNT),
-    # SafeWork SA's Annual Activity Report is a set of PAGES, not a PDF, and one
-    # of them is about its staff. Both are asked because "Who we are" is where an
-    # employment arrangement would be stated and "Developing our people" is where
-    # a number would be.
+        pages=(9, 9), pats=[]),
+    # "SafeWork SA is a branch of the Attorney General's Department."
+    # THE ONLY ONE OF THE SIX THAT STILL NEEDS THE RUNNER: safework.sa.gov.au
+    # answers 403 to this sandbox. The other five are WordPress or plain hosts
+    # and read fine from here, which is itself worth knowing — the Cloudflare
+    # configuration is on the *.sa.gov.au government hosts, not on the statutory
+    # offices' own sites.
     'safework-who': dict(
         url='https://www.safework.sa.gov.au/about-us/annual-activity-report/who-we-are',
-        links=True, pats=WHO + COUNT),
-    'safework-people': dict(
-        url='https://www.safework.sa.gov.au/about-us/annual-activity-report/'
-            'developing-our-people',
-        links=True, pats=WHO + COUNT),
-    # THE TRIBUNAL'S ROOT HAD NO LINKS AT ALL — 41,016 bytes and eighty lines,
-    # which is what a JavaScript shell looks like from a plain fetch. So this
-    # asks two paths that would exist if it publishes at all, and a 404 from
-    # both is then a measurement of the site rather than of my guess.
-    'saet-annual': dict(url='https://www.saet.sa.gov.au/annual-reports/',
-                        links=True, pats=WHO + COUNT),
-    'saet-about': dict(url='https://www.saet.sa.gov.au/about-saet/',
-                       links=True, pats=WHO + COUNT),
+        ctx=1, pats=[r'(?i)branch of the Attorney'] + COUNT),  # runner only
+    # "Staff assigned to SAET pursuant to s 74 of the SAET Act." — and no count.
+    'saet-report': dict(
+        url='https://www.saet.sa.gov.au/app/uploads/2025/11/'
+            'Annual_Report_2024-2025_SAET-FINAL.pdf',
+        ctx=1, pats=[r'(?i)Staff assigned to SAET'] + COUNT),
+    # "…funded and supported by the Government of South Australia through the
+    # Department for Education", in both of these, almost word for word.
+    'ccyp-report': dict(
+        url='https://www.ccyp.com.au/wp-content/uploads/2024/11/'
+            '202409-Annual-Report-2023-24_FINAL.pdf',
+        ctx=2, pats=[r'(?i)through the Department for Education',
+                     r'(?i)Service Level Agreement'] + COUNT),
+    'gcyp-report': dict(
+        url='https://gcyp.sa.gov.au/wp-content/uploads/2024/04/'
+            'GYCP_TCV_CYPV_YTOV_Annual-Report-2023-24.pdf',
+        ctx=2, pats=[r'(?i)administratively funded and supported'] + COUNT),
+    # The strongest of the three: HUMAN RESOURCE management, not just funding.
+    # THE PATTERN STOPS AT "management" BECAUSE THE LINE DOES: the sentence
+    # wraps as "Financial and human resource management" / "support is provided
+    # by the Department for Education", and a pattern spanning the break matched
+    # nothing while the sentence was sitting right there. Same trap as `after`
+    # needing to match a WORD and a LINE in gen-gov-workforce.py.
+    'cdsirc-report': dict(
+        url='https://cdsirc.sa.gov.au/wp-content/uploads/2024/11/'
+            'CDSIRC-Annual-Report-2023-24.pdf',
+        ctx=2, pats=[r'(?i)human resource management'] + COUNT),
 }
 
 
