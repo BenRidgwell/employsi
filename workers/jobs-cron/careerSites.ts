@@ -11472,6 +11472,1789 @@ export const SITES: SiteDef[] = [
       ["coppell, united states", "dallas"],
     ],
   },
+  // ── The 2026-09-29 third batch — scraper-gap ranks 81-120 ──────────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge. Northrop Grumman and Nike were unreadable until the
+  // fetchWorkday wrap fix of the same day (see WORKDAY STATES `total` ...).
+  // BP — BP - measured 2026-09-29. Workday tenant bpinternational/wd3, site bpCareers. The
+  // board states total 325 and the fetcher collects 324: the missing one is a stub posting with
+  // no title or externalPath (bulletFields ['RQ116152'] only), which fetchWorkday skips as it
+  // should. Two runs gave 324 both times, with every url unique. The whole board is one walk of
+  // about 20s (17 pages at about 1.2s each), so it is split into two windows: a = pageFrom 0,
+  // maxPages 9, 179 rows in 10.8s / 10.5s; b = pageFrom 9, maxPages 12, 145 rows in 10.8s /
+  // 10.0s. Window b has headroom up to 420 roles. This is a GLOBAL board (Pune 43, Budapest 31,
+  // Kuala Lumpur 48), and the roster company is BP plc, so no country facet is applied.
+  // Locations read 'Country - State - City' or 'XX: Site'. TRAPS: (1) homeHub london plus
+  // HOME_COUNTRY london would put EVERY 'United Kingdom - <town>' row on London, including
+  // Milton Keynes (2 today) and any future Aberdeen role. So London and Sunbury (BP's Sunbury-
+  // on-Thames campus, inside the London built-up area, 5 roles) are named explicitly, and every
+  // other 'united kingdom - ' / 'uk: ' row resolves to null. (2) 'United States of America -
+  // New York - Youngstown / Oakfield / Seneca Falls' (1 each, all upstate) were going to
+  // newyork: the guard sends them to null and keeps New York City. (3) 'Washington - Graham'
+  // (Pierce County, in the Seattle-Tacoma-Bellevue MSA) was going to Washington DC, so it goes
+  // to seattle and any other WA-state row goes to null. Kwinana (6) is Perth metro and
+  // Docklands (1) is Melbourne; HUB_MATCH has no needle for either. Unplaced: 'N Locations'
+  // multi-site placeholders (about 37), plus Pune, Budapest, Lingen, Jakarta and other cities
+  // with no hub. One blank location falls to london.
+  {
+    id: "london-bp",
+    name: "BP",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint:
+      "https://bpinternational.wd3.myworkdayjobs.com/wday/cxs/bpinternational/bpCareers/jobs",
+    origin: "https://bpinternational.wd3.myworkdayjobs.com/en-US/bpCareers",
+    homeHub: "london",
+    hubHints: [
+      ["united kingdom - london", "london"],
+      ["united kingdom - sunbury", "london"],
+      ["united kingdom - ", null],
+      ["uk: london", "london"],
+      ["uk: ", null],
+      ["united states of america - new york - new york", "newyork"],
+      ["united states of america - new york - ", null],
+      ["united states of america - washington - graham", "seattle"],
+      ["united states of america - washington - ", null],
+      ["australia - kwinana", "perth"],
+      ["australia - docklands", "melbourne"],
+    ],
+    key: "london-bp-a",
+    pageFrom: 0,
+    maxPages: 9,
+  },
+  {
+    id: "london-bp",
+    name: "BP",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint:
+      "https://bpinternational.wd3.myworkdayjobs.com/wday/cxs/bpinternational/bpCareers/jobs",
+    origin: "https://bpinternational.wd3.myworkdayjobs.com/en-US/bpCareers",
+    homeHub: "london",
+    hubHints: [
+      ["united kingdom - london", "london"],
+      ["united kingdom - sunbury", "london"],
+      ["united kingdom - ", null],
+      ["uk: london", "london"],
+      ["uk: ", null],
+      ["united states of america - new york - new york", "newyork"],
+      ["united states of america - new york - ", null],
+      ["united states of america - washington - graham", "seattle"],
+      ["united states of america - washington - ", null],
+      ["australia - kwinana", "perth"],
+      ["australia - docklands", "melbourne"],
+    ],
+    key: "london-bp-b",
+    pageFrom: 9,
+    maxPages: 12,
+  },
+  // Air Liquide — Air Liquide - measured 2026-09-29. Workday tenant airliquidehr/wd3, site
+  // AirLiquideExternalCareer. The board states total 1082 and the fetcher collects 1081, every
+  // url unique: one posting has no title (a null-title stub), which fetchWorkday skips. The
+  // board is GLOBAL, and the roster company is the Paris-listed group, so no facet is applied.
+  // The whole board is 55 pages at about 1.05s each, about 58s in one walk. Three windows of 19
+  // pages measured 19-22s each, which is too close to the limit, so it is split into four: a
+  // 0/14, b 14/14, c 28/14, d 42/20 (d has headroom up to 1240 roles). Locations mix 'Country,
+  // City' ('France, Bagneux') with North American 'City, ST - site - unit'. hubHints: 15 Île-
+  // de-France communes go to paris, the same fold the Thales entries use (Bagneux 28,
+  // Charenton-le-Pont 9, Les Loges-en-Josas 8, Nanterre 6, Antony 5, Saint-Pierre-du-Perray 3,
+  // and 1-2 each for Clamart, La Garenne-Colombes, Rungis, Villepinte, Vitry, Bobigny, Les
+  // Mureaux, Saint-Ouen-l'Aumône and Roissy). 'Japan, Minao-ku' (13) is the board's misspelling
+  // of Minato-ku, Tokyo: Air Liquide Japan's head office is in Shibaura, Minato-ku. Fremont CA
+  // (13, Alameda County) goes to sanfrancisco. Santa Ana (2) and El Segundo (1) go to
+  // losangeles. Pasadena TX (7) and Bayport TX (3), both Harris County, go to houston.
+  // Mississauga (4) and Ajax (1) go to toronto. Varennes (7) and Boucherville (1) go to
+  // montreal. The 12 Australian rows read 'Australia, <SUBURB>' with no state, and HOME_COUNTRY
+  // paris cannot catch them, so each is named: Bondi Junction, Hornsby and Mascot go to sydney;
+  // Sunshine North goes to melbourne; Elizabeth, Morphett Vale and Unley go to adelaide. Ormeau
+  // and West Burleigh (Gold Coast), Mackay, and 'Fairfield (AUS)' (it could be NSW or VIC) are
+  // left unplaced. Roughly 790 rows are left unplaced, and that is correct: they are regional
+  // France, Japan outside Tokyo, 'N Locations', and so on.
+  {
+    id: "paris-ai",
+    name: "Air Liquide",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint:
+      "https://airliquidehr.wd3.myworkdayjobs.com/wday/cxs/airliquidehr/AirLiquideExternalCareer/jobs",
+    origin: "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirLiquideExternalCareer",
+    homeHub: "paris",
+    hubHints: [
+      ["bagneux", "paris"],
+      ["nanterre", "paris"],
+      ["france, antony", "paris"],
+      ["loges-en-josas", "paris"],
+      ["charenton-le-pont", "paris"],
+      ["france, clamart", "paris"],
+      ["garenne-colombes", "paris"],
+      ["france, rungis", "paris"],
+      ["france, villepinte", "paris"],
+      ["vitry sur seine", "paris"],
+      ["france, bobigny", "paris"],
+      ["france, les mureaux", "paris"],
+      ["saint-ouen-l'aumône", "paris"],
+      ["saint-pierre du perray", "paris"],
+      ["roissy-en-france", "paris"],
+      ["japan, minao-ku", "tokyo"],
+      ["fremont, ca", "sanfrancisco"],
+      ["santa ana, ca", "losangeles"],
+      ["el segundo, ca", "losangeles"],
+      ["pasadena, tx", "houston"],
+      ["bayport, tx", "houston"],
+      ["mississauga, on", "toronto"],
+      ["ajax, on", "toronto"],
+      ["boucherville, qc", "montreal"],
+      ["varennes, qc", "montreal"],
+      ["australia, bondi junction", "sydney"],
+      ["australia, hornsby", "sydney"],
+      ["australia, mascot", "sydney"],
+      ["australia, sunshine north", "melbourne"],
+      ["australia, elizabeth", "adelaide"],
+      ["australia, morphett vale", "adelaide"],
+      ["australia, unley", "adelaide"],
+    ],
+    key: "paris-ai-a",
+    pageFrom: 0,
+    maxPages: 14,
+  },
+  {
+    id: "paris-ai",
+    name: "Air Liquide",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint:
+      "https://airliquidehr.wd3.myworkdayjobs.com/wday/cxs/airliquidehr/AirLiquideExternalCareer/jobs",
+    origin: "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirLiquideExternalCareer",
+    homeHub: "paris",
+    hubHints: [
+      ["bagneux", "paris"],
+      ["nanterre", "paris"],
+      ["france, antony", "paris"],
+      ["loges-en-josas", "paris"],
+      ["charenton-le-pont", "paris"],
+      ["france, clamart", "paris"],
+      ["garenne-colombes", "paris"],
+      ["france, rungis", "paris"],
+      ["france, villepinte", "paris"],
+      ["vitry sur seine", "paris"],
+      ["france, bobigny", "paris"],
+      ["france, les mureaux", "paris"],
+      ["saint-ouen-l'aumône", "paris"],
+      ["saint-pierre du perray", "paris"],
+      ["roissy-en-france", "paris"],
+      ["japan, minao-ku", "tokyo"],
+      ["fremont, ca", "sanfrancisco"],
+      ["santa ana, ca", "losangeles"],
+      ["el segundo, ca", "losangeles"],
+      ["pasadena, tx", "houston"],
+      ["bayport, tx", "houston"],
+      ["mississauga, on", "toronto"],
+      ["ajax, on", "toronto"],
+      ["boucherville, qc", "montreal"],
+      ["varennes, qc", "montreal"],
+      ["australia, bondi junction", "sydney"],
+      ["australia, hornsby", "sydney"],
+      ["australia, mascot", "sydney"],
+      ["australia, sunshine north", "melbourne"],
+      ["australia, elizabeth", "adelaide"],
+      ["australia, morphett vale", "adelaide"],
+      ["australia, unley", "adelaide"],
+    ],
+    key: "paris-ai-b",
+    pageFrom: 14,
+    maxPages: 14,
+  },
+  {
+    id: "paris-ai",
+    name: "Air Liquide",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint:
+      "https://airliquidehr.wd3.myworkdayjobs.com/wday/cxs/airliquidehr/AirLiquideExternalCareer/jobs",
+    origin: "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirLiquideExternalCareer",
+    homeHub: "paris",
+    hubHints: [
+      ["bagneux", "paris"],
+      ["nanterre", "paris"],
+      ["france, antony", "paris"],
+      ["loges-en-josas", "paris"],
+      ["charenton-le-pont", "paris"],
+      ["france, clamart", "paris"],
+      ["garenne-colombes", "paris"],
+      ["france, rungis", "paris"],
+      ["france, villepinte", "paris"],
+      ["vitry sur seine", "paris"],
+      ["france, bobigny", "paris"],
+      ["france, les mureaux", "paris"],
+      ["saint-ouen-l'aumône", "paris"],
+      ["saint-pierre du perray", "paris"],
+      ["roissy-en-france", "paris"],
+      ["japan, minao-ku", "tokyo"],
+      ["fremont, ca", "sanfrancisco"],
+      ["santa ana, ca", "losangeles"],
+      ["el segundo, ca", "losangeles"],
+      ["pasadena, tx", "houston"],
+      ["bayport, tx", "houston"],
+      ["mississauga, on", "toronto"],
+      ["ajax, on", "toronto"],
+      ["boucherville, qc", "montreal"],
+      ["varennes, qc", "montreal"],
+      ["australia, bondi junction", "sydney"],
+      ["australia, hornsby", "sydney"],
+      ["australia, mascot", "sydney"],
+      ["australia, sunshine north", "melbourne"],
+      ["australia, elizabeth", "adelaide"],
+      ["australia, morphett vale", "adelaide"],
+      ["australia, unley", "adelaide"],
+    ],
+    key: "paris-ai-c",
+    pageFrom: 28,
+    maxPages: 14,
+  },
+  {
+    id: "paris-ai",
+    name: "Air Liquide",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint:
+      "https://airliquidehr.wd3.myworkdayjobs.com/wday/cxs/airliquidehr/AirLiquideExternalCareer/jobs",
+    origin: "https://airliquidehr.wd3.myworkdayjobs.com/en-US/AirLiquideExternalCareer",
+    homeHub: "paris",
+    hubHints: [
+      ["bagneux", "paris"],
+      ["nanterre", "paris"],
+      ["france, antony", "paris"],
+      ["loges-en-josas", "paris"],
+      ["charenton-le-pont", "paris"],
+      ["france, clamart", "paris"],
+      ["garenne-colombes", "paris"],
+      ["france, rungis", "paris"],
+      ["france, villepinte", "paris"],
+      ["vitry sur seine", "paris"],
+      ["france, bobigny", "paris"],
+      ["france, les mureaux", "paris"],
+      ["saint-ouen-l'aumône", "paris"],
+      ["saint-pierre du perray", "paris"],
+      ["roissy-en-france", "paris"],
+      ["japan, minao-ku", "tokyo"],
+      ["fremont, ca", "sanfrancisco"],
+      ["santa ana, ca", "losangeles"],
+      ["el segundo, ca", "losangeles"],
+      ["pasadena, tx", "houston"],
+      ["bayport, tx", "houston"],
+      ["mississauga, on", "toronto"],
+      ["ajax, on", "toronto"],
+      ["boucherville, qc", "montreal"],
+      ["varennes, qc", "montreal"],
+      ["australia, bondi junction", "sydney"],
+      ["australia, hornsby", "sydney"],
+      ["australia, mascot", "sydney"],
+      ["australia, sunshine north", "melbourne"],
+      ["australia, elizabeth", "adelaide"],
+      ["australia, morphett vale", "adelaide"],
+      ["australia, unley", "adelaide"],
+    ],
+    key: "paris-ai-d",
+    pageFrom: 42,
+    maxPages: 20,
+  },
+  // 3M — 3M - measured 2026-09-29. Workday tenant 3m/wd1, site 'Search'. The board states total
+  // 690, and the fetcher collected 690 on every run with every url unique. The board is GLOBAL
+  // (US 334, India 111, Philippines 47, China 36 by its own Location_Country facet), and the
+  // roster company is 3M itself. The whole board is one walk of about 33s (35 pages), so it is
+  // split into two windows: a = pageFrom 0, maxPages 18, 360 rows in about 17-18s; b = pageFrom
+  // 18, maxPages 22, 330 rows in about 17s. Window b has headroom up to 800 roles. Locations
+  // read 'US, State, City'. hubHints: HQ Maplewood (93, Ramsey County), Cottage Grove (15),
+  // Oakdale (1) and Woodbury (2) (all three in Washington County MN), and Saint Paul (2) are
+  // all in the Minneapolis-St Paul MSA, and HUB_MATCH names none of them, so 113 roles go to
+  // minneapolis. The first measurement had 3M's own HQ entirely unplaced. Hutchinson, New Ulm,
+  // Red Wing and Alexandria MN are outside the MSA and are left alone. Clarkston GA (7, DeKalb
+  // County) goes to atlanta. Irvine CA (1) goes to losangeles. 'FR, Val-d'Oise, Cergy Pontoise
+  // Cedex' (3) goes to paris, the same fold Thales uses. TRAPS: 'US, New York, Tonawanda' (5,
+  // Buffalo) was going to newyork, so the guard keeps New York City and sends other NY-state
+  // rows to null. 'USA, WA, Spokane Valley' (1) was going to PERTH through ' wa,', so WA and
+  // Washington-state rows go to null after a Seattle entry. Corona CA (Riverside-San Bernardino
+  // MSA) is left unplaced. The remaining unplaced rows are 'N Locations' placeholders (about
+  // 72) and non-hub cities.
+  {
+    id: "minneapolis-mmm",
+    name: "3M",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://3m.wd1.myworkdayjobs.com/wday/cxs/3m/Search/jobs",
+    origin: "https://3m.wd1.myworkdayjobs.com/en-US/Search",
+    homeHub: "minneapolis",
+    hubHints: [
+      ["us, minnesota, maplewood", "minneapolis"],
+      ["us, minnesota, cottage grove", "minneapolis"],
+      ["us, minnesota, oakdale", "minneapolis"],
+      ["us, minnesota, woodbury", "minneapolis"],
+      ["us, minnesota, saint paul", "minneapolis"],
+      ["cergy", "paris"],
+      ["us, georgia, clarkston", "atlanta"],
+      ["us, california, irvine", "losangeles"],
+      ["us, new york, new york", "newyork"],
+      ["us, new york, ", null],
+      ["us, washington, seattle", "seattle"],
+      ["us, washington, ", null],
+      ["usa, wa, seattle", "seattle"],
+      ["usa, wa, ", null],
+    ],
+    key: "minneapolis-mmm-a",
+    pageFrom: 0,
+    maxPages: 18,
+  },
+  {
+    id: "minneapolis-mmm",
+    name: "3M",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://3m.wd1.myworkdayjobs.com/wday/cxs/3m/Search/jobs",
+    origin: "https://3m.wd1.myworkdayjobs.com/en-US/Search",
+    homeHub: "minneapolis",
+    hubHints: [
+      ["us, minnesota, maplewood", "minneapolis"],
+      ["us, minnesota, cottage grove", "minneapolis"],
+      ["us, minnesota, oakdale", "minneapolis"],
+      ["us, minnesota, woodbury", "minneapolis"],
+      ["us, minnesota, saint paul", "minneapolis"],
+      ["cergy", "paris"],
+      ["us, georgia, clarkston", "atlanta"],
+      ["us, california, irvine", "losangeles"],
+      ["us, new york, new york", "newyork"],
+      ["us, new york, ", null],
+      ["us, washington, seattle", "seattle"],
+      ["us, washington, ", null],
+      ["usa, wa, seattle", "seattle"],
+      ["usa, wa, ", null],
+    ],
+    key: "minneapolis-mmm-b",
+    pageFrom: 18,
+    maxPages: 22,
+  },
+  // Northrop Grumman — Northrop Grumman - measured 2026-09-29. Workday tenant ngc/wd1, site
+  // Northrop_Grumman_External_Site, total 3766. It is BLOCKED BY THE CURRENT fetchWorkday, not
+  // by the board. This tenant reports `total` on EVERY page (offset 20 -> total 3766, offset 40
+  // -> 3766), and past the end it returns an empty jobPostings array (offset 3780 and 5000 -> 0
+  // rows) rather than wrapping to page 0. fetchWorkday treats 'a total at a non-zero offset' as
+  // the wrapped page 0, a rule written for Citigroup and Manulife. So it breaks after page 1:
+  // 20 of 3766. Every pageFrom>0 window breaks on its first page and returns 0. Suggested fix:
+  // detect a wrap by comparing the page's first externalPath with page 0's, or by seeing a path
+  // already in `seen`, instead of by the presence of `total`. Pagination is otherwise stable:
+  // identical offset-0 requests returned the same ids, and two full walks gave 3766 of 3766
+  // unique. The proposed siteDef is 8 windows of 25 pages (the last is 35, allowing up to 4,000
+  // roles), each about 17s sequential. TRAPS in the current HUB_MATCH, fixed by the hints:
+  // 'United States-Florida-Melbourne' (340, NG's Melbourne FL site) goes to MELBOURNE AU;
+  // 'Virginia-Charlottesville' (9) goes to charlotte; 'New York-Buffalo' (20) and 'New York-
+  // Rome' (4) go to newyork (Bethpage and Ronkonkoma are Long Island, NYC MSA, and are kept);
+  // 'Washington-Oak Harbor' (3) and 'Washington-Silverdale' (2) go to Washington DC. Metro
+  // folds, by CBSA county: the Washington MSA takes Dulles 75, Falls Church 15, Chantilly 14,
+  // McLean 12, Sterling 7, Stafford 3, Fairfax 2 and Arlington 1. LA County takes Redondo Beach
+  // 159, Palmdale 114, Woodland Hills 69, El Segundo 46, Northridge 44, Manhattan Beach 25,
+  // Commerce 10 and Azusa 10. Sunnyvale 111 goes to sanjose. Rolling Meadows 96 goes to
+  // chicago. Aurora CO 40 goes to denver. Plymouth 33 and Elk River 5 go to minneapolis. Irving
+  // 5 goes to dallas. Bellevue NE 7 goes to omaha. New Malden 12 (Royal Borough of Kingston,
+  // Greater London) goes to london. Australia: Amberley 6 and Fortitude Valley 3 go to
+  // brisbane, and Edinburgh Parks 4 goes to adelaide. DELIBERATELY UNPLACED: the Baltimore MSA
+  // (Baltimore 214, Linthicum 81, Annapolis 36, Elkridge 19, Sykesville 23, Annapolis Junction
+  // 11). It is in the Washington-Baltimore CSA but is its own MSA, so it would be a policy
+  // change to fold it onto DC. Also unplaced: Roy UT 357, Palmdale's Edwards AFB, Oxnard and
+  // Ventura, Huntsville, and 'N Locations' (about 380).
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-a",
+    pageFrom: 0,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-b",
+    pageFrom: 25,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-c",
+    pageFrom: 50,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-d",
+    pageFrom: 75,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-e",
+    pageFrom: 100,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-f",
+    pageFrom: 125,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-g",
+    pageFrom: 150,
+    maxPages: 25,
+  },
+  {
+    id: "washington-noc",
+    name: "Northrop Grumman",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ngc.wd1.myworkdayjobs.com/wday/cxs/ngc/Northrop_Grumman_External_Site/jobs",
+    origin: "https://ngc.wd1.myworkdayjobs.com/en-US/Northrop_Grumman_External_Site",
+    homeHub: "washington",
+    hubHints: [
+      ["united states-florida-melbourne", null],
+      ["united states-virginia-charlottesville", null],
+      ["united states-washington-", null],
+      ["united states-new york-new york", "newyork"],
+      ["united states-new york-bethpage", "newyork"],
+      ["united states-new york-ronkonkoma", "newyork"],
+      ["united states-new york-", null],
+      ["united states-virginia-dulles", "washington"],
+      ["united states-virginia-falls church", "washington"],
+      ["united states-virginia-chantilly", "washington"],
+      ["united states-virginia-mclean", "washington"],
+      ["united states-virginia-sterling", "washington"],
+      ["united states-virginia-fairfax", "washington"],
+      ["united states-virginia-arlington", "washington"],
+      ["united states-virginia-stafford", "washington"],
+      ["united states-california-palmdale", "losangeles"],
+      ["united states-california-redondo beach", "losangeles"],
+      ["united states-california-woodland hills", "losangeles"],
+      ["united states-california-el segundo", "losangeles"],
+      ["united states-california-northridge", "losangeles"],
+      ["united states-california-manhattan beach", "losangeles"],
+      ["united states-california-commerce", "losangeles"],
+      ["united states-california-azusa", "losangeles"],
+      ["united states-california-sunnyvale", "sanjose"],
+      ["united states-illinois-rolling meadows", "chicago"],
+      ["united states-colorado-aurora", "denver"],
+      ["united states-minnesota-plymouth", "minneapolis"],
+      ["united states-minnesota-elk river", "minneapolis"],
+      ["united states-texas-irving", "dallas"],
+      ["united states-nebraska-bellevue", "omaha"],
+      ["united kingdom-new malden", "london"],
+      ["australia-amberley", "brisbane"],
+      ["australia-fortitude valley", "brisbane"],
+      ["australia-edinburgh parks", "adelaide"],
+    ],
+    key: "washington-noc-h",
+    pageFrom: 175,
+    maxPages: 35,
+  },
+  // Procter & Gamble — 2026-09-29: P&G's own board. pgcareers.com is Phenom, but its apply
+  // links all go to the Workday tenant `pg` on wd5, site `1000`, which is the board itself and
+  // is GLOBAL: total 809 (the Phenom global site says 840, the Phenom US site 231). Phenom is
+  // NOT used because fetchPhenom's widget call hard-codes country 'us' and so reads only the
+  // 231 US roles whatever endpoint it is given. Unfiltered walk of all 809 took 45.4s, over the
+  // ~50s cancel line, so it is split into three pageFrom windows: 0+14 (280 rows, 16.0s), 14+14
+  // (280, 15.9s), 28+20 (249, 15.8s; maxPages 20 is headroom, fetchWorkday stops at the board
+  // total). Union of the three windows = 809 unique externalPaths = the board total, run twice
+  // with identical counts, so the default order is stable across windows. locationsText is a
+  // P&G SITE NAME, not an address ('CINCINNATI GENERAL OFFICES', 'MANILA NET PARK OFFICE',
+  // 'WARSAW PLANT & GO'), or 'N Locations' for multi-site roles (~70 rows, unplaced). hubHints
+  // are the Cincinnati-MSA sites the global table cannot name: MASON BUS AND INNOVATION CTR 26
+  // + bare 'Mason' 2 (Mason OH, Warren County; job detail says United States), WHBC - WINTON
+  // HILL BUS CENTER 5, IVORYDALE INNOVATION CENTER 3, BECKETT RIDGE INNOVATION CTR 2 (West
+  // Chester OH). 'SAN JOSE INTELLIGENCE HUB' (2) is San Jose, COSTA RICA — measured on the
+  // job's own jobPostingInfo.country — so it is nulled rather than left to HUB_MATCH's 'san
+  // jose' (California). 'San José' (4, accented, also Costa Rica) already falls through
+  // unplaced. 'Reading'/'READING PLANT' are Reading UK (detail: United Kingdom) and stay
+  // unplaced; 'LONDON PLANT-W THURROCK' (2) resolves to london. Dayton (DYMC), Lima OH,
+  // Greensboro, Mehoopany etc. are their own metros and stay unplaced. With hints: cincinnati
+  // 113 of 809, unplaced 538 (mostly Europe/LatAm/other-Asia sites with no hub).
+  {
+    id: "cincinnati-pg",
+    name: "Procter & Gamble",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+    origin: "https://pg.wd5.myworkdayjobs.com/1000",
+    homeHub: "cincinnati",
+    hubHints: [
+      ["mason bus and innovation ctr", "cincinnati"],
+      [" mason,", "cincinnati"],
+      ["winton hill", "cincinnati"],
+      ["ivorydale", "cincinnati"],
+      ["beckett ridge", "cincinnati"],
+      ["san jose intelligence hub", null],
+    ],
+    key: "cincinnati-pg-a",
+    pageFrom: 0,
+    maxPages: 14,
+  },
+  {
+    id: "cincinnati-pg",
+    name: "Procter & Gamble",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+    origin: "https://pg.wd5.myworkdayjobs.com/1000",
+    homeHub: "cincinnati",
+    hubHints: [
+      ["mason bus and innovation ctr", "cincinnati"],
+      [" mason,", "cincinnati"],
+      ["winton hill", "cincinnati"],
+      ["ivorydale", "cincinnati"],
+      ["beckett ridge", "cincinnati"],
+      ["san jose intelligence hub", null],
+    ],
+    key: "cincinnati-pg-b",
+    pageFrom: 14,
+    maxPages: 14,
+  },
+  {
+    id: "cincinnati-pg",
+    name: "Procter & Gamble",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://pg.wd5.myworkdayjobs.com/wday/cxs/pg/1000/jobs",
+    origin: "https://pg.wd5.myworkdayjobs.com/1000",
+    homeHub: "cincinnati",
+    hubHints: [
+      ["mason bus and innovation ctr", "cincinnati"],
+      [" mason,", "cincinnati"],
+      ["winton hill", "cincinnati"],
+      ["ivorydale", "cincinnati"],
+      ["beckett ridge", "cincinnati"],
+      ["san jose intelligence hub", null],
+    ],
+    key: "cincinnati-pg-c",
+    pageFrom: 28,
+    maxPages: 20,
+  },
+  // Halliburton — 2026-09-29: jobs.halliburton.com is Halliburton's SuccessFactors RMK site
+  // (company HALprod; careers.halliburton.com links to it). Server-rendered table theme, 25 a
+  // page, the page itself says 'of 456'; the reader collected 456 unique in 5.9-7.4s on three
+  // runs. Global board. Locations are 'City, region, CC, postcode'. TRAP: Saudi Arabia writes
+  // 'Al-Khobar, 04, SA, 31952' — 38 rows that HUB_MATCH's ' sa,' filed on ADELAIDE. Hints: '
+  // sa, au' -> adelaide first (keeps 'Moomba, SA, AU, 5000', 2 rows, the Santos field in South
+  // Australia), then ', sa,' -> null for every other SA country code. 'Dubai, PM, SR' (4) is in
+  // SURINAME per the board's own country code (PM = Paramaribo district) — nulled rather than
+  // filed on Dubai. Same-metro hints: Conroe TX 2 and Spring TX 1 (Houston MSA), 'TX, US,
+  // 77032' 1 (a Houston ZIP with no city), Alvarado TX 5 (Johnson County, Dallas-Fort Worth
+  // MSA). Perth, WA, AU 2 is genuinely Perth. Odessa/Monahans/Victoria TX, Duncan OK, Aberdeen,
+  // Basra etc. stay unplaced (no hub).
+  {
+    id: "houston-hal",
+    name: "Halliburton",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://jobs.halliburton.com",
+    origin: "https://jobs.halliburton.com",
+    homeHub: "houston",
+    hubHints: [
+      [" sa, au", "adelaide"],
+      [", sa,", null],
+      ["dubai, pm, sr", null],
+      ["conroe, tx", "houston"],
+      ["spring, tx", "houston"],
+      ["tx, us, 77032", "houston"],
+      ["alvarado, tx", "dallas"],
+    ],
+  },
+  // Orora — 2026-09-29: ororagroup.com/careers links to jobs.ororagroup.com (SuccessFactors
+  // RMK, table theme). The earlier plain sweep missed it because ororagroup.com 403s a bare
+  // 'Mozilla/5.0' UA; a full browser UA gets the page. The board says 'of 6' at locales en_GB,
+  // en_US and fr_FR alike; reader collected 6 twice in ~1s. Locations 'City, ST, AU, postcode'
+  // place cleanly (Adelaide 2 = Gawler glass, Melbourne 2, Brisbane 1, Perth 1). Small against
+  // Orora's SEEK volume, but it is the employer's own board and its count is its own.
+  {
+    id: "melbourne-ora",
+    name: "Orora",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://jobs.ororagroup.com",
+    origin: "https://jobs.ororagroup.com",
+    homeHub: "melbourne",
+  },
+  // MPC Kinetic — 2026-09-29: ELMO tenant mpckinetic, board 'mpckinetic' (named in MPC
+  // Kinetic's own hiring posts; mpckinetic.com.au itself does not answer the sandbox — TLS
+  // reset). Page says '9 jobs'; reader collected 9 twice, ~2.5s. Locations: Toowoomba 3 (bare,
+  // no state), Surat Basin QLD 2, Brisbane 2, Glenden QLD 1, Roma QLD 1. hubHints toowoomba ->
+  // brisbane (3), the same regional-Queensland-to-Brisbane rule HUB_MATCH applies to Townsville
+  // and Gladstone; without it those 3 were unplaced. No assumeHomeHub: the company works in
+  // other states too. No 'general application' posts on the board.
+  {
+    id: "priv-mpc-kinetic",
+    name: "MPC Kinetic",
+    sector: "Energy services",
+    platform: "elmo",
+    endpoint: "https://mpckinetic.elmotalent.com.au/careers/mpckinetic/jobs",
+    origin: "https://mpckinetic.elmotalent.com.au",
+    homeHub: "brisbane",
+    hubHints: [["toowoomba", "brisbane"]],
+  },
+  // American Express — 2026-09-29: careers.americanexpress.com/en/sites/CX_1 is Oracle
+  // Recruiting Cloud; the vanity host 302s the REST API away, so the endpoint is the pod host
+  // it names, egug.fa.us2.oraclecloud.com, site CX_1. TotalJobsCount 501; reader collected 501
+  // unique in 16.6s then 11.7s twice. GLOBAL board filed under the New York company, the
+  // Motorola/Aon pattern: New York 143, Phoenix 82 (no hub, unplaced), Gurugram 42, Sunrise FL
+  // 25, Manila (Taguig) 20, London 20, Bengaluru 18, Charlotte 16, Tokyo 13, Atlanta 11 ... No
+  // oracleLocationFacet: the roster company is AmEx itself, and non-hub places fall to null (no
+  // HOME_COUNTRY for newyork), so nothing is misplaced. hubHints: Palo Alto CA 4 and Sunnyvale
+  // CA 3 -> sanjose (Santa Clara County, the Google hints' rule). 'Seattle, WA' resolves to
+  // seattle before ' wa,'. Brighton/Burgess Hill (Sussex) stay unplaced. Job links are
+  // <origin>/job/<Id>, 200.
+  {
+    id: "newyork-axp",
+    name: "American Express",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://egug.fa.us2.oraclecloud.com",
+    origin: "https://careers.americanexpress.com/en/sites/CX_1",
+    homeHub: "newyork",
+    siteNumber: "CX_1",
+    hubHints: [
+      ["palo alto, ca", "sanjose"],
+      ["sunnyvale, ca", "sanjose"],
+    ],
+  },
+  // Hitachi — Measured 2026-09-29. Workday hitachi.wd1 site 'hitachi' is the Hitachi GROUP
+  // board (job pages name the legal entity, e.g. 'Hitachi Rail GTS Egypt LLC');
+  // careers.hitachi.com (linked from hitachi.com/en/careers) answers 403 to a script, the
+  // Workday tenant is its source. WORKDAY CAPS `total` AT 2000 AND WRAPS: offset 2000 returns
+  // page 0 again with total 2000, so an unfiltered walk can never read past 2,000 of this
+  // board. Real size from the facets: timeType Full 4148 + Part 57 = 4205. Partitioned by
+  // jobFamilyGroup into three appliedFacets sets, each under the cap and each filtered total
+  // checked against the facet counts: P1 Engineering & Science = 1552; P2 Sales/Marketing/PM +
+  // Production & Skilled Trades + IT/Telecom + Project/Program Mgmt + Supply Chain = 1725; P3
+  // the other 18 groups = 928. Sum 4205 (one posting drifted between the facet read and the
+  // filtered read). Each partition is then split into pageFrom/maxPages windows of 15 pages
+  // (last window of each 25, absorbing growth): 14 feeds, each 11.0-16.1s. Run 1: 4205 of 4205,
+  // 4205 unique urls. Run 2: 4204 (a live offset window shifted by one row; job_key dedupe
+  // absorbs duplicates, a role pushed across a boundary can be missed for a day). homeHub NULL:
+  // 11 postings carry an empty locationsText (e.g. 'Project Engineer- for XiDong Project', 'SAP
+  // SD 65430') and are not Tokyo roles - with homeHub tokyo they would all have plotted on
+  // Tokyo. 'Tokyo, Tokyo, Japan' (51) resolves via HUB_MATCH regardless. Japan is only ~88
+  // roles of this board (Hitachi's Japanese hiring runs elsewhere); Hitachi, Ibaraki (30) is
+  // 130 km from Tokyo and left unplaced. hubHints, each measured: 'south boston, virginia' ->
+  // null (45; was filed on boston), 'london, ontario' -> null (1), 'costa rica' -> null (1;
+  // 'San Jose, San Jose, Costa Rica' was on sanjose), 'remote - washington, united states' ->
+  // null (1; the state, was on DC), 'pittsburgh - philadelphia' -> null (2; names two metros);
+  // 'santa clara, california' -> sanjose (11), 'santa fe springs, california' -> losangeles
+  // (4), 'oakland, california' -> sanfrancisco (1), 'pleasanton, california' -> sanfrancisco
+  // (1; Alameda County), 'mississauga, ontario' -> toronto (5), 'reston, virginia' ->
+  // washington (1). 'N Locations' (~350) unplaced. This is 14 feeds and ~211 Workday requests a
+  // day - the largest in this batch; drop P3 or widen windows only with a fresh measurement.
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p1-1",
+    appliedFacets: { jobFamilyGroup: ["f02270ea9793013a95d20af29e50523d"] },
+    pageFrom: 0,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p1-2",
+    appliedFacets: { jobFamilyGroup: ["f02270ea9793013a95d20af29e50523d"] },
+    pageFrom: 15,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p1-3",
+    appliedFacets: { jobFamilyGroup: ["f02270ea9793013a95d20af29e50523d"] },
+    pageFrom: 30,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p1-4",
+    appliedFacets: { jobFamilyGroup: ["f02270ea9793013a95d20af29e50523d"] },
+    pageFrom: 45,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p1-5",
+    appliedFacets: { jobFamilyGroup: ["f02270ea9793013a95d20af29e50523d"] },
+    pageFrom: 60,
+    maxPages: 25,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-1",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 0,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-2",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 15,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-3",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 30,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-4",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 45,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-5",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 60,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p2-6",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea97930199e3b74ff29e506c3d",
+        "f02270ea97930193f8f83af29e50643d",
+        "f02270ea9793013aaaf32af29e505e3d",
+        "f02270ea9793015d9d4535f29e50623d",
+        "f02270ea9793017f4f534af29e506a3d",
+      ],
+    },
+    pageFrom: 75,
+    maxPages: 25,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p3-1",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea979301a5085e40f29e50663d",
+        "44d3f33caa03108ff296a30d59c657e4",
+        "f02270ea97930162fd7e10f29e50543d",
+        "44d3f33caa03108ff296aff95d6457ec",
+        "f02270ea979301ce104a30f29e50603d",
+        "f02270ea979301df728225f29e505c3d",
+        "f02270ea979301a71064f0f19e50483d",
+        "f02270ea97930106568800f29e504e3d",
+        "f02270ea979301bad7a405f29e50503d",
+        "f02270ea979301bf0f22f6f19e504a3d",
+        "bd9f4ee66eed01a4f83972a0e9014dc8",
+        "f02270ea979301ae45c015f29e50563d",
+        "0d67da47475e012c5ef7d8e69e01ced3",
+        "c28ed4b507b7013eb895e1d79e019ad7",
+        "514ec69ad4d001447ce0f2fce501a05e",
+        "057119c0b46201857dce788082193fe1",
+        "f02270ea979301b61ed51af29e50583d",
+        "f02270ea9793018e5b78fbf19e504c3d",
+      ],
+    },
+    pageFrom: 0,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p3-2",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea979301a5085e40f29e50663d",
+        "44d3f33caa03108ff296a30d59c657e4",
+        "f02270ea97930162fd7e10f29e50543d",
+        "44d3f33caa03108ff296aff95d6457ec",
+        "f02270ea979301ce104a30f29e50603d",
+        "f02270ea979301df728225f29e505c3d",
+        "f02270ea979301a71064f0f19e50483d",
+        "f02270ea97930106568800f29e504e3d",
+        "f02270ea979301bad7a405f29e50503d",
+        "f02270ea979301bf0f22f6f19e504a3d",
+        "bd9f4ee66eed01a4f83972a0e9014dc8",
+        "f02270ea979301ae45c015f29e50563d",
+        "0d67da47475e012c5ef7d8e69e01ced3",
+        "c28ed4b507b7013eb895e1d79e019ad7",
+        "514ec69ad4d001447ce0f2fce501a05e",
+        "057119c0b46201857dce788082193fe1",
+        "f02270ea979301b61ed51af29e50583d",
+        "f02270ea9793018e5b78fbf19e504c3d",
+      ],
+    },
+    pageFrom: 15,
+    maxPages: 15,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  {
+    id: "tokyo-6501",
+    name: "Hitachi",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://hitachi.wd1.myworkdayjobs.com/wday/cxs/hitachi/hitachi/jobs",
+    origin: "https://hitachi.wd1.myworkdayjobs.com/en-US/hitachi",
+    homeHub: null,
+    key: "tokyo-6501-p3-3",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "f02270ea979301a5085e40f29e50663d",
+        "44d3f33caa03108ff296a30d59c657e4",
+        "f02270ea97930162fd7e10f29e50543d",
+        "44d3f33caa03108ff296aff95d6457ec",
+        "f02270ea979301ce104a30f29e50603d",
+        "f02270ea979301df728225f29e505c3d",
+        "f02270ea979301a71064f0f19e50483d",
+        "f02270ea97930106568800f29e504e3d",
+        "f02270ea979301bad7a405f29e50503d",
+        "f02270ea979301bf0f22f6f19e504a3d",
+        "bd9f4ee66eed01a4f83972a0e9014dc8",
+        "f02270ea979301ae45c015f29e50563d",
+        "0d67da47475e012c5ef7d8e69e01ced3",
+        "c28ed4b507b7013eb895e1d79e019ad7",
+        "514ec69ad4d001447ce0f2fce501a05e",
+        "057119c0b46201857dce788082193fe1",
+        "f02270ea979301b61ed51af29e50583d",
+        "f02270ea9793018e5b78fbf19e504c3d",
+      ],
+    },
+    pageFrom: 30,
+    maxPages: 25,
+    hubHints: [
+      ["south boston, virginia", null],
+      ["london, ontario", null],
+      ["costa rica", null],
+      ["remote - washington, united states", null],
+      ["pittsburgh - philadelphia", null],
+      ["santa clara, california", "sanjose"],
+      ["santa fe springs, california", "losangeles"],
+      ["oakland, california", "sanfrancisco"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["mississauga, ontario", "toronto"],
+      ["reston, virginia", "washington"],
+    ],
+  },
+  // Northern Trust — Measured 2026-09-29. careers.northerntrust.com and
+  // northerntrust.com/careers both 302 to Workday ntrs.wd1 site 'northerntrust'; board total
+  // 651 (global: US 368, India 106, Ireland 85, Philippines 47, UK 26 ...). One unwindowed walk
+  // (33 pages) took 25.1s, over the ~20s budget, so it is split into two pageFrom/maxPages
+  // windows (0/17, 17/23 - the second absorbs growth to 800); each 12.4-13.3s, two runs
+  // collected 651 of 651, 651 unique urls. Placement: Chicago, IL 192 is the HQ. hubHints
+  // (Chicago MSA suburbs, Cook/DuPage/Lake counties): Lake Forest IL 5, Oakbrook Terrace IL 2,
+  // Naperville IL 2, Winnetka IL 1 -> chicago; Newport Beach CA 3 -> losangeles (Orange County,
+  // LA MSA); Menlo Park CA 1 -> sanfrancisco (San Mateo County). Left unplaced as non-hub
+  // metros: Limerick 81, Pune 52, Tempe/Phoenix AZ 36, Florida offices (Miami, Tampa, Sarasota,
+  // Palm Beach...), Wilmington DE, Guernsey, Luxembourg; 'N Locations' placeholders (81)
+  // resolve to nothing because Workday's list does not name them. 'Seattle, WA' resolves to
+  // seattle (tested before ' wa,'). No blank locations, so homeHub chicago is never the
+  // fallback in practice.
+  {
+    id: "chicago-ntrs",
+    name: "Northern Trust",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://ntrs.wd1.myworkdayjobs.com/wday/cxs/ntrs/northerntrust/jobs",
+    origin: "https://ntrs.wd1.myworkdayjobs.com/en-US/northerntrust",
+    homeHub: "chicago",
+    hubHints: [
+      ["lake forest, il", "chicago"],
+      ["oakbrook terrace, il", "chicago"],
+      ["naperville, il", "chicago"],
+      ["winnetka, il", "chicago"],
+      ["newport beach, ca", "losangeles"],
+      ["menlo park, ca", "sanfrancisco"],
+    ],
+    key: "chicago-ntrs-1",
+    pageFrom: 0,
+    maxPages: 17,
+  },
+  {
+    id: "chicago-ntrs",
+    name: "Northern Trust",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://ntrs.wd1.myworkdayjobs.com/wday/cxs/ntrs/northerntrust/jobs",
+    origin: "https://ntrs.wd1.myworkdayjobs.com/en-US/northerntrust",
+    homeHub: "chicago",
+    hubHints: [
+      ["lake forest, il", "chicago"],
+      ["oakbrook terrace, il", "chicago"],
+      ["naperville, il", "chicago"],
+      ["winnetka, il", "chicago"],
+      ["newport beach, ca", "losangeles"],
+      ["menlo park, ca", "sanfrancisco"],
+    ],
+    key: "chicago-ntrs-2",
+    pageFrom: 17,
+    maxPages: 23,
+  },
+  // Baker Hughes — Measured 2026-09-29. Workday bakerhughes.wd5 site 'BakerHughes', total 647;
+  // 646 collected on both runs because one posting (bulletFields ['R165927']) carries no title
+  // and no externalPath - a ghost row the reader correctly skips, so the logged 'walk
+  // incomplete 206 vs 207' on the last window is that row, not a truncation (raw walk: 647
+  // postings, 647 distinct paths incl. the empty one). Unwindowed walk (33 pages) took 36.2s,
+  // so it is split into three windows 0/11, 11/11, 22/20 (last absorbs growth to 840); each
+  // 11.4-13.6s. LOCATIONS ARE SITE CODES, 'CC-ST-CITY-STREET' ('US-TX-HOUSTON-575 N. DAIRY
+  // ASHFORD RD', 'AU-WA-PERTH-LEVEL 14 216 ST GEORGES TERRACE'), so ' wa,'/' sa,' needles
+  // cannot fire and city names carry placement. hubHints, each measured: 'in-maharashtra-pune'
+  // -> null (2; 'Pune-Bangalore Highway' in the address was filing Pune on bengaluru); 'au-wa-
+  // jandakot' -> perth (5; Perth suburb, BH's WA facility); 'us-tx-sugar land' 12, 'us-tx-the
+  // woodlands' 4, 'us-tx-tomball' 3 -> houston (Fort Bend/Montgomery/Harris counties, Houston
+  // MSA); 'us-wa-auburn' -> seattle (1; King County); 'us-ca-santa fe springs' -> losangeles
+  // (1; LA County). Navi Mumbai (8) resolves to mumbai via HUB_MATCH (Mumbai Metropolitan
+  // Region) - left. Left unplaced: 'US-TX-10575 Red Bluff Road' (6; street with no city),
+  // Midland/Odessa/Lufkin TX, Aberdeen, Florence, Pilsen, 'US-TX-OTHER TEXAS', 'AU-Victoria-
+  // Sale' (1), 'N Locations' (~53). No blank locations; homeHub houston kept.
+  {
+    id: "houston-bkr",
+    name: "Baker Hughes",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://bakerhughes.wd5.myworkdayjobs.com/wday/cxs/bakerhughes/BakerHughes/jobs",
+    origin: "https://bakerhughes.wd5.myworkdayjobs.com/en-US/BakerHughes",
+    homeHub: "houston",
+    hubHints: [
+      ["in-maharashtra-pune", null],
+      ["au-wa-jandakot", "perth"],
+      ["us-tx-sugar land", "houston"],
+      ["us-tx-the woodlands", "houston"],
+      ["us-tx-tomball", "houston"],
+      ["us-wa-auburn", "seattle"],
+      ["us-ca-santa fe springs", "losangeles"],
+    ],
+    key: "houston-bkr-1",
+    pageFrom: 0,
+    maxPages: 11,
+  },
+  {
+    id: "houston-bkr",
+    name: "Baker Hughes",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://bakerhughes.wd5.myworkdayjobs.com/wday/cxs/bakerhughes/BakerHughes/jobs",
+    origin: "https://bakerhughes.wd5.myworkdayjobs.com/en-US/BakerHughes",
+    homeHub: "houston",
+    hubHints: [
+      ["in-maharashtra-pune", null],
+      ["au-wa-jandakot", "perth"],
+      ["us-tx-sugar land", "houston"],
+      ["us-tx-the woodlands", "houston"],
+      ["us-tx-tomball", "houston"],
+      ["us-wa-auburn", "seattle"],
+      ["us-ca-santa fe springs", "losangeles"],
+    ],
+    key: "houston-bkr-2",
+    pageFrom: 11,
+    maxPages: 11,
+  },
+  {
+    id: "houston-bkr",
+    name: "Baker Hughes",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://bakerhughes.wd5.myworkdayjobs.com/wday/cxs/bakerhughes/BakerHughes/jobs",
+    origin: "https://bakerhughes.wd5.myworkdayjobs.com/en-US/BakerHughes",
+    homeHub: "houston",
+    hubHints: [
+      ["in-maharashtra-pune", null],
+      ["au-wa-jandakot", "perth"],
+      ["us-tx-sugar land", "houston"],
+      ["us-tx-the woodlands", "houston"],
+      ["us-tx-tomball", "houston"],
+      ["us-wa-auburn", "seattle"],
+      ["us-ca-santa fe springs", "losangeles"],
+    ],
+    key: "houston-bkr-3",
+    pageFrom: 22,
+    maxPages: 20,
+  },
+  // Alkane Resources — Measured 2026-09-29. alkane.com.au redirects to alkres.com (Alkane
+  // merged with Mandalay Resources). alkres.com/careers routes each operation to a different
+  // place: Costerfield (VIC) -> UKG Ready company 6183643 (this feed); Tomingley (NSW) -> SEEK
+  // 'alkane-resources-jobs' plus nswminingcareers.com.au (Cloudflare 403 from here; an industry
+  // site, not an Alkane board); Bjorkdal (Sweden) -> bjorkdalsgruvan.varbi.com (Varbi, no
+  // reader). So THIS FEED IS COSTERFIELD ONLY. The public URL carries no
+  // ein_id/career_portal_id and the REST call works without them: _paging.total 10, 10
+  // collected on both runs, every one 'Costerfield, VIC, Australia' -> melbourne via ' vic,'
+  // (the state rule; Costerfield is ~130 km north of Melbourne). homeHub null rather than
+  // perth: the board is one Victorian mine, so a blank or 'Australia'-only row filed on Perth
+  // would be wrong. Rows carry no per-job url (the reader uses the board url) - existing reader
+  // behaviour. Tomingley stays covered by SEEK; a Costerfield role also on SEEK archives twice
+  // (cross-board, known limit).
+  {
+    id: "alk",
+    name: "Alkane Resources",
+    sector: "Gold",
+    platform: "ukgready",
+    endpoint:
+      "https://secure.workforceready.com.au/ta/rest/ui/recruitment/companies/%7C6183643/job-requisitions?lang=en-AU&sort=-post_date",
+    origin: "https://secure.workforceready.com.au/ta/6183643.careers?CareersSearch=&lang=en-AU",
+    homeHub: null,
+  },
+  // Stanmore Resources — Measured 2026-09-29. stanmore.net.au redirects to stanmore.au; its
+  // careers page links careers.stanmore.au, SuccessFactors on the NES theme (server-renders 0
+  // jobTitle rows), so it is read through the RMK JSON service (POST
+  // /services/recruiting/v1/jobs): totalJobs 5, 5 collected on both runs (1.7-2.6s). THE BOARD
+  // PUBLISHES NO LOCATION: search results carry only title, business unit, job function and
+  // dates (no jobLocationShort), the search page defines no facets (facetFields = []), and the
+  // job page has no location field - the site is named only in prose ('South Walker Creek mine
+  // site'). So every row has an empty location and homeHub is NULL per the no-location rule:
+  // all 5 archive unplaced. The case for brisbane instead: every Stanmore site (South Walker
+  // Creek, Poitrel, Isaac Plains, Millennium/Mavis Downs, Brisbane HQ) is in Queensland, and
+  // HUB_MATCH already files regional QLD on brisbane - that would be a claim about the
+  // employer, like assumeHomeHub, and is left to the reviewer. Small board; SEEK (advertiser)
+  // carries most of Stanmore's 64 archived ads.
+  {
+    id: "smr",
+    name: "Stanmore Resources",
+    sector: "Coal",
+    platform: "sfrmkapi",
+    endpoint: "https://careers.stanmore.au",
+    origin: "https://careers.stanmore.au",
+    homeHub: null,
+  },
+  // Oracle — 2026-09-29: Oracle's own board is Oracle Recruiting Cloud
+  // eeho.fa.us2.oraclecloud.com, site CX_45001 (careers.oracle.com/en/sites/jobsearch). GLOBAL:
+  // TotalJobsCount 2202. The unfiltered walk is NOT usable with fetchOracle: page 81 of the
+  // POSTING_DATES_DESC walk serves 24 rows, pagedParallel reads that as end-of-list, and the
+  // feed stops at 2024 of 2202 (same both runs); it is also a 27s walk. So this feed is
+  // narrowed with the board's own locationsFacet to Austin, TX (id 100000000729618, facet count
+  // 223): fetched 223 of 223, twice, ~3s. The facet matches primary OR secondary location, so
+  // only 61 rows have PrimaryLocation 'Austin, TX, United States'; the rest are multi-location
+  // roles open to Austin, placed by their primary location (Nashville 92 and bare 'United
+  // States' 27 are not hubs and stay unplaced). hubHints by metro (CBSA): Reston VA (Fairfax,
+  // Washington MSA) 11, Santa Clara CA 5 -> sanjose, Pleasanton 1 + Redwood City 1 ->
+  // sanfrancisco, Santa Monica 2 -> losangeles, Burlington MA 2 -> boston. No blank locations,
+  // so homeHub austin is never the fallback. Trap seen on the full board (not in this facet):
+  // 'WA, United States' resolves to perth via ' wa,' — a hint cannot fix it without also
+  // catching 'Seattle, WA, United States', which is one reason not to take the unfiltered
+  // board. The card will show Austin-eligible roles, not Oracle's global 2202 — say so where it
+  // is added. Job links: <origin>/job/<Id> on careers.oracle.com (SPA).
+  {
+    id: "austin-orcl",
+    name: "Oracle",
+    sector: "Technology, Media and Telecommunications",
+    platform: "oracle",
+    endpoint: "https://eeho.fa.us2.oraclecloud.com",
+    origin: "https://careers.oracle.com/en/sites/jobsearch",
+    homeHub: "austin",
+    siteNumber: "CX_45001",
+    oracleLocationFacet: "100000000729618",
+    maxPages: 20,
+    hubHints: [
+      ["reston, va", "washington"],
+      ["santa clara, ca", "sanjose"],
+      ["pleasanton, ca", "sanfrancisco"],
+      ["redwood city, ca", "sanfrancisco"],
+      ["santa monica, ca", "losangeles"],
+      ["burlington, ma", "boston"],
+    ],
+  },
+  // Nike — 2026-09-29: Nike's own board (careers.nike.com links) is Workday nike.wd1, tenant
+  // 'nike' (NOT 'nke' — /wday/cxs/nke/... errors), two sites: nke = corporate + international
+  // retail, total 840; nke2 = US retail stores (jobFamilyGroup 'Retail Stores' 350/350), total
+  // 350. fetchWorkday CANNOT read either as it stands: this tenant returns `total` on EVERY
+  // page (offset 20 -> total 840, offset 40 -> 840), and the reader's wrap guard ('a total at a
+  // non-zero offset means the board wrapped to page 0') breaks after page 1 — measured: 20 rows
+  // vs 840 expected. Past the end the board does NOT wrap: offset 840 and 860 return 0
+  // postings. A pageFrom window breaks on its first request for the same reason, so windows do
+  // not help. Fix needed in fetchWorkday: detect the wrap by comparing the page's first
+  // externalPath with page 0's, not by total>0. A direct walk collected 840/840 and 350/350
+  // unique; nke is a 23s sequential walk, so after the fix it needs two windows (pageFrom
+  // 0/maxPages 21, pageFrom 21/maxPages 21). Placement preview (direct walk): Beaverton, Oregon
+  // 135 (Nike WHQ, Washington County = Portland MSA) needs the hint; Shanghai 80, Karnataka 76
+  // (unplaced — state only), Hilversum 24, 'NIKE VIETNAM HQ', 'LONDON OFFICE', 'AU NIKE COMPANY
+  // STORE MELBOURNE' store-name locations; nke2 is ~300 US store towns needing a CBSA pass
+  // (Eagan MN, King of Prussia PA, Somerville MA, Brooklyn NY, Fort Worth TX...) before
+  // shipping.
+  {
+    id: "portland-nke",
+    key: "portland-nke-a",
+    name: "Nike",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://nike.wd1.myworkdayjobs.com/wday/cxs/nike/nke/jobs",
+    origin: "https://nike.wd1.myworkdayjobs.com/nke",
+    homeHub: "portland",
+    hubHints: [["beaverton, oregon", "portland"]],
+    pageFrom: 0,
+    maxPages: 21,
+  },
+  {
+    id: "portland-nke",
+    key: "portland-nke-b",
+    name: "Nike",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://nike.wd1.myworkdayjobs.com/wday/cxs/nike/nke/jobs",
+    origin: "https://nike.wd1.myworkdayjobs.com/nke",
+    homeHub: "portland",
+    hubHints: [["beaverton, oregon", "portland"]],
+    pageFrom: 21,
+    maxPages: 21,
+  },
+  {
+    id: "portland-nke",
+    key: "portland-nke-retail",
+    name: "Nike",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://nike.wd1.myworkdayjobs.com/wday/cxs/nike/nke2/jobs",
+    origin: "https://nike.wd1.myworkdayjobs.com/nke2",
+    homeHub: "portland",
+    hubHints: [["beaverton, oregon", "portland"]],
+  },
+  // Capital One Financial — 2026-09-29: capitalonecareers.com is Radancy TalentBrew (company
+  // 234/1732); /search-jobs/results with RecordsPerPage 100 states data-total-results 1727 (18
+  // pages); fetchRadancy collected 1727 of 1727 twice, 6-14s. (The Workday site
+  // capitalone.wd12/Capital_One says total 1876 and reports total on every page like Nike's,
+  // which fetchWorkday cannot walk — so Radancy, the public board, is the feed.) HQ is McLean,
+  // VA — 832 rows — which HUB_MATCH leaves unplaced; it is Fairfax County, Washington MSA.
+  // hubHints by CBSA with measured counts: Washington MSA McLean 832, Gainesville VA 1,
+  // Leesburg VA 1, Largo/Bowie/Takoma Park/Bethesda/Gaithersburg MD 1 each; Dallas MSA Plano
+  // 122, Irving/Coppell/Fort Worth/Frisco/'Fairview, Collin' 1 each; Chicago MSA Riverwoods IL
+  // 38, Downers Grove 3; NY MSA Brooklyn 4, Southampton 3, White Plains/Mattituck/Plainview/The
+  // Bronx 2, Jersey City/Newark/Nutley/Plainfield NJ and Long Island towns 1 each; Cambridge MA
+  // 8 -> boston; Walnut Creek 2 -> sanfrancisco; Newport Beach 2 + Santa Monica 1 ->
+  // losangeles; Bloomington MN 2 -> minneapolis. PERTH TRAP: 'Bellevue, WA' and 'Tukwila, WA'
+  // went to perth via ' wa,' -> hinted to seattle (King County). homeHub is NULL: the only
+  // blank locations are 2 remote roles (/job/remote/... URLs) which are not DC vacancies. Left
+  // unplaced on purpose: Richmond VA 188 (own metro), Mexico City 26, Wilmington DE, Louisiana
+  // towns, Pittsburgh, Baltimore.
+  {
+    id: "washington-cof",
+    name: "Capital One Financial",
+    sector: "Financial Services",
+    platform: "radancy",
+    endpoint: "https://www.capitalonecareers.com/search-jobs/results",
+    origin: "https://www.capitalonecareers.com",
+    homeHub: null,
+    hubHints: [
+      ["bellevue, wa", "seattle"],
+      ["tukwila, wa", "seattle"],
+      ["mclean, va", "washington"],
+      ["gainesville, va", "washington"],
+      ["leesburg, va", "washington"],
+      ["largo, md", "washington"],
+      ["bowie, md", "washington"],
+      ["takoma park, md", "washington"],
+      ["bethesda, md", "washington"],
+      ["gaithersburg, md", "washington"],
+      ["plano, tx", "dallas"],
+      ["fairview, collin, tx", "dallas"],
+      ["irving, tx", "dallas"],
+      ["coppell, tx", "dallas"],
+      ["fort worth, tx", "dallas"],
+      ["frisco, tx", "dallas"],
+      ["riverwoods, il", "chicago"],
+      ["downers grove, il", "chicago"],
+      ["cambridge, ma", "boston"],
+      ["walnut creek, ca", "sanfrancisco"],
+      ["newport beach, ca", "losangeles"],
+      ["santa monica, ca", "losangeles"],
+      ["bloomington, mn", "minneapolis"],
+      ["brooklyn, ny", "newyork"],
+      ["the bronx, ny", "newyork"],
+      ["whitestone, ny", "newyork"],
+      ["white plains, ny", "newyork"],
+      ["nanuet, ny", "newyork"],
+      ["southampton, ny", "newyork"],
+      ["mattituck, ny", "newyork"],
+      ["plainview, ny", "newyork"],
+      ["huntington station, ny", "newyork"],
+      ["lake grove, ny", "newyork"],
+      ["jericho, nassau, ny", "newyork"],
+      ["east meadow, ny", "newyork"],
+      ["baldwin, nassau, ny", "newyork"],
+      ["williston park, ny", "newyork"],
+      ["shirley, suffolk, ny", "newyork"],
+      ["lake ronkonkoma, ny", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["nutley, essex, nj", "newyork"],
+      ["plainfield, nj", "newyork"],
+      ["newark, nj", "newyork"],
+    ],
+  },
 ];
 
 /**
@@ -12021,6 +13804,52 @@ export const PORTAL_GROUPS: string[][] = [
   ["vancouver-lulu-b"],
   ["vancouver-lulu-c"],
   ["paris-stmpa"],
+  // Groups 158-201 — the 2026-09-29 third batch. The small boards share
+  // two ticks; every page window and every walk over ~10s has a tick to itself.
+  ["houston-hal", "melbourne-ora", "priv-mpc-kinetic", "alk", "smr"],
+  ["austin-orcl", "portland-nke-retail"],
+  ["newyork-axp"],
+  ["washington-cof"],
+  ["london-bp-a"],
+  ["london-bp-b"],
+  ["paris-ai-a"],
+  ["paris-ai-b"],
+  ["paris-ai-c"],
+  ["paris-ai-d"],
+  ["minneapolis-mmm-a"],
+  ["minneapolis-mmm-b"],
+  ["washington-noc-a"],
+  ["washington-noc-b"],
+  ["washington-noc-c"],
+  ["washington-noc-d"],
+  ["washington-noc-e"],
+  ["washington-noc-f"],
+  ["washington-noc-g"],
+  ["washington-noc-h"],
+  ["cincinnati-pg-a"],
+  ["cincinnati-pg-b"],
+  ["cincinnati-pg-c"],
+  ["tokyo-6501-p1-1"],
+  ["tokyo-6501-p1-2"],
+  ["tokyo-6501-p1-3"],
+  ["tokyo-6501-p1-4"],
+  ["tokyo-6501-p1-5"],
+  ["tokyo-6501-p2-1"],
+  ["tokyo-6501-p2-2"],
+  ["tokyo-6501-p2-3"],
+  ["tokyo-6501-p2-4"],
+  ["tokyo-6501-p2-5"],
+  ["tokyo-6501-p2-6"],
+  ["tokyo-6501-p3-1"],
+  ["tokyo-6501-p3-2"],
+  ["tokyo-6501-p3-3"],
+  ["chicago-ntrs-1"],
+  ["chicago-ntrs-2"],
+  ["houston-bkr-1"],
+  ["houston-bkr-2"],
+  ["houston-bkr-3"],
+  ["portland-nke-a"],
+  ["portland-nke-b"],
 ];
 
 const UA =
@@ -12876,11 +14705,21 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   // rows until maxPages when a board's size is an exact multiple of 20 — or
   // when a WINDOW runs past the end: Salesforce's three windows collected
   // 1,540 against a board of 1,519. So a window starting past page 0 reads the
-  // total first (one `limit: 1` request) and stops at the real end; and a
-  // response carrying a total at a non-zero offset is the wrapped page 0.
+  // total first (one `limit: 1` request) and stops at the real end.
+  //
+  // AND NOT EVERY TENANT BEHAVES THAT WAY, which is why the wrap is detected by
+  // the first posting and not by `total`. This read "a total at a non-zero
+  // offset is the wrapped page 0" until the next batch, and Northrop Grumman
+  // and Nike disprove it. Measured 2026-09-29: both report `total` on EVERY
+  // page (Northrop's 3,766, Nike's 840) and return an empty list past the end,
+  // so the old test stopped them after page 1 — 20 of 3,766 — and every window
+  // past page 0 returned nothing. What a wrap does on every tenant is serve
+  // page 0 again, so a non-zero offset whose first posting is page 0's first
+  // posting is the wrap; the total, where known, bounds the walk either way.
   let last = from + max;
+  let firstPath = "";
   if (from > 0) {
-    const probe = await getJson<{ total?: number }>(site.endpoint, {
+    const probe = await getJson<{ total?: number; jobPostings?: WorkdayPosting[] }>(site.endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -12894,6 +14733,7 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       advertised = probe.total;
       last = Math.min(last, Math.ceil(probe.total / WD_PAGE));
     }
+    firstPath = (probe?.jobPostings?.[0]?.externalPath || "").trim();
   }
   for (let page = 0; from + page < last;) {
     const json = await getJson<{ total?: number; jobPostings?: WorkdayPosting[] }>(site.endpoint, {
@@ -12913,10 +14753,17 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       break;
     }
     misses = 0;
-    // A total at a non-zero offset means the board wrapped back to page 0.
-    if (from + page > 0 && (json.total ?? 0) > 0) break;
-    if (!advertised && typeof json.total === "number") advertised = json.total;
     const postings = json.jobPostings ?? [];
+    const head = (postings[0]?.externalPath || "").trim();
+    // Page 0's first posting at a non-zero offset: the board wrapped.
+    if (from + page > 0 && firstPath && head === firstPath) break;
+    if (from + page === 0) {
+      firstPath = head;
+      if (typeof json.total === "number" && json.total > 0) {
+        advertised = json.total;
+        last = Math.min(last, Math.ceil(json.total / WD_PAGE));
+      }
+    }
     // An empty page from a response that ARRIVED is the real end of the list.
     if (!postings.length) break;
     page++;
