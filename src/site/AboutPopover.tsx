@@ -79,7 +79,7 @@ export function AboutPopover() {
           </div>
           {/* A new tab, so the visitor keeps their place on the site. */}
           <a
-            href="https://www.linkedin.com/in/ben-ridgwell/"
+            href="https://www.linkedin.com/company/employsi/"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-primary-foreground no-underline transition hover:bg-ink-2"
