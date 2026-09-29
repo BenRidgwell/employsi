@@ -76,7 +76,40 @@ export function useSkillMovers(): { movers: Movers | null; loading: boolean } {
   return { movers: null, loading: false };
 }
 
-/** The biggest riser and the biggest faller, for the hero callouts. */
+/**
+ * The riser and faller for the hero callouts — BOTH, from one window.
+ *
+ * The callouts are a pair by design (a green card and a red card), and the
+ * ticker's window can hold only one side: on 2026-09-29 the 24-hour window
+ * had fallers and no riser, so the green half of the overlay silently did not
+ * draw. So this walks the windows shortest-first and takes the first one that
+ * has a mover on each side. Both cards always come from the SAME window, so
+ * the pair never compares a day's move with a month's.
+ *
+ * If no window has both, it falls back to whatever the shortest window with
+ * any movers has — one card rather than an invented second one.
+ */
+export function useHeroMovers(): { up: LiveSkillTrend | null; down: LiveSkillTrend | null } {
+  const { data } = useQuery({
+    queryKey: ["liveSkillTrends"],
+    queryFn: () => getLiveSkillTrends(),
+    staleTime: SIX_HOURS,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+  });
+  if (!data) return { up: null, down: null };
+  let fallback: { up: LiveSkillTrend | null; down: LiveSkillTrend | null } | null = null;
+  for (const w of TREND_WINDOWS) {
+    const rows = data[w.key];
+    if (!rows?.length) continue;
+    const m = topMovers(rows);
+    if (m.up && m.down) return m;
+    fallback ??= m;
+  }
+  return fallback ?? { up: null, down: null };
+}
+
+/** The biggest riser and the biggest faller in one window's rows. */
 export function topMovers(rows: LiveSkillTrend[]): {
   up: LiveSkillTrend | null;
   down: LiveSkillTrend | null;

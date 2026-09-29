@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiveSkillTrend } from "@/employsi/lib/jobHistoryFn";
-import { topMovers, useSkillMovers } from "./liveMarket";
+import { useHeroMovers } from "./liveMarket";
 
 /**
  * The two skills callouts drawn over the landing page's hero footage: one
@@ -11,7 +11,7 @@ import { topMovers, useSkillMovers } from "./liveMarket";
  * its geometry, curves, timing, type and position, exactly — WITH ITS FIGURES
  * REPLACED. The design hard-codes "Project management +6%, A$148,000" and
  * "Autonomous haulage −2%, A$132,000". Here the two skills are the archive's
- * actual biggest riser and faller over the window the ticker shows, and the
+ * actual biggest riser and faller, both from one window (see useHeroMovers), and the
  * salary is its advertised median where enough ads state one (the row is
  * dropped where not). With no movers at all nothing is drawn — the footage
  * and headline stand on their own. See liveMarket.ts.
@@ -37,8 +37,13 @@ const X1 = 1500;
 const BASE = 800;
 const RANGE = 440;
 const N = 64;
-// The callouts' anchor: the Callouts Overlay design's defaults (x, y1, y2).
-const AX = 1300;
+// The callouts' anchor. y1/y2 are the Callouts Overlay design's defaults; x is
+// its slider maximum rather than its default 1300, moved right on request so
+// the lines clear the headline. At 1300 the lines started at x 436 of 1920 and
+// ran straight through "Explore the / world of work."; at 1700 they start at
+// 836, past the end of the headline at every width the overlay shows at, and
+// the card (x-208 .. x+60) still ends 160px inside the right edge.
+const AX = 1700;
 const AY_UP = 440;
 const AY_DOWN = 640;
 const MONO = "'JetBrains Mono', monospace";
@@ -284,8 +289,7 @@ function useLoopTime(active: boolean): number {
 }
 
 export function HeroCallouts() {
-  const { movers } = useSkillMovers();
-  const { up, down } = movers ? topMovers(movers.rows) : { up: null, down: null };
+  const { up, down } = useHeroMovers();
   const box = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0);
   const [onScreen, setOnScreen] = useState(true);
@@ -317,7 +321,7 @@ export function HeroCallouts() {
 
   return (
     <div className="ws-callouts" ref={box} aria-hidden>
-      {has && scale > 0 && movers && (
+      {has && scale > 0 && (
         <div className="stage" style={{ transform: `scale(${scale})` }}>
           <svg
             viewBox={`0 0 ${W} ${H}`}

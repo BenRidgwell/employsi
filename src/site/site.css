@@ -332,10 +332,10 @@
   transform-origin: 0 0;
 }
 @media (max-width: 1279px) {
-  /* The design places the cards at x 1300 of 1920, authored for a 1440px
-     banner, where the lede (max 680px) ends at 720px and the first card
-     starts at 819px. The card's left edge is 0.569 x the banner width, so
-     below ~1266px it lands on the lede. Measured at 1024px: the red card sat
+  /* The cards sit at x 1700 of 1920 and their lines start at x 836, scaled
+     to the banner's width. Below ~1280px the headline stops shrinking as
+     fast as the stage does, and the lines' start runs into "world of work."
+     Measured on the earlier x 1300 placement at 1024px: the red card sat
      across "…to the world." Hidden rather than collided. */
   .ws-callouts {
     display: none;
