@@ -831,6 +831,18 @@ NOT_IN_SOURCE = {
         'agency that publishes both tables and no total. Its own caveat is worth '
         'carrying too: "The figures are estimates compiled from the Annual '
         'Workforce Profile, and do not include agency staff"',
+    'nsw:Department of Parliamentary Services':
+        'THE ONE NSW REPORT THE FILE API DOES NOT REACH, and the boundary is worth '
+        'recording precisely because everything else on that institution now does. '
+        'DPS does not TABLE its annual report — it is the Parliament\'s own '
+        'department — so there is no /tp/files/<id>/ paper for GetArtifact to '
+        'serve. It publishes at www.parliament.nsw.gov.au/_media/documents/about/'
+        'annual-reports/dps-annual-report-2025.pdf, and www answers 403 to this '
+        'network on every path, /_media/ included: the block is host-wide rather '
+        'than scoped to /tp/files/. Tried three ways 2026-09-29 — that www path '
+        '(403, 6,333 bytes), the same path on files.parliament.nsw.gov.au (404, '
+        'empty), and GetArtifact with serverRelativeUrl pointed at /_media/ (404, '
+        'an 81-byte "File" body). The API serves tabled papers and this is not one',
     'nsw:Law Enforcement Conduct Commission':
         'A .pdf URL THAT SERVES A REACT PAGE, which is a new shape here and is '
         'why this is recorded rather than retried. lecc.nsw.gov.au lists '
@@ -3756,6 +3768,54 @@ NSW_AGENCY_REPORTS = {
         header=r'Female\s+Male\s+Total',
         proof=r'Employee location by gender, FY25',
         unit='headcount', asof='Jun 2025'),
+    # THREE YEARS BEHIND, DELIBERATELY, AND THE REASON IS NOT THE PUBLISHER'S.
+    # IPART has published since — its own site 403s this network (and now answers
+    # an HTTP/2 stream error), and the tabled 2024-25 copy could not be located:
+    # the file API needs BOTH the paper id and the exact filename, and guessing
+    # ids returns a 64-byte "File" body every time. So this is the newest edition
+    # that could be reached, not the newest that exists, and the card will say
+    # "Jun 2023" until the right id turns up.
+    #
+    # FILED ANYWAY, on this file's own rule: "An em dash is not more honest than a
+    # dated figure; it is only less informative." The card states its date.
+    #
+    # p75, Table C.4 "Employee including Tribunal and Chair profile by employment
+    # category, by headcount as at 30 June 2023": fourteen classification rows over
+    # 2020-2023, "Total number of employees includes full time, 125 134 143 158".
+    #
+    # THE ROW BELOW IT IS THE TRAP: "Total number of Employees including members
+    # 128 136 146 161" adds the Chair and two Tribunal Members, who are appointees
+    # rather than staff — three higher in every column. `total` is written against
+    # the lower-case "employees" so it cannot reach that line.
+    #
+    # BUT THE CONTROL SAYS CASE IS NOT WHAT IS DOING THE WORK, and guessing would
+    # have been worse than saying so. A case-insensitive `total` still returns 158
+    # — and it still does with `sums` removed as well, so the reconciliation is not
+    # what rejects it either. The "including members" row is simply never matched
+    # on this page and I have not established why. Case-sensitivity stays because
+    # it is correct, not because it was shown to be load-bearing here.
+    #
+    # THE 2022 COLUMN IS ONE OUT AND `tol` SAYS SO RATHER THAN HIDING IT. Its
+    # fourteen rows sum to 144 against a stated 143; the 2023 column sums to 158
+    # exactly. Both are asserted, with the tolerance raised just past one — which
+    # still rejects the "including members" row, three higher in every column.
+    'nsw-ipart': dict(
+        label='NSW: IPART',
+        agency='Independent Pricing and Regulatory Tribunal',
+        agency_id='nsw-gov-independent-pricing-and-regulatory-tribunal',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'IPART%20Annual%20Report%202022-23.pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F187242%2FIPART+Annual+Report+2022-23.pdf',
+        needle='by headcount as at 30 June 2023',
+        total=r'^Total number of employees\b',
+        comp=r'^(?:Chief Executive|Executive Directors|Director Corporate Services|'
+             r'Directors|Managers|Analysts|Graduate Analysts|General Counsel|'
+             r'Director, Legal|Legal Officers|Support Officers|Supernumeraries|'
+             r'Casual Employees|Temporary Employees)\b',
+        ncols=4, now_i=3, prev_i=2, sums=[(2,), (3,)], tol=1.2,
+        header=r'2020\s+2021\s+2022\s+2023',
+        proof=r'by headcount as at 30 June 2023',
+        unit='headcount', asof='Jun 2023'),
     # ── The two state-owned corporations the file API was meant to reach ─────
     # Both NOT_IN_SOURCE entries stand as written, because both measurements are
     # still true: essentialenergy.com.au and waternsw.com.au are behind a

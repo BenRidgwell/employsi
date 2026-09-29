@@ -37,6 +37,7 @@
 //   NSW: Planning, Housing and Infrastructure: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Property and Development NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
 //   NSW: Landcom: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: IPART: 1 agencies published as at Jun 2023 — refreshed 2026-09-29
 //   NSW: Essential Energy: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: WaterNSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: ICAC: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
@@ -124,6 +125,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-hunter-water": { now: 568, prev: 560, yoy: 1.4, asof: "Jun 2025", span: 1 },
   "nsw-gov-icare-nsw": { now: 1850, prev: 1879, yoy: -1.5, asof: "Jun 2025", span: 1 },
   "nsw-gov-independent-commission-against-corruption": { now: 151, yoy: null, asof: "Jun 2024", span: 1 },
+  "nsw-gov-independent-pricing-and-regulatory-tribunal": { now: 158, prev: 143, yoy: 10.5, asof: "Jun 2023", span: 1 },
   "nsw-gov-landcom": { now: 199, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
