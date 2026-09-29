@@ -13,10 +13,11 @@ M182081 gives EIGHT SSOC major groups:
     Craftsmen & Related Trades · Plant & Machine Operators · Cleaners &
     Labourers
 
-EIGHT IS ALL SINGAPORE PUBLISHES, and that was searched for rather than assumed
-— re-checked 2026-09-29 because the New Zealand work found a finer table than
-its first pass did, so it was worth asking whether this one had missed one too.
-It had not:
+EIGHT IS ALL SINGAPORE PUBLISHES. Searched twice: once on 2026-09-29 against the
+SingStat catalogue, and again when that first pass turned out to have stopped at
+a blocked host and called it done. The second pass closed the three leads the
+first one left open — MOM's own data.gov.sg datasets, the Imperva block, and the
+Occupational Wage Survey. All three are below. Nothing finer exists to find:
 
   · SingStat Table Builder returns 147 occupation tables. EVERY employment-by-
     occupation table among them is 1-digit SSOC: M182081 (this one, occupation x
@@ -25,11 +26,29 @@ It had not:
     catalogue for "SSOC" surfaces no additional table.
   · General Household Survey 2025 (C020137) confirms it independently: nine
     columns, the same eight groups plus "Others".
-  · stats.mom.gov.sg, where MOM's detailed statistical tables live, is behind a
-    WAF and answers 403 from this sandbox even with a browser User-Agent. Same
-    obstacle shape as mbie.govt.nz. So if a 2-digit table exists there it cannot
-    be read from here — that is a limit of this environment, not a finding about
-    the data.
+  · MOM's OWN datasets, read directly from data.gov.sg rather than through the
+    Table Builder, are the same nine values. d_9392faa714d5e5809b07b10fbff2993e
+    (employed residents by occupation, age and sex, 2010-2025, SSOC 2024) has
+    3,456 rows and exactly 9 distinct occupations: the eight groups plus
+    "others". So this is not a Table Builder simplification of something richer
+    underneath — it is what MOM publishes.
+
+  · stats.mom.gov.sg is behind IMPERVA and answers 403 from this sandbox. That
+    was first recorded as "cannot be read from here, a limit of the environment".
+    It was then retried properly, with headless Chromium, the session's proxy CA
+    in the NSS store, a real browser UA and a settle for any JS challenge: still
+    403, 812 bytes, and NO challenge script in the body. Imperva is refusing the
+    exit IP outright rather than fingerprinting the client, so a more convincing
+    browser cannot help. A closed door, not an untried one.
+
+  · THE OCCUPATIONAL WAGE SURVEY IS REAL AND IS NOT THIS. It is on data.gov.sg
+    (d_9917e751f7498502f70052a940a3f312), it covers 523 occupations at genuine
+    SSOC detail — "accountant (excluding tax accountant)", "actuary" — and it was
+    the best remaining hypothesis for a fine-grained Singapore denominator. It
+    carries WAGES ONLY: 25th/50th/75th percentile gross and basic monthly wage,
+    and no headcount column. So MOM demonstrably collects at 523-occupation
+    detail and publishes only wages there. That is worth knowing for salary data;
+    it does nothing for supply.
 
 M182081 DOES cross occupation with 16 industries, which is 144 cells rather than
 8, and that was considered as a refinement and REJECTED. "Professionals in
