@@ -51,6 +51,9 @@ on:
       - 'src/employsi/lib/careerPathwaysBuild.ts'
       - 'src/employsi/lib/feedCoverage.ts'
       - 'src/employsi/data/careerPathways.ts'
+      - 'src/employsi/data/onetRoles.ts'
+      - 'scripts/check-onet-roles.ts'
+      - 'scripts/gen-onet-roles.py'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -91,6 +94,9 @@ on:
       - 'src/employsi/lib/careerPathwaysBuild.ts'
       - 'src/employsi/lib/feedCoverage.ts'
       - 'src/employsi/data/careerPathways.ts'
+      - 'src/employsi/data/onetRoles.ts'
+      - 'scripts/check-onet-roles.ts'
+      - 'scripts/gen-onet-roles.py'
   workflow_dispatch: {}
 
 jobs:
@@ -205,6 +211,13 @@ jobs:
       # synthetic rows whose answer is known, plus the adapter's invariants.
       - name: Assert the career card's series and model
         run: bun run scripts/check-career-card.ts
+
+      # Each career rung names an O*NET occupation whose tasks the card shows,
+      # and a wrong one renders as fluently as a right one. Every rung must be
+      # decided by the reviewed table, and the matcher's known mistakes stay
+      # fixed.
+      - name: Assert the career card's O*NET mapping
+        run: bun run scripts/check-onet-roles.ts
 
       - name: Assert the salary baseline's invariants
         run: bun run scripts/check-salary-baseline.ts

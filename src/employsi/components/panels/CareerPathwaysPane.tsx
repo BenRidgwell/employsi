@@ -23,6 +23,7 @@ import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
 import { useClickAway } from "../../hooks/useClickAway";
+import { ONET_ZONE, onetForRole, onetUrl } from "../../lib/onet";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -1444,6 +1445,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </div>
+
+        <OnetSection id={n.id} />
       </div>
     </div>
   );
@@ -1482,6 +1485,86 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 // ── The first-open placeholder ───────────────────────────────────────────────
 
 /** A faded role card on the ghost map. */
+/**
+ * What the role typically involves, from the O*NET occupation it was mapped
+ * to. Kept visibly apart from everything above it: those figures are counts
+ * over our ads, and this is O*NET's description of a US occupation — so it
+ * names the occupation, links to it, and carries the CC BY credit.
+ */
+function OnetSection({ id }: { id: string }) {
+  const { data, isPending } = useQuery({
+    queryKey: ["onet", id],
+    queryFn: () => onetForRole(id),
+    staleTime: Infinity,
+  });
+  const [allTasks, setAllTasks] = useState(false);
+  useEffect(() => setAllTasks(false), [id]);
+  if (isPending) return null;
+
+  const credit = (
+    <span className="cponetcredit">
+      {"O*NET "}
+      {data?.version ?? ""}
+      {" · U.S. Dept. of Labor/ETA · "}
+      <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+        CC BY 4.0
+      </a>
+    </span>
+  );
+  if (!data) {
+    return (
+      <section className="cponet" aria-label="Tasks and tools">
+        <div className="cponethead">
+          <span style={EYEBROW}>TASKS &amp; TOOLS</span>
+        </div>
+        <p className="cponetnone">
+          No single O*NET occupation matches this role closely enough to describe it — the titles it
+          covers span several occupations, or none has a US counterpart.
+        </p>
+      </section>
+    );
+  }
+  const o = data.occupation;
+  const tasks = allTasks ? o.tasks : o.tasks.slice(0, 3);
+  return (
+    <section className="cponet" aria-label="Tasks and tools">
+      <div className="cponethead">
+        <span style={EYEBROW}>TASKS &amp; TOOLS</span>
+        <a className="cponetocc" href={onetUrl(data.soc)} target="_blank" rel="noreferrer">
+          {`O*NET: ${o.title}`}
+        </a>
+      </div>
+      <ul className="cponettasks">
+        {tasks.map(([t]) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+      {o.tasks.length > 3 && (
+        <button type="button" className="cponetmore" onClick={() => setAllTasks((v) => !v)}>
+          {allTasks ? "Fewer tasks" : `All ${o.tasks.length} core tasks`}
+        </button>
+      )}
+      {o.software.length > 0 && (
+        <div className="cponetsw">
+          <span style={TILE_LABEL}>SOFTWARE IN DEMAND IN US JOB POSTINGS</span>
+          <div className="cponetchips">
+            {o.software.map((w) => (
+              <span key={w} className="cponetchip">
+                {w}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <p className="cponetnote">
+        {o.zone != null && ONET_ZONE[o.zone] ? `Job zone ${o.zone}: ${ONET_ZONE[o.zone]}. ` : ""}
+        Describes the US occupation this role maps to, not measured from employsi&apos;s ads.{" "}
+        {credit}
+      </p>
+    </section>
+  );
+}
+
 function GhostNode({ left, top, a, b }: { left: number; top: number; a: string; b: string }) {
   return (
     <div

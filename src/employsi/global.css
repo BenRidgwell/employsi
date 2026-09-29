@@ -17685,6 +17685,86 @@ body {
   }
 }
 
+/* ── Career card: tasks & tools (O*NET) ──────────────────────────────────────
+   O*NET's description of the US occupation a role maps to. Set apart by a
+   rule rather than a tile: it is described, not measured, and should not read
+   as one more of the card's counts. */
+.cponet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle, #e5e5ea);
+  min-width: 0;
+}
+.cponethead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.cponetocc {
+  font: 500 12px/1.3 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: none;
+}
+.cponetocc:hover {
+  color: var(--text-primary, #1c1c1e);
+  text-decoration: underline;
+}
+.cponettasks {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 400 13px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+}
+.cponetmore {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cponetsw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cponetchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cponetchip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-subtle, #f4f4f5);
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+  white-space: nowrap;
+}
+.cponetnote,
+.cponetnone {
+  margin: 0;
+  font: 400 11.5px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-tertiary, #8e8e93);
+}
+.cponetnone {
+  font-size: 12.5px;
+  color: var(--text-secondary, #636366);
+}
+.cponetcredit a {
+  color: inherit;
+
 /* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
 /* The card stays open across the switch and cross-fades its contents, rather
    than swapping every figure on one frame — which read as a different card
