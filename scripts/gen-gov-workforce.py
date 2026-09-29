@@ -42,6 +42,8 @@ the card renders an em dash for it.
 
 ALIAS is the escape hatch, and every entry is a judgement someone can check.
 """
+import ast
+from pathlib import Path
 import functools
 import collections
 import glob, csv, io, json, re, sys, urllib.error, urllib.request
@@ -915,15 +917,6 @@ NOT_IN_SOURCE = {
     # employing its own staff looks like from the department's side. That is why
     # WaterNSW still needs its own report and is recorded below as blocked, while
     # these two need none.
-    'nsw:Taronga Conservation Society Australia':
-        "INSIDE the DCCEEW head count, which is filed, and Taronga's own report "
-        'says so as plainly as the department\'s does: p109, "Since the '
-        'Administrative Arrangement Order 2023, all employees are under the '
-        'employment of DCCEEW, therefore salaries and wages, annual leave and '
-        'on-costs are classified as personnel services expenses". Its impact '
-        'pages do carry "1,044 total staff team members", in an infographic with '
-        'no as-at date anywhere near it, so even taken alone it could not be '
-        'filed — but the reason it is not filed is the double count',
     'nsw:Energy Security Corporation':
         'INSIDE the DCCEEW head count, which is filed, and its own report says so '
         'in one sentence — p14 of its 2024-25 Annual Information Statement: "As at '
@@ -1119,18 +1112,6 @@ NOT_IN_SOURCE = {
         "the same 187 people on two cards, which is the National Parks and "
         "Wildlife Service call inside DCCEEW. A separate figure is available if "
         "the roster ever stops carrying the department",
-    'nsw:Museum of Applied Arts and Sciences':
-        'its 2024-25 annual report exists and only the BLOCKED host has it. '
-        'Measured 2026-09-28: parliament.nsw.gov.au/tp/files/192296 carries the '
-        '"2024-25 Powerhouse Museum Annual Report", and that host cannot be read '
-        'from here (120 s of warmed browser still on the interstitial). Its own '
-        'site does not publish it — powerhouse.com.au/about renders 334,018 bytes '
-        'unchallenged with no PDF at all and links nothing annual; /governance '
-        'renders 433,385 bytes and holds exactly ONE PDF, which was opened and is '
-        'a 2021 Indigenous Cultural and Intellectual Property protocol, not a '
-        'report. maas.museum/about/annual-reports renders with no links and '
-        'powerhouse.com.au/about/annual-reports 404s. So the document is real, '
-        'its location is known, and no copy of it is reachable',
     'nsw:Sydney Trains':
         'its 2024-25 annual report downloads and BOTH volumes were read (72 + 80 '
         'pages, 2026-09-27): neither carries an employee-count table. The '
@@ -1145,30 +1126,20 @@ NOT_IN_SOURCE = {
         'through a warmed browser though it 403s a plain fetch — so the same '
         "route is open for Sydney Metro and NSW Trains, whose reports sit "
         'beside this one',
-    'nsw:TAFE NSW':
-        'no annual report reachable. tafensw.edu.au answers 404 at every '
-        'annual-report path and its sitemap of 1,357 URLs contains the word '
-        '"annual" zero times; the report is not on nsw.gov.au either',
     'nsw:Fire and Rescue NSW':
-        'fire.nsw.gov.au REFUSES this network, and re-tested 2026-09-27 with a '
-        'warmed browser it still does: the annual-reports page renders as 174 '
-        'BYTES — not a page with no links, a page with no content — and the '
-        'direct report path its own site publishes '
-        '(__data/assets/pdf_file/0022/4936/annual_report_2024_25.pdf) answers '
-        '5,818 bytes of 403 HTML through the browser, with the download '
-        'navigation timing out. The report EXISTS, which is more than the '
-        'earlier probe could say; it is tabled in Parliament, and that host is '
-        'blocked too. Nothing here can open either copy',
-    'nsw:NSW Rural Fire Service':
-        'the same refusal as Fire and Rescue, measured 2026-09-27. Its '
-        'annual-reports page renders through a warmed browser — 28,722 bytes, so '
-        'the host is not refusing the page — and links NO document at all, by '
-        'extension or by label. Its own direct report path '
-        '(__data/assets/pdf_file/...) answers 403 HTML to the browser and times '
-        'out on a download navigation, and admin.rfs.nsw.gov.au is unreachable '
-        'through this proxy (502). The 2024-25 report is tabled in Parliament, '
-        'whose host is blocked, so the document exists and no copy of it is '
-        'reachable from here',
+        'ITS REPORT IS READABLE NOW — the tabled copy comes through '
+        'files.parliament.nsw.gov.au (2023-24, id 189721, 46.9 MB) even though '
+        'fire.nsw.gov.au still refuses this network at every path, its '
+        'annual-reports page rendering as 174 bytes through a warmed browser. '
+        'What stops the card is the DOCUMENT: Appendix 14 reports in two units '
+        'and totals neither. Its Staff composition summary reads Executives 24, '
+        'Full-time fire officers 3,608, Part-time (on-call) fire officers 3,214 '
+        '— head counts — and "Administrative and trade staff (FTE) 517". '
+        'Summing them would put people and FTE under one word; dropping the FTE '
+        'row would file a fire service without its administrative staff. The '
+        'head-count part alone is 6,846 and is not filed for that reason. Note '
+        'also that this is the 2023-24 report: the 2024-25 tabled id was not '
+        'found, and the newer edition would not change the shape of the table',
     # THIS CARD IS NOW FILED at 3,418 and its entry here is a comment for the
     # same reason DCJ's and the Department of Education's are: the measurement is
     # still true and the reason could never print again. It said "no annual report
@@ -1201,9 +1172,6 @@ NOT_IN_SOURCE = {
         'from it. Filing it again would double count',
     # And the three DCCEEW names its note DOES exclude, which is why they are
     # separate cards with no figure rather than part of the 6,208.
-    'nsw:Taronga Conservation Society Australia':
-        "excluded by name from the DCCEEW annual report's workforce table, so "
-        'it needs its own report',
     'nsw:NSW Environment Protection Authority':
         "excluded by name from the DCCEEW annual report's workforce table, so "
         'it needs its own report',
@@ -3750,6 +3718,234 @@ NSW_AGENCY_REPORTS = {
     # bodies. So the 170 on that card is not inside this 3,418 and both can be
     # filed — which is the opposite of the Taronga and Destination NSW calls, on
     # the department's own statement rather than on the shape of the cluster.
+    # ── AND THE FILE API REACHES THE TWO FIRE SERVICES TOO ──────────────────
+    # The note above listed the agencies this route was worth trying on and did
+    # not list these, because their NOT_IN_SOURCE reasons said the report was
+    # tabled "and that host is blocked too" — written before the file API was
+    # found and never revisited. It serves both, measured 2026-09-29:
+    #
+    #   NSW Rural Fire Service  Annual Report 2024-25  id 192030   3,539,021 B
+    #   Fire and Rescue NSW     Annual Report 2023-24  id 189721  46,921,354 B
+    #
+    # p19, the "Salaried and volunteer members" panel: "Headcount at Census*
+    # 1,333 1,302 1,240" under a 2025 2024 2023 header, with the People table
+    # beside it giving the four categories that make it up.
+    #
+    # `from_components` RATHER THAN A TOTAL ROW, AND THE PAGE LAYOUT IS WHY. This
+    # is a two-column magazine spread, so extract_text() glues the panels
+    # together: the total's own line comes out as "Headcount at Census* 1,333
+    # 1,302 1,240 (includes junior member applications) (459) (462) (402)" —
+    # SIX numbers where the spec wants three, with the last three belonging to
+    # the membership-applications panel on the other side of the page. The
+    # tables pdfplumber does see are header rows only, so neither path can read
+    # that row as a total. The components are clean, they are on lines of their
+    # own, and they add up: 1 + 21 + 1,204 + 107 = 1,333, 1 + 22 + 1,174 + 105 =
+    # 1,302, 23 + 22 + 1,053 + 142 = 1,240 across all three years.
+    #
+    # `stated` IS THE INDEPENDENT QUANTITY, pulled off that same polluted line by
+    # a regex that stops after the first number — so the sum is checked against
+    # the figure the document prints rather than against itself. That is what
+    # makes this spec stronger than Transpower's in gen-headcount.py, where the
+    # control shows a wrong column files quietly: here EVERY control is refused,
+    # `now_i=1` included ("components sum to 1,302.0 against the 1,333.0 the
+    # document states"), because the components and the printed total have to
+    # agree in the column the spec names.
+    #
+    # THE FTE TABLE IS DIRECTLY ABOVE, as at DPHI and Forestry — "Full-time
+    # equivalent (FTE) positions 1,310 1,291 1,216" — and pointing `stated` at
+    # it is the first control: it fails with 1,333 against 1,310.
+    #
+    # `proof` IS THE BASIS, NOT THE DATE, and that is deliberate here: the page's
+    # footnote says the figures come from "the Workforce Profile Report submitted
+    # to the Public Service Commission", which is the same census every other NSW
+    # agency on this route reports against. A restyle that dropped that sentence
+    # would mean the numbers are no longer that census, which matters more than
+    # whether the word "2025" survives.
+    # AND TAFE NSW, THE THIRD REPORT THIS ROUTE OPENS. Its reason was "no annual
+    # report reachable. tafensw.edu.au answers 404 at every annual-report path
+    # and its sitemap of 1,357 URLs contains the word "annual" zero times; the
+    # report is not on nsw.gov.au either" — three true measurements of three
+    # places the document is not, ending in a conclusion about the document.
+    # It is tabled: id 192249, filed as "TAB A - TAFE NSW Annual Report 2025",
+    # 6,906,727 bytes. (Its own site does serve it, at
+    # cd.tafensw.edu.au/api/-/media/…/Annual-Report-2024-2025.pdf — under /api/
+    # with a `rev=` token, which is why no path anyone would guess reaches it.
+    # The tabled copy is used because a rev token is not a durable URL.)
+    #
+    # p45 Table 12 "Full-time equivalent TAFE NSW employees": six June columns,
+    # 2020 to 2025, two service groups and a Total — Teachers 6,122, Support
+    # Services 5,238, Total 11,360 for June 2025.
+    #
+    # FTE, NOT HEAD COUNT, and the table says so in its title; the card labels it
+    # accordingly. Its own note explains what that FTE is: "the average of hours
+    # worked and paid in the month of June", which is also why it differs from
+    # the Budget papers' figure for the same institution — worth knowing before
+    # reading a discrepancy as an error.
+    #
+    # `tol=1.1` BECAUSE THE DOCUMENT SAYS IT ROUNDS. June 2024 is 6,299 + 5,448 =
+    # 11,747 against a printed 11,748, and the note under the table reads "Due to
+    # rounding, the figures may not add up to the totals shown". June 2025 is
+    # exact. The default 0.6 rejects the spec outright, so the slack is real
+    # rather than assumed — the control prints "column 4 components sum to
+    # 11,747.0 against a stated Total of 11,748.0".
+    #
+    # TABLE 13 IS THE TRAP AND `comp` IS WHAT AVOIDS IT. Directly below, "Further
+    # breakdown of teachers by employment category" carries the SAME six columns
+    # and its own Total row — 5,919 … 6,122 — so `ncols` cannot separate them and
+    # pdfplumber hands back each row as its own one-row table, which means the
+    # line fallback is the path here. Naming Teachers and Support Services as the
+    # components is what refuses Table 13: pointed at its categories instead, the
+    # spec fails with "column 4 components sum to 6,300.0 against a stated Total
+    # of 11,748.0".
+    #
+    # AND THE CONTROL THAT DOES NOT FAIL, said plainly: `now_i=4` files 11,748
+    # without complaint, because both columns reconcile against their own
+    # components. `header` — the "Service group 2020 2021 … 2025" line — is the
+    # only thing that makes column 5 June 2025 rather than merely the last one.
+    # THE POWERHOUSE, AND ITS REASON HAD ALREADY DONE THE HARD PART. It read:
+    # "its 2024-25 annual report exists and only the BLOCKED host has it …
+    # parliament.nsw.gov.au/tp/files/192296 carries the '2024-25 Powerhouse
+    # Museum Annual Report', and that host cannot be read from here (120 s of
+    # warmed browser still on the interstitial)". Every word of that is true of
+    # www.parliament.nsw.gov.au and the id it names is the one the file API
+    # needs. Same id, other hostname: 21,966,631 bytes.
+    #
+    # It is the clearest case in this file of a reason that was a complete
+    # measurement and a wrong conclusion — it had located the document exactly
+    # and then said no copy was reachable.
+    #
+    # p121, "STAFFING NUMBERS": "MUSEUM TOTAL (NON-CASUAL) 335.5 313.2 303.2
+    # -10" under "FTE (Full-Time Employees) at 30 June 2023 2024 2025" with a
+    # "Change from last year" column. FTE and non-casual, both stated.
+    #
+    # `change_abs` IS THE WHOLE GUARD HERE AND IT IS A NEW OPTION. The divisional
+    # totals that sum to 303.2 are on the PRECEDING page — this path reads one
+    # page at a time, so there is nothing on p121 to reconcile against. What
+    # there is, is the museum's own arithmetic in the last column, and only one
+    # pair of the three year columns differs by 10: the controls for now_i=1 and
+    # prev_i=0 fail with 22.3 and 32.3 against it. Service NSW's `change_i`
+    # already did this for a PERCENTAGE; this is the same check where the
+    # published change is a count.
+    #
+    # NOT RECONCILED ACROSS THE PAGE BREAK, and that is worth saying rather than
+    # leaving implied: 9.8 + 20.2 + 6.4 + 70.4 + 91 + 74.4 + 5.8 + 25.2 = 303.2
+    # exactly, and 2024 sums to 313.2 exactly too, but both sums cross from p120
+    # to p121 and no spec here can express that. The arithmetic was checked by
+    # hand; the machine checks the change column.
+    # TARONGA, WHOSE CARD HAD TWO REASONS IN NOT_IN_SOURCE AND THEY DISAGREED.
+    # A dict literal carried the key twice: a long entry concluding "INSIDE the
+    # DCCEEW head count, which is filed", and a one-liner saying the opposite —
+    # "excluded by name from the DCCEEW annual report's workforce table, so it
+    # needs its own report". Python kept the second and dropped the first before
+    # anything ran, so nothing ever printed the conflict. main() now checks the
+    # source for repeated keys; see the comment there.
+    #
+    # THE ONE THAT WAS DROPPED WAS THE WRONG ONE, which is luck rather than
+    # design. DCCEEW's Table 7 note, read 2026-09-29, settles it: "data is based
+    # on department headcount and does not include related entities or personnel
+    # service customers. Exclusions are Biodiversity Conservation Trust, Dams
+    # Safety NSW, Taronga Conservation Society Australia, Energy Corporation of
+    # NSW, Environment Protection Authority and Energy Security Corporation."
+    # So the 6,208 does NOT contain these people and filing them here cannot
+    # double count.
+    #
+    # THE LONG ENTRY'S QUOTATION WAS RIGHT AND ITS CONCLUSION WAS NOT, which is
+    # worth separating. Taronga p109 does say "Since the Administrative
+    # Arrangement Order 2023, all employees are under the employment of DCCEEW,
+    # therefore salaries and wages, annual leave and on-costs are classified as
+    # personnel services expenses" — that is the EMPLOYER, and "personnel service
+    # customers" is exactly the phrase DCCEEW's note uses to say such people are
+    # outside its count. Being employed by a department and being inside its
+    # reported head count are different facts, and this card turned on the
+    # difference.
+    #
+    # AND THE DOCUMENT WAS ON ITS OWN HOST ALL ALONG, unchallenged —
+    # taronga.org.au serves it at 17,248,032 bytes. No file API needed; nobody
+    # had gone and looked. (The impact pages' "1,044 total staff team members"
+    # is still not the figure: an infographic with no as-at date. Appendix 8 is.)
+    #
+    # p139, Appendix 8 "Human Resources": seven program areas over three years,
+    # printed as TWO half-tables — Ongoing/Temporary above, Casual/Total below —
+    # each row carrying six numbers. The lower half's last column is the one that
+    # matters: Total 2025 = 1,022 against 982 and 964.
+    #
+    # IT RECONCILES THREE WAYS and only one of them is machine-checked. The seven
+    # Total-column rows sum to 1,022 (`sums`); the Casual column sums to 422; and
+    # across the two half-tables 437 + 163 + 422 = 1,022, which crosses a table
+    # boundary this path cannot express, so it was checked by hand.
+    #
+    # `after=r'Casual'` IS WHAT PICKS THE LOWER HALF, and "Casual" occurs exactly
+    # once on the page — as a word and as a line, which is what this option needs
+    # after the Forestry Corporation lesson. Without it both halves are read: the
+    # seven program areas match TWICE, fourteen component rows, and the run fails
+    # with "column 2 components sum to 859.0 against a stated Total of 422.0".
+    # That is the guard working, not the spec working.
+    #
+    # THE CONTROL THAT PASSES, stated rather than glossed: `now_i=2` files 422 —
+    # the casual count — because that column reconciles against its own
+    # components too. `header` is the only thing saying which three of the six
+    # columns are the Totals and which year each is.
+    'nsw-taronga': dict(
+        label='NSW: Taronga Conservation Society Australia',
+        agency='Taronga Conservation Society Australia',
+        agency_id='nsw-gov-taronga-conservation-society-australia',
+        url='https://www.taronga.org.au/siteassets/about/polices--publications/'
+            'annual-reports/Taronga_AnnualReport_2024_25.pdf',
+        needle='Program Area',
+        after=r'Casual',
+        total=r'^Total\b',
+        comp=r'^(?:Executive|Clerical|General|Professional|Services|Technical|'
+             r'Trades)\b',
+        ncols=6, now_i=5, prev_i=4, sums=[(2,), (5,)],
+        header=r'Program Area 2023 2024 2025 2023 2024 2025',
+        proof=r'ANNUAL IMPACT REPORT 2024 - 2025',
+        unit='headcount', asof='Jun 2025'),
+    'nsw-maas': dict(
+        label='NSW: Powerhouse (Museum of Applied Arts and Sciences)',
+        agency='Museum of Applied Arts and Sciences',
+        agency_id='nsw-gov-museum-of-applied-arts-and-sciences',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            '2024-25%20Powerhouse%20Museum%20Annual%20Report.pdf'
+            '?serverRelativeUrl=%2Ftp%2Ffiles%2F192296%2F2024-25+Powerhouse+'
+            'Museum+Annual+Report.pdf',
+        needle='MUSEUM TOTAL (NON-CASUAL)',
+        total=r'^MUSEUM TOTAL \(NON-CASUAL\)',
+        ncols=4, now_i=2, prev_i=1, change_i=3, change_abs=True, change_tol=0.05,
+        header=r'FTE \(Full-Time Employees\) at 30 June 2023 2024 2025',
+        proof=r'FTE \(Full-Time Employees\) at 30 June',
+        unit='fte', asof='Jun 2025'),
+    'nsw-tafensw': dict(
+        label='NSW: TAFE NSW',
+        agency='TAFE NSW',
+        agency_id='nsw-gov-tafe-nsw',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'TAB%20A%20-%20TAFE%20NSW%20Annual%20Report%202025.pdf'
+            '?serverRelativeUrl=%2Ftp%2Ffiles%2F192249%2FTAB+A+-+TAFE+NSW+'
+            'Annual+Report+2025.pdf',
+        needle='Full-time equivalent TAFE NSW employees',
+        total=r'^Total\b',
+        comp=r'^(?:Teachers|Support Services)\b',
+        ncols=6, now_i=5, prev_i=4, sums=[(4,), (5,)], tol=1.1,
+        header=r'Service group\s+2020\s+2021\s+2022\s+2023\s+2024\s+2025',
+        proof=r'Table 12: Full-time equivalent TAFE NSW employees',
+        unit='fte', asof='Jun 2025'),
+    'nsw-rfs': dict(
+        label='NSW: Rural Fire Service',
+        agency='NSW Rural Fire Service',
+        agency_id='nsw-gov-nsw-rural-fire-service',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'NSW%20Rural%20Fire%20Service%20Annual%20Report%202024-25.pdf'
+            '?serverRelativeUrl=%2Ftp%2Ffiles%2F192030%2FNSW+Rural+Fire+Service+'
+            'Annual+Report+2024-25.pdf',
+        needle='Headcount at Census',
+        from_components=True, min_rows=4,
+        comp=r'^(?:Casual|Contract - Public Service Senior Executive|'
+             r'Ongoing - Other than Senior Officers|Temporary employee)\b',
+        ncols=3, now_i=0, prev_i=1,
+        stated=r'Headcount at Census\*?\s+([\d,]+)',
+        header=r'2025\s+2024\s+2023',
+        proof=r'Workforce Profile Report submitted to the Public Service Commission',
+        unit='headcount', asof='Jun 2025'),
     'nsw-dphi': dict(
         label='NSW: Planning, Housing and Infrastructure',
         agency='Department of Planning, Housing and Infrastructure',
@@ -4487,12 +4683,26 @@ def _nsw_agency(spec):
     if spec.get('change_i') is not None:
         now, prev = total[spec['now_i']], total[spec['prev_i']]
         want = total[spec['change_i']]
-        got = abs((now - prev) / prev * 100)
+        # `change_abs`: THE SAME GUARD WHERE THE PUBLISHED CHANGE IS A COUNT
+        # RATHER THAN A PERCENTAGE. The Powerhouse Museum's staffing table ends
+        # "MUSEUM TOTAL (NON-CASUAL) 335.5 313.2 303.2 -10" — a "Change from last
+        # year" column in FTE, not per cent. The sign is lost by the number regex
+        # either way, which is why both forms compare magnitudes.
+        #
+        # IT IS THE WHOLE GUARD ON THAT SPEC, and that is the point of adding it:
+        # the museum's divisional totals are on the PRECEDING page, so nothing on
+        # the page carrying the total can reconcile against it. Only one pair of
+        # its three columns differs by 10 (335.5 -> 313.2 is 22.3 and 335.5 ->
+        # 303.2 is 32.3), so the document's own arithmetic picks the pair.
+        got = (abs(now - prev) if spec.get('change_abs')
+               else abs((now - prev) / prev * 100))
+        unit_s = '' if spec.get('change_abs') else '%'
         if abs(got - want) > spec.get('change_tol', 0.15):
             raise RuntimeError(f"{spec['label']}: columns {spec['prev_i']} and "
-                               f"{spec['now_i']} ({prev:,.0f} -> {now:,.0f}) are a "
-                               f"{got:.1f}% change, against the {want:.1f}% the table "
-                               f"publishes beside them — the wrong pair was read")
+                               f"{spec['now_i']} ({prev:,.1f} -> {now:,.1f}) are a "
+                               f"{got:.1f}{unit_s} change, against the {want:.1f}"
+                               f"{unit_s} the table publishes beside them — the "
+                               f"wrong pair was read")
     if spec.get('stated'):
         if stated is None:
             raise RuntimeError(f"{spec['label']}: the page no longer states a total "
@@ -4618,6 +4828,50 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
     (c.id.startsWith("nz-") && c.sector === "Healthcare"))
   .map(c => ({ id: c.id, name: c.name }))));'''],
         cwd=ROOT, capture_output=True, text=True, check=True).stdout)
+
+    # AND NO KEY MAY APPEAR TWICE, WHICH IS NOT A THING A DICT CAN TELL YOU.
+    # A duplicate key in a literal is legal Python: the later entry wins and the
+    # earlier one is gone before anything runs, so len() is right, the lookup is
+    # right, and the reason someone measured is simply not there.
+    #
+    # MEASURED 2026-09-29, AND IT HAD ALREADY COST SOMETHING. NOT_IN_SOURCE
+    # carried 'nsw:Taronga Conservation Society Australia' TWICE — a long entry
+    # arguing the card's people were inside DCCEEW's head count, and a one-line
+    # one saying the opposite ("excluded by name … so it needs its own report").
+    # The second won, silently. It was also the CORRECT one: DCCEEW's Table 7
+    # note reads "does not include related entities or personnel service
+    # customers. Exclusions are … Taronga Conservation Society Australia …", so
+    # the long entry's conclusion was wrong even though its quotation was right.
+    # The collision hid a wrong reason rather than a right one, which is luck and
+    # not a reason to leave the hole open.
+    #
+    # ast, BECAUSE THE DICT CANNOT BE ASKED. By the time this module is imported
+    # the duplicate is already gone; the only place it still exists is the source
+    # text, so that is what gets parsed.
+    _dupes = {}
+    for _tbl in ('NOT_IN_SOURCE', 'NOT_IN_SOURCE_JURISDICTION', 'ALIAS',
+                 'NSW_AGENCY_REPORTS'):
+        for _node in ast.walk(ast.parse(Path(__file__).read_text(encoding='utf-8'))):
+            if not (isinstance(_node, ast.Assign) and len(_node.targets) == 1
+                    and isinstance(_node.targets[0], ast.Name)
+                    and _node.targets[0].id == _tbl
+                    and isinstance(_node.value, ast.Dict)):
+                continue
+            _seen = set()
+            for _k in _node.value.keys:
+                if not isinstance(_k, ast.Constant):
+                    continue
+                if _k.value in _seen:
+                    _dupes.setdefault(_tbl, []).append((_k.value, _k.lineno))
+                _seen.add(_k.value)
+    if _dupes:
+        print('\n  DUPLICATE KEYS — the earlier entry is dropped before the run '
+              'starts, so a measurement someone wrote down is simply gone:',
+              file=sys.stderr)
+        for _tbl, _hits in sorted(_dupes.items()):
+            for _key, _line in _hits:
+                print(f'      {_tbl}[{_key!r}] repeated at line {_line}',
+                      file=sys.stderr)
 
     # EVERY NOT_IN_SOURCE KEY MUST NAME A REAL ROSTER CARD, because a key that
     # does not is silent: the lookup misses, the agency falls back to "no

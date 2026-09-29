@@ -4,45 +4,49 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
-//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: icare: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Art Gallery of NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
-//   NSW: Multicultural NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
-//   NSW: Ombudsman: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: State Library: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Electoral Commission: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Service NSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Sydney Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Hunter Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Audit Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Director of Public Prosecutions: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Museums of History: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: The Cabinet Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Premier's Department: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Planning, Housing and Infrastructure: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Property and Development NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
-//   NSW: Landcom: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: IPART: 1 agencies published as at Jun 2023 — refreshed 2026-09-29
-//   NSW: Essential Energy: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: WaterNSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: ICAC: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
-//   NSW: Forestry Corporation: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: NSW Trains: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Taronga Conservation Society Australia: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Powerhouse (Museum of Applied Arts and Sciences): 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
+//   NSW: TAFE NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: icare: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Creative Industries, Tourism, Hospitality and Sport: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Trustee and Guardian: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Art Gallery of NSW: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Multicultural NSW: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Ombudsman: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: State Library: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Electoral Commission: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Service NSW: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Treasury: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Primary Industries and Regional Development: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Sydney Water: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Hunter Water: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Audit Office: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Director of Public Prosecutions: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Museums of History: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: The Cabinet Office: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Premier's Department: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Rural Fire Service: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Planning, Housing and Infrastructure: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Property and Development NSW: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Landcom: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: IPART: 1 agencies published as at Jun 2023 — KEPT, not refreshed this run
+//   NSW: Essential Energy: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: WaterNSW: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: ICAC: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
+//   NSW: Forestry Corporation: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: NSW Trains: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 101 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -129,6 +133,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-landcom": { now: 199, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
+  "nsw-gov-museum-of-applied-arts-and-sciences": { now: 303, prev: 313, yoy: -3.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-museums-of-history-nsw": { now: 483, prev: 456, yoy: 5.9, asof: "Jun 2025", span: 1 },
   "nsw-gov-nepean-blue-mountains-local-health-district": { now: 5984, prev: 5548, yoy: 7.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-northern-sydney-local-health-district": { now: 8960, prev: 9057, yoy: -1.1, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -139,6 +144,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-ombudsman": { now: 259, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
+  "nsw-gov-nsw-rural-fire-service": { now: 1333, prev: 1302, yoy: 2.4, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-state-emergency-service": { now: 628, prev: 691, yoy: -9.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-trains": { now: 805, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -154,6 +160,8 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-opera-house": { now: 669, prev: 667, yoy: 0.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-water": { now: 4011, prev: 3530, yoy: 13.6, asof: "Jun 2025", span: 1 },
+  "nsw-gov-tafe-nsw": { now: 11360, prev: 11748, yoy: -3.3, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-taronga-conservation-society-australia": { now: 1022, prev: 982, yoy: 4.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-the-cabinet-office": { now: 297, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-transport-for-nsw": { now: 14506, prev: 14437, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-waternsw": { now: 1151, prev: 1078, yoy: 6.8, asof: "Jun 2025", span: 1 },

@@ -139,6 +139,77 @@ US = {'chevron': 'CVX', 'perth-aa': 'AA', 'rio': 'RIO', 'shell': 'SHEL'}  # dual
 # the card states as "Feb 2023" rather than implying currency. An em dash is
 # not more honest than a dated figure; it is only less informative.
 OWN_REPORT = {
+    # THE REASON THAT WAS HERE WAS A MEASUREMENT OF A URL, NOT OF A COMPANY.
+    # It read "results-and-reports path 404s and no annual-report PDF appears in
+    # its navigation" — and that path does 404, because the page is at
+    # /about-us/investors/reports/annual-results-and-reports, which lists EVERY
+    # annual report back to 2006 plus a Data Pack spreadsheet for each of the
+    # last three years. Same shape as Victoria University of Wellington's old
+    # entry: a dead URL written down as an absent document.
+    #
+    # FILED FROM THE DATA PACK RATHER THAN THE REPORT, deliberately — see
+    # own_workbook() for why the report's own 1,056 is the wrong number. The
+    # GRI 2-7 table gives FY26 1,050 and FY25 984, both reconciling exactly:
+    # 7 + 78 + 4 + 853 + 108 = 1,050 and 7 + 47 + 6 + 812 + 112 = 984.
+    #
+    # WHAT THE FIGURE INCLUDES, from the pack's own notes: head count and not
+    # FTE, sourced from PayGlobal at the end of the reporting period; casuals
+    # in, board and contractors out; 47 of them work for Flux Federation New
+    # Zealand. The 560 "workers who are not employees" — mostly contracted ICT
+    # support — are correctly outside it.
+    #
+    # BOTH YEARS RECONCILE FROM ONE LIST OF LABELS, because the years are three
+    # groups of the SAME row rather than three tables — FY26's "Casuals" cell is
+    # rewritten as "Casual and contractor" where FY25 begins, on the same line.
+    # The row is found by its FY26 label and each group is pinned to its year by
+    # the column its label sits in.
+    # AND THE SAME MISTAKE, WORDED DIFFERENTLY. This card's reason was "an SOE
+    # that must report, but its sitemap of 86 KB holds no annual-report URL and
+    # every guessed path 404s". The sitemap is 86 KB and no URL in it contains
+    # the word "annual" — both true, and the conclusion does not follow. The
+    # page is /our-work/investors/reports-and-reviews, it IS in that sitemap,
+    # and it lists every report back to FY17. Searching for the word I expected
+    # rather than the page that exists is the third instance of this shape in
+    # this file, after Victoria University of Wellington and Meridian.
+    #
+    # p51, the Social metrics table: "Total Transpower employees (headcount)
+    # number 1,113 1,080 969" under a header reading "Unit (up/down) 2025/26
+    # 2024/25 2023/24". A head count, said to be one, with its years named.
+    #
+    # `proof` IS THAT HEADER AND THAT IS THE WHOLE GUARD. There is no component
+    # breakdown on the page to reconcile against and no second statement of the
+    # total anywhere in the document — p67's "Total employees earning $100,000+
+    # 946" is a remuneration-band subtotal, not the workforce — so what stands
+    # between a wrong column and the card is the assertion that the columns are
+    # still 2025/26, 2024/25, 2023/24 in that order. When FY27 shifts them the
+    # spec fails loudly instead of filing last year's figure under this year's
+    # date.
+    #
+    # THE CONTROL SAYS THAT PLAINLY RATHER THAN FLATTERINGLY: with `col=2` the
+    # spec files 1,080 without complaint, because nothing on the page contradicts
+    # it. That is the limit of a table with no components, and `proof` is the
+    # only reason `col=1` is the 2025/26 column rather than merely the first one.
+    'nz-transpower-new-zealand-limited': dict(
+        url='https://static.transpower.co.nz/public/uncontrolled_docs/'
+            'Transpower%20Integrated%20Report%20FY26.pdf',
+        needle='Workforce composition',
+        find=r'Total Transpower employees \(headcount\) number '
+             r'([\d,]+) ([\d,]+) ([\d,]+)',
+        proof=r'Unit \(up/down\) 2025/26 2024/25 2023/24',
+        col=1, prev_col=2,
+        asof='Jun 2026', span=1),
+    'nz-meridian-energy': dict(
+        url='https://www.meridianenergy.co.nz/public/Investors/'
+            'Reports-and-presentations/Annual-results-and-reports/2026/'
+            'Meridian-Integrated-Report-Data-Pack-June-2026.xlsx',
+        sheet='OUR PEOPLE',
+        needle='Employees',
+        proof=r'GRI 2-7',
+        years=('FY26', 'FY25', 'FY24'),
+        row='Total',
+        comp=('Casuals', 'Fixed-term full time', 'Fixed-term part time',
+              'Permanent full time', 'Permanent part time'),
+        asof='Jun 2026', span=1),
     # THE LARGEST BLANK CARD IN THE WHOLE GAP: 1,268 archived ads and 555 live.
     #
     # NO PRIOR YEAR, AND THAT IS THE WHOLE POINT OF READING THE FOOTNOTES. The
@@ -599,15 +670,37 @@ NO_FIGURE_PUBLISHED = {
         'partnership anecdote. Note also that the roster domain todd.com is a '
         'PARKED PLACEHOLDER (832 bytes, "todd.com is almost here!"); the company '
         'is at todd.co.nz and toddcorporation.com',
+    # THE THIRD OF THE FOUR WRONG-URL REASONS, AND THE ONLY ONE THAT SURVIVES
+    # BEING CORRECTED. The old text — "site clears and renders, but no
+    # annual-report PDF is reachable from its navigation" — was wrong in the
+    # same way Meridian's and Transpower's were: /investors links
+    # /investors/results-reports/annual-and-interim-reports/2026-full-year-results,
+    # which carries "FY26 Integrated report and financial statements.pdf",
+    # 17.7 MB and 143 pages. It downloaded and was read in full.
+    #
+    # WHAT IT PUBLISHES IS AN APPROXIMATION, which is why the card still stays
+    # blank: p70 says the strategy is "supported by ~1,300 permanent employees"
+    # and that is the ONLY workforce number in the document. The tilde is the
+    # company's, not a rounding of mine, and "permanent" excludes fixed-term and
+    # casual staff, so it is neither exact nor the whole workforce. Its GRI index
+    # (p136) answers disclosure 2-7 Employees by pointing at p4, which carries no
+    # number at all, and there is no data pack beside the report — the FY26
+    # results page links a climate statement, a results presentation, a
+    # governance document and the interim statements, and nothing else.
+    #
+    # SAME TREATMENT AS FLETCHER BUILDING AND CONTACT ENERGY, deliberately: all
+    # three publish a "more than N" or "~N" and no exact total, and filing one
+    # would put a marketing figure on a card next to figures that came from a
+    # reconciled table. What changes here is that the reason now describes the
+    # document instead of describing a URL I could not find.
     'nz-mercury-nz':
-        'site clears and renders, but no annual-report PDF is reachable from its '
-        'navigation',
-    'nz-meridian-energy':
-        'results-and-reports path 404s and no annual-report PDF appears in its '
-        'navigation',
-    'nz-transpower-new-zealand-limited':
-        'an SOE that must report, but its sitemap of 86 KB holds no annual-report '
-        'URL and every guessed path 404s',
+        'its FY26 Integrated Report was located, downloaded and read — 143 pages '
+        'from /investors/results-reports/annual-and-interim-reports/'
+        '2026-full-year-results — and the only workforce figure in it is p70\'s '
+        '"supported by ~1,300 permanent employees". Approximate (the tilde is '
+        'theirs) and permanent-only, so it is neither exact nor the whole '
+        'workforce; its GRI 2-7 reference points at a page with no number, and '
+        'there is no data pack beside the report',
     'nz-victoria-university-of-wellington':
         'its governance/annual-reports page renders with no PDF links at all. '
         'the 2025 annual report publishes NO workforce total. Re-checked '
@@ -655,6 +748,139 @@ NO_FIGURE_PUBLISHED = {
         'now reaches the browser fallback (that was a separate bug fixed the same '
         'day) and lands on an investor page of 2,676 bytes with no reports on it',
 }
+
+
+def own_workbook(cid, spec):
+    """Read one company's own DATA PACK spreadsheet. -> a Headcount row, or raises.
+
+    WHY A SECOND READER RATHER THAN A SECOND PDF SPEC. Meridian Energy publishes
+    its GRI 2-7 employee table in an .xlsx "Integrated Report Data Pack" and NOT
+    in the report itself: the report's only total is p45's "Total headcount
+    remains unchanged at 1,056 (Board inclusive)", which counts the DIRECTORS
+    alongside the staff. The data pack gives 1,050 with "This data also excludes
+    the board and contractors" against it, three years deep, and its components
+    reconcile in every one of them. Taking the PDF figure because a PDF reader
+    already existed would have filed a number six too high on purpose.
+
+    THE TWO AGREE ONCE THE BOARD IS ACCOUNTED FOR — 1,050 plus a six-member board
+    is the 1,056 the report states — which is the cross-check that says the two
+    documents describe the same workforce rather than two different ones.
+
+    THE SHAPE THIS READS is a row of cells where each YEAR is a run of numbers
+    introduced by a string: ['Total', 3, 499, 548, 1050, 'Total', 1, 446, 537,
+    984, 'Total', 509, 553, 1062]. Splitting on "a string cell starts a new
+    group" works whatever the label says, which matters because the component
+    labels are NOT stable across years — FY26 writes "Casuals" where FY25 writes
+    "Casual and contractor" — and it survives a year being added on the left.
+    `years` pins which group is which, so a spec cannot silently read FY25 as
+    FY26 when next year's pack shifts the columns along.
+    """
+    import io as _io
+    import openpyxl
+
+    req = urllib.request.Request(spec['url'], headers={'User-Agent': UA})
+    blob = urllib.request.urlopen(req, timeout=120).read()
+    if blob[:2] != b'PK':
+        raise RuntimeError(f'{cid}: not an xlsx — starts {blob[:40]!r}')
+    wb = openpyxl.load_workbook(_io.BytesIO(blob), data_only=True)
+    if spec['sheet'] not in wb.sheetnames:
+        raise RuntimeError(f'{cid}: no sheet {spec["sheet"]!r} — has {wb.sheetnames}')
+    rows = [[c for c in r] for r in wb[spec['sheet']].iter_rows(values_only=True)]
+
+    # THE TABLE IS FOUND BY ITS OWN CAPTION, not by a row number, because a data
+    # pack gains and loses tables between editions and a fixed offset would read
+    # whatever moved into place. `needle` is the caption and `proof` is the
+    # standard reference beside it — both must be on the SAME row, so a spec
+    # cannot anchor on the word "Employees" somewhere else in the sheet.
+    start = None
+    for i, r in enumerate(rows):
+        text = ' | '.join(str(c) for c in r if c is not None)
+        if spec['needle'] in text and re.search(spec['proof'], text):
+            start = i
+            break
+    if start is None:
+        raise RuntimeError(f'{cid}: no row carries {spec["needle"]!r} with '
+                           f'{spec["proof"]!r} beside it')
+    block = rows[start:start + spec.get('span_rows', 14)]
+
+    # THE HEADER ROW PINS GROUP -> YEAR, BY COLUMN AND NOT BY COUNTING. Required
+    # in order, so a pack that prepends a new year fails here rather than filing
+    # last year's figure under this year's date; and the COLUMN each year sits
+    # in is kept, because every row below repeats its own year labels at those
+    # same columns and checking that is what makes group N genuinely year N.
+    year_cols = None
+    for r in block:
+        at = {str(c).strip(): i for i, c in enumerate(r) if c is not None}
+        if all(y in at for y in spec['years']):
+            cols = [at[y] for y in spec['years']]
+            if cols != sorted(cols):
+                raise RuntimeError(f'{cid}: {list(spec["years"])} appear out of '
+                                   f'order across the header — columns have moved')
+            year_cols = cols
+            break
+    if year_cols is None:
+        raise RuntimeError(f'{cid}: no header row carries all of {spec["years"]}')
+
+    def groups(label):
+        """The numeric runs of the row whose first NON-EMPTY cell is `label`.
+
+        Not r[0]: this sheet indents every table by a column and pads each year
+        group out to a fixed width, so a row is mostly None and the label sits
+        at index 1. Reading position 0 finds nothing at all, which is how this
+        failed the first time it was run.
+
+        AND THE YEARS LIVE IN THE ROW, NOT IN SEPARATE ROWS. FY26, FY25 and FY24
+        are three groups of the SAME line — ['Casuals', 4, 3, 7, 'Casual and
+        contractor', 3, 4, 7, 'Casual and contractor', 5, 11, 16] — with the
+        label rewritten in each. So a group starts wherever a string cell does,
+        whatever it says, and the group is pinned to a year by the column that
+        string sits in rather than by what it reads.
+        """
+        def first(r):
+            return next((str(c).strip() for c in r if c is not None), None)
+        hit = [r for r in block if first(r) == label]
+        if len(hit) != 1:
+            raise RuntimeError(f'{cid}: row {label!r} appears {len(hit)} times in '
+                               f'the block, not once')
+        out, cur = [], None
+        for i, c in enumerate(hit[0]):
+            if c is None:
+                continue
+            if isinstance(c, str):
+                cur = []
+                out.append((i, cur))
+            elif cur is not None:
+                cur.append(int(c))
+        out = [(i, g) for i, g in out if g]
+        if [i for i, _ in out] != year_cols:
+            raise RuntimeError(f'{cid}: row {label!r} has its year groups at '
+                               f'columns {[i for i, _ in out]} against the '
+                               f'header\'s {year_cols}')
+        return [g for _, g in out]
+
+    take = spec.get('take', -1)
+    tot = groups(spec['row'])
+    now = tot[0][take]
+    prev = tot[1][take] if len(tot) > 1 else None
+    if now <= 0:
+        raise RuntimeError(f'{cid}: parsed a non-positive figure ({now})')
+
+    # RECONCILED IN BOTH YEARS, which is what makes `take` safe. A spec reading
+    # the wrong column of a gender breakdown would still produce a plausible
+    # number; it would not produce one its own components sum to. Both years
+    # come from the SAME rows, so one list of labels does both.
+    for gi, stated in ((0, now), (1, prev)):
+        if stated is None or gi >= len(spec['years']):
+            continue
+        total = sum(groups(l)[gi][take] for l in spec['comp'])
+        if total != stated:
+            raise RuntimeError(f'{cid}: {spec["years"][gi]} components sum to '
+                               f'{total:,} against a stated {stated:,} — the '
+                               f'column or the rows are wrong')
+
+    return {'now': now, 'prev': prev, 'asof': spec['asof'],
+            'yr': int(re.search(r'(20\d\d)', spec['asof']).group(1)),
+            'span': spec.get('span', 0) if prev else 0}
 
 
 def own_report(cid, spec):
@@ -955,7 +1181,8 @@ def main():
         if cid in data:
             continue
         try:
-            data[cid] = own_report(cid, spec)
+            data[cid] = (own_workbook(cid, spec) if spec.get('sheet')
+                         else own_report(cid, spec))
             print(f'  own report: {cid} -> {data[cid]["now"]:,} as at {spec["asof"]}')
         except Exception as e:                                    # noqa: BLE001
             print(f'  own report FAILED for {cid}: {type(e).__name__}: {e}')

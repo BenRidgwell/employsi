@@ -80,59 +80,59 @@ COUNT = [r'(?i)(?:head ?count|full.time equivalent|\bFTE\b)[^.]{0,60}\d',
          r'(?i)\b\d[\d,]{1,5}\b[^.]{0,40}(?:staff|employees|people)\b']
 
 PROBES = {
-    # THE ONE DOCUMENT WORTH MOST, and round one proved it reachable. The
-    # Attorney-General's Department is filed at 1,688 and five blank cards sit
-    # in its portfolio: SafeWork SA, the Commissioner for Children and Young
-    # People, the Guardian for Children and Young People, the Child Death and
-    # Serious Injury Review Committee and the SA Employment Tribunal.
+    # ── ROUND THREE. Round two answered the "where is the document" question for
+    # every host and answered the employment question for none of them, so this
+    # round follows the links round two printed.
     #
-    # ROUND ONE SHOWED THE NAMES ARE ALL IN THERE AND DID NOT SHOW WHAT THEY
-    # MEAN. "SafeWork SA which, as South Australia's workplace health and
-    # safety regulator, investigates workplace incidents" says what it does;
-    # "SafeWork SA prescribed fee 29 948 29 217" is a revenue line in the
-    # department's own financial statements, which is suggestive of
-    # consolidation and is not a statement about who employs anyone. So this
-    # round prints CONTEXT — the lines either side, with the page number — and
-    # asks the employment question directly rather than matching the name.
-    'agd': dict(
+    # WHAT ROUND TWO ACTUALLY SETTLED, and it is not nothing: all six hosts serve
+    # this runner (200 at 331,760 / 41,016 / 144,101 / 286,947 / 184,081 bytes,
+    # and the AGD PDF again at 3,965,128), so nothing below is a reachability
+    # question any more. Each of the four statutory offices links its own annual
+    # reports and SafeWork SA publishes an Annual Activity Report as a set of web
+    # pages — one of them titled "Developing our people".
+    #
+    # AND THE AGD REPORT DOES NOT CARRY THE ANSWER IN PROSE. Read with context
+    # and page numbers it says its own employees "are employed under Part 7 of
+    # the Public Sector Act 2009" and that it "is an administrative unit acting
+    # on behalf of the Crown" — about itself, twice, in the financial statements.
+    # The one sentence about an attached office is about a body that is NOT one
+    # of the five: p9, "The Office of the Commissioner for Public Sector
+    # Employment (OCPSE) became an attached office to the Department of the
+    # Premier and Cabinet (DPC) effective from 1 July 2024". That is a machinery
+    # change in a list of machinery changes, so the list itself is worth reading
+    # whole rather than one matched line at a time — hence `pages`.
+    'agd-structure': dict(
         url='https://www.agd.sa.gov.au/__data/assets/pdf_file/0005/1200686/'
             'Final-Annual-Report-2024-25.pdf',
-        ctx=2, cap=90,
-        pats=WHO + [
-            # The report's own scope statement, wherever it is made.
-            r'(?i)this (?:annual )?report (?:covers|includes|is for)',
-            r'(?i)(?:agencies|bodies|offices) (?:covered|included) (?:by|in)',
-            # The five, each asked as an employment question rather than a name.
-            r'(?i)SafeWork SA[^.]{0,80}(?:staff|employ|FTE|people)',
-            r'(?i)(?:staff|employ|FTE)[^.]{0,80}SafeWork SA',
-            r'(?i)Commissioner for Children and Young People',
-            r'(?i)Guardian for Children and Young People',
-            r'(?i)Child Death and Serious Injury',
-            r'(?i)Employment Tribunal[^.]{0,80}(?:staff|employ|registry|FTE)',
-            r'(?i)(?:staff|employ|registry)[^.]{0,80}Employment Tribunal',
-            # The workforce section's own headings and totals.
-            r'(?i)^\s*(?:Workforce|Employment) (?:information|statistics|data)',
-            r'(?i)number of (?:employees|persons|staff)',
-            r'(?i)\b1[,\s]?688\b',
-        ]),
-    # ── ROOTS, because round one's paths were guesses and 404'd ─────────────
-    # Each of these prints its annual-report links so the next round can name a
-    # document. A 404 on a path I invented says nothing about the site.
-    'safework': dict(url='https://www.safework.sa.gov.au/', links=True,
-                     pats=WHO + COUNT),
-    'saet': dict(url='https://www.saet.sa.gov.au/', links=True, pats=WHO + COUNT),
-    'gcyp': dict(url='https://gcyp.sa.gov.au/', links=True, pats=WHO + COUNT),
-    'ccyp': dict(url='https://www.ccyp.com.au/', links=True, pats=WHO + COUNT),
-    'cdsirc': dict(url='https://www.cdsirc.sa.gov.au/', links=True,
-                   pats=WHO + COUNT),
-    # THE GUARDIAN'S OWN REPORT, by a URL that is known to exist rather than
-    # guessed — it is the 2022-23 edition, which is old for a head count and
-    # perfectly good for an employment arrangement, since that is the kind of
-    # fact that changes with legislation and not with the year.
-    'gcyp-report': dict(
-        url='https://gcyp.sa.gov.au/wordpress/wp-content/uploads/2023/11/'
-            'Guardian-for-Children-and-Young-People-2022-23-Annual-Report.pdf',
-        ctx=2, cap=40, pats=WHO + COUNT),
+        pages=(8, 13), pats=[]),
+    # The four statutory offices' own annual-report LISTINGS, so round four can
+    # name a document. Each was printed by round two as the one report-ish link
+    # on the site's root.
+    'gcyp-list': dict(url='https://gcyp.sa.gov.au/resource-type/annual-reports/',
+                      links=True, pats=WHO + COUNT),
+    'ccyp-list': dict(url='https://www.ccyp.com.au/agendas-reports/',
+                      links=True, pats=WHO + COUNT),
+    'cdsirc-list': dict(url='https://cdsirc.sa.gov.au/annual-reports/',
+                        links=True, pats=WHO + COUNT),
+    # SafeWork SA's Annual Activity Report is a set of PAGES, not a PDF, and one
+    # of them is about its staff. Both are asked because "Who we are" is where an
+    # employment arrangement would be stated and "Developing our people" is where
+    # a number would be.
+    'safework-who': dict(
+        url='https://www.safework.sa.gov.au/about-us/annual-activity-report/who-we-are',
+        links=True, pats=WHO + COUNT),
+    'safework-people': dict(
+        url='https://www.safework.sa.gov.au/about-us/annual-activity-report/'
+            'developing-our-people',
+        links=True, pats=WHO + COUNT),
+    # THE TRIBUNAL'S ROOT HAD NO LINKS AT ALL — 41,016 bytes and eighty lines,
+    # which is what a JavaScript shell looks like from a plain fetch. So this
+    # asks two paths that would exist if it publishes at all, and a 404 from
+    # both is then a measurement of the site rather than of my guess.
+    'saet-annual': dict(url='https://www.saet.sa.gov.au/annual-reports/',
+                        links=True, pats=WHO + COUNT),
+    'saet-about': dict(url='https://www.saet.sa.gov.au/about-saet/',
+                       links=True, pats=WHO + COUNT),
 }
 
 
@@ -200,6 +200,22 @@ def probe(key, spec):
         print(f'  -- {len(links)} report-ish links --', flush=True)
         for href, text in links[:25]:
             print(f'     {href[:110]}   |{text}|', flush=True)
+
+    # ── `pages`: DUMP A RANGE WHOLE ─────────────────────────────────────────
+    # Matching one line at a time answers a question you already know how to
+    # ask. A list of machinery-of-government changes is not that: what settles
+    # five cards is whichever bullet happens to name them, and no pattern
+    # written in advance knows which words that bullet uses.
+    if spec.get('pages'):
+        lo, hi = spec['pages']
+        for n in range(lo, hi + 1):
+            want = [l for l, pg in zip(lines, pages) if pg == n]
+            if not want:
+                continue
+            print(f'    ---- page {n} ----', flush=True)
+            for line in want:
+                print(f'      {line[:200]}', flush=True)
+        return
 
     ctx, cap = spec.get('ctx', 0), spec.get('cap', 60)
     shown, hits = set(), 0
