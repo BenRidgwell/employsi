@@ -5,10 +5,35 @@ publish. A long-form version was drafted first and retired in favour of it; it i
 in git history at `f620a7d` (`docs/privacy-policy.draft.md`) if the detail is ever
 wanted for a due-diligence questionnaire or a DPA.
 
+## Before publishing: the contact address must actually receive
+
+The policy names **privacy@employsi.com.au**. Measured 2026-09-29, the domain has
+**no MX records**, so that address bounces. Cloudflare Email Routing (free,
+receive-only) is the chosen route and has to be enabled in the dashboard before
+the policy goes live — a published policy naming a bouncing privacy address is
+worse than one carrying a placeholder, because it is a promise that fails silently.
+
+The domain's mail DNS is currently, and deliberately, locked against sending:
+
+```
+MX      (none)
+TXT     v=spf1 -all                                  ← nobody may send as the domain
+_dmarc  v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s
+```
+
+**Email Routing needs none of that changed.** Forwarding is a receiving function;
+Cloudflare re-sends to the destination mailbox under its own domain, so `-all` and
+`p=reject` stay intact and the domain stays unspoofable. Leave both alone. They
+only come into play if outbound sending is ever added, and the strict alignment
+(`adkim=s`) is stricter than most relays' defaults — see the option-3 notes in the
+conversation, or re-derive before touching it.
+
+Replies will come from whatever mailbox the address forwards to, not from
+@employsi.com.au. That is cosmetic, not a compliance problem.
+
 ## Still to decide before publishing
 
-- **Entity name, ABN, privacy contact email, last-updated date** — the `[CONFIRM]`
-  markers in the policy.
+- **Entity name, ABN, last-updated date** — the remaining `[CONFIRM]` markers.
 - **Retention periods.** The policy says we keep information "only as long as
   necessary" and names the one limit that actually exists (30-day sessions). No
   retention or deletion job exists for anything else — see below.
