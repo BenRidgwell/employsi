@@ -137,8 +137,15 @@ jobs:
           fetch() { curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$1" || echo 000; }
           title() { grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//'; }
           fail=0
-          for wait in 0 5 10 20; do
-            sleep "$wait"; code=$(fetch https://employsi.com.au/); [ "$code" = 200 ] && break
+          # WAIT FOR THE NEW VERSION TO REACH THE DOMAIN. Measured 2026-09-29 on
+          # the first run: every check here ran within a second of the upload
+          # and saw the OLD waitlist (/product and /login 404), then the same
+          # URLs served the new site seconds later. A 200 on / proves nothing —
+          # the old page answered 200 too — so wait on the new TITLE.
+          for wait in 0 5 10 15 20 30 40; do
+            sleep "$wait"; code=$(fetch "https://employsi.com.au/?deploy=$NEW_VERSION")
+            case "$(title)" in *"Explore the world of work"*) break ;; esac
+            echo "apex / still serving: $(title) — waiting"
           done
           t=$(title); echo "apex /          $code  $t"
           case "$t" in *"Explore the world of work"*) ;; *) echo "::error::apex / is not the landing page"; fail=1 ;; esac
