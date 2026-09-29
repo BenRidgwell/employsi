@@ -283,6 +283,17 @@ https://employsi-site-preview.employsi.workers.dev/api/auth/callback/google
 https://employsi-site-preview.employsi.workers.dev/api/auth/callback/linkedin
 ```
 
+**SET WORKER CONFIG AS SECRETS, NEVER AS PLAIN "VARIABLES".** A
+`wrangler deploy` keeps secrets but REPLACES plain-text variables with the ones
+the config declares — and this repo's config declares none, so every deploy
+deletes any variable added in the dashboard. Measured 2026-09-29 on
+`employsi-site-preview`: `STRIPE_PRICE_ID` had been added as a Variable (it is
+not sensitive, so that looked right), the next preview deploy removed it, and
+`/login` switched to "Subscriptions aren't set up on this deployment" while the
+Stripe key and webhook secret — both Secrets — carried on working. Re-added as
+a Secret, it survives. Non-sensitive values (`BETTER_AUTH_URL`, client ids,
+price ids) go in as Secrets too, for exactly this reason.
+
 **A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
 `wrangler secret put` does NOT deploy it. It uploads a new version and leaves
 traffic where it was, so the secret store and the running code disagree:
