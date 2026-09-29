@@ -1038,16 +1038,32 @@ is known. The walk reports companies that got the interstitial as CHALLENGED
 rather than as employers with no vacancies, so one dispatch answers it.
 
 **IT WORKS, AND THE POOL DOES HAVE CHINESE EXITS.** That was the open question;
-the first run through `SCRAPE_PROXY_COUNTRY=cn` answered it on 2026-09-29 —
-6 of 6 companies, **94 listings in 42 seconds**, no challenge anywhere. The
-nightly schedule moved onto `cffi` on that evidence.
+runs through `SCRAPE_PROXY_COUNTRY=cn` answered it on 2026-09-29:
+
+| Walk | Result |
+| --- | --- |
+| 6 companies | 94 listings, 6 of 6 reachable, 42s, no challenge |
+| **full roster, 93 companies** | **891 listings, 55 reachable, ~6 min, 2 challenged** |
+
+The nightly schedule moved onto `cffi` on that evidence. 38 companies returning
+nothing is the ordinary shape of this roster — Chinese employers advertising
+through their own channels rather than Zhaopin — not a partial block; the two
+that were challenged are named as such.
+
+**A FEW CHALLENGES IS A DIFFERENT FAULT FROM MOSTLY CHALLENGES.** The pool
+rotates, so an occasional company lands on an address Zhaopin has seen too much
+of. The first version of the walk's summary told you to go and check
+`SCRAPE_PROXY_COUNTRY` for any challenge at all, which on a 2-of-93 run points
+at a setting the other 91 companies just proved correct. It now reports the
+share and only calls the exit itself into question above half.
 
 **Two parsers shipped on purpose, and one of them lost.** Nobody could load a
 real results page while the credential was dead, so writing a single parser on a
 guess about unseen markup was exactly what this repo's conventions forbid. The
 feed therefore tried the `__INITIAL_STATE__` reading that worked under Oxylabs
 AND the upstream tool's card reading, and printed which fired. The answer was
-`__INITIAL_STATE__×13`, cards zero — so the card reading was removed rather than
+`__INITIAL_STATE__×13` on the first walk and `__INITIAL_STATE__×109` across the
+full roster, cards zero on both — so the card reading was removed rather than
 carried as a parser nobody was sure about.
 
 **What the upstream repo actually contributed was the TRANSPORT, not the

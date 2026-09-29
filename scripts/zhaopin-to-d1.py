@@ -428,13 +428,30 @@ def main() -> int:
         # nothing.
         parsers = ', '.join(f'{k}×{v}' for k, v in st['parsers'].items()) or 'none matched'
         sys.stderr.write(f'\nParser that read the pages: {parsers}\n')
+        # A FEW CHALLENGES AND MOSTLY CHALLENGES ARE DIFFERENT FAULTS, and the
+        # first version of this line sent you to the same place for both. The
+        # proxy is a ROTATING pool, so an occasional company lands on an address
+        # Zhaopin has seen too much of — measured 2026-09-29: 2 of 93, while the
+        # other 91 read fine through the same configuration. Telling someone to
+        # go and check SCRAPE_PROXY_COUNTRY on that evidence points them at a
+        # setting that is demonstrably correct. Only a walk that is mostly
+        # challenges is the exit itself.
         if st['challenged']:
-            sys.stderr.write(
-                f'{st["challenged"]} of {st["done"]} companies got the Security '
-                f'Verification interstitial rather than results — that is the EXIT '
-                f'being refused, not the roster being quiet. A cn exit is what this '
-                f'transport needs; check SCRAPE_PROXY_COUNTRY and whether the pool '
-                f'actually has Chinese addresses.\n')
+            share = st['challenged'] / max(1, st['done'])
+            if share >= 0.5:
+                sys.stderr.write(
+                    f'{st["challenged"]} of {st["done"]} companies got the Security '
+                    f'Verification interstitial rather than results — at that share '
+                    f'it is the EXIT being refused, not the roster being quiet. '
+                    f'Check SCRAPE_PROXY_COUNTRY is cn and that the pool still has '
+                    f'Chinese addresses.\n')
+            else:
+                sys.stderr.write(
+                    f'{st["challenged"]} of {st["done"]} companies got the Security '
+                    f'Verification interstitial ({share:.0%}). At this share that is '
+                    f'the rotating pool handing out a burnt address for one walk, not '
+                    f'a broken configuration — the rest of the roster read fine '
+                    f'through the same settings. Worth acting on only if it climbs.\n')
         if SOLVE:
             sys.stderr.write(f'\n{st["reach"]} of {st["done"]} companies returned '
                              f'listings via curl_cffi ({st["fetch"]} in total).\n')
