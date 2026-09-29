@@ -6,6 +6,12 @@ import { Brand, Site } from "@/site/SiteChrome";
 import { appGatedOn } from "@/lib/siteGate";
 import { getSession } from "@/employsi/lib/followsFn";
 import { signOut, startSignIn } from "@/employsi/lib/authClient";
+import {
+  getBillingState,
+  startCheckout,
+  type BillingState,
+  type SubscriptionOffer,
+} from "@/employsi/lib/billingFn";
 
 type Mode = "login" | "create";
 
@@ -180,6 +186,152 @@ function Waitlist() {
   );
 }
 
+/** "$9.95 AUD / month" — from the Stripe price, in the currency it charges. */
+function priceLabel(o: SubscriptionOffer): string {
+  const code = o.currency.toUpperCase();
+  let amount: string;
+  try {
+    amount = new Intl.NumberFormat("en-AU", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).format(o.amount / 100);
+  } catch {
+    amount = (o.amount / 100).toFixed(2);
+  }
+  const every = o.intervalCount > 1 ? `every ${o.intervalCount} ${o.interval}s` : `/ ${o.interval}`;
+  return `${amount} ${code} ${every}`;
+}
+
+const PER: Record<string, string> = {
+  day: "daily",
+  week: "weekly",
+  month: "monthly",
+  year: "yearly",
+};
+
+const fmtDate = (unix: number) =>
+  new Date(unix * 1000).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+/** The design's two-step bar: Account, then Payment. */
+function Steps({ at }: { at: 0 | 1 }) {
+  return (
+    <div className="ws-stepbar" aria-label={`Step ${at + 1} of 2`}>
+      {["Account", "Payment"].map((label, i) => (
+        <div key={label} className={i <= at ? "done" : ""}>
+          <div className="bar" />
+          <div className={`lbl${i === at ? " on" : ""}`}>{label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Step two of "Create account": review the subscription, then pay on Stripe.
+ *
+ * Every figure on the card is the Stripe price's own (getBillingState reads
+ * it); none is typed into this page. Tax is not shown as a number because
+ * Stripe works it out from the billing address on the checkout page — Managed
+ * Payments makes Stripe the merchant of record — so the card says that instead
+ * of printing a total that would be wrong for most visitors.
+ */
+function PaymentStep({ billing, onBack }: { billing: BillingState; onBack: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const offer = billing.offer;
+
+  const pay = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await startCheckout();
+      if ("url" in r) {
+        window.location.href = r.url;
+        return; // leaving the page; keep the button disabled
+      }
+      if ("alreadyActive" in r) {
+        window.location.href = "/app";
+        return;
+      }
+      setError(r.error);
+    } catch {
+      setError("Could not start checkout. Please try again.");
+    }
+    setBusy(false);
+  };
+
+  return (
+    <>
+      <Steps at={1} />
+      <div style={{ marginTop: 28 }}>
+        <h1>Payment.</h1>
+        <p className="sub">Review your subscription, then pay through Stripe.</p>
+      </div>
+      {billing.payments && offer ? (
+        <div className="ws-providers" style={{ gap: 16 }}>
+          <div className="ws-plan">
+            <div className="row">
+              <span className="name">{offer.productName}</span>
+              <span className="price">{priceLabel(offer)}</span>
+            </div>
+            <div className="row muted">
+              <span>
+                Billed{" "}
+                {offer.intervalCount > 1
+                  ? `every ${offer.intervalCount} ${offer.interval}s`
+                  : (PER[offer.interval] ?? `every ${offer.interval}`)}
+              </span>
+              <span>Cancel any time</span>
+            </div>
+            <div className="rule" />
+            <div className="row">
+              <span className="muted">Tax</span>
+              <span className="muted">Calculated by Stripe at checkout</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="ws-provider primary"
+            onClick={() => void pay()}
+            disabled={busy}
+          >
+            <span>{busy ? "Opening Stripe…" : "Continue to Stripe"}</span>
+            {!busy && <span aria-hidden>→</span>}
+          </button>
+          {error && <p className="ws-msg err">{error}</p>}
+          <button type="button" className="ws-linkbtn" onClick={onBack}>
+            Back
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* No key or no price on this Worker (or the price could not be
+              read): say so, rather than a button that fails at Stripe. */}
+          <p className="sub" style={{ marginTop: 32 }}>
+            Subscriptions aren&rsquo;t set up on this deployment yet. You can still browse
+            everything on the map.
+          </p>
+          <div className="ws-providers">
+            <a className="ws-provider primary" href="/app">
+              <span>Explore the map</span>
+              <span aria-hidden>→</span>
+            </a>
+          </div>
+        </>
+      )}
+      <p className="fine">
+        You&rsquo;ll finish payment securely on Stripe, then come straight back to employsi.
+      </p>
+    </>
+  );
+}
+
 function SignIn({ initial }: { initial: Mode }) {
   const [mode, setMode] = useState<Mode>(initial);
   const {
@@ -191,18 +343,30 @@ function SignIn({ initial }: { initial: Mode }) {
     queryFn: () => getSession(),
     retry: false,
   });
+  const { data: billing, isPending: billingPending } = useQuery({
+    queryKey: ["billing"],
+    queryFn: () => getBillingState(),
+    retry: false,
+    enabled: !!session?.user,
+  });
   const providers = session?.providers ?? [];
 
-  if (isPending) {
-    return (
-      <div className="ws-providers" aria-busy>
-        <div className="ws-skeleton-btn" />
-        <div className="ws-skeleton-btn" />
-      </div>
-    );
-  }
+  const skeleton = (
+    <div className="ws-providers" aria-busy>
+      <div className="ws-skeleton-btn" />
+      <div className="ws-skeleton-btn" />
+    </div>
+  );
+  if (isPending) return skeleton;
 
   if (session?.user) {
+    if (billingPending) return skeleton;
+    // Signed in and choosing "Create account" (or arriving back from the
+    // sign-up redirect, which returns to ?mode=create): the Payment step,
+    // unless they already subscribe.
+    if (mode === "create" && billing && !billing.active) {
+      return <PaymentStep billing={billing} onBack={() => setMode("login")} />;
+    }
     return (
       <>
         <div>
@@ -221,6 +385,19 @@ function SignIn({ initial }: { initial: Mode }) {
             <span aria-hidden>→</span>
           </a>
         </div>
+        {billing?.active ? (
+          <p className="fine">
+            Subscription active
+            {billing.currentPeriodEnd ? `, paid until ${fmtDate(billing.currentPeriodEnd)}` : ""}.
+          </p>
+        ) : billing?.payments ? (
+          <p className="swap">
+            No subscription yet.{" "}
+            <button type="button" onClick={() => setMode("create")}>
+              Start your subscription
+            </button>
+          </p>
+        ) : null}
         <p className="swap">
           Not you?{" "}
           <button type="button" onClick={() => void signOut().finally(() => void refetch())}>
@@ -247,11 +424,16 @@ function SignIn({ initial }: { initial: Mode }) {
           </button>
         ))}
       </div>
-      <div style={{ marginTop: 36 }}>
+      {create && (
+        <div style={{ marginTop: 36 }}>
+          <Steps at={0} />
+        </div>
+      )}
+      <div style={{ marginTop: create ? 28 : 36 }}>
         <h1>{create ? "Create your account." : "Welcome back"}</h1>
         <p className="sub">
           {create
-            ? "Sign up with Google or LinkedIn. One click, no password to remember."
+            ? "Sign up with Google or LinkedIn, then set up your subscription."
             : "Sign in to your employsi account."}
         </p>
       </div>
@@ -263,8 +445,9 @@ function SignIn({ initial }: { initial: Mode }) {
                 key={p}
                 type="button"
                 className="ws-provider"
-                // Straight into the map afterwards: /login is only the doorway.
-                onClick={() => startSignIn(p, "/app")}
+                // Log in goes straight to the map. Create account comes back
+                // here, signed in, for the Payment step.
+                onClick={() => startSignIn(p, create ? "/login?mode=create" : "/app")}
               >
                 {p === "google" ? <GoogleMark /> : <LinkedInMark />}
                 <span>
@@ -276,9 +459,9 @@ function SignIn({ initial }: { initial: Mode }) {
           <p className="fine">We only use your account to sign you in. No posts, no contacts.</p>
         </>
       ) : (
-        // Neither provider's secrets are set on this deployment. Say so rather
-        // than offering a button that ends in a 503 — the same rule the app's
-        // own sign-in panel follows (employsi/components/SignInOptions.tsx).
+        // Better Auth is not configured on this deployment (see authAvailable).
+        // Say so rather than offering a button that ends in a 503 — the same
+        // rule the app's own sign-in panel follows.
         <>
           <p className="sub" style={{ marginTop: 32 }}>
             Sign-in isn&rsquo;t set up on this deployment yet. You can still browse everything on

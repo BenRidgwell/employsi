@@ -733,6 +733,27 @@ reads national-series data files the Worker bundle does not carry.
 - The secret is per-Worker: setting it on `employsi-preview` does not turn it on
   in production. Mind the secret-is-not-live trap above.
 
+### Subscriptions (Stripe Managed Payments)
+
+"Create account" on `/login` is two steps: sign up through Better Auth, then a
+Payment step that sends the visitor to a hosted Stripe Checkout with
+`managed_payments[enabled]=true` (Stripe is merchant of record and handles
+tax). `lib/billingFn.ts` creates the session and reads the offer;
+`lib/billing.ts` handles `POST /api/billing/webhook` (mounted in `server.ts`,
+raw body, signature-verified) and keeps `billing_subscription` in D1, created
+lazily like `llm_usage`. `lib/stripeApi.ts` is a fetch client pinned to the
+blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
+
+- **The price on the page is read from Stripe** (`STRIPE_PRICE_ID`), never
+  typed in. Create it with `scripts/stripe-create-subscription-product.ts`
+  (once with a test key, once live — separate ids).
+- **Per-Worker secrets**: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
+  `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
+  are not set up; without the third the webhook answers 503 and Stripe retries.
+- **Previews write the production D1**, so use TEST keys on them.
+- **Nothing gates `/app` on a subscription yet.** Status is recorded and shown
+  on `/login`; enforcing it is a separate decision.
+
 ### Map layers
 
 `src/employsi/state/store.ts` (zustand) owns the layer state; `WorldMapbox.tsx` handles

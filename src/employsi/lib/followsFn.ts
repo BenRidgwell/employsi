@@ -29,7 +29,7 @@ import { getAuth, authAvailable, authProviders, type AuthEnv } from "./auth";
  * outside a request (a build-time render) has none, and an empty Headers reads
  * as "signed out" rather than throwing.
  */
-function requestHeaders(): Headers {
+export function requestHeaders(): Headers {
   try {
     return getRequest().headers;
   } catch {
@@ -51,7 +51,7 @@ function db(e: AuthEnv | null): D1Like | null {
 }
 
 /** The signed-in user for this request, or null. The only source of identity. */
-async function currentUser(
+export async function currentUser(
   headers: Headers,
 ): Promise<{ id: string; name: string; email: string; image?: string } | null> {
   const e = await env();

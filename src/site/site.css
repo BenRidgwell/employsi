@@ -1173,3 +1173,72 @@
   color: var(--ws-text);
   text-decoration: none;
 }
+
+/* ----- login: create-account steps and the subscription card ------------ */
+
+.ws-stepbar {
+  display: flex;
+  gap: 8px;
+}
+.ws-stepbar > div {
+  flex: 1;
+}
+.ws-stepbar .bar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ws-n200);
+}
+.ws-stepbar .done .bar {
+  background: var(--ws-n900);
+}
+.ws-stepbar .lbl {
+  margin-top: 8px;
+  font-family: var(--ws-label);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ws-text-3);
+}
+.ws-stepbar .lbl.on {
+  color: var(--ws-text);
+}
+.ws-plan {
+  border: 1px solid var(--ws-border-subtle);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+}
+.ws-plan .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.ws-plan .name {
+  font-weight: 600;
+}
+.ws-plan .price {
+  font-family: var(--ws-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-plan .muted,
+.ws-plan .row.muted {
+  color: var(--ws-text-3);
+}
+.ws-plan .rule {
+  height: 1px;
+  background: var(--ws-border-subtle);
+}
+.ws-linkbtn {
+  height: 40px;
+  border: 0;
+  background: none;
+  color: var(--ws-text-3);
+  font-family: var(--ws-sans);
+  font-size: 14px;
+  cursor: pointer;
+}

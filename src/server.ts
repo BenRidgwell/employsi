@@ -190,6 +190,15 @@ export default {
         return await handleEventsRequest(request, env);
       }
 
+      // Stripe webhooks. Mounted here for the same reason as auth: the
+      // signature is over the exact body bytes, so it needs the raw Request.
+      // Deliberately NOT in APP_ONLY_PATHS: Stripe must reach it on whichever
+      // host the endpoint is registered for. See employsi/lib/billing.ts.
+      if (url.pathname === "/api/billing/webhook" && request.method === "POST") {
+        const { handleBillingWebhook } = await import("./employsi/lib/billing");
+        return await handleBillingWebhook(request);
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
