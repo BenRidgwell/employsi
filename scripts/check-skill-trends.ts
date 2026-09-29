@@ -36,6 +36,7 @@ import { rankedByEmployment, MIN_EMPLOYED, AU_RATE_HUBS } from "../src/employsi/
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { filedHeadcount } from "../src/employsi/lib/companyCard";
+import { SG_SKILL_GROUP } from "../src/employsi/data/sgOccupationSupply";
 import {
   NZ_GROUP_EMPLOYMENT,
   NZ_GROUP_NAME,
@@ -2565,11 +2566,16 @@ console.log("\nthe local supply layer measures employers, not their ads:");
     auHub.length === AU_RATE_HUBS.length,
     `${auHub.length}/${AU_RATE_HUBS.length}`,
   );
-  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is a disclosed
-  // rate denominator, never a skill headcount — see cityEmployment.
+  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is now SHOWN
+  // rather than withheld, but never as the skill's own headcount — the assertion
+  // moved from "returns nothing" to "never claims to be the skill", which is the
+  // property that actually mattered all along. Fully covered in the NZ/SG section
+  // below; kept here because this block is where the no-blending rules live.
+  const sgHere = cityEmployment("Nursing", "singapore", m);
   check(
-    "singapore's major-group figure is not printed as a skill headcount",
-    cityEmployment("Nursing", "singapore", m) === null,
+    "singapore's major-group figure is never printed as a skill headcount",
+    !!sgHere && sgHere.grain === "group" && sgHere.label !== "Nursing",
+    `${sgHere?.grain}/${sgHere?.label}`,
   );
   // Auckland and Wellington USED TO BE on this list and are deliberately off it:
   // they now answer from the 2023 Census at ANZSCO sub-major grain, labelled with
@@ -2645,12 +2651,48 @@ console.log("\nthe NZ supply figure names its group, not the skill:");
   const med = cityEmployment("Medical Practice", "auckland", m);
   check("...and Medical Practice returns the same group figure", med?.n === akl?.n);
 
-  // Singapore stays out: eight SSOC majors is coarse enough that the label would
-  // carry the whole claim. See cityEmployment.
+  // SINGAPORE IS IN NOW, at the coarsest grain in the app: eight SSOC majors. It
+  // used to be excluded outright and the guard asserted that; it earns its place
+  // only because the label names the group and `note` names the level, so both
+  // are asserted rather than the figure alone.
+  const sg = cityEmployment("Nursing", "singapore", m);
+  check("singapore answers", !!sg, `${sg?.n}`);
+  check("...as a group, not an occupation", sg?.grain === "group", sg?.grain);
+  check("...never labelled with the skill", sg?.label !== "Nursing", sg?.label);
+  // SSOC files registered nurses under Associate Professionals, not Professionals
+  // — the mapping follows the classification rather than intuition, and this is
+  // the case that shows it is not just dumping every degree job in one group.
   check(
-    "singapore is still excluded from the printed figure",
-    cityEmployment("Nursing", "singapore", m) === null,
+    "...and follows SSOC, which puts nurses in Associate Professionals",
+    sg?.label === "Associate Professionals & Technicians",
+    sg?.label,
   );
+  check("...and its note names the classification level", !!sg?.note?.includes("SSOC major group"));
+  const sgSoftware = cityEmployment("Software Engineering", "singapore", m);
+  check(
+    "...while Software Engineering is Professionals",
+    sgSoftware?.label === "Professionals",
+    sgSoftware?.label,
+  );
+  // Every group figure anywhere must carry a note. Without it the only thing on
+  // screen distinguishing 1-of-8 from 1-of-43 is gone.
+  const noteless: string[] = [];
+  for (const s of parents)
+    for (const c of ["auckland", "wellington", "singapore"]) {
+      const r = cityEmployment(s, c, m);
+      if (r && !r.note) noteless.push(`${s}/${c}`);
+    }
+  check(
+    "every group figure carries its classification note",
+    noteless.length === 0,
+    noteless.slice(0, 3).join(", "),
+  );
+  // And an occupation-grain figure must NOT claim a group note.
+  const auNoted = parents.map((s) => cityEmployment(s, "perth", m)).filter((r) => r && r.note);
+  check("an AU figure needs no group note", auNoted.length === 0, `${auNoted.length}`);
+  // Every parent skill has an SSOC group, or Singapore silently loses a rate too.
+  const sgUngrouped = parents.filter((s) => !SG_SKILL_GROUP[s]);
+  check("every parent skill has an SSOC group", sgUngrouped.length === 0, sgUngrouped.join(", "));
   check(
     "and an uncovered city returns nothing",
     ["toronto", "houston", "london"].every((c) => cityEmployment("Nursing", c, m) === null),

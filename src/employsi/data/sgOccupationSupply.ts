@@ -419,6 +419,7 @@ export const SG_SKILL_GROUP: Record<string, string> = {
   "Science & Laboratory": "Professionals",
   "Social & Community Services": "Professionals",
   "Software Engineering": "Professionals",
+  Strategy: "Professionals",
   "Subsea Engineering": "Professionals",
   Surveying: "Professionals",
   "Teaching & Education": "Professionals",
