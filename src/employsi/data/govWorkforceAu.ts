@@ -4,7 +4,9 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   QLD: Building and Construction Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-29
+//   QLD: Parliamentary Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
+//   QLD: Mental Health Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Building and Construction Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Crime and Corruption Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Rural and Industry Development Authority: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Health and Wellbeing Queensland: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -298,6 +300,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-natural-resources-and-mines-manufacturing-and-regional-and-rural-development": { now: 1468, prev: 1514, yoy: -3.0, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-office-of-the-health-ombudsman": { now: 163, prev: 154, yoy: 5.8, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-office-of-the-queensland-integrity-commissioner": { now: 16, prev: 16, yoy: 0.0, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-parliamentary-service": { now: 623, prev: 523, yoy: 19.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "qld-gov-primary-industries": { now: 2614, prev: 2462, yoy: 6.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-public-trust-office": { now: 608, prev: 624, yoy: -2.6, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-building-and-construction-commission": { now: 688, prev: 673, yoy: 2.2, asof: "Jun 2026", span: 1, unit: "fte" },
@@ -305,6 +308,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-queensland-family-and-child-commission": { now: 84, prev: 67, yoy: 25.4, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-fire-department": { now: 4243, prev: 4151, yoy: 2.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-health": { now: 119625, prev: 114757, yoy: 4.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-mental-health-commission": { now: 52, yoy: null, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-police-service": { now: 19132, prev: 18584, yoy: 2.9, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-rural-and-industry-development-authority": { now: 191, prev: 190, yoy: 0.6, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-treasury": { now: 1877, prev: 1853, yoy: 1.3, asof: "Mar 2026", span: 1, unit: "fte" },

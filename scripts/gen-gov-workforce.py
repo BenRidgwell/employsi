@@ -1457,8 +1457,6 @@ NOT_IN_SOURCE = {
         'no row names it; statutory body, outside the collection',
     'qld:National Injury Insurance Agency Queensland':
         'no row names it; statutory agency, outside the collection',
-    'qld:Queensland Mental Health Commission':
-        'no row names it; statutory body, outside the collection',
     'qld:Energy and Water Ombudsman Queensland':
         'no row names it; statutory scheme, outside the collection',
     'qld:Stadiums Queensland':
@@ -1471,9 +1469,6 @@ NOT_IN_SOURCE = {
         'Queensland has moved it more than once — so no parent is named',
 
     # Officers of the Parliament, which is not part of the public service.
-    'qld:Parliamentary Service':
-        'no row names it; the Parliamentary Service is not part of the public '
-        'service the collection covers',
     'qld:Queensland Audit Office':
         'no row names it; an officer of the Parliament, outside the collection',
     'qld:Office of the Queensland Ombudsman':
@@ -3040,6 +3035,74 @@ AGENCY_REPORTS = {
     # of 765 FTE employees". 688 against an approved 765 is the right side of
     # that ceiling, which is what a reader wants beside the number — but a
     # ceiling cannot corroborate a count and is not used as one.
+    # p44, Table 5 "Workforce data profile as at 30 June 2026": "Total staffing
+    # FTE 52 FTE" with "Total staffing (headcount) 57" on the line below it.
+    #
+    # THE FTE AND THE HEAD COUNT SIT ONE LINE APART AND `stated` IS WHAT KEEPS
+    # THEM APART. The page also says, in prose, that the Commission's "funded
+    # workforce was 52 FTE, representing a headcount of 57 employees" — two
+    # sentences, two quantities, each matching one of the two rows. Pointing
+    # `total` at the head-count row fails against the FTE sentence ("components
+    # sum to 57.0 against the 52.0 the document states in prose") and pointing
+    # `stated` at the head-count sentence fails the other way. On a page where
+    # the likeliest mistake is reading the wrong one of two adjacent rows, that
+    # is the guard that matters, and it is stronger than the `header` assertion
+    # holding QBCC and HWQld — this table has no year columns to assert.
+    #
+    # NO PRIOR YEAR: the table is a single as-at profile. FTE is taken rather
+    # than the head count because the rest of Queensland is FTE.
+    #
+    # Its components cannot be used, and the reason is the two-column layout
+    # again: "Permanent 26 FTE" and "Temporary 26 FTE" do not START their lines
+    # — extract_text() glues them to the ends of body-copy sentences from the
+    # column beside the table ("maintaining corporate governance around the
+    # Temporary 26 FTE"). They do add to 52, by hand.
+    # THE PARLIAMENTARY SERVICE, whose reason was right and incomplete: it is not
+    # part of the public service the workbooks cover, which is why no row names
+    # it — and it publishes its own annual report, on a host that reads fine.
+    # Note B2-1: "Full-time equivalent employees 623 523" under "2025 2024".
+    #
+    # A YEAR BEHIND THE OTHER QUEENSLAND SPECS ON PURPOSE. Parliament's newest
+    # report is 2024-25, so this card says Jun 2025 where the statutory bodies
+    # say Jun 2026. Same reason DCJ sits a year behind the NSW cluster.
+    #
+    # THE +100 IS THE DOCUMENT'S OWN AND IT EXPLAINS ITSELF: "Full-time
+    # equivalent employees increased by 100 primarily due to an additional
+    # position for all 93 Electorates across Queensland." 623 − 523 = 100, which
+    # is a reconciliation this path has no option to express, so it was checked
+    # by hand. A +19% jump on a card is the kind of thing that reads as a parse
+    # error, and this is the sentence that says it is not one.
+    #
+    # `(?=\s+\d)` ON `total` IS INSURANCE AGAINST THAT VERY SENTENCE. It starts
+    # with the same six words and carries exactly TWO numbers — 100 and 93 — so
+    # without the lookahead it is a valid two-column match. Today the real row
+    # comes first and wins, which means the guard changes nothing; it is kept
+    # because "the right line happens to be earlier" is not a property worth
+    # relying on when a restyle can reorder a page.
+    'qld-parlserv': dict(
+        label='QLD: Parliamentary Service',
+        agency='Parliamentary Service',
+        agency_id='qld-gov-parliamentary-service',
+        url='https://www.parliament.qld.gov.au/-/media/Annual-Report-2024-25/'
+            '2024-25AnnualReport.pdf',
+        needle='Full-time equivalent employees',
+        total=r'^Full-time equivalent employees(?=\s+\d)',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2025 2024',
+        proof=r'For the Year Ended 30 June 2025',
+        unit='fte', asof='Jun 2025'),
+    'qld-qmhc': dict(
+        label='QLD: Mental Health Commission',
+        agency='Queensland Mental Health Commission',
+        agency_id='qld-gov-queensland-mental-health-commission',
+        url='https://www.qmhc.qld.gov.au/sites/default/files/'
+            'qmhc_annual_report_2025-26.pdf',
+        needle='Workforce data profile as at 30 June 2026',
+        total=r'^Total staffing FTE',
+        ncols=1, now_i=0, prev_i=None,
+        stated=r'funded workforce was ([\d,]+) FTE',
+        proof=r'as at 30 June 2026',
+        unit='fte', asof='Jun 2026'),
     'qld-qbcc': dict(
         label='QLD: Building and Construction Commission',
         agency='Queensland Building and Construction Commission',
