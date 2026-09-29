@@ -37,15 +37,19 @@ const X1 = 1500;
 const BASE = 800;
 const RANGE = 440;
 const N = 64;
-// The callouts' anchor. y1/y2 are the Callouts Overlay design's defaults; x is
-// its slider maximum rather than its default 1300, moved right on request so
-// the lines clear the headline. At 1300 the lines started at x 436 of 1920 and
-// ran straight through "Explore the / world of work."; at 1700 they start at
-// 836, past the end of the headline at every width the overlay shows at, and
-// the card (x-208 .. x+60) still ends 160px inside the right edge.
-const AX = 1700;
+// The callouts' anchor. y1/y2 are the Callouts Overlay design's defaults, but
+// the STAGE is moved vertically so their midpoint (MID_Y) sits on the centre
+// of the headline — see HeroCallouts. x is right of the design's default 1300,
+// moved on request so the lines clear the headline: at 1300 they started at x
+// 436 of 1920 and ran through "Explore the / world of work."; at 1740 they
+// start at 876, which at 1440px is 657px, just past the end of "work." (650px)
+// now that the pair sits level with it. The card (x-208 .. x+60) still ends
+// 120px inside the right edge.
+const AX = 1740;
 const AY_UP = 440;
 const AY_DOWN = 640;
+const MID_Y = (AY_UP + AY_DOWN) / 2;
+const LOWEST_Y = AY_DOWN + 62 + 210 + 24;
 const MONO = "'JetBrains Mono', monospace";
 // Scene cues (seconds): Draw 1.6, Rising 0.9, Falling 3.5, Out 1.
 const CUE_RISING = 1.6;
@@ -268,15 +272,25 @@ function Callout({
   );
 }
 
+/**
+ * Where the FIRST loop starts, in seconds. The design's loop spends 1.7s
+ * drawing lines before the first card lands, which on a fresh page load reads
+ * as nothing happening. The first pass starts partway through the draw, so a
+ * card lands 0.8s after the data does; every loop after that runs in full.
+ */
+const FIRST_LOOP_FROM = 0.9;
+
 function useLoopTime(active: boolean): number {
-  const [T, setT] = useState(5);
+  const [T, setT] = useState(FIRST_LOOP_FROM);
+  const played = useRef(false);
   useEffect(() => {
     if (!active) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       setT(5); // both cards landed, lines fully drawn, nothing moving
       return;
     }
-    const t0 = performance.now();
+    const t0 = performance.now() - (played.current ? 0 : FIRST_LOOP_FROM * 1000);
+    played.current = true;
     let raf = 0;
     const step = (now: number) => {
       setT(((now - t0) / 1000) % LOOP);
@@ -292,15 +306,37 @@ export function HeroCallouts() {
   const { up, down } = useHeroMovers();
   const box = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(0);
+  const [top, setTop] = useState(0);
   const [onScreen, setOnScreen] = useState(true);
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const fit = () => setScale(el.clientWidth / W);
+    // ALIGNED TO THE HEADLINE, MEASURED. The headline is anchored to the
+    // banner's BOTTOM and grows with the viewport up to a cap, while the stage
+    // scales with the banner's WIDTH, so no fixed y lines the two up at every
+    // size. Instead the stage is moved so the markers' midpoint sits on the
+    // headline's vertical centre, re-measured whenever either resizes
+    // (including when the webfont lands and the headline reflows).
+    const headline = el.parentElement?.querySelector("h1") ?? null;
+    const fit = () => {
+      const k = el.clientWidth / W;
+      setScale(k);
+      if (!headline) return;
+      const b = el.getBoundingClientRect();
+      const h = headline.getBoundingClientRect();
+      // ...but never so low that the lower card leaves the banner. At 1920px
+      // the headline sits low (the banner caps at 900px while the stage is
+      // 1080), and pure centring put the red card's bottom at ~901px of 900.
+      // LOWEST_Y is that card's bottom in stage px: anchor + stem (62) + a
+      // two-line card (~210), plus a margin.
+      const want = h.top + h.height / 2 - b.top - MID_Y * k;
+      setTop(Math.min(want, b.height - LOWEST_Y * k));
+    };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el);
+    if (headline) ro.observe(headline);
     // Stop the 60fps loop once the banner has scrolled away.
     const io = new IntersectionObserver((es) => setOnScreen(es.some((e) => e.isIntersecting)));
     io.observe(el);
@@ -322,7 +358,7 @@ export function HeroCallouts() {
   return (
     <div className="ws-callouts" ref={box} aria-hidden>
       {has && scale > 0 && (
-        <div className="stage" style={{ transform: `scale(${scale})` }}>
+        <div className="stage" style={{ top, transform: `scale(${scale})` }}>
           <svg
             viewBox={`0 0 ${W} ${H}`}
             width={W}

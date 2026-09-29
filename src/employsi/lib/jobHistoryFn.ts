@@ -15,6 +15,7 @@ import {
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { coverageDay, coveredFrom } from "./feedCoverage";
 import { annualAud, medianAnnual } from "./salaryParse";
+import { kvBinding, type KVLike } from "./kv";
 import { FX_AS_AT } from "../data/fxRates";
 import { CITY_COUNTRY, REGION_HUBS } from "../data/mapboxWorldGeo";
 
@@ -320,6 +321,53 @@ export function alternateBySign<T>(items: T[], valueOf: (t: T) => number): T[] {
 // that shifts a little each day as the archive accumulates. Returns [] until the
 // archive holds enough history to compute movers; the client falls back to a
 // static seed in that case so the ticker is never empty.
+/**
+ * The last answer per (role, region), for an hour.
+ *
+ * The query behind the ticker reads 60 days of the archive — every row with
+ * skills whose last_seen falls inside it — and used to run in full for every
+ * visitor to every page carrying a ticker, including the public landing page,
+ * whose hero callouts could not appear until it returned. The archive only
+ * moves when the scrapers run, so re-deriving the same answer for each visit
+ * bought nothing. Worker isolates are reused between requests, so a
+ * module-level memo serves most visits for free; a cold isolate pays once.
+ *
+ * Keyed by role as well as region because what a caller may see differs (see
+ * `seesAll` below) — an admin's roll-up must never be served to a visitor.
+ * An hour, not the six landingStatsFn uses, because the 24-hour window is the
+ * one that should visibly move within a day. An all-empty answer is never
+ * stored: that is far likelier a transient D1 failure than a market with no
+ * movers, and caching it would hold an empty strip for the hour.
+ */
+const TRENDS_MEMO_MS = 60 * 60 * 1000;
+const trendsMemo = new Map<string, { at: number; value: LiveSkillTrends }>();
+
+/**
+ * THE SAME ANSWER, SHARED ACROSS ISOLATES THROUGH KV. The module memo above
+ * only helps a warm isolate, and on a low-traffic site most visits land on a
+ * cold one: measured 2026-09-29 on employsi-site-preview, three fresh page
+ * loads waited 5–10 s for this query, so the landing page's hero callouts
+ * appeared 8–13 s after the banner. A KV read is tens of milliseconds.
+ *
+ * KV is SHARED WITH PRODUCTION (see CLAUDE.md — a --name deploy inherits the
+ * bindings), so a preview writes the same keys production reads. That is
+ * safe only because the value is a pure function of the shared D1 archive and
+ * the caller's role: any deployment computing it gets the same answer. Bump
+ * the version in the key whenever the SHAPE or the METHOD of the result
+ * changes, or an older deployment will serve the newer one's cached answer
+ * (and vice versa) for up to the TTL.
+ */
+const TRENDS_KV_PREFIX = "trends:v1:";
+
+async function trendsKv(): Promise<KVLike | null> {
+  try {
+    const m = await import("cloudflare:workers");
+    return kvBinding(m?.env, "OPEN_ROLES_HISTORY");
+  } catch {
+    return null;
+  }
+}
+
 export const getLiveSkillTrends = createServerFn({ method: "GET" })
   /**
    * The place being described, as one of the map's domestic regions — or
@@ -357,6 +405,22 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" })
     // headline demand figure carrying vacancies from countries the product has
     // not released to them.
     const seesAll = (await callerRole()) === "admin";
+    const memoKey = `${seesAll ? "admin" : "user"}|${region}`;
+    const hit = trendsMemo.get(memoKey);
+    if (hit && Date.now() - hit.at < TRENDS_MEMO_MS) return hit.value;
+    const kv = await trendsKv();
+    if (kv) {
+      try {
+        const raw = await kv.get(TRENDS_KV_PREFIX + memoKey);
+        const cached = raw ? (JSON.parse(raw) as { at?: number; value?: LiveSkillTrends }) : null;
+        if (cached?.value && cached.at && Date.now() - cached.at < TRENDS_MEMO_MS) {
+          trendsMemo.set(memoKey, { at: cached.at, value: cached.value });
+          return cached.value;
+        }
+      } catch {
+        // An unreadable cache is a miss, never a failure: fall through and compute.
+      }
+    }
     // Sparkline length. The archive stores first_seen/last_seen per listing, so
     // "how many live vacancies demanded skill X on day D" is recoverable for any
     // day the archive was actually running — no new storage needed, and the line
@@ -647,6 +711,20 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" })
           pay:
             priceOf(payByMarket[p.name] ?? new Map(), payAds[p.name] ?? [], true).pay ?? undefined,
         }));
+      }
+      if (TREND_WINDOWS.some((w) => out[w.key].length)) {
+        const at = Date.now();
+        trendsMemo.set(memoKey, { at, value: out });
+        if (kv) {
+          try {
+            // expirationTtl is KV's floor on staleness; `at` above is the exact one.
+            await kv.put(TRENDS_KV_PREFIX + memoKey, JSON.stringify({ at, value: out }), {
+              expirationTtl: TRENDS_MEMO_MS / 1000,
+            });
+          } catch {
+            // A failed write only costs the next cold isolate a recompute.
+          }
+        }
       }
       return out;
     } catch {
