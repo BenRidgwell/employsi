@@ -240,6 +240,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   );
   const dragged = useRef(false);
 
+  const jumpTo = useRef<string | null>(null);
+  const focusRole = (o: CardNode) =>
+    setRoleFocus({
+      id: o.id,
+      title: o.title,
+      companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
+      cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
+    });
+
   const nodes: Placed[] = useMemo(
     () => (model?.nodes ?? []).map((n) => ({ ...n, x: 24 + n.col * PX, y: ROW0 + n.row * ROWH })),
     [model],
@@ -284,6 +293,12 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     }
     sel ??= core[Math.min(1, core.length - 1)]?.id ?? nodes[0].id;
     setSelId(sel);
+    // Arrived by an "Other directions" pick: that role is the reader's choice,
+    // so the map behind the card follows it as it does a click.
+    if (jumpTo.current && sel === jumpTo.current) {
+      jumpTo.current = null;
+      focusRole(nodes[idx(sel)]);
+    }
     const t = setTimeout(() => center(idx(sel)), 60);
     return () => clearTimeout(t);
     // Deliberately only on a new model: selection changes centre themselves.
@@ -338,13 +353,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     // Picking a role heats the map behind the card by that role, as a skill
     // search does, on whichever layer is showing (see store.roleFocus). Only
     // on a pick: the card's own opening selection is not the reader's choice.
-    const o = nodes[i];
-    setRoleFocus({
-      id: o.id,
-      title: o.title,
-      companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
-      cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
-    });
+    focusRole(nodes[i]);
   };
   const nextOf = (i: number) => {
     const kid = nodes.findIndex((o) => o.parent === i);
@@ -363,6 +372,23 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   const clearSkill = () => {
     setSkill(null);
     setPop(false);
+  };
+  /** Open a role on another ladder — an "Other directions" pick. The same
+   *  family and lane already on the map is just a selection; anything else
+   *  loads that ladder (with the role's lane beside the core) and the model
+   *  effect selects it and heats the map for it. */
+  const jump = (id: string) => {
+    const here = idx(id);
+    if (here >= 0) return go(here);
+    const [f, track] = id.split("|");
+    jumpTo.current = id;
+    setPop(false);
+    setScrub(null);
+    setSkill(null);
+    setEntryId(null);
+    setFamily(f);
+    setLane(track);
+    setSelId(id);
   };
 
   if (!model || !n) {
@@ -1446,6 +1472,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        <OtherDirections moves={n.moves} onPick={jump} />
+
         <OnetSection id={n.id} />
       </div>
     </div>
@@ -1485,6 +1513,57 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 // ── The first-open placeholder ───────────────────────────────────────────────
 
 /** A faded role card on the ghost map. */
+/**
+ * Roles on other ladders this one could lead to (careerCard.careerMoves). The
+ * link is O*NET's; the overlap and shared-employer counts are ours. It says
+ * "related", never that people make the move — the archive cannot see careers.
+ */
+function OtherDirections({
+  moves,
+  onPick,
+}: {
+  moves: CardNode["moves"];
+  onPick: (id: string) => void;
+}) {
+  if (!moves.length) return null;
+  return (
+    <section className="cpmoves" aria-label="Other directions">
+      <div className="cponethead">
+        <span style={EYEBROW}>OTHER DIRECTIONS</span>
+        <span className="cpmovessub">Related roles on other ladders</span>
+      </div>
+      <div className="cpmovelist">
+        {moves.map((m) => (
+          <button key={m.id} type="button" className="cpmove" onClick={() => onPick(m.id)}>
+            <span className="cpmovemain">
+              <span className="cpmovetitle">{m.title}</span>
+              <span className="cpmovewhere">{`${m.where} · ${m.stage}`}</span>
+            </span>
+            <span className="cpmovefigs">
+              <span>{`${Math.round(m.overlap * 100)}% skills shared`}</span>
+              <span>
+                {m.sharedEmployers
+                  ? `${m.sharedEmployers} employer${m.sharedEmployers === 1 ? "" : "s"} hire both`
+                  : "No shared employers on the map"}
+              </span>
+              <span>
+                {m.payLabel === "—" ? "Too few ads show pay" : `${m.payLabel} median pay`}
+              </span>
+            </span>
+            <span className="cpmovego" aria-hidden="true">
+              ›
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className="cponetnote">
+        Related occupations per O*NET; skill overlap and employers are from employsi&apos;s ads.
+        Nothing here tracks people making the move.
+      </p>
+    </section>
+  );
+}
+
 /**
  * What the role typically involves, from the O*NET occupation it was mapped
  * to. Kept visibly apart from everything above it: those figures are counts

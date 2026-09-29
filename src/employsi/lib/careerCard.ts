@@ -48,6 +48,7 @@ import {
 } from "./careerLadder";
 import { SKILL_PARENT, skillsForText } from "../data/skillsTaxonomy";
 import { AU_CITY_LNGLAT, HUB_LNGLAT, cityLabel } from "../data/mapboxWorldGeo";
+import { ONET_RELATED, ONET_ROLES } from "../data/onetRoles";
 
 // ── Display ──────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,29 @@ export interface CardNode {
   /** Roster companies that advertised this role in the window —
    *  [company id, roles advertised, still live] — for the map's highlight. */
   companies: [string, number, number][];
+  /** Roles on OTHER ladders this one could lead to — see careerMoves. */
+  moves: CardMove[];
+}
+
+/**
+ * A role on another ladder that O*NET relates to this one. The link itself is
+ * O*NET's (Related Occupations, between the occupations the two rungs map
+ * to); the two figures beside it are ours, counted from the ads.
+ */
+export interface CardMove {
+  /** "family|track|rung" of the destination. */
+  id: string;
+  title: string;
+  /** "Human resources · Generalist". */
+  where: string;
+  /** RUNG_LABEL of the destination rung. */
+  stage: string;
+  /** Weighted skill overlap 0-1 between the two rungs' listed skills —
+   *  Σ min(share) / Σ max(share), the same measure as a ladder step. */
+  overlap: number;
+  /** Roster companies advertising BOTH roles in this market in the window. */
+  sharedEmployers: number;
+  payLabel: string;
 }
 
 export interface CardEdge {
@@ -196,6 +220,66 @@ export interface CareerCardModel {
   lanes: { row: number; text: string }[];
   /** Skills listed on any rung of this map, A–Z. */
   skills: string[];
+}
+
+/** Moves shown per role. */
+const MAX_MOVES = 5;
+
+/**
+ * Where a role can lead OFF its own ladder — "a head of payroll could become a
+ * chief people officer".
+ *
+ * THE LINK IS O*NET'S, NOT OURS. The archive holds ads, not careers: it never
+ * sees anyone move, so it cannot say a move happens. What it can say is how
+ * alike two roles look in the ads. So a move is a pair of rungs whose O*NET
+ * occupations O*NET lists as related (its two Primary tiers), and it is shown
+ * with two counts that ARE ours — skill overlap and shared employers — which
+ * also order the list. Nothing here claims anyone made the move.
+ *
+ * Kept to destinations another ladder publishes in this market (so the card
+ * can open them), and at most one rung below the role: a step down to reach
+ * a different field is real, a drop of several rungs is not a direction.
+ * A rung with no O*NET occupation has no moves.
+ */
+export function careerMoves(p: CareerPathways, from: PathwayNode, country: string): CardMove[] {
+  const soc = ONET_ROLES[`${from.family}|${from.track}|${from.rung}`];
+  const related = soc ? ONET_RELATED[soc] : undefined;
+  if (!related?.length) return [];
+  const want = new Set(related);
+  const mine = new Map(from.skills);
+  const myCos = new Set((from.markets[country]?.companies ?? []).map(([id]) => id));
+  const out: CardMove[] = [];
+  for (const n of p.nodes) {
+    if (n.family === from.family && n.track === from.track) continue;
+    if (n.rung < from.rung - 1) continue;
+    const m = n.markets[country];
+    if (!m) continue;
+    const id = `${n.family}|${n.track}|${n.rung}`;
+    const nsoc = ONET_ROLES[id];
+    if (!nsoc || !want.has(nsoc)) continue;
+    let lo = 0;
+    let hi = 0;
+    const theirs = new Map(n.skills);
+    for (const k of new Set([...mine.keys(), ...theirs.keys()])) {
+      const a = mine.get(k) ?? 0;
+      const b = theirs.get(k) ?? 0;
+      lo += Math.min(a, b);
+      hi += Math.max(a, b);
+    }
+    const fam = p.families.find((f) => f.id === n.family);
+    out.push({
+      id,
+      title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[n.rung]),
+      where: `${fam?.label ?? n.family} · ${trackLabel(p, n.family, n.track)}`,
+      stage: RUNG_LABEL[n.rung],
+      overlap: hi ? Math.round((lo / hi) * 100) / 100 : 0,
+      sharedEmployers: (m.companies ?? []).filter(([c]) => myCos.has(c)).length,
+      payLabel: payLabel(n.pay[country]?.median ?? null, country),
+    });
+  }
+  return out
+    .sort((a, b) => b.overlap - a.overlap || b.sharedEmployers - a.sharedEmployers)
+    .slice(0, MAX_MOVES);
 }
 
 const trackLabel = (p: CareerPathways, family: string, track: string) =>
@@ -329,6 +413,7 @@ export function careerCard(
       skills: n.skills.map(([s]) => s),
       skillLive: m.skillLive,
       companies: m.companies ?? [],
+      moves: careerMoves(p, n, country),
     };
   });
 

@@ -775,6 +775,11 @@ over the O*NET text database — download link in the script). Three rules:
   to it and says it is not from our ads. Only O*NET's per-occupation
   "In Demand" software is shown; "Hot Technology" is economy-wide and says
   nothing about the job. The CC BY 4.0 credit is a licence condition.
+- **"Other directions" are O*NET's links, not observed moves.** A rung's
+  cross-ladder moves (`careerMoves` in `careerCard.ts`) are rungs whose
+  occupations O*NET lists as related (its Primary tiers). The archive holds ads,
+  not careers, so the card shows skill overlap and shared employers beside each
+  and never says anyone made the move.
 
 ### Subscriptions (Stripe Managed Payments)
 
