@@ -41,6 +41,24 @@ args = sys.argv[1:]
 LIKE = args[args.index('--like') + 1] if '--like' in args else None
 LIMIT = int(args[args.index('--limit') + 1]) if '--limit' in args else 10 ** 9
 DRY = '--dry-run' in args
+# SKILLS THIS RUN IS ALLOWED TO REMOVE EVEN FROM A CONTEXT-MAPPING SOURCE.
+#
+# keeps_old() below refuses to shrink rows whose skills were built from text the
+# archive does not store. That is right when a skill stops matching because the
+# script cannot see the input that produced it — and WRONG when the taxonomy has
+# deliberately excepted it. The script cannot tell those apart: it sees only the
+# old set and the new one, never the reason.
+#
+# So the caller says. Excepting "site reliability" out of Fixed Plant Maintenance
+# left 98 of 208 SRE rows still filed under mining, all of them from portal-* and
+# mycareersfuture, because the union rule preserved the very attribution the
+# except existed to remove. Naming the skill here removes it everywhere:
+#
+#   python3 scripts/remap-skills.py --like '%site reliability%' \
+#           --allow-remove 'Fixed Plant Maintenance'
+#
+# Repeatable. Safe by default: without it nothing is ever taken off those rows.
+ALLOW_REMOVE = {args[i + 1] for i, a in enumerate(args) if a == '--allow-remove'}
 
 if not LIKE:
     sys.exit('--like is required (e.g. --like "%Principal%")')
@@ -149,8 +167,10 @@ for r, sk in zip(rows, fresh):
     new = sk
     if keeps_old(r.get('source')):
         # Union, order-stable: everything the row already had, plus anything
-        # the current taxonomy now finds in the title.
-        new = list(old) + [x for x in sk if x not in old]
+        # the current taxonomy now finds in the title — minus anything this run
+        # was explicitly told it may remove.
+        kept = [x for x in old if x not in ALLOW_REMOVE]
+        new = kept + [x for x in sk if x not in kept]
     if sorted(map(str, old)) != sorted(map(str, new)):
         changed.append((r['job_key'], r['title'], r['company'], old, new))
 
