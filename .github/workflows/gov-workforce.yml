@@ -170,7 +170,7 @@ jobs:
           # it simply never refreshes again, which is a card going quietly
           # stale rather than visibly blank. That is the harder failure to see,
           # so the list is kept in step with NSW_AGENCY_REPORTS.
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw,nsw-tco,nsw-premiers,nsw-trains \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 

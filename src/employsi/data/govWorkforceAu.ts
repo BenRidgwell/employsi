@@ -4,11 +4,14 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Sydney Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   NSW: Hunter Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   NSW: Audit Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   NSW: Director of Public Prosecutions: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
-//   NSW: Museums of History: 1 agencies published as at Jun 2025 — refreshed 2026-09-28
+//   NSW: Sydney Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Hunter Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Audit Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Director of Public Prosecutions: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Museums of History: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: The Cabinet Office: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Premier's Department: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: NSW Trains: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 101 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -123,10 +126,12 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-reconstruction-authority": { now: 488, prev: 361, yoy: 35.2, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-state-emergency-service": { now: 628, prev: 691, yoy: -9.1, asof: "Jun 2025", span: 1 },
+  "nsw-gov-nsw-trains": { now: 805, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-treasury": { now: 786, prev: 782, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-trustee-and-guardian": { now: 728, prev: 720, yoy: 1.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-office-of-sport": { now: 405, prev: 404, yoy: 0.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-office-of-the-director-of-public-prosecutions": { now: 1089, prev: 970, yoy: 12.3, asof: "Jun 2025", span: 1 },
+  "nsw-gov-premier-s-department": { now: 1072, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-service-nsw": { now: 4036, prev: 4868, yoy: -17.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-south-eastern-sydney-local-health-district": { now: 11668, prev: 11525, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-south-western-sydney-local-health-district": { now: 12965, prev: 12959, yoy: 0.0, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -134,6 +139,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-sydney-local-health-district": { now: 11017, prev: 10883, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-opera-house": { now: 669, prev: 667, yoy: 0.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-sydney-water": { now: 4011, prev: 3530, yoy: 13.6, asof: "Jun 2025", span: 1 },
+  "nsw-gov-the-cabinet-office": { now: 297, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-transport-for-nsw": { now: 14506, prev: 14437, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nt-gov-attorney-general-s-department": { now: 594, prev: 603, yoy: -1.5, asof: "Jun 2026", span: 1, unit: "fte" },

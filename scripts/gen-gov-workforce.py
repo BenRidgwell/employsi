@@ -812,6 +812,19 @@ NOT_IN_SOURCE = {
         'that link would stop resolving within hours. The stable route is the '
         'transparency.gov.au publication, which renders the same appendix as '
         'HTML rather than as a PDF, and the report-reading path only reads PDFs',
+    'nsw:Law Enforcement Conduct Commission':
+        'A .pdf URL THAT SERVES A REACT PAGE, which is a new shape here and is '
+        'why this is recorded rather than retried. lecc.nsw.gov.au lists '
+        '/publications/annual-reports/law-enforcement-conduct-commission-annual-'
+        'report-2023-24.pdf and that exact URL answers 200 with 297,563 bytes of '
+        'HTML — <html data-reactroot> titled "Law Enforcement Conduct Commission '
+        'Annual Report 2023-2024", a landing page for the file rather than the '
+        'file. Retried with the listing page as referer and Accept: '
+        'application/pdf, same HTML; the page carries no separate asset path to '
+        'follow, only the .pdf URL that returns itself. Note also that 2024-25 is '
+        'NOT published — the listing stops at 2023-24 — so even a readable file '
+        'would be a year behind, which is fine here (DCJ already is) but is worth '
+        'knowing before hunting for a current one',
     # ── Four NSW cards that are a filed department's own divisions ────────────
     # ALL FOUR WERE SETTLED FROM TWO DOCUMENTS ALREADY IN THIS TABLE, without a
     # single new fetch, and that is the point worth carrying forward: the reports
@@ -1026,11 +1039,20 @@ NOT_IN_SOURCE = {
         '"annual-reports" page on either is the Valuer General\'s, a different '
         'body, and planning.nsw.gov.au\'s own is for community consultative '
         'committees',
-    "nsw:Premier's Department":
-        'its 2024-25 annual report downloads and was read: it carries no '
-        'workforce table under any heading the other six use. The only '
-        'full-time-equivalent figure in it is 262,900, which is the whole NSW '
-        'public sector, not the department',
+    # Aboriginal Affairs NSW is a GROUP of the Premier's Department, which is now
+    # filed at 1,072: p10 introduces it as one of the department's own areas and
+    # the budget appendices carry it as "Major Activity Group 2: Aboriginal
+    # Affairs", not as a separate entity. The department's report publishes no
+    # figure for the group alone, so the only figure that exists is the one now
+    # on the department's card, and putting it here too would double count.
+    'nsw:Aboriginal Affairs NSW':
+        "INSIDE the Premier's Department head count (1,072 at census 2025), which "
+        'is filed. p10 of that report introduces Aboriginal Affairs NSW as one of '
+        'the department\'s own areas and its budget appendices carry it as "Major '
+        'Activity Group 2: Aboriginal Affairs" rather than as a separate entity. '
+        'No figure for the group alone is published anywhere in the report — the '
+        'only personnel-services client it names is the Aboriginal Languages '
+        'Trust, which is a different body and not a roster card',
     'nsw:National Parks and Wildlife Service':
         'INSIDE the Department of Climate Change, Energy, the Environment and '
         'Water, whose 6,208 is filed. That report names its exclusions — '
@@ -1089,10 +1111,14 @@ NOT_IN_SOURCE = {
         'the Local Health Districts inside it hold their own cards here, twelve '
         'of them already filed, so putting the service total on this card would '
         'count the same people twice',
-    'nsw:Department of Communities and Justice':
-        'the Communities and Justice PORTFOLIO is 55,041 FTE, which is not this '
-        'department — Corrective Services, Youth Justice and Legal Aid are '
-        'inside it and are separate cards here',
+    # DCJ AND THE DEPARTMENT OF EDUCATION ARE NOW FILED from their own annual
+    # reports, so their entries here could never print again and have been turned
+    # into comments rather than left looking live. What they recorded is still
+    # worth keeping, because it is a caution about the OTHER source: the
+    # Communities and Justice PORTFOLIO is 55,041 FTE and is not the department —
+    # Corrective Services, Youth Justice and Legal Aid sit inside it and are
+    # separate cards here. Likewise the Education portfolio is 120,111 FTE and
+    # the Teaching Service alone is 71,491; neither is the department.
     'nsw:Corrective Services NSW':
         'inside the Communities and Justice portfolio (55,041); no row reports '
         'it on its own',
@@ -1102,10 +1128,6 @@ NOT_IN_SOURCE = {
     'nsw:Legal Aid NSW':
         'inside the Communities and Justice portfolio (55,041); no row reports '
         'it on its own',
-    'nsw:Department of Education':
-        'the Education portfolio is 120,111 FTE and the Teaching Service alone '
-        'is 71,491 — neither is this department, whose own staff are inside the '
-        'Public Service figure with every other department',
 
     # ── Queensland: the source covers DEPARTMENTS, and little else ─────────
     #
@@ -3443,6 +3465,119 @@ NSW_AGENCY_REPORTS = {
         header=r'Classification\s+FTE\s+Headcount\s+FTE\s+Headcount',
         proof=r'census data as at 20 June 2024 and 19 June 2025',
         unit='headcount', asof='Jun 2025'),
+    # ── The Premier's cluster, 2026-09-29 ────────────────────────────────────
+    # AND THE PREMIER'S DEPARTMENT ENTRY IN NOT_IN_SOURCE WAS WRONG. It said the
+    # report "carries no workforce table under any heading the other six use" and
+    # that "the only full-time-equivalent figure in it is 262,900, which is the
+    # whole NSW public sector". The 262,900 is real and is on p17 — but p47
+    # carries "Staff profile by employment category", four columns of census head
+    # count and FTE, with a Total of 1,072. So the reason was a measurement of a
+    # search, not of the document, and it has been removed rather than left to
+    # keep a card blank against a table that was there all along.
+    #
+    # BOTH REPORTS ARE ON nsw.gov.au AND THE SEARCH THAT FOUND THEM RETURNED
+    # parliament.nsw.gov.au FIRST — the tabled-papers host this file records as
+    # closed. Each department also publishes its own copy under
+    # /sites/default/files/noindex/2025-11/, which is the same path six specs
+    # above already use. Worth remembering before writing off a NSW report as
+    # unreachable because the first link to it is on the blocked host.
+
+    # p33 "Staff profile by employment category": census head count 237 -> 297,
+    # census FTE 215.9 -> 271.3. Both head-count columns reconcile exactly
+    # (33 + 220 + 44 and 34 + 187 + 16), and the senior-executive table above it
+    # has a Total row too — seven numbers wide, so `ncols=4` cannot admit it.
+    #
+    # `sums` PROVES THE ROWS; THE HEADER PROVES WHICH PAIR. All four columns
+    # reconcile against their own components, the FTE pair included, so a spec
+    # reading indices 2 and 3 would sum correctly and file 271.3 — measured. What
+    # rules that out is `header`: "Census headcount Census FTE" in that order, so
+    # indices 0 and 1 are the head count and an edition that swapped the pairs
+    # fails here. Naming the right index is what reading the table is for.
+    #
+    # NO PRIOR YEAR, AND THE TABLE DOES NOT SAY WHY — ANOTHER PAGE DOES. 237 to
+    # 297 is +25.3% and the first version of this spec published it. p84, section
+    # 6.3 "Machinery of Government costs/benefits": "Women NSW transferred to The
+    # Cabinet Office on 1 July 2024." So the later column counts a function the
+    # earlier one does not, and the rise is a transfer rather than hiring. The
+    # staff-profile table carries no note about it, which is the whole lesson
+    # here: the Premier's Department's equivalent table DOES footnote its own
+    # machinery-of-government change, so finding none beside the numbers is not
+    # evidence there was none. The report has to be read past the table.
+    'nsw-tco': dict(
+        label='NSW: The Cabinet Office',
+        agency='The Cabinet Office',
+        agency_id='nsw-gov-the-cabinet-office',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'the-cabinet-office-annual-report-2024-25.pdf',
+        needle='Staff profile by employment category',
+        total=r'^Total\b',
+        comp=r'^(?:Public Service Senior Executive|Ongoing employee|'
+             r'Temporary employee)s?\b',
+        ncols=4, now_i=1, prev_i=None, sums=[(0,), (1,)],
+        header=r'Census headcount\s+Census FTE',
+        proof=r'2025 Workforce Profile Data',
+        unit='headcount', asof='Jun 2025'),
+    # p47, the same table shape: census head count 686 -> 1,072, reconciling both
+    # years exactly (77 + 856 + 136 + 3, and 50 + 535 + 100 + 1).
+    #
+    # NO PRIOR YEAR, AND THE NOTE UNDER THE TABLE IS WHY. "Machinery of
+    # Government changes effective 1 July 2024 included Investment NSW, Office of
+    # the Public Service Commissioner, Office of the Chief Scientist & Engineer,
+    # and Regional Coordination becoming part of the Premier's Department." So
+    # 686 -> 1,072 is +56% and not one person of it is hiring — four bodies moved
+    # in. The prior column is still READ, because `sums` reconciles it and that is
+    # what proves the head-count pair is where the spec thinks it is; it is simply
+    # not published as a comparator.
+    'nsw-premiers': dict(
+        label="NSW: Premier's Department",
+        agency="Premier's Department",
+        agency_id='nsw-gov-premier-s-department',
+        url='https://www.nsw.gov.au/sites/default/files/noindex/2025-11/'
+            'premiers-department-annual-report-2024-25_0.pdf',
+        needle='Staff profile by employment category',
+        total=r'^Total\b',
+        comp=r'^(?:Public Service Senior Executives|Ongoing employees|'
+             r'Temporary employees|Statutory appointees)\b',
+        ncols=4, now_i=1, prev_i=None, sums=[(0,), (1,)],
+        header=r'Census headcount\s+Census FTE',
+        proof=r'2025 Workforce Profile Data',
+        unit='headcount', asof='Jun 2025'),
+    # NSW TRAINS IS NSW TrainLink, and that is why it looked like it had no
+    # report. transport.nsw.gov.au's "NSW Trains Annual Reports" page links
+    # documents titled "NSW TrainLink Annual Report" — one statutory corporation,
+    # two names — and the file sits beside Transport for NSW's and Sydney Trains'
+    # under /system/files/media/documents/2025/, not in the sitemap, exactly as
+    # the note on the TfNSW spec above records. The two listing paths that would
+    # name it both render as 29 KB not-found pages through a warmed browser, so
+    # the route was the filename, not the index.
+    #
+    # p57, Table 9 "Total employee headcount by salary band": three years of
+    # Female / Male / Total, ending 307 / 498 / 805. `sums` asserts F + M = Total
+    # in each of the three year groups, which is what proves the columns are
+    # where the spec thinks they are; Table 10 beside it is the FTE version with
+    # six columns, so `ncols=9` cannot reach it.
+    #
+    # NO PRIOR YEAR, AND THE REPORT STATES THE REASON IN ONE SENTENCE. 2,252 ->
+    # 805 is −64%, and p10 footnote 2 says: "The reduction in employees and
+    # operating budget since 2023–24 is due to the transfer of intercity
+    # operations and about 1450 staff from NSW Trains to Sydney Trains." 2,252
+    # minus 1,450 is 802 against a reported 805, so the fall is the transfer and
+    # nothing else. A card showing −64% would have been reporting a machinery
+    # change as a collapse in hiring.
+    'nsw-trains': dict(
+        label='NSW: NSW Trains',
+        agency='NSW Trains',
+        agency_id='nsw-gov-nsw-trains',
+        url='https://www.transport.nsw.gov.au/system/files/media/documents/2025/'
+            'nsw-trainlink-annual-report-2024%E2%80%9325-volume-1.pdf',
+        warm='https://www.transport.nsw.gov.au/',
+        needle='Total employee headcount by salary band',
+        total=r'^Total\b',
+        ncols=9, now_i=8, prev_i=None,
+        sums=[(0, 1, 2), (3, 4, 5), (6, 7, 8)],
+        header=r'F\s+M\s+Total\s+F\s+M\s+Total\s+F\s+M\s+Total',
+        proof=r'Annual salary\s+2022.23\s+2023.24\s+2024.25',
+        unit='headcount', asof='Jun 2025'),
 }
 
 
@@ -3908,6 +4043,25 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
               f'(renamed, or a typo — the reason will never print):', file=sys.stderr)
         for k in stray_reasons:
             print(f'      {k}', file=sys.stderr)
+    # AND THE OPPOSITE STALENESS: A REASON FOR A CARD THAT IS NOW FILLED. Less
+    # dangerous than a stray key, since nothing is hidden, but it misleads the
+    # next reader into thinking a card is blank when a spec has since been written
+    # for it. Three had accumulated by 2026-09-29 — the Premier's Department,
+    # whose entry ALSO claimed a workforce table the report does carry, and DCJ
+    # and the Department of Education, both filed from their own reports. Checked
+    # after the merge, so a jurisdiction kept from a previous run counts too.
+    # Keyed the same way as roster_keys above, New Zealand included: a partial
+    # guard is the shape this file keeps getting caught by, so it covers every
+    # prefix a reason can use rather than only the two that had stale entries.
+    reason_key = {}
+    for a in agencies:
+        if a['id'].startswith('aps-'):
+            reason_key[f"aps:{a['name']}"] = a['id']
+        elif a['id'].startswith('nz-'):
+            reason_key[f"nz:{a['name']}"] = a['id']
+            reason_key[f"nzhealth:{a['name']}"] = a['id']
+        elif '-gov-' in a['id']:
+            reason_key[f"{a['id'].split('-gov-')[0]}:{a['name']}"] = a['id']
 
     out, skipped = {}, 0
     # BOTH SIDES OF A FAILED MATCH ARE REPORTED, because only one of them was
@@ -4065,6 +4219,15 @@ console.log(JSON.stringify(COMPANIES.filter(c =>
             had = prev_rows[cid]
             print(f'      {cid}  (was {int(had["now"]):,} as at {had.get("asof")})',
                   file=sys.stderr)
+
+    filled_reasons = sorted(k for k, cid in reason_key.items()
+                            if k in NOT_IN_SOURCE and cid in out)
+    if filled_reasons:
+        print(f'\n  NOT_IN_SOURCE: {len(filled_reasons)} entries describe a card '
+              f'that now HAS a figure — the reason is stale and never prints:',
+              file=sys.stderr)
+        for k in filled_reasons:
+            print(f'      {k}  (filed: {out[reason_key[k]]["now"]:,})', file=sys.stderr)
 
     kept = [(lbl, m) for lbl, m in prev_meta.items() if lbl not in {x[0] for x in meta}]
     if failed:
