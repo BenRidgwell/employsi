@@ -41,16 +41,47 @@ being vague.
   it should be built, or the wording should say it is handled manually.
 - **No data-export path exists** for an access request. Same caveat.
 
-## One weakness worth fixing, separate from the policy
+## The visitor-key weakness — found here, now fixed
 
-`visitorKey()` in `analystLlmFn.ts` hashes `"employsi-llm|" + ip` with SHA-256 and
-truncates to 12 bytes. The prefix is a fixed constant, not a secret, so the hash is
-**brute-forceable**: the whole IPv4 space is 4.3 billion SHA-256 operations, which
-is minutes on a GPU. Anyone who obtained the `llm_usage` table could recover the IP
-addresses in it.
+**Was:** `visitorKey()` in `analystLlmFn.ts` digested `"employsi-llm|" + ip` with
+bare SHA-256. The prefix is a fixed public constant, so the value concealed
+nothing: the whole IPv4 space is 4.3 billion digests, minutes on a GPU, and anyone
+holding the `llm_usage` table could recover every address in it. The function's own
+comment already described the value as "salted", which it was not.
 
-It is a small exposure — the table holds only a day and a count — but the fix is
-cheap: hash with a secret salt held as a Worker secret (an HMAC, the same
-construction `brightdata-talent-flows.py` already uses for `person_key`) instead of
-a bare digest of a public prefix. That would make the claim in section 3.4 hold
-against an attacker rather than only against a casual reader.
+**Now:** HMAC-SHA-256 under a Worker secret, with the day inside the signed
+message. Measured against the change:
+
+| Attack | Old | New |
+| --- | --- | --- |
+| Scan a /24 with no secret | recovers the address | recovers nothing |
+| 10,000 guessed salts | n/a | recovers nothing |
+| Scan holding the real secret | recovers | **recovers** — inherent to a keyed hash |
+
+That last row is worth stating rather than hiding: HMAC does not make an IP
+unguessable to someone who holds the key, it makes the stored table useless on its
+own. The fix removes "the table alone is enough", which was the actual exposure.
+
+The day is in the signed message, not only in the table's primary key, so one
+address keys differently each day and a stolen table cannot be used to follow a
+visitor across dates even by a key holder.
+
+**Secret:** `LLM_VISITOR_SALT`, preferred; `BETTER_AUTH_SECRET` is accepted as a
+fallback because it is already set wherever the app runs. With neither, the
+function returns a single shared bucket rather than a weak key — the per-visitor
+cap degrades to a collective one and heavy use reaches the free rule-based router
+sooner, which is this feature's designed way to fail. **The secret is not yet set
+on any Worker**, so production is currently running on the `BETTER_AUTH_SECRET`
+fallback. To set the dedicated one:
+
+```bash
+npx wrangler secret put LLM_VISITOR_SALT --name benridgwell-globe-gazer-hr
+npx wrangler secret put LLM_VISITOR_SALT --name employsi-preview
+```
+
+and remember a secret is not live until its version is deployed (CLAUDE.md).
+
+Guarded by `scripts/check-analyst-llm.ts`, which asserts the construction against
+the source — HMAC present, no `crypto.subtle.digest`, the day inside the message,
+and the shared-bucket fallback ahead of any signing. Both regressions were proved
+to fail it.

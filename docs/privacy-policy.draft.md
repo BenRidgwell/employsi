@@ -90,8 +90,10 @@ Please do not type anything into it you would not want sent to a third-party
 provider.
 
 To stop the feature being abused we count how many questions come from each
-visitor each day. We do this using a **one-way hash of your IP address**; the IP
-address itself is not stored in those counting records.
+visitor each day. We do this using a **keyed one-way hash of your IP address**,
+computed under a secret held only on our server and re-keyed each day; the IP
+address itself is not stored in those counting records, and the stored value
+cannot be turned back into an address by anyone who obtains it.
 
 ## 4. Cookies and browser storage
 

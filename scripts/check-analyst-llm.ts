@@ -7,6 +7,7 @@
  * is shown under employsi's name. Neither would be visible in the app, so the
  * cases are asserted here.
  */
+import { readFileSync } from "node:fs";
 import { untraced } from "../src/employsi/lib/analystLlmFn";
 
 const TOOL =
@@ -53,3 +54,39 @@ if (failed) {
   process.exit(1);
 }
 console.log(`✓ analyst figure check: ${CASES.length} cases hold.`);
+// ── the visitor key is keyed, not merely hashed ──────────────────────────────
+// llm_usage holds one row per visitor per day, and the visitor column used to be
+// SHA-256 of a FIXED PUBLIC PREFIX plus the IP. An IP address is drawn from a
+// space of 4.3 billion, so that is not concealment: anyone with the table could
+// scan the space and recover every address in it. A hash only hides an input it
+// cannot enumerate, which is why the secret has to do the work.
+//
+// Asserted against the SOURCE because visitorKey needs a request and a Worker
+// env to run, and the property worth protecting is structural: an HMAC under a
+// secret, the day inside the signed message, and no reintroduced bare digest.
+{
+  const src = readFileSync("src/employsi/lib/analystLlmFn.ts", "utf8");
+  const vk = src.slice(src.indexOf("async function visitorKey"));
+  const body = vk.slice(0, vk.indexOf("\n}\n") + 2);
+  const bad: string[] = [];
+  if (!/crypto\.subtle\.sign\(\s*"HMAC"/.test(body)) bad.push("visitorKey does not HMAC");
+  if (!/importKey\([\s\S]*?"HMAC"/.test(body)) bad.push("no HMAC key is imported");
+  if (/crypto\.subtle\.digest/.test(body))
+    bad.push("visitorKey still calls crypto.subtle.digest — the bare-hash bug is back");
+  if (!/LLM_VISITOR_SALT/.test(body)) bad.push("no LLM_VISITOR_SALT secret is read");
+  if (!/\bllm\|\$\{day\}\|\$\{ip\}/.test(body))
+    bad.push("the day is not inside the signed message, so keys link across dates");
+  if (!/return "shared"/.test(body))
+    bad.push("no shared-bucket fallback — a missing secret must not produce a weak key");
+  // The fallback must come BEFORE any signing, or a missing salt would be signed
+  // as the empty key rather than skipped.
+  const iShared = body.indexOf('return "shared"');
+  const iSign = body.indexOf("crypto.subtle.sign");
+  if (iShared > 0 && iSign > 0 && iShared > iSign)
+    bad.push("the shared-bucket fallback sits after signing");
+  if (bad.length) {
+    for (const b of bad) console.error(`✗ visitor key: ${b}`);
+    process.exit(1);
+  }
+  console.log("✓ visitor key: HMAC under a Worker secret, day-scoped, safe fallback.");
+}
