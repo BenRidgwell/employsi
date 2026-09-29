@@ -944,12 +944,19 @@ NOT_IN_SOURCE = {
     # All three reports are published and none was read. The remaining routes are
     # a different exit IP, or the tabled-papers copy on parliament.nsw.gov.au,
     # which is the host this file already records as closed.
-    'nsw:Essential Energy':
-        'behind a Cloudflare challenge this network cannot clear. A warmed '
-        'browser waited 180 s on its publications page and the content was still '
-        'the interstitial at 28,824 bytes; a plain fetch answers 403 in 5,754. '
-        'Nothing about whether it publishes a workforce figure is established — '
-        'the page was never read',
+    # ESSENTIAL ENERGY AND WATERNSW ARE NOW FILED — 3,939 and 1,151 — and their
+    # entries here are comments for the usual reason: each measurement stands and
+    # neither reason can print again. Essential Energy's own host answers 403 and
+    # a warmed browser waited 180 s on its publications page with the content
+    # still the interstitial at 28,824 bytes; WaterNSW is half-open, its root
+    # clearing in 30 s while the report path is answered 403 inside that cleared
+    # context at 5,972 bytes. Both cards were filled without their own hosts:
+    # WaterNSW from the tabled copy through files.parliament.nsw.gov.au, and
+    # Essential Energy from a campaign microsite, since its tabled copy is the
+    # 2023-24 one. What was wrong in these reasons was only the last sentence of
+    # Essential Energy's — "Nothing about whether it publishes a workforce figure
+    # is established" — which was true of its own site and said as though it were
+    # true of the company.
     # FORESTRY CORPORATION IS NOW FILED at 611, THROUGH THE TABLED COPY, and its
     # entry here is a comment because the measurement stands and the reason cannot
     # print: forestrycorporation.com.au answers the same Cloudflare challenge as
@@ -957,13 +964,6 @@ NOT_IN_SOURCE = {
     # browser does not clear it (28,844 bytes). Its own site is still closed. The
     # report reached the card from files.parliament.nsw.gov.au instead — which is
     # the route Essential Energy and WaterNSW should be tried on next.
-    'nsw:WaterNSW':
-        'HALF-OPEN. waternsw.com.au/ clears a Cloudflare challenge in 30 s '
-        'through a warmed browser, and the annual report under '
-        '/documents/publications/general-publications/annual-reports/ is answered '
-        '403 inside that cleared context — 5,972 bytes of challenge HTML where a '
-        'PDF was expected, with the navigation fallback timing out. The clearance '
-        'does not reach the file path',
     'tas:Whole of Government Programs':
         'A JOB-BOARD CATEGORY, NOT AN AGENCY, which is why no workforce figure '
         'can exist for it. jobs.tas.gov.au/agency/19 is titled "Whole of '
@@ -3691,6 +3691,87 @@ NSW_AGENCY_REPORTS = {
         header=r'2023-2024\*?\s+2022-2023\*?\s+2021-2022',
         proof=r'Headcount data reported at end of reporting period',
         unit='headcount', asof='Jun 2024'),
+    # ── The two state-owned corporations the file API was meant to reach ─────
+    # Both NOT_IN_SOURCE entries stand as written, because both measurements are
+    # still true: essentialenergy.com.au and waternsw.com.au are behind a
+    # Cloudflare challenge this exit IP cannot clear, 180 seconds of warmed browser
+    # included. Neither card needed its own host in the end.
+
+    # ESSENTIAL ENERGY'S TABLED COPY IS THE 2023-24 ONE and the current report is
+    # on a CAMPAIGN MICROSITE — eear25.bwdstrategic.com, an agency host, 24 MB and
+    # unchallenged. That is the URL here, with its risk stated: a microsite is a
+    # marketing asset with no reason to outlive the campaign, so this spec is more
+    # likely than any other in this table to 404 one day. It fails loudly when it
+    # does, and the tabled 2024-25 copy is the replacement to look for.
+    #
+    # p130, TABLE A3 "Number of officers and employees by category – headcount":
+    # five years of M/F pairs, 30 June 2021 to 30 June 2025, Total row ending
+    # 3,112 / 827. There is NO grand total column, so `now_cols` sums the pair —
+    # 3,939 for 2025 against 3,681 for 2024.
+    #
+    # TABLE A2 DIRECTLY ABOVE IT IS THE FTE VERSION, identical in shape and, this
+    # time, identical in kind: every value in both tables is a whole number, so
+    # `integers` cannot separate them any more than `header` can. Only the captions
+    # differ, and only in their last word — "(FTE)1" against "headcount1" — which
+    # is what `after` anchors on.
+    #
+    # THE CONTROL SAYS SOMETHING DIFFERENT FROM WHAT I EXPECTED AND IT IS WORTH
+    # RECORDING AS MEASURED. Dropping `after` does not quietly file the FTE: the
+    # line fallback then sees BOTH tables' Executive Leadership Team and
+    # Non-executives rows, collects four components against one Total, and the
+    # column reconciliation rejects it — "column 0 components sum to 5,037.0
+    # against a stated Total of 2,517.0". So on this page `sums` is the thing
+    # standing between a wrong number and the card, and `after` is what makes a
+    # parse possible at all. Forestry Corporation is the opposite case, where the
+    # fallback finds exactly one usable row set and `after` alone decides which.
+    #
+    # THE FIGURE EXCLUDES A FEW PEOPLE AND THE REPORT SAYS SO: footnote 1, "A
+    # small number of employees (<0.2% of total workforce) did not identify as
+    # male or female. These employees have been excluded from the gender"
+    # breakdown. Under eight people on this base, excluded identically in both
+    # years, so the comparison holds and the level is a floor rather than a guess.
+    'nsw-essential': dict(
+        label='NSW: Essential Energy',
+        agency='Essential Energy',
+        agency_id='nsw-gov-essential-energy',
+        url='https://eear25.bwdstrategic.com/pdf/'
+            'Essential-Energy_Annual-Report_2024-25.pdf',
+        needle='by category – headcount',
+        after=r'headcount1$',
+        total=r'^Total\b',
+        comp=r'^(?:Executive Leadership Team|Non-executives)\b',
+        ncols=10, now_cols=[8, 9], prev_cols=[6, 7], prev_i=None,
+        sums=[(i,) for i in range(10)],
+        header=r'Gender\s+M\s+F',
+        proof=r'30 JUNE 2021 30 JUNE 2022 30 JUNE 2023 30 JUNE 2024 30 JUNE 2025',
+        unit='headcount', asof='Jun 2025'),
+    # p26: "On 30 June | 2023-24 | 2024-25", Total employees 1078 -> 1151, with
+    # Permanent, Term and Casual reconciling against both (1,041 + 93 + 17 and
+    # 988 + 69 + 21). `comp` deliberately excludes the Aboriginal and Torres
+    # Strait Islander row directly beneath the total — it is a SUBSET of the
+    # workforce, not a category of it, and adding it in would make every column
+    # miss by its own value.
+    #
+    # `integers` IS SET THOUGH NOTHING ON THIS PAGE CURRENTLY NEEDS IT: the FTE
+    # figures are in an "Employee FTEs" row (1026.6 / 1113.6) that is neither the
+    # total nor a component, so it cannot be reached today. If a restyle ever
+    # promoted it, the decimals would fail here rather than land on the card.
+    'nsw-waternsw': dict(
+        label='NSW: WaterNSW',
+        agency='WaterNSW',
+        agency_id='nsw-gov-waternsw',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'Attachment%20C1%20-%20WaterNSW%20Annual%20Report%202024-2025.pdf'
+            '?serverRelativeUrl=%2Ftp%2Ffiles%2F192122%2FAttachment+C1+-+'
+            'WaterNSW+Annual+Report+2024-2025.pdf',
+        needle='Employee FTEs',
+        total=r'^Total employees\b',
+        comp=r'^Number of employees\s*[–-]\s*(?:Permanent|Term|Casual)\b',
+        ncols=2, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        integers=True,
+        header=r'On 30 June\s+2023-24\s+2024-25',
+        proof=r'On 30 June\s+2023-24\s+2024-25',
+        unit='headcount', asof='Jun 2025'),
     # ITS OWN HOST REFUSES THIS NETWORK TOO — icac.nsw.gov.au answers 403 behind a
     # Cloudflare challenge — and the tabled copy does not. A YEAR BEHIND, because
     # the 2023-24 report is the one a search reaches; the same call as DCJ.
@@ -4229,8 +4310,17 @@ def _nsw_agency(spec):
                            f"{spec['proof']!r}, so the column the figure is read "
                            f"from can no longer be shown to be {spec['asof']}")
 
-    now = total[spec['now_i']]
-    prev = None if spec['prev_i'] is None else total[spec['prev_i']]
+    # `now_cols` / `prev_cols`: A TOTAL SPLIT ACROSS COLUMNS WITH NO TOTAL COLUMN.
+    # Essential Energy reports its workforce by gender and by year and prints no
+    # grand total: its head-count Total row is M 3,112 and F 827 for 30 June 2025,
+    # and the figure is their sum. `now_i` names one column and there is no one
+    # column to name, so the spec names the set. Everything else — the component
+    # reconciliation, the caption anchor, the proof — is unchanged; this only
+    # decides which of the reconciled columns the card takes.
+    now = (sum(total[i] for i in spec['now_cols']) if spec.get('now_cols')
+           else total[spec['now_i']])
+    prev = (sum(total[i] for i in spec['prev_cols']) if spec.get('prev_cols')
+            else None if spec.get('prev_i') is None else total[spec['prev_i']])
     if not now > 0:
         raise RuntimeError(f"{spec['label']}: parsed a non-positive now ({now})")
     return {spec['agency']: (now, prev)}, spec['asof'], spec['unit']

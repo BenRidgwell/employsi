@@ -9,6 +9,7 @@
 //   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Climate Change, Energy, the Environment and Water: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Reconstruction Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Department of Education: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
 //   NSW: icare: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Transport for NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
@@ -19,7 +20,6 @@
 //   NSW: Ombudsman: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: State Library: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Electoral Commission: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
@@ -35,10 +35,12 @@
 //   NSW: Premier's Department: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Planning, Housing and Infrastructure: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Property and Development NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
+//   NSW: Essential Energy: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: WaterNSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: ICAC: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
 //   NSW: Forestry Corporation: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: NSW Trains: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Local Land Services: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 101 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -113,6 +115,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-department-of-planning-housing-and-infrastructure": { now: 3418, prev: 3316, yoy: 3.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-department-of-primary-industries-and-regional-development": { now: 3639, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-ehealth-nsw": { now: 1674, prev: 2140, yoy: -21.8, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-essential-energy": { now: 3939, prev: 3681, yoy: 7.0, asof: "Jun 2025", span: 1 },
   "nsw-gov-forestry-corporation-of-nsw": { now: 611, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-health-infrastructure": { now: 163, prev: 174, yoy: -6.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-healthshare-nsw": { now: 7939, prev: 6788, yoy: 17.0, asof: "Jun 2025", span: 1, unit: "fte" },
@@ -149,6 +152,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-sydney-water": { now: 4011, prev: 3530, yoy: 13.6, asof: "Jun 2025", span: 1 },
   "nsw-gov-the-cabinet-office": { now: 297, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-transport-for-nsw": { now: 14506, prev: 14437, yoy: 0.5, asof: "Jun 2025", span: 1, unit: "fte" },
+  "nsw-gov-waternsw": { now: 1151, prev: 1078, yoy: 6.8, asof: "Jun 2025", span: 1 },
   "nsw-gov-western-sydney-local-health-district": { now: 11794, prev: 12266, yoy: -3.8, asof: "Jun 2025", span: 1, unit: "fte" },
   "nt-gov-attorney-general-s-department": { now: 594, prev: 603, yoy: -1.5, asof: "Jun 2026", span: 1, unit: "fte" },
   "nt-gov-department-mining-and-energy": { now: 175, prev: 169, yoy: 3.6, asof: "Jun 2026", span: 1, unit: "fte" },
