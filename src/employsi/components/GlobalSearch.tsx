@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+/** Half of the card's Supply/Demand cross-fade, in ms. Matches the action
+ *  rail's 150ms swap so the two controls feel like one gesture; see the
+ *  cardMarket comment and `.gscard.swapping` in global.css. */
+const CARD_SWAP_MS = 140;
 import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
@@ -132,6 +137,36 @@ export function GlobalSearch() {
    * two things at once.
    */
   const demandMode: DemandMode = marketMode === "supply" ? "employment" : pickedMode;
+
+  /**
+   * THE CARD'S MODE LAGS THE STORE'S BY ONE FADE, so an open skill survives the
+   * Supply/Demand switch instead of blinking its contents.
+   *
+   * The card stays mounted either way — setMarketMode never touched the search
+   * or the carded skill — but every figure in it changed on the same frame, and
+   * a card that swaps a workforce band, a series and four stat rows instantly
+   * reads as a different card rather than the same one answering a different
+   * question. The rail solved the same problem by cross-fading two mounted
+   * layers; the card cannot, because its body is one render of one built card.
+   *
+   * So the content waits: `swapping` fades the body out, the mode it was built
+   * from flips at the bottom of that fade, and it comes back in. Only the CARD
+   * lags — the map, the chips and the rail all switch on the click, because the
+   * card is the thing that had to stay open, not the app.
+   */
+  const [cardMarket, setCardMarket] = useState(marketMode);
+  const [swapping, setSwapping] = useState(false);
+  useEffect(() => {
+    if (cardMarket === marketMode) return;
+    setSwapping(true);
+    const t = setTimeout(() => {
+      setCardMarket(marketMode);
+      setSwapping(false);
+    }, CARD_SWAP_MS);
+    return () => clearTimeout(t);
+  }, [marketMode, cardMarket]);
+  /** What the card is built from: the lagged mode, never the live one. */
+  const cardMode: DemandMode = cardMarket === "supply" ? "employment" : pickedMode;
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -286,9 +321,9 @@ export function GlobalSearch() {
   const card = useMemo(
     () =>
       cardSkill && !cardBlocked
-        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null, demandMode)
+        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null, cardMode)
         : null,
-    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend, demandMode],
+    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend, cardMode],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the
@@ -603,7 +638,7 @@ export function GlobalSearch() {
       )}
 
       {card && (
-        <div className="gscard">
+        <div className={`gscard${swapping ? " swapping" : ""}`}>
           <div className="gscardhd">
             <span className="gscardname">
               <svg
@@ -674,11 +709,11 @@ export function GlobalSearch() {
               {/* The scale ranks workforces against workforces on the supply
                   side, so Low/Moderate/High — which read as demand — become a
                   size. */}
-              <span className="gskey lo">{demandMode === "employment" ? "Small" : "Low"}</span>
+              <span className="gskey lo">{cardMode === "employment" ? "Small" : "Low"}</span>
               <span className="gskey mid">
-                {demandMode === "employment" ? "Mid-sized" : "Moderate"}
+                {cardMode === "employment" ? "Mid-sized" : "Moderate"}
               </span>
-              <span className="gskey hi">{demandMode === "employment" ? "Large" : "High"}</span>
+              <span className="gskey hi">{cardMode === "employment" ? "Large" : "High"}</span>
             </div>
           </div>
 
@@ -690,10 +725,10 @@ export function GlobalSearch() {
                   people side by side in identically-styled cells, which is the
                   conflation the separate builders exist to prevent. */}
               <span className="gsstatk">
-                {demandMode === "employment" ? "Employed" : "Open roles"}
+                {cardMode === "employment" ? "Employed" : "Open roles"}
               </span>
               <span className="gsstatv">
-                {demandMode === "employment"
+                {cardMode === "employment"
                   ? card.employed === null
                     ? "—"
                     : card.employed.toLocaleString("en-US")
@@ -707,7 +742,7 @@ export function GlobalSearch() {
                   archive either way, and beside an ABS headcount an unqualified
                   "Median salary" would read as a wage the ABS measured. */}
               <span className="gsstatk">
-                {demandMode === "employment" ? "Median advertised" : "Median salary"}
+                {cardMode === "employment" ? "Median advertised" : "Median salary"}
               </span>
               {/* Advertised pay comes from the live ad archive, so it only has a
                   value at the present end of the timeline. */}
@@ -766,24 +801,24 @@ export function GlobalSearch() {
               employment figure is already in the stat row above with the
               quarter named under it. A second copy in a control-shaped box
               would read as a different measurement. */}
-          {marketMode !== "supply" && cardRate !== null && (
+          {cardMarket !== "supply" && cardRate !== null && (
             <div className="gsmode" role="group" aria-label="Demand measure">
               <button
                 type="button"
-                className={demandMode === "volume" ? "on" : ""}
+                className={cardMode === "volume" ? "on" : ""}
                 onClick={() => setDemandMode("volume")}
               >
                 Vacancies
               </button>
               <button
                 type="button"
-                className={demandMode === "rate" ? "on" : ""}
+                className={cardMode === "rate" ? "on" : ""}
                 onClick={() => setDemandMode("rate")}
               >
                 Per 1,000 employed
               </button>
               <span className="gsmodeval">
-                {demandMode === "rate"
+                {cardMode === "rate"
                   ? `${cardRate.toFixed(1)} per 1,000 · ${cardEmployed?.toLocaleString("en-AU")} employed`
                   : "AU only"}
               </span>

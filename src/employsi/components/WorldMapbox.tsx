@@ -1,7 +1,7 @@
 import mapboxgl from "mapbox-gl";
 import { isReleasedPlace } from "../lib/markets";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore, cityMatchesFilters, type FilterState } from "../state/store";
 import {
   activeSkill,
@@ -53,6 +53,23 @@ const HALO_LAYER = "hub-halo";
 const CORE_LAYER = "hub-core";
 const SKILL_SOURCE = "skill-heat";
 const SKILL_LAYER = "skill-heat";
+/** Half of the globe's Supply/Demand cross-fade, in ms. Matches CARD_SWAP_MS in
+ *  GlobalSearch so the card and the globe move as one gesture. */
+const HEAT_SWAP_MS = 140;
+/** The heat layer's own opacity curve, hoisted so the swap can drop it to 0 and
+ *  put back EXACTLY this rather than a flat value that would lose the zoom
+ *  fade-out into the local-city hand-off. */
+const HEAT_OPACITY: mapboxgl.ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  1,
+  0.8,
+  5,
+  0.76,
+  6.5,
+  0,
+];
 
 // Neutral dot colour used while a skill search is active — the coloured metric
 // heat is replaced by the skill-demand blobs, so the city dots go dark (as they
@@ -1051,6 +1068,28 @@ export function WorldMapbox() {
   const skillIndex = useAppStore((s) => s.skillIndex);
   const heatMonth = useAppStore((s) => s.heatMonth);
   const role = useAppStore((s) => s.role);
+  /**
+   * THE GLOBE DID NOT REACT TO THE SUPPLY/DEMAND SWITCH AT ALL, and that is the
+   * bug this pair fixes rather than the animation.
+   *
+   * heatMode has been read inside applyView since the supply-heat work, but
+   * only through getState() — marketMode was never subscribed here and never in
+   * any effect's deps, so nothing re-ran on the click. The globe kept the old
+   * dataset until something ELSE moved: a search, a month scrub, a selection.
+   * In ordinary use a switch is followed by a search, which is why it looked
+   * like it worked.
+   */
+  const marketMode = useAppStore((s) => s.marketMode);
+  const demandMode = useAppStore((s) => s.demandMode);
+  /**
+   * The mode the globe is currently DRAWN from, one fade behind the store's.
+   * Same shape as the skill card's cardMarket: fade the heat out, swap the
+   * dataset at the bottom of the fade, fade it back in.
+   */
+  const [heatMarket, setHeatMarket] = useState(marketMode);
+  const [heatSwapping, setHeatSwapping] = useState(false);
+  const heatMarketRef = useRef(heatMarket);
+  heatMarketRef.current = heatMarket;
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -1205,9 +1244,13 @@ export function WorldMapbox() {
       // what is being shown.
       // A role's figures are live ads whatever the switch says: the pathways
       // count ads, not employment or a rate, and the pins must name that unit.
+      // THE LAGGED MODE, not s.marketMode. The globe cross-fades across the
+      // Supply/Demand switch, so the data it is built from has to wait for the
+      // fade-out — otherwise the blobs change colour underneath a fade that is
+      // animating nothing. See the heatMarket effect.
       const heatMode: DemandMode = role
         ? "volume"
-        : s.marketMode === "supply"
+        : heatMarketRef.current === "supply"
           ? "employment"
           : s.demandMode;
       let cityDemand = role ? { ...role.cities } : demandByCity(s.skillIndex, skill);
@@ -1372,7 +1415,10 @@ export function WorldMapbox() {
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 34, 3, 72, 5, 130, 7, 210],
           // Fade out as we approach the local-city hand-off zoom. Eased back off
           // full opacity so the basemap still reads through the blobs.
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.8, 5, 0.76, 6.5, 0],
+          "heatmap-opacity": HEAT_OPACITY,
+          // Lets the Supply/Demand swap fade the blobs rather than cutting
+          // them; Mapbox animates a paint property when it has a transition.
+          "heatmap-opacity-transition": { duration: HEAT_SWAP_MS, delay: 0 },
           // Green (low) -> lime -> amber -> red (high), matching the city-dot
           // ramp so a hub's dot and its blob agree.
           // The ramp lives in lib/heatRamp.ts so the career pathway map's
@@ -1766,6 +1812,31 @@ export function WorldMapbox() {
     applyViewRef.current?.();
   }, [zoomedOut, zoomingIn, globalOut, domesticRegion, localCity]);
 
+  /**
+   * The Supply/Demand cross-fade. Drop the heat layer's opacity to 0, let the
+   * fade run, then swap the mode the globe is drawn from and put the curve
+   * back — Mapbox animates both ends because the property has a transition.
+   *
+   * The markers fade through CSS instead (`.worldmount.heatswap`), because
+   * Mapbox rewrites a marker ROOT's style.opacity every frame for the globe's
+   * occlusion fade; the class targets the inner wrapper the way every other
+   * marker state here does.
+   */
+  useEffect(() => {
+    if (heatMarket === marketMode) return;
+    const map = mapRef.current;
+    setHeatSwapping(true);
+    if (map?.getLayer(SKILL_LAYER)) map.setPaintProperty(SKILL_LAYER, "heatmap-opacity", 0);
+    const t = setTimeout(() => {
+      setHeatMarket(marketMode);
+      setHeatSwapping(false);
+      const m = mapRef.current;
+      if (m?.getLayer(SKILL_LAYER))
+        m.setPaintProperty(SKILL_LAYER, "heatmap-opacity", HEAT_OPACITY);
+    }, HEAT_SWAP_MS);
+    return () => clearTimeout(t);
+  }, [marketMode, heatMarket]);
+
   // Place labels (Settings → Appearance). Mapbox paints city and region names
   // into the canvas, so there is no CSS way to hide them — the style's own
   // symbol layers have to be toggled. Every label layer in the Mapbox standard
@@ -1814,6 +1885,12 @@ export function WorldMapbox() {
     roleFocus,
     skillIndex,
     heatMonth,
+    // THE MISSING PAIR. Without these the globe never rebuilt on a
+    // Supply/Demand switch — see the marketMode comment above. heatMarket
+    // rather than marketMode, so the rebuild happens at the BOTTOM of the
+    // cross-fade rather than at the top of it.
+    heatMarket,
+    demandMode,
     // The session resolves after first paint, so the initial markers are always
     // built as an end user. Without this the coverage fade would either stick
     // for an admin or never appear at all, depending on which won the race.
@@ -1823,6 +1900,11 @@ export function WorldMapbox() {
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;
   return (
-    <div className={`mount worldmount${hidden ? " worldmount-hidden" : ""}`} ref={containerRef} />
+    <div
+      className={`mount worldmount${hidden ? " worldmount-hidden" : ""}${
+        heatSwapping ? " heatswap" : ""
+      }`}
+      ref={containerRef}
+    />
   );
 }

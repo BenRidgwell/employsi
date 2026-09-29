@@ -557,6 +557,18 @@ deployed employsi-preview successfully at 12:37 the same day (version
 `1e83de7c`), verified afterwards: `/app` served the app's title, production's
 version ids were byte-identical before and after.
 
+**PRODUCTION HAS A WORKFLOW SINCE 2026-09-29: `.github/workflows/deploy-production.yml`.**
+Manual dispatch only, from `main` only, and it deploys nothing unless `confirm` is
+typed as `employsi.com.au`. It exists because the sandbox's Cloudflare token cannot
+see Workers at all ("No access to the specified resource" on every script), while
+the repo's Actions secrets carry both tokens. It records the serving version first
+(and refuses without one), deploys with `--name benridgwell-globe-gazer-hr` spelled
+out, then asserts the apex serves the landing page, `/product` and `/login` answer
+200, `/app` and `/api/auth/*` still 302 off the apex, and workers.dev `/app` is the
+app. The same "asked for in this conversation" rule applies to dispatching it.
+**Releasing the app turns its gate check red on purpose** — change the check in the
+same PR that empties `APP_ONLY_PATHS`.
+
 Deploys, when actually asked for:
 
 ```bash
