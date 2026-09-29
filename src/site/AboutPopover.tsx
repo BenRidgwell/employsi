@@ -77,6 +77,21 @@ export function AboutPopover() {
               akin to the way financial data is shared.
             </p>
           </div>
+          {/* A new tab, so the visitor keeps their place on the site. */}
+          <a
+            href="https://www.linkedin.com/in/ben-ridgwell/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-[13px] font-semibold text-primary-foreground no-underline transition hover:bg-ink-2"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" aria-hidden>
+              <path
+                fill="currentColor"
+                d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.55V9h3.57v11.45Z"
+              />
+            </svg>
+            Contact me
+          </a>
         </div>
       </PopoverContent>
     </Popover>
