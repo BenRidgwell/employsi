@@ -1,21 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiveSkillTrend } from "@/employsi/lib/jobHistoryFn";
-import { fmtChange, topMovers, useSkillMovers } from "./liveMarket";
+import { topMovers, useSkillMovers } from "./liveMarket";
 
 /**
  * The two skills callouts drawn over the landing page's hero footage: one
  * rising series and one falling series draw in toward a marker each, a card
  * lands on each marker, both hold, both clear. A 7-second loop.
  *
- * PORTED FROM THE DESIGN'S skills-overlay.jsx, WITH ITS DATA REPLACED. The
- * design hard-codes "Project management +6%, A$148,000" and "Autonomous
- * haulage −2%, A$132,000", and draws both lines from sine-wave formulas. Here
- * the two skills are the archive's actual biggest riser and faller over the
- * window the ticker shows, each line is that skill's own daily count of live
- * vacancies, and the salary is its advertised median where enough ads state
- * one. A skill whose series is too short to draw gets its card without a line;
- * with no movers at all, nothing is drawn — the footage and headline stand on
- * their own. See liveMarket.ts.
+ * A PORT OF THE "Callouts Overlay" DESIGN (skills-overlay.jsx, 2026-09-29):
+ * its geometry, curves, timing, type and position, exactly — WITH ITS FIGURES
+ * REPLACED. The design hard-codes "Project management +6%, A$148,000" and
+ * "Autonomous haulage −2%, A$132,000". Here the two skills are the archive's
+ * actual biggest riser and faller over the window the ticker shows, and the
+ * salary is its advertised median where enough ads state one (the row is
+ * dropped where not). With no movers at all nothing is drawn — the footage
+ * and headline stand on their own. See liveMarket.ts.
+ *
+ * THE LINES ARE THE DESIGN'S, NOT A SERIES. They are illustrative curves — one
+ * rising, one falling — and each only ever sits beside a card whose direction
+ * matches it. An earlier version drew each skill's own daily vacancy count
+ * here; it was replaced at the owner's request with the design's exact look,
+ * so read the figure off the card, never the shape off the line.
  *
  * Geometry is authored in the design's 1920x1080 space and the whole stage is
  * scaled to the banner's width, so every number below is the design's own.
@@ -32,10 +37,11 @@ const X1 = 1500;
 const BASE = 800;
 const RANGE = 440;
 const N = 64;
-// The callouts' anchor, as the landing design places them.
-const AX = 1680;
-const AY_UP = 480;
-const AY_DOWN = 680;
+// The callouts' anchor: the Callouts Overlay design's defaults (x, y1, y2).
+const AX = 1300;
+const AY_UP = 440;
+const AY_DOWN = 640;
+const MONO = "'JetBrains Mono', monospace";
 // Scene cues (seconds): Draw 1.6, Rising 0.9, Falling 3.5, Out 1.
 const CUE_RISING = 1.6;
 const CUE_FALLING = 2.5;
@@ -60,28 +66,36 @@ const pop = anim(easeOutBack);
 
 type Pt = { x: number; y: number };
 
-/**
- * A real daily series → N points across the design's chart box, then moved so
- * its last point lands on the callout's anchor (the design's `spark`). Each
- * series is scaled to its own range: the lines show direction and shape, and
- * the card beside each states the actual figure.
- */
-function seriesPoints(hist: number[] | undefined, ax: number, ay: number): Pt[] | null {
-  if (!hist || hist.length < 3) return null;
-  const min = Math.min(...hist);
-  const max = Math.max(...hist);
-  if (max === min) return null;
-  const pts: Pt[] = [];
+const series = (fn: (t: number) => number): Pt[] => {
+  const out: Pt[] = [];
   for (let i = 0; i < N; i++) {
-    const f = (i / (N - 1)) * (hist.length - 1);
-    const j = Math.min(hist.length - 2, Math.floor(f));
-    const v = hist[j] + (hist[j + 1] - hist[j]) * (f - j);
-    const n = 0.3 + 0.56 * ((v - min) / (max - min));
-    pts.push({ x: X0 + (i / (N - 1)) * (X1 - X0), y: BASE - n * RANGE });
+    const t = i / (N - 1);
+    out.push({ x: X0 + t * (X1 - X0), y: BASE - fn(t) * RANGE });
   }
-  const last = pts[N - 1];
-  return pts.map((q) => ({ x: ax + (q.x - last.x) * 0.72, y: ay + (q.y - last.y) * 0.8 }));
+  return out;
+};
+
+const RISE = series(
+  (t) =>
+    0.42 + 0.44 * Math.pow(t, 0.92) + 0.03 * Math.sin(t * 17.3) + 0.018 * Math.sin(t * 33.1 + 1.2),
+);
+
+const FALL = series(
+  (t) =>
+    0.6 -
+    0.3 * Math.pow(t, 1.06) +
+    0.026 * Math.sin(t * 14.1 + 0.6) +
+    0.014 * Math.sin(t * 29.4 + 2.1),
+);
+
+/** The design's `spark`: shrink a curve and move its last point onto (ex, ey). */
+function spark(pts: Pt[], ex: number, ey: number): Pt[] {
+  const last = pts[pts.length - 1];
+  return pts.map((q) => ({ x: ex + (q.x - last.x) * 0.72, y: ey + (q.y - last.y) * 0.8 }));
 }
+
+const RISE_AT = spark(RISE, AX, AY_UP);
+const FALL_AT = spark(FALL, AX, AY_DOWN);
 
 function tip(pts: Pt[], p: number) {
   const f = Math.max(0, Math.min(1, p)) * (pts.length - 1);
@@ -99,12 +113,17 @@ function pathTo(pts: Pt[], p: number) {
   return d + ` L ${t.x.toFixed(1)} ${t.y.toFixed(1)}`;
 }
 
+/** "+6%" as the design sets it; one decimal only when a whole number would read 0. */
+const pct = (v: number) => {
+  const a = Math.abs(v);
+  return `${v >= 0 ? "+" : "−"}${a >= 0.5 ? Math.round(a) : a.toFixed(1)}%`;
+};
+
 const aud = (n: number) => `A$${(Math.round(n / 1000) * 1000).toLocaleString("en-AU")}`;
 
 function Callout({
   y,
   skill,
-  windowShort,
   dir,
   color,
   card,
@@ -115,7 +134,6 @@ function Callout({
 }: {
   y: number;
   skill: LiveSkillTrend;
-  windowShort: string;
   dir: 1 | -1;
   color: string;
   card: string;
@@ -187,7 +205,7 @@ function Callout({
       >
         <div
           style={{
-            fontFamily: "var(--ws-label)",
+            fontFamily: MONO,
             fontSize: 15,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -209,22 +227,7 @@ function Callout({
               lineHeight: 1,
             }}
           >
-            {fmtChange(skill.v)}
-          </span>
-          {/* What the percentage is — demand, over this window — so it can
-              never be read as a pay rise. */}
-          <span
-            style={{
-              alignSelf: "flex-end",
-              fontFamily: "var(--ws-label)",
-              fontSize: 12,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "rgba(255,255,255,.78)",
-              paddingBottom: 4,
-            }}
-          >
-            demand · {windowShort}
+            {pct(skill.v)}
           </span>
         </div>
         {skill.pay !== undefined && (
@@ -241,7 +244,7 @@ function Callout({
           >
             <span
               style={{
-                fontFamily: "var(--ws-label)",
+                fontFamily: MONO,
                 fontSize: 13,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
@@ -250,7 +253,7 @@ function Callout({
             >
               Median salary
             </span>
-            <span style={{ fontFamily: "var(--ws-label)", fontSize: 20, fontWeight: 500 }}>
+            <span style={{ fontFamily: MONO, fontSize: 20, fontWeight: 500 }}>
               {aud(skill.pay)}
             </span>
           </div>
@@ -308,9 +311,9 @@ export function HeroCallouts() {
   const out = draw(1, 0, CUE_OUT, CUE_OUT + 0.6)(T);
   const pR = draw(0, 1, 0.05, CUE_RISING + 0.1)(T);
   const pF = draw(0, 1, 0.35, CUE_FALLING)(T);
-  const rise = up ? seriesPoints(up.spark, AX, AY_UP) : null;
-  const fall = down ? seriesPoints(down.spark, AX, AY_DOWN) : null;
-  const x0 = (rise ?? fall)?.[0].x ?? X0;
+  const rise = up ? RISE_AT : null;
+  const fall = down ? FALL_AT : null;
+  const x0 = RISE_AT[0].x;
 
   return (
     <div className="ws-callouts" ref={box} aria-hidden>
@@ -360,7 +363,6 @@ export function HeroCallouts() {
             <Callout
               y={AY_UP}
               skill={up}
-              windowShort={movers.short}
               dir={1}
               color={UP}
               card={UP_CARD}
@@ -373,7 +375,6 @@ export function HeroCallouts() {
             <Callout
               y={AY_DOWN}
               skill={down}
-              windowShort={movers.short}
               dir={-1}
               color={DOWN}
               card={DOWN_CARD}
