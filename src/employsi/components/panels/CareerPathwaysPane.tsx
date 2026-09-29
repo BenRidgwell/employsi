@@ -651,18 +651,30 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             {edges.map((g) => (
               <span
                 key={g.key}
+                // Under the connector's dot, inside the gap between the two
+                // cards, and ABOVE them. The gap is PX − CW = 72px; the label
+                // used to be exactly that wide on one line, so its ends sat
+                // under the cards (drawn later, so on top) and a two-word skill
+                // showed as "Leadership &…". Now it is narrower than the gap
+                // and wraps at word breaks — measured 2026-09-29 in Inter 500
+                // 10px, the longest word in any label ("Instrumentation") is
+                // 63px of the 64 — to at most three lines, which still end
+                // above the cards' bottom edge. zIndex keeps it over the glow.
                 style={{
                   position: "absolute",
+                  zIndex: 1,
                   left: g.lx,
                   top: g.ly + 9,
-                  width: 72,
+                  width: PX - CW - 8,
                   transform: "translateX(-50%)",
                   textAlign: "center",
                   font: `500 10px/1.2 ${INTER}`,
                   color: g.labelColor,
-                  whiteSpace: "nowrap",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 3,
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  pointerEvents: "none",
                 }}
               >
                 {g.label}
