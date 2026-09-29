@@ -422,6 +422,18 @@ interface SiteDef {
    */
   sfRmkSort?: string;
   sfRmkPlaces?: [facetField: string, value: string][];
+  /**
+   * Postings on this board that are not vacancies, matched on the title and
+   * dropped before anything is archived. For standing "send us your CV" posts
+   * that a board lists alongside real roles: archived, they would count in the
+   * card's open-roles figure as hiring that is not happening.
+   *
+   * Stowe Australia is the case (measured 2026-09-29): 3 of its 25 Expr3ss
+   * postings are "JOB ENQUIRIES" posts that never close. Set per site and
+   * anchored, because a word like "enquiries" is a real job title elsewhere
+   * ("Customer Enquiries Officer").
+   */
+  skipTitles?: RegExp;
 }
 
 // Google's own board places by METRO, not by city name — the county rule
@@ -14333,7 +14345,9 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
-  return FETCHERS[site.platform](site);
+  const jobs = await FETCHERS[site.platform](site);
+  const skip = site.skipTitles;
+  return skip ? jobs.filter((j) => !skip.test(j.t)) : jobs;
 }
 
 /** Short source tag per platform, so an archive row says where it came from. */
