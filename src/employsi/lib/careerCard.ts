@@ -196,6 +196,8 @@ export interface CardMove {
   /** Roster companies advertising BOTH roles in this market in the window. */
   sharedEmployers: number;
   payLabel: string;
+  /** The destination's commonest skill, for its icon on the map. */
+  skill: string | null;
 }
 
 export interface CardEdge {
@@ -275,6 +277,7 @@ export function careerMoves(p: CareerPathways, from: PathwayNode, country: strin
       overlap: hi ? Math.round((lo / hi) * 100) / 100 : 0,
       sharedEmployers: (m.companies ?? []).filter(([c]) => myCos.has(c)).length,
       payLabel: payLabel(n.pay[country]?.median ?? null, country),
+      skill: n.skills[0]?.[0] ?? null,
     });
   }
   return out

@@ -24,6 +24,7 @@ import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
 import { useClickAway } from "../../hooks/useClickAway";
 import { ONET_ZONE, onetForRole, onetUrl } from "../../lib/onet";
+import { SKILL_ICONS, skillIcon } from "../../lib/skillCard";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -55,7 +56,14 @@ const PX = 240;
 const CW = 168;
 const CH = 96;
 const ROW0 = 34;
-const ROWH = 142;
+/** Space under the last lane for the edge labels that hang below the cards. */
+const LABEL_ROOM = 52;
+/** How far below the cards' bottom edge an edge label starts. */
+const LABEL_DROP = 14;
+// 160, not the design's 142: the skill label on each step now hangs BELOW the
+// cards (see the edge labels), and a two-line one needs the room before the
+// next lane's heading.
+const ROWH = 160;
 const INK = "var(--neutral-900,#1c1c1e)";
 
 const MONA = "'Mona Sans Variable','Mona Sans',system-ui,sans-serif";
@@ -261,7 +269,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
       const el = mapRef.current;
       const nd = nodes[i];
       if (!el || !nd) return;
-      const H = ROW0 + (lanes - 1) * ROWH + CH + 28;
+      const H = ROW0 + (lanes - 1) * ROWH + CH + LABEL_ROOM;
       const h = el.clientHeight;
       const want = h / 2 - (nd.y + CH / 2) * z;
       const y = H * z <= h ? (h - H * z) / 2 : Math.max(h - H * z, Math.min(0, want));
@@ -432,12 +440,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
       stroke: on ? INK : "var(--neutral-300,#c7c7cc)",
       w: on ? 2 : 1.5,
       labelColor: on ? "var(--text-primary,#1c1c1e)" : "var(--text-tertiary,#8e8e93)",
+      // The segment runs through the cards' vertical middle, so their bottom
+      // edge is CH/2 below it.
+      labelTop: ly + CH / 2 + LABEL_DROP,
     };
   });
 
   const maxCol = Math.max(...nodes.map((o) => o.col));
   const cWn = 48 + maxCol * PX + CW;
-  const cHn = ROW0 + (lanes - 1) * ROWH + CH + 28;
+  const cHn = ROW0 + (lanes - 1) * ROWH + CH + LABEL_ROOM;
 
   const sr = n.series ? sparkPath(n.series.counts) : null;
   const up = n.trend ? n.trend.up : true;
@@ -638,6 +649,18 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
+                  {g.label && (
+                    // The label hangs under the cards; this ties it back up to
+                    // the step it names.
+                    <line
+                      x1={g.lx}
+                      y1={g.ly + 4}
+                      x2={g.lx}
+                      y2={g.labelTop - 4}
+                      style={{ stroke: g.stroke, transition: "stroke 200ms" }}
+                      strokeWidth="1"
+                    />
+                  )}
                   <circle
                     cx={g.lx}
                     cy={g.ly}
@@ -651,28 +674,26 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             {edges.map((g) => (
               <span
                 key={g.key}
-                // Under the connector's dot, inside the gap between the two
-                // cards, and ABOVE them. The gap is PX − CW = 72px; the label
-                // used to be exactly that wide on one line, so its ends sat
-                // under the cards (drawn later, so on top) and a two-word skill
-                // showed as "Leadership &…". Now it is narrower than the gap
-                // and wraps at word breaks — measured 2026-09-29 in Inter 500
-                // 10px, the longest word in any label ("Instrumentation") is
-                // 63px of the 64 — to at most three lines, which still end
-                // above the cards' bottom edge. zIndex keeps it over the glow.
+                // BELOW the two cards, centred on the gap, with a line up to
+                // the step's dot. It used to sit in the 72px gap itself, where
+                // the cards (drawn later) covered its ends and a two-word skill
+                // read "Leadership &…". Hanging it under the cards gives it
+                // PX − CW + 32 = 104px — wide enough that the longest labels
+                // take two lines — while keeping clear of the "Set as goal?"
+                // button, which sits under the selected card's middle.
                 style={{
                   position: "absolute",
                   zIndex: 1,
                   left: g.lx,
-                  top: g.ly + 9,
-                  width: PX - CW - 8,
+                  top: g.labelTop,
+                  width: PX - CW + 32,
                   transform: "translateX(-50%)",
                   textAlign: "center",
                   font: `500 10px/1.2 ${INTER}`,
                   color: g.labelColor,
                   display: "-webkit-box",
                   WebkitBoxOrient: "vertical",
-                  WebkitLineClamp: 3,
+                  WebkitLineClamp: 2,
                   overflow: "hidden",
                   pointerEvents: "none",
                 }}
@@ -761,6 +782,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 </button>
               );
             })}
+            {n.moves.length > 0 && <MoveBranch key={n.id} node={n} onPick={jump} />}
             {pop && (
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -1484,8 +1506,6 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <OtherDirections moves={n.moves} onPick={jump} />
-
         <OnetSection id={n.id} />
       </div>
     </div>
@@ -1526,53 +1546,73 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
 /** A faded role card on the ghost map. */
 /**
- * Roles on other ladders this one could lead to (careerCard.careerMoves). The
- * link is O*NET's; the overlap and shared-employer counts are ours. It says
- * "related", never that people make the move — the archive cannot see careers.
+ * "Other directions", drawn on the map: a small pill of icons on the selected
+ * card's edge, one per role on ANOTHER ladder it relates to
+ * (careerCard.careerMoves). It sits on the edge the "Set as goal?" button does
+ * not use — the top on the core lane, the bottom below it.
+ *
+ * The figures and the caveat live in the hover card, not on the map: the
+ * link is O*NET's, the overlap and shared-employer counts are ours, and it
+ * never says people make the move — the archive holds ads, not careers.
  */
-function OtherDirections({
-  moves,
-  onPick,
-}: {
-  moves: CardNode["moves"];
-  onPick: (id: string) => void;
-}) {
-  if (!moves.length) return null;
+function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => void }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const top = node.row === 0;
+  const m = hover != null ? node.moves[hover] : null;
   return (
-    <section className="cpmoves" aria-label="Other directions">
-      <div className="cponethead">
-        <span style={EYEBROW}>OTHER DIRECTIONS</span>
-        <span className="cpmovessub">Related roles on other ladders</span>
-      </div>
-      <div className="cpmovelist">
-        {moves.map((m) => (
-          <button key={m.id} type="button" className="cpmove" onClick={() => onPick(m.id)}>
-            <span className="cpmovemain">
-              <span className="cpmovetitle">{m.title}</span>
-              <span className="cpmovewhere">{`${m.where} · ${m.stage}`}</span>
-            </span>
-            <span className="cpmovefigs">
-              <span>{`${Math.round(m.overlap * 100)}% skills shared`}</span>
-              <span>
-                {m.sharedEmployers
-                  ? `${m.sharedEmployers} employer${m.sharedEmployers === 1 ? "" : "s"} hire both`
-                  : "No shared employers on the map"}
-              </span>
-              <span>
-                {m.payLabel === "—" ? "Too few ads show pay" : `${m.payLabel} median pay`}
-              </span>
-            </span>
-            <span className="cpmovego" aria-hidden="true">
-              ›
-            </span>
-          </button>
-        ))}
-      </div>
-      <p className="cponetnote">
-        Related occupations per O*NET; skill overlap and employers are from employsi&apos;s ads.
-        Nothing here tracks people making the move.
-      </p>
-    </section>
+    <div
+      className={`cpbranch${top ? "" : " below"}`}
+      style={{ left: node.x + CW - 10, top: top ? node.y : node.y + CH }}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseLeave={() => setHover(null)}
+    >
+      <span className="cpbranchlbl" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor">
+          <path d="M6 20V9a5 5 0 0 1 5-5h7" />
+          <path d="M15 1l3 3-3 3" />
+          <path d="M6 13a5 5 0 0 1 5-5h2" />
+        </svg>
+        Other paths
+      </span>
+      {node.moves.map((mv, i) => (
+        <button
+          key={mv.id}
+          type="button"
+          className={`cpbranchbtn${hover === i ? " on" : ""}`}
+          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. Related occupation per O*NET.`}
+          onMouseEnter={() => setHover(i)}
+          onFocus={() => setHover(i)}
+          onBlur={() => setHover(null)}
+          onClick={() => onPick(mv.id)}
+        >
+          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor">
+            {(
+              SKILL_ICONS[skillIcon(mv.skill ?? "", mv.skill ? SKILL_PARENT[mv.skill] : null)] ?? []
+            ).map((d) => (
+              <path key={d} d={d} />
+            ))}
+          </svg>
+        </button>
+      ))}
+      {m && (
+        <div className={`cpbranchtip${top ? "" : " up"}`} role="tooltip">
+          <span className="cpbranchtitle">{m.title}</span>
+          <span className="cpbranchwhere">{`${m.where} · ${m.stage}`}</span>
+          <span className="cpbranchfigs">
+            {`${Math.round(m.overlap * 100)}% skills shared · `}
+            {m.sharedEmployers
+              ? `${m.sharedEmployers} employer${m.sharedEmployers === 1 ? "" : "s"} hire both`
+              : "no shared employers on the map"}
+            {m.payLabel === "—" ? "" : ` · ${m.payLabel} median`}
+          </span>
+          <span className="cpbranchnote">
+            Related occupations per O*NET; skills and employers from employsi&apos;s ads. Nothing
+            here tracks people making the move.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
