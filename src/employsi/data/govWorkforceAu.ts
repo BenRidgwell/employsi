@@ -4,9 +4,10 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Taronga Conservation Society Australia: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Powerhouse (Museum of Applied Arts and Sciences): 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
-//   NSW: TAFE NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Environment Protection Authority: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Taronga Conservation Society Australia: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: Powerhouse (Museum of Applied Arts and Sciences): 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
+//   NSW: TAFE NSW: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: Education Standards Authority: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   NSW: Communities and Justice: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //   NSW: Customer Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -140,6 +141,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-nsw-ambulance": { now: 7509, prev: 7037, yoy: 6.7, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-education-standards-authority": { now: 733, prev: 716, yoy: 2.3, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-electoral-commission": { now: 179, prev: 236, yoy: -24.2, asof: "Jun 2025", span: 1 },
+  "nsw-gov-nsw-environment-protection-authority": { now: 973, prev: 1025, yoy: -5.1, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-health-pathology": { now: 4867, prev: 4810, yoy: 1.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-nsw-ombudsman": { now: 259, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-nsw-police-force": { now: 19513, prev: 20106, yoy: -2.9, asof: "Jun 2025", span: 1, unit: "fte" },

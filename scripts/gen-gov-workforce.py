@@ -1170,14 +1170,60 @@ NOT_IN_SOURCE = {
         'Corporation of NSW, the EPA and Energy Security Corporation — and NPWS '
         'is not among them, so its people are in the 6,208 rather than absent '
         'from it. Filing it again would double count',
-    # And the three DCCEEW names its note DOES exclude, which is why they are
-    # separate cards with no figure rather than part of the 6,208.
-    'nsw:NSW Environment Protection Authority':
-        "excluded by name from the DCCEEW annual report's workforce table, so "
-        'it needs its own report',
+    # DCCEEW's note excludes SIX bodies by name and three of them are roster
+    # cards: Taronga, the Environment Protection Authority and the Energy
+    # Corporation of NSW. TWO OF THE THREE ARE NOW FILED from their own reports
+    # (nsw-taronga, nsw-epa) — the exclusion is exactly why they can be, since
+    # their people are not inside the 6,208. Only EnergyCo is left, and not for
+    # want of a document.
+    # ── ENERGYCO: THE REPORT OPENS AND CONTRADICTS ITSELF ───────────────────
+    # The third DCCEEW exclusion, and the only one of the three that stays blank.
+    # energyco.nsw.gov.au serves its 2024-25 report unchallenged (7,519,328
+    # bytes), so the old reason — "it needs its own report" — is answered; what
+    # replaces it is about the document.
+    #
+    # THREE STATEMENTS OF ITS OWN WORKFORCE, NO TWO OF WHICH AGREE, all on p57-59:
+    #
+    #   p59 prose    "we had 36 senior executive employees and 175
+    #                 non-executive employees"                     -> 211
+    #   p59 Table 9  non-executive by category, Total               -> 212
+    #   p59 prose    "senior executives represented 13.2 per cent
+    #                 of total headcount", with 36 of them         -> about 273
+    #
+    # and Table 10's gender breakdown agrees with Table 9 for 2025 (212) while
+    # disagreeing with it for 2024 — 82 against Table 9's 110.
+    #
+    # SO EVERY CANDIDATE IS WRONG FOR A DIFFERENT REASON. 212 is non-executives
+    # only and would leave the 36 executives off the card. 248 is 212 + 36, which
+    # is my arithmetic rather than the report's, and the report's own percentage
+    # says the total is nearer 273. Picking one would be choosing which of the
+    # document's three answers to publish.
+    #
+    # p57 adds "At 30 June 2025, our workforce comprised 209.8 full-time
+    # equivalent (FTE) employees", which is a fourth basis and is consistent with
+    # the non-executive figure rather than with any total.
+    #
+    # WHAT WOULD FIX IT is the next edition or a corrected one, not more reading:
+    # the 2023-24 and 2022-23 reports are on the same page if a comparison ever
+    # helps. Note also p59's "The Energy Corporation of NSW Staff Agency was
+    # established on 1 July 2024 to facilitate the transfer and direct employment
+    # by EnergyCo of employees previously employed by the department" — which is
+    # why 2024 is so much smaller than 2025 in every table here, and why a
+    # year-on-year over that boundary would be measuring the transfer.
     'nsw:Energy Corporation of NSW':
-        "excluded by name from the DCCEEW annual report's workforce table, so "
-        'it needs its own report',
+        'ITS REPORT OPENS AND DISAGREES WITH ITSELF. energyco.nsw.gov.au serves '
+        'the 2024-25 annual report unchallenged, and p57-59 state the workforce '
+        'three incompatible ways: the prose says "36 senior executive employees '
+        'and 175 non-executive employees" (211), Table 9 totals non-executives '
+        'at 212, and "senior executives represented 13.2 per cent of total '
+        'headcount" with 36 of them implies about 273. Table 10 agrees with '
+        'Table 9 for 2025 and contradicts it for 2024 (82 against 110). Filing '
+        '212 would leave the executives off the card; 248 is my addition, not '
+        "the report's. p57's 209.8 FTE is a fourth basis. Nothing here is a "
+        'workforce total the document stands behind. Worth knowing for the next '
+        'attempt: the EnergyCo Staff Agency was established on 1 July 2024 to '
+        'take direct employment of staff previously employed by the department, '
+        'so any year-on-year across that boundary measures the transfer',
     # ── Western Australia: outside the PSM Act bulletin ────────────────────
     # Nine WA cards are absent from every edition, and the reason is the one
     # perthGovWorkforce.ts already stated at the top of the file it replaces:
@@ -2704,6 +2750,23 @@ def load_healthnz():
 # annual report. Sixty-three cards therefore need sixty-three documents, and
 # twelve agencies carry 82% of the route's live ads.
 #
+# AND THE COMPANION DATA FILE DOES NOT RESCUE IT, which is worth writing down
+# because it is the obvious thing to try and it looks exactly like the answer.
+# Every NSW agency report on this route cites "the Workforce Profile Report
+# submitted to the Public Service Commission" (the Rural Fire Service spec uses
+# that sentence as its `proof`), so a central per-agency file ought to exist.
+# Measured 2026-09-29, after following psc.nsw.gov.au's redirect into the
+# Premier's Department on nsw.gov.au:
+#
+#   2025-additional-workforce-profile-data.xlsx   22 tables, all sector-wide
+#   NSW Public Sector Report 2025 (tabled, id 192801, 72 pp)   no agency table
+#
+# The spreadsheet breaks the sector down by service, salary grade, age, region,
+# LGA, tenure and gender — and by AGENCY nowhere. The Public Sector Report is
+# narrative over the same aggregates. So the warehouse exists, the agencies
+# report into it, and what is PUBLISHED from it is the sector, not its parts.
+# Forty-four specs is the shape of that, not an oversight.
+#
 # EACH REPORT IS REGISTERED AS ITS OWN SOURCE, which is not a workaround but
 # the honest shape: a loader returns one `asof` and one `unit`, and these
 # agencies genuinely disagree about both. NESA and Customer Service publish
@@ -3885,6 +3948,46 @@ NSW_AGENCY_REPORTS = {
     # the casual count — because that column reconciles against its own
     # components too. `header` is the only thing saying which three of the six
     # columns are the Totals and which year each is.
+    # THE SECOND OF THE THREE DCCEEW EXCLUSIONS, and the same correction applies:
+    # its reason was "excluded by name from the DCCEEW annual report's workforce
+    # table, so it needs its own report", and it has one, on its own host,
+    # unchallenged — 13,945,833 bytes. The department's Table 7 note names the
+    # Environment Protection Authority among the bodies its 6,208 leaves out, so
+    # filing this cannot double count.
+    #
+    # p47, Table 6 "Number of officers and employees by category 2024-25": five
+    # classifications over two columns headed 30 June 2024 and 30 June 2025.
+    # Both reconcile exactly — 772 + 115 + 128 + 10 + 0 = 1,025 and 765 + 120 +
+    # 78 + 10 + 0 = 973.
+    #
+    # THE CARD WILL SHOW A FALL OF 5.1% AND THAT IS WHAT THE DOCUMENT SAYS. Worth
+    # stating because a drop reads like a parse error here more often than a rise
+    # does; the components fall with the total, and temporary full-time (128 ->
+    # 78) is most of it.
+    #
+    # `integers` WAS TRIED AND IS NOT LOAD-BEARING, so it is not set. Table 4
+    # above carries decimals (Band 1 14.4 / 12.6) and would be the thing to guard
+    # against, but its Total row has FOUR numbers against this spec's two, so
+    # `ncols` already refuses it and the control passes identically either way.
+    # A guard that cannot fire is not kept.
+    #
+    # AND THE CONTROL THAT PASSES: `now_i=0` files 1,025, because the 2024 column
+    # reconciles against its own components too. `header` — "Classification
+    # 30 June 2024 30 June 2025" — is what makes column 1 the current year.
+    'nsw-epa': dict(
+        label='NSW: Environment Protection Authority',
+        agency='NSW Environment Protection Authority',
+        agency_id='nsw-gov-nsw-environment-protection-authority',
+        url='https://www.epa.nsw.gov.au/sites/default/files/2025-11/'
+            'Tab%201%20-%20NSW%20Environment%20Protection%20Authority%20202425%20'
+            'Annual%20Report.pdf',
+        needle='Number of officers and employees by category',
+        total=r'^Total\b',
+        comp=r'^(?:Permanent|Temporary|Casual)\b',
+        ncols=2, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        header=r'Classification 30 June 2024 30 June 2025',
+        proof=r'Number of officers and employees by category 2024.25',
+        unit='headcount', asof='Jun 2025'),
     'nsw-taronga': dict(
         label='NSW: Taronga Conservation Society Australia',
         agency='Taronga Conservation Society Australia',
