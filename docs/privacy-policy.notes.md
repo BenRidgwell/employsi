@@ -21,12 +21,27 @@ TXT     v=spf1 -all                                  ← nobody may send as the 
 _dmarc  v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s
 ```
 
-**Email Routing needs none of that changed.** Forwarding is a receiving function;
-Cloudflare re-sends to the destination mailbox under its own domain, so `-all` and
-`p=reject` stay intact and the domain stays unspoofable. Leave both alone. They
-only come into play if outbound sending is ever added, and the strict alignment
-(`adkim=s`) is stricter than most relays' defaults — see the option-3 notes in the
-conversation, or re-derive before touching it.
+**EMAIL ROUTING DOES REQUIRE THE SPF RECORD CHANGED.** This file previously said
+it did not, on the reasoning that forwarding is a receiving function and SPF
+governs sending. That reasoning is wrong and cost a round trip: Cloudflare Email
+Routing expects
+
+```
+v=spf1 include:_spf.mx.cloudflare.net ~all
+```
+
+and the pre-existing `v=spf1 -all` contradicts it, which is exactly what the
+dashboard reports as "Email DNS records misconfigured" once routing is enabled.
+The MX records go in fine on their own; SPF is the one that has to be edited by
+hand. `-all` in place of `~all` is stricter and also correct, but the dashboard
+check is less reliable about accepting it.
+
+**DMARC stays as it is.** `p=reject; sp=reject; adkim=s; aspf=s` governs only mail
+claiming to be FROM this domain, so inbound forwarding is unaffected, and
+Cloudflare uses SRS so forwarding does not break the original sender's SPF. The
+strict alignment (`adkim=s`) is stricter than most relays' defaults and only
+matters if outbound sending is ever added — re-derive it then rather than
+loosening it now.
 
 Replies will come from whatever mailbox the address forwards to, not from
 @employsi.com.au. That is cosmetic, not a compliance problem.
