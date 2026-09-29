@@ -243,7 +243,7 @@ export function ClosingCta() {
           </p>
           <div className="ctas">
             <Link to="/login" search={{ mode: "create" }} className="ws-btn light">
-              Access now for free
+              Get started
             </Link>
             <Link to="/login" className="ws-btn ghost">
               Log in

@@ -125,7 +125,7 @@ function Landing() {
             </p>
             <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
               <Link to="/login" search={{ mode: "create" }} className="ws-btn light">
-                Access now for free
+                Get started
               </Link>
             </div>
           </div>
