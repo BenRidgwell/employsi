@@ -36,6 +36,14 @@ import { rankedByEmployment, MIN_EMPLOYED, AU_RATE_HUBS } from "../src/employsi/
 import { COMPANIES } from "../src/employsi/data/companies";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { filedHeadcount } from "../src/employsi/lib/companyCard";
+import { SG_SKILL_GROUP } from "../src/employsi/data/sgOccupationSupply";
+import {
+  NZ_GROUP_EMPLOYMENT,
+  NZ_GROUP_NAME,
+  NZ_MIN_EMPLOYED,
+  NZ_SKILL_GROUP,
+  NZ_SUPPLY_YEARS,
+} from "../src/employsi/data/nzOccupationSupply";
 import {
   cityEmployment,
   localSupplyFor,
@@ -2558,13 +2566,21 @@ console.log("\nthe local supply layer measures employers, not their ads:");
     auHub.length === AU_RATE_HUBS.length,
     `${auHub.length}/${AU_RATE_HUBS.length}`,
   );
-  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is a disclosed
-  // rate denominator, never a skill headcount — see cityEmployment.
+  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is now SHOWN
+  // rather than withheld, but never as the skill's own headcount — the assertion
+  // moved from "returns nothing" to "never claims to be the skill", which is the
+  // property that actually mattered all along. Fully covered in the NZ/SG section
+  // below; kept here because this block is where the no-blending rules live.
+  const sgHere = cityEmployment("Nursing", "singapore", m);
   check(
-    "singapore's major-group figure is not printed as a skill headcount",
-    cityEmployment("Nursing", "singapore", m) === null,
+    "singapore's major-group figure is never printed as a skill headcount",
+    !!sgHere && sgHere.grain === "group" && sgHere.label !== "Nursing",
+    `${sgHere?.grain}/${sgHere?.label}`,
   );
-  const outside = ["auckland", "wellington", "toronto", "houston", "london"];
+  // Auckland and Wellington USED TO BE on this list and are deliberately off it:
+  // they now answer from the 2023 Census at ANZSCO sub-major grain, labelled with
+  // the group rather than the skill. That is asserted in its own section below.
+  const outside = ["toronto", "houston", "london"];
   check(
     "a city with no occupation data returns nothing, not a neighbour's figure",
     outside.every((c) => cityEmployment("Nursing", c, m) === null),
@@ -2578,6 +2594,166 @@ console.log("\nthe local supply layer measures employers, not their ads:");
     !/\bads?\b/.test(supplyNoun("headcount") + " " + supplyNoun("fte")),
   );
   check("fte is named as fte", supplyNoun("fte") === "FTE" && supplyNoun("headcount") === "staff");
+}
+
+// ── New Zealand's supply side, and the grain it must confess ────────────────
+// NZ publishes no occupation employment finer than ANZSCO SUB-MAJOR — checked
+// across all 50 occupation dataflows in the Stats NZ catalogue, 2026-09-28. So a
+// NZ figure is every skill in its group at once, and the ONLY thing making it
+// honest is that the group's name travels with the number. Nursing in Auckland
+// is 37,644 "Health Professionals": true as written, false the moment the label
+// says Nursing. These assert the label, not just the figure.
+console.log("\nthe NZ supply figure names its group, not the skill:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+
+  // Every parent skill resolves to a group, or a searched skill silently has no
+  // NZ answer while its neighbours do.
+  const parents = ALL_SKILLS.filter((s) => !SKILL_PARENT[s]);
+  const ungrouped = parents.filter((s) => !NZ_SKILL_GROUP[s]);
+  check("every parent skill has an ANZSCO group", ungrouped.length === 0, ungrouped.join(", "));
+  const unnamed = [...new Set(Object.values(NZ_SKILL_GROUP))].filter((g) => !NZ_GROUP_NAME[g]);
+  check("every group used has a name to show", unnamed.length === 0, unnamed.join(", "));
+
+  // THE LABEL. A group figure must never be labelled with the skill, and an
+  // Australian one must always be.
+  const nzMislabelled: string[] = [];
+  const auMislabelled: string[] = [];
+  for (const s of parents) {
+    for (const c of ["auckland", "wellington"]) {
+      const r = cityEmployment(s, c, m);
+      if (!r) continue;
+      if (r.grain !== "group") nzMislabelled.push(`${s}/${c}: grain ${r.grain}`);
+      else if (r.label === s) nzMislabelled.push(`${s}/${c}: labelled with the skill`);
+    }
+    const au = cityEmployment(s, "perth", m);
+    if (au && (au.grain !== "occupation" || au.label !== s))
+      auMislabelled.push(`${s}: ${au.grain}/${au.label}`);
+  }
+  check(
+    "no NZ figure is labelled with the searched skill",
+    nzMislabelled.length === 0,
+    nzMislabelled.slice(0, 3).join("; "),
+  );
+  check(
+    "every AU figure IS the searched skill",
+    auMislabelled.length === 0,
+    auMislabelled.slice(0, 3).join("; "),
+  );
+
+  // Nursing is the case worth naming outright: six skills share this number.
+  const akl = cityEmployment("Nursing", "auckland", m);
+  check("Nursing in Auckland answers at all", !!akl, `${akl?.n}`);
+  check("...and says Health Professionals", akl?.label === "Health Professionals", akl?.label);
+  check("...and is dated to a census", !!akl?.asof.endsWith("Census"), akl?.asof);
+  // Medical Practice must return the SAME number, which is the honest shape of a
+  // shared denominator rather than a bug.
+  const med = cityEmployment("Medical Practice", "auckland", m);
+  check("...and Medical Practice returns the same group figure", med?.n === akl?.n);
+
+  // SINGAPORE IS IN NOW, at the coarsest grain in the app: eight SSOC majors. It
+  // used to be excluded outright and the guard asserted that; it earns its place
+  // only because the label names the group and `note` names the level, so both
+  // are asserted rather than the figure alone.
+  const sg = cityEmployment("Nursing", "singapore", m);
+  check("singapore answers", !!sg, `${sg?.n}`);
+  check("...as a group, not an occupation", sg?.grain === "group", sg?.grain);
+  check("...never labelled with the skill", sg?.label !== "Nursing", sg?.label);
+  // SSOC files registered nurses under Associate Professionals, not Professionals
+  // — the mapping follows the classification rather than intuition, and this is
+  // the case that shows it is not just dumping every degree job in one group.
+  check(
+    "...and follows SSOC, which puts nurses in Associate Professionals",
+    sg?.label === "Associate Professionals & Technicians",
+    sg?.label,
+  );
+  check("...and its note names the classification level", !!sg?.note?.includes("SSOC major group"));
+  const sgSoftware = cityEmployment("Software Engineering", "singapore", m);
+  check(
+    "...while Software Engineering is Professionals",
+    sgSoftware?.label === "Professionals",
+    sgSoftware?.label,
+  );
+  // Every group figure anywhere must carry a note. Without it the only thing on
+  // screen distinguishing 1-of-8 from 1-of-43 is gone.
+  const noteless: string[] = [];
+  for (const s of parents)
+    for (const c of ["auckland", "wellington", "singapore"]) {
+      const r = cityEmployment(s, c, m);
+      if (r && !r.note) noteless.push(`${s}/${c}`);
+    }
+  check(
+    "every group figure carries its classification note",
+    noteless.length === 0,
+    noteless.slice(0, 3).join(", "),
+  );
+  // And an occupation-grain figure must NOT claim a group note.
+  const auNoted = parents.map((s) => cityEmployment(s, "perth", m)).filter((r) => r && r.note);
+  check("an AU figure needs no group note", auNoted.length === 0, `${auNoted.length}`);
+  // Every parent skill has an SSOC group, or Singapore silently loses a rate too.
+  const sgUngrouped = parents.filter((s) => !SG_SKILL_GROUP[s]);
+  check("every parent skill has an SSOC group", sgUngrouped.length === 0, sgUngrouped.join(", "));
+  check(
+    "and an uncovered city returns nothing",
+    ["toronto", "houston", "london"].every((c) => cityEmployment("Nursing", c, m) === null),
+  );
+
+  // A city can never hold more of a group than the country.
+  const overNational: string[] = [];
+  for (const [g, byCity] of Object.entries(NZ_GROUP_EMPLOYMENT)) {
+    for (let i = 0; i < NZ_SUPPLY_YEARS.length; i++) {
+      const nat = byCity.national?.[i];
+      if (typeof nat !== "number") continue;
+      for (const c of ["auckland", "wellington"]) {
+        const v = byCity[c]?.[i];
+        if (typeof v === "number" && v > nat) overNational.push(`${g}/${c}/${NZ_SUPPLY_YEARS[i]}`);
+      }
+    }
+  }
+  check(
+    "no city holds more of a group than New Zealand",
+    overNational.length === 0,
+    overNational.slice(0, 3).join(", "),
+  );
+
+  // Auckland is about a third of the country; a group wildly outside that is a
+  // parse error, not a labour market.
+  const shares = Object.entries(NZ_GROUP_EMPLOYMENT)
+    .map(([g, b]) => {
+      const nat = b.national?.[NZ_SUPPLY_YEARS.length - 1];
+      const a = b.auckland?.[NZ_SUPPLY_YEARS.length - 1];
+      return typeof nat === "number" && typeof a === "number" && nat > 0 ? [g, a / nat] : null;
+    })
+    .filter((x): x is [string, number] => !!x);
+  check("every group has an Auckland share", shares.length >= 25, `${shares.length}`);
+  const wild = shares.filter(([, s]) => s < 0.03 || s > 0.75);
+  check(
+    "and none is an implausible share of the country",
+    wild.length === 0,
+    wild.map(([g, s]) => `${g} ${(s * 100).toFixed(0)}%`).join(", "),
+  );
+
+  // Census stepping: back to the last census at or before the month, never
+  // forward, and nothing before the first one.
+  check(
+    "a month before the first census has no figure",
+    cityEmployment("Nursing", "auckland", "2009-06") === null,
+  );
+  check(
+    "a month inside the 2013-2018 gap reads 2013",
+    cityEmployment("Nursing", "auckland", "2016-06")?.asof === "2013 Census",
+  );
+  check(
+    "and a month after the last census reads 2023",
+    cityEmployment("Nursing", "auckland", "2026-07")?.asof === "2023 Census",
+  );
+
+  // Every published figure clears the rounding floor — census counts are randomly
+  // rounded to base 3, so a cell in the low tens is mostly rounding.
+  const tooSmall = parents
+    .flatMap((s) => ["auckland", "wellington"].map((c) => cityEmployment(s, c, m)))
+    .filter((r) => r && r.n < NZ_MIN_EMPLOYED);
+  check("no figure is below the rounding floor", tooSmall.length === 0, `${tooSmall.length}`);
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

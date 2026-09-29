@@ -1,6 +1,9 @@
 import type { Company } from "../data/companies";
 import { filedHeadcount } from "./companyCard";
-import { AU_RATE_HUBS, employmentFor } from "./vacancyRate";
+import { AU_RATE_HUBS, employmentFor, NZ_SUPPLY_CITIES } from "./vacancyRate";
+import { NZ_GROUP_NAME, NZ_SKILL_GROUP, NZ_SUPPLY_YEARS } from "../data/nzOccupationSupply";
+import { SG_SKILL_GROUP, SG_SUPPLY_YEARS } from "../data/sgOccupationSupply";
+import { quarterLabelFor } from "./skillCard";
 
 /**
  * WHAT THE LOCAL LAYER CAN HONESTLY SAY IN SUPPLY MODE.
@@ -81,24 +84,121 @@ export function supplyScale(n: number, max: number): number {
 }
 
 /**
+ * WHAT A CITY'S EMPLOYMENT FIGURE ACTUALLY COUNTS.
+ *
+ * `label` is the point of this type. Australia's source is ANZSCO UNIT groups,
+ * so the figure really is the searched skill and may be shown under its name.
+ * New Zealand's finest published occupation grain is ANZSCO SUB-MAJOR, so the
+ * figure is every skill in that group at once — 37,644 "Health Professionals" in
+ * Auckland is every nurse, doctor, pharmacist, dentist, physiotherapist and
+ * radiographer in the region, and printing it beside the word Nursing would be
+ * false. So the label travels WITH the number, and the caller renders the label.
+ *
+ * That is the whole mechanism keeping a coarse source usable: name the group and
+ * the figure is true; name the skill and it is not.
+ */
+export interface CityEmployment {
+  n: number;
+  /** The name to show. The skill itself only when grain is "occupation". */
+  label: string;
+  grain: "occupation" | "group";
+  /** Reporting period, e.g. "Feb 2026 quarter" or "2023 Census". */
+  asof: string;
+  source: string;
+  /**
+   * The classification level, for a tooltip rather than the visible line.
+   *
+   * It belongs SOMEWHERE — "Professionals" and "Health Professionals" both read
+   * as "group" and nothing on screen says one divides a workforce eight ways and
+   * the other forty-three. It does not belong in the rendered label: `.lvblabel`
+   * is `white-space: nowrap` inside a flex row, and on desktop `.lvb` has no
+   * right edge or overflow, so a long enough stat runs past the viewport. (Mobile
+   * scrolls sideways and would have survived it, which is exactly the kind of
+   * difference that gets a layout shipped broken on one of the two.)
+   */
+  note?: string;
+}
+
+/**
  * The searched skill's employment for a whole city, or null.
  *
- * This is the only skill-aligned employment figure the local layer has, and it
- * exists for the eight Australian capitals and nowhere else. Null here means the
- * banner SAYS so; it is never approximated from a covered city.
+ * Two sources, at two grains, and the difference is carried rather than hidden:
  *
- * AU_RATE_HUBS IS THE GATE, NOT A SHORTCUT, and dropping it would print a wrong
- * number rather than none. employmentFor also answers for "singapore", from
- * SingStat M182081 — but that table is EIGHT SSOC MAJOR GROUPS, so it reads
- * 495,500 for Nursing because Nursing, Legal and Software Engineering all share
- * "Professionals" (see the generated file's header). As a rate DENOMINATOR that
- * coarseness is disclosed and survivable, which is what employmentFor was
- * written for. As a headcount printed beside a skill's name it is simply false —
- * Singapore does not employ 495,500 nurses — so this caller takes the
- * occupation-level hubs only.
+ *   · the eight Australian capitals, from ABS EQ08 at unit-group grain -> the
+ *     skill's own figure, labelled with the skill;
+ *   · Auckland and Wellington, from the 2023 Census at sub-major grain -> the
+ *     ANZSCO group's figure, labelled with the group (43 groups);
+ *   · Singapore, from MOM's Labour Force Survey at SSOC MAJOR grain -> the
+ *     group's figure, labelled with the group and with the level named (8).
+ *
+ * SINGAPORE IS THE COARSEST AND SAYS SO IN THE LINE ITSELF. SingStat M182081 is
+ * EIGHT SSOC majors and nothing finer is published — the generator header records
+ * the 2026-09-29 catalogue search that establishes it. So Nursing in Singapore
+ * returns 624,400 "Professionals", the number it shares with Medical Practice,
+ * Legal, Software Engineering and every other degree occupation.
+ *
+ * That is thin enough that the group name alone is not quite enough warning, so
+ * `note` carries the classification level and what shares the figure. The
+ * alternative was to keep showing nothing, which tells the reader less than a
+ * true number whose breadth they can see.
+ *
+ * Everywhere else returns null, and the banner SAYS so rather than reaching for
+ * a covered city's figure.
  */
-export function cityEmployment(skill: string | null, city: string, month: string): number | null {
+export function cityEmployment(
+  skill: string | null,
+  city: string,
+  month: string,
+): CityEmployment | null {
   if (!skill) return null;
-  if (!AU_RATE_HUBS.includes(city)) return null;
-  return employmentFor(skill, city, month);
+  if (AU_RATE_HUBS.includes(city)) {
+    const n = employmentFor(skill, city, month);
+    return n === null
+      ? null
+      : { n, label: skill, grain: "occupation", asof: quarterLabelFor(month), source: "ABS" };
+  }
+  if (NZ_SUPPLY_CITIES.includes(city)) {
+    const n = employmentFor(skill, city, month);
+    const group = NZ_SKILL_GROUP[skill];
+    const label = group ? NZ_GROUP_NAME[group] : null;
+    // No label means no group, which means no figure either — but assert it
+    // rather than assume, because a figure shown without its group name is the
+    // exact thing this type exists to prevent.
+    if (n === null || !label) return null;
+    return {
+      n,
+      label,
+      grain: "group",
+      asof: nzCensusAsof(month),
+      source: "Stats NZ",
+      note: `ANZSCO sub-major group — one of 43. Every skill in "${label}" shares this figure.`,
+    };
+  }
+  if (city === "singapore") {
+    const n = employmentFor(skill, city, month);
+    const label = SG_SKILL_GROUP[skill];
+    // The SSOC group name IS the label here — SG_SKILL_GROUP maps a skill
+    // straight to the group's published name rather than to a code.
+    if (n === null || !label) return null;
+    const year = month.slice(0, 4);
+    // Newest-first, matching the source table.
+    const y = SG_SUPPLY_YEARS.find((v) => v <= year) ?? SG_SUPPLY_YEARS[0];
+    return {
+      n,
+      label,
+      grain: "group",
+      asof: y,
+      source: "MOM",
+      note: `SSOC major group — one of 8, the coarsest supply source in the app. Every skill in "${label}" shares this figure.`,
+    };
+  }
+  return null;
+}
+
+/** Which census the figure came from, given the month the timeline is scrubbed to. */
+function nzCensusAsof(month: string): string {
+  const year = month.slice(0, 4);
+  let best = "";
+  for (const y of NZ_SUPPLY_YEARS) if (y <= year) best = y;
+  return best ? `${best} Census` : "2023 Census";
 }

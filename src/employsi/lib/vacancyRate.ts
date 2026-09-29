@@ -26,6 +26,12 @@
 import { IVI_MONTHS, IVI_SERIES } from "../data/iviSkillDemand";
 import { ABS_EMPLOYMENT, ABS_EMPLOYMENT_NATIONAL, ABS_QUARTERS } from "../data/absOccupationSupply";
 import { SG_GROUP_EMPLOYMENT, SG_SKILL_GROUP, SG_SUPPLY_YEARS } from "../data/sgOccupationSupply";
+import {
+  NZ_GROUP_EMPLOYMENT,
+  NZ_MIN_EMPLOYED,
+  NZ_SKILL_GROUP,
+  NZ_SUPPLY_YEARS,
+} from "../data/nzOccupationSupply";
 import { SG_SERIES } from "../data/sgVacancyDemand";
 
 /** Vacancies per this many employed persons. */
@@ -126,8 +132,41 @@ function sgEmploymentFor(skill: string, month: string): number | null {
   return typeof v === "number" && v >= MIN_EMPLOYED ? v : null;
 }
 
+/**
+ * New Zealand employment for a skill in a city at a month, or null.
+ *
+ * Census years, so the month steps back to the most recent census AT OR BEFORE
+ * it — the same rule as Australia's quarters and Singapore's years. The steps
+ * are FIVE YEARS wide, which is the real cost: a month in 2027 divides by 2023.
+ * That is named in the generated file's header and it is why New Zealand gets a
+ * level and not a trend.
+ *
+ * NZ_SKILL_GROUP resolves a skill to an ANZSCO SUB-MAJOR group, so the figure is
+ * every skill in that group at once. As a rate denominator that coarseness
+ * behaves exactly as Singapore's does — real across groups, absent within them.
+ * As a number printed beside a skill's name it would be false, which is why
+ * cityEmployment in lib/localSupply.ts reads NZ through its own path and carries
+ * the GROUP NAME out with the figure.
+ */
+function nzEmploymentFor(skill: string, city: string, month: string): number | null {
+  const group = NZ_SKILL_GROUP[skill];
+  if (!group) return null;
+  const year = month.slice(0, 4);
+  // Oldest-first here, unlike Singapore's table: walk forward and keep the last
+  // census at or before the month.
+  let yi = -1;
+  for (let i = 0; i < NZ_SUPPLY_YEARS.length; i++) if (NZ_SUPPLY_YEARS[i] <= year) yi = i;
+  if (yi < 0) return null;
+  const v = NZ_GROUP_EMPLOYMENT[group]?.[city]?.[yi];
+  return typeof v === "number" && v >= NZ_MIN_EMPLOYED ? v : null;
+}
+
+/** The NZ cities the census tables cover. */
+export const NZ_SUPPLY_CITIES = ["auckland", "wellington"];
+
 /** Employed persons for a skill in a hub (or "national") at a month, or null. */
 export function employmentFor(skill: string, hub: string, month: string): number | null {
+  if (NZ_SUPPLY_CITIES.includes(hub)) return nzEmploymentFor(skill, hub, month);
   if (hub === "singapore") return sgEmploymentFor(skill, month);
   const qi = quarterIndexForMonth(month);
   if (qi < 0) return null;

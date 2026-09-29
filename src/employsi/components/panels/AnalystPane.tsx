@@ -22,6 +22,7 @@ import { runLlmTurn, type LlmMessage } from "../../lib/analystLlmClient";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 /**
  * "Ask an analyst", built from `ask an analyst.dc.html`.
@@ -115,6 +116,8 @@ export function AnalystPane() {
   const open = useAppStore((s) => s.analystOpen);
   const closeAnalyst = useAppStore((s) => s.closeAnalyst);
   const dragRef = useDraggablePane<HTMLDivElement>(open);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, closeAnalyst, ".analystpane");
   const selectedId = useAppStore((s) => s.selectedId);
   const localCity = useAppStore((s) => s.localCity);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
@@ -411,7 +414,6 @@ export function AnalystPane() {
 
   return (
     <>
-      <div className="panescrim" onClick={closeAnalyst} />
       <div className="analystpane" ref={dragRef}>
         <div className="anhd">
           {/* Title and actions only, set like the filter card's header. The

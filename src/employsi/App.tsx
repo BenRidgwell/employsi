@@ -9,6 +9,7 @@ import { FilterPane } from "./components/FilterPane";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { MobileMenu } from "./components/MobileMenu";
 import { Toast } from "./components/Toast";
+import { SupplyKey } from "./components/SupplyKey";
 import { LocalBanner } from "./components/LocalBanner";
 import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
@@ -131,6 +132,7 @@ function App() {
           old CityBadge pill and Legend stats bar, which said related things in
           two different corners. */}
       <LocalBanner />
+      <SupplyKey />
       <CompanyPanel />
       <ComparePanel />
       <WhatsTrendingPane />

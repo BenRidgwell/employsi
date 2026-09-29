@@ -5,7 +5,6 @@ import { GLOBAL_HUB_LABEL } from "../data/geo";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { activeSkill } from "../lib/skillHeat";
 import { cityEmployment, localSupplyFor } from "../lib/localSupply";
-import { quarterLabelFor } from "../lib/skillCard";
 
 /**
  * The local layer's banner, from `Employsi Local View Banner.html`.
@@ -54,38 +53,53 @@ export function LocalBanner() {
   const filedStaff = filed.reduce((a, s) => a + (s?.n ?? 0), 0);
   const filedCount = filed.filter((s) => !!s).length;
 
-  const stats: [string, string][] = [[companies.length.toLocaleString("en-AU"), "employers"]];
+  // `note` is the hover-only provenance: which classification level a group
+  // figure came from, and what else shares it. See CityEmployment for why it is
+  // not in the visible label.
+  type Stat = { value: string; label: string; note?: string };
+  const stats: Stat[] = [{ value: companies.length.toLocaleString("en-AU"), label: "employers" }];
 
   if (marketMode === "supply") {
-    stats.push([
-      filedStaff >= 1000
-        ? `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`
-        : filedStaff.toLocaleString("en-AU"),
-      `staff at ${filedCount.toLocaleString("en-AU")} filed`,
-    ]);
-    // The skill's employment for the whole city. Null outside the eight
-    // Australian capitals — 37 of the 54 local cities have no ABS occupation
-    // data and no filed headcount either — and a null is SAID, never filled in
-    // from a covered city.
+    stats.push({
+      value:
+        filedStaff >= 1000
+          ? `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`
+          : filedStaff.toLocaleString("en-AU"),
+      label: `staff at ${filedCount.toLocaleString("en-AU")} filed`,
+      note: `Total staff, all occupations, at the ${filedCount} of ${companies.length} employers on this map with a filed headcount.`,
+    });
+    // The skill's employment for the whole city, from ABS in the Australian
+    // capitals and the 2023 Census in Auckland and Wellington. Null everywhere
+    // else, and a null is SAID rather than filled in from a covered city.
+    //
+    // THE LABEL COMES FROM THE FIGURE, NOT FROM THE SEARCH BOX. New Zealand's
+    // grain is the ANZSCO sub-major group, so a Nursing search there returns the
+    // Health Professionals total and must say "Health Professionals" — see
+    // CityEmployment. Writing `skill` here would turn a true number into a false
+    // sentence, which is the one thing that type exists to stop.
     const skill = activeSkill(searchQuery);
     if (skill) {
-      const month = IVI_MONTHS[heatMonth] ?? "";
-      const emp = cityEmployment(skill, localCity, month);
+      const emp = cityEmployment(skill, localCity, IVI_MONTHS[heatMonth] ?? "");
       stats.push(
         emp === null
-          ? ["—", `no ${skill} employment for ${cityName}`]
-          : [emp.toLocaleString("en-AU"), `${skill} employed · ABS ${quarterLabelFor(month)}`],
+          ? { value: "—", label: `no ${skill} employment for ${cityName}` }
+          : {
+              value: emp.n.toLocaleString("en-AU"),
+              label: `${emp.label} employed · ${emp.source} ${emp.asof}`,
+              note: emp.note,
+            },
       );
     }
   } else {
-    stats.push([
-      companies.reduce((a, c) => a + c.openRoles, 0).toLocaleString("en-AU"),
-      "open roles",
-    ]);
-    stats.push([
-      `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`,
-      `staff at ${filedCount.toLocaleString("en-AU")} employers`,
-    ]);
+    stats.push({
+      value: companies.reduce((a, c) => a + c.openRoles, 0).toLocaleString("en-AU"),
+      label: "open roles",
+    });
+    stats.push({
+      value: `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`,
+      label: `staff at ${filedCount.toLocaleString("en-AU")} employers`,
+      note: `Total staff, all occupations, at the ${filedCount} of ${companies.length} employers on this map with a filed headcount.`,
+    });
   }
 
   return (
@@ -96,10 +110,10 @@ export function LocalBanner() {
         <span className="lvbkicker">LOCAL VIEW</span>
       </div>
       <div className="lvbstats">
-        {stats.map(([value, label]) => (
-          <div className="lvbstat" key={label}>
-            <span className="lvbvalue">{value}</span>
-            <span className="lvblabel">{label}</span>
+        {stats.map((s) => (
+          <div className="lvbstat" key={s.label} title={s.note}>
+            <span className="lvbvalue">{s.value}</span>
+            <span className="lvblabel">{s.label}</span>
           </div>
         ))}
       </div>

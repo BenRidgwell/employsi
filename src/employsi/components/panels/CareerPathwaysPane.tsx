@@ -22,6 +22,7 @@ import { describeSkills } from "../../lib/describeSkills";
 import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -136,38 +137,8 @@ export function CareerPathwaysPane() {
   const close = useAppStore((s) => s.closeCareer);
   const dragRef = useDraggablePane<HTMLDivElement>(open);
 
-  /**
-   * CLICK-AWAY WITHOUT A SCRIM. The other cards close on a transparent
-   * full-screen .panescrim, and so did this one until 2026-09-28 — but that
-   * layer also swallowed every wheel and drag, so with a role picked the map
-   * behind could not be zoomed out to see its heat at another layer. Here a
-   * CLICK outside the card closes it (press and release without moving, as
-   * the scrim's onClick did), while scrolling and panning reach the map.
-   *
-   * The rail, the mobile tab bar and the toast are exempt, as they sat above
-   * the scrim: their buttons already swap cards themselves.
-   */
-  useEffect(() => {
-    if (!open) return;
-    let down: { x: number; y: number; outside: boolean } | null = null;
-    const exempt = (t: EventTarget | null) =>
-      t instanceof Element && !!t.closest(".cppane, .actionrail, .mobiletabbar, .toast");
-    const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY, outside: !exempt(e.target) };
-    };
-    const onUp = (e: PointerEvent) => {
-      const d = down;
-      down = null;
-      if (!d?.outside || exempt(e.target)) return;
-      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) close();
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("pointerup", onUp, true);
-    return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("pointerup", onUp, true);
-    };
-  }, [open, close]);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, close, ".cppane");
 
   if (!open) return null;
   return (
@@ -190,30 +161,20 @@ export function CareerPathwaysPane() {
 const OPEN_LOADER_MS = 1200;
 
 /**
- * The first open of the session starts on "Start with a skill"
+ * The first open on each PAGE LOAD starts on "Start with a skill"
  * (`Career_Pathway_Placeholder.html`) rather than on a family's map picked for
- * the reader. The first skill searched ends it for the rest of the session;
- * every later open goes straight to the map, as before.
+ * the reader. The first skill searched ends it until the page is reloaded;
+ * later opens go straight to the map.
  *
- * sessionStorage so it survives a reload the way a session should, with the
- * module variable as the fallback where storage is blocked.
+ * In memory, deliberately. It was sessionStorage until 2026-09-28, which
+ * outlived reloads for as long as the tab stayed open — so once anyone had
+ * searched in a tab, the placeholder never came back there, and it read as
+ * gone. A reload is now a fresh start.
  */
-const STARTED_KEY = "employsi.careerStarted";
-let startedFallback = false;
-function careerStarted(): boolean {
-  try {
-    return startedFallback || sessionStorage.getItem(STARTED_KEY) === "1";
-  } catch {
-    return startedFallback;
-  }
-}
+let careerStartedThisLoad = false;
+const careerStarted = () => careerStartedThisLoad;
 function markCareerStarted(): void {
-  startedFallback = true;
-  try {
-    sessionStorage.setItem(STARTED_KEY, "1");
-  } catch {
-    // The module variable covers the rest of this page's life.
-  }
+  careerStartedThisLoad = true;
 }
 
 function CareerCard({ onClose }: { onClose: () => void }) {

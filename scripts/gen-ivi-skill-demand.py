@@ -63,6 +63,16 @@ OVERRIDE = {
     # for the skill was half the median of the country's cleaners. It read as a
     # 259% rise between 2018 and 2023. At four digits the same error is diluted
     # across hundreds of codes and shows up as nothing at all.
+    #
+    # THE TAXONOMY NOW REACHES THIS ANSWER ON ITS OWN, so this entry is belt and
+    # braces rather than the only thing holding the line: Commercial & Legal
+    # excepts "cleaner"/"cleaning" as of 2026-09-28, because the same collision
+    # was landing 12 archived AD titles among the lawyers, and an override keyed
+    # on ANZSCO4 cannot reach a scraped job title. Verified over all 479 EQ08
+    # labels that the except changes this code and no other, so the generated
+    # series are byte-identical with or without it. Kept because a code-level
+    # correction is the clearer place to read this history, and because removing
+    # it would make the ABS side depend on one `except` in a 3,000-line file.
     '8112': ['Cleaning & Facilities'],
     '5212': ['Administration & Office Support'], '2247': ['General Management'],
     '2244': ['Data Analytics'], '1493': ['Marketing & Comms'], '1494': ['Warehousing & Logistics'],
