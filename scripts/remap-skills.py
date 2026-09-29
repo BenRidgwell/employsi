@@ -108,7 +108,34 @@ def map_skills(titles):
 #
 # The script also WRITES NULL when a row maps to nothing, so it was manufacturing
 # rows it could never revisit.
-rows = d1('SELECT job_key, title, company, skills FROM jobs '
+# SOURCES WHOSE SKILLS CANNOT BE REPRODUCED FROM THE TITLE, and which this
+# script must therefore never SHRINK.
+#
+# A remap re-runs skillsForText over the row's own title. That is faithful only
+# where the scrape used the title alone. Six source families did not:
+#
+#   mycareersfuture  title + the ad's own skill tags
+#   nt-gov           title + section
+#   tas-gov          title + category
+#   vic-gov          title + occupation
+#   wa-gov           title + occupation
+#   portal-*         title + the employer's sector (careerSites)
+#
+# NONE of that extra text is stored in the jobs table, so it cannot be replayed.
+# A title-only remap of those rows deletes every skill that came from it — and
+# mycareersfuture alone is 48,595 rows, the archive's second-largest source.
+#
+# So for these the write is a UNION: new skills are added, old ones kept.
+# Everywhere else the row is replaced as before, which is what the original
+# 'Principal' narrowing needed. Widening still reaches every row; only the
+# deletions are held back, and only where a deletion would be an artefact of
+# what this script cannot see rather than a decision the taxonomy made.
+def keeps_old(source):
+    return (source or '').startswith('portal-') or (source or '') in {
+        'mycareersfuture', 'nt-gov', 'tas-gov', 'vic-gov', 'wa-gov',
+    }
+
+rows = d1('SELECT job_key, title, company, source, skills FROM jobs '
           'WHERE title LIKE ? LIMIT ?', [LIKE, LIMIT])
 sys.stderr.write(f'{len(rows)} rows matching {LIKE!r}\n')
 
@@ -119,8 +146,13 @@ for r, sk in zip(rows, fresh):
         old = json.loads(r['skills'] or '[]')
     except Exception:
         old = []
-    if sorted(map(str, old)) != sorted(sk):
-        changed.append((r['job_key'], r['title'], r['company'], old, sk))
+    new = sk
+    if keeps_old(r.get('source')):
+        # Union, order-stable: everything the row already had, plus anything
+        # the current taxonomy now finds in the title.
+        new = list(old) + [x for x in sk if x not in old]
+    if sorted(map(str, old)) != sorted(map(str, new)):
+        changed.append((r['job_key'], r['title'], r['company'], old, new))
 
 sys.stderr.write(f'{len(changed)} rows would change\n')
 for k, t, c, old, new in changed[:15]:

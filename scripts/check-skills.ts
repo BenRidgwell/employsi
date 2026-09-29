@@ -718,6 +718,20 @@ if (ACCOUNT && DB && TOKEN) {
     ["Guest Experience Expert", "Hospitality & Food Service"],
     ["Network Systems Engineer", "IT & Systems"],
     ["Power Systems Engineer", "Electrical Engineering"],
+
+    // Found 2026-09-29 while checking whether a %commercial% remap was safe: the
+    // archive held skills the taxonomy could no longer produce, because these
+    // two had gone missing. "site manager" mapped and "site engineer" did not;
+    // the hospitality terms had every word for the trade except its own.
+    ["Site Engineer", "Construction Management"],
+    ["Site Engineer - Commercial Construction", "Construction Management"],
+    ["Food and Beverage Attendant", "Hospitality & Food Service"],
+    // BOTH SPELLINGS THROUGH ONE TERM. norm() rewrites "&" to " and " in the
+    // title, but termMatches uses the term verbatim — so the term must be
+    // "f and b", and a term written "f&b" can never match anything at all.
+    ["F&B Supervisor", "Hospitality & Food Service"],
+    ["F and B Attendant", "Hospitality & Food Service"],
+    ["F&B Service Expert", "Hospitality & Food Service"],
   ];
   const MUST_NOT: [string, string][] = [
     // The false positive itself, in the three shapes the archive holds: the
@@ -742,6 +756,9 @@ if (ACCOUNT && DB && TOKEN) {
     ["Senior Systems Engineer", "IT & Systems"],
     ["Control Systems Engineer", "IT & Systems"],
     ["Power Systems Engineer", "IT & Systems"],
+    // "site engineer" must not reach the SRE / web senses of the word.
+    ["Facebook Engineer", "Hospitality & Food Service"],
+    ["Website Engineer", "Construction Management"],
   ];
   const bad: string[] = [];
   for (const [title, skill] of MUST) {

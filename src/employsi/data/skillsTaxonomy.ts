@@ -2694,6 +2694,15 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "chef",
       "cook",
+      // 334 rows over 164 titles mapped to NOTHING: "F&B Service Expert",
+      // "F&B Supervisor", "Food and Beverage Operations Manager". The trade's
+      // own shorthand, and neither spelling was here. Measured 2026-09-29.
+      "food and beverage",
+      // "f and b", NOT "f&b". norm() rewrites "&" to " and " in the TITLE but
+      // termMatches uses the term verbatim, so any term containing an ampersand
+      // can never match anything. Both spellings of the shorthand reach this one
+      // term because the haystack is normalised before it is tested.
+      "f and b",
       // 539 rows over 262 titles, unmapped. "Guest Experience Expert" is
       // Marriott's name for front-of-house, and the phrase is hotel-specific
       // enough to carry on its own.
@@ -2778,6 +2787,10 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "construction manager",
       "site manager",
+      // 125 rows over 35 titles unmapped while "site manager" a word away
+      // mapped. The employers are Downer, Georgiou, BMD, Ertech and Lendlease
+      // — contractors, not IT field service. Measured 2026-09-29.
+      "site engineer",
       "superintendent",
       "foreman",
       "building and surveying",
