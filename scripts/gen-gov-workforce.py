@@ -812,6 +812,25 @@ NOT_IN_SOURCE = {
         'that link would stop resolving within hours. The stable route is the '
         'transparency.gov.au publication, which renders the same appendix as '
         'HTML rather than as a PDF, and the report-reading path only reads PDFs',
+    'nsw:Crown Solicitor\'s Office':
+        'THE TABLE IS THERE AND HAS NO TOTAL, WHICH THIS PATH REFUSES TO SUPPLY. '
+        'p15 of its 2024-25 report prints Table 5 "Employee headcount" by ANZSCO '
+        'classification — Managers 9/9, Professionals 347/362, Technicians and '
+        'Trades Workers 1/1, Clerical and Administrative Workers 165/194 — with no '
+        'Total row, and no sentence anywhere in the 68 pages states one: 566 and '
+        '522 appear nowhere in the document. The `from_components` path adds rows '
+        'up only against an independent quantity the document itself states, '
+        'because the risk it guards is a table that omits a group rather than one '
+        'that adds up wrong, and nothing here can rule that out — ANZSCO has eight '
+        'major groups and four are listed. So the sum (566 for 2024-25 against 522) '
+        'is written down here rather than filed. THE CHECK THAT WOULD UNLOCK IT '
+        'EXISTS IN THE DOCUMENT: Table 4 beside it is the same four rows as FTE '
+        '(503.6 against 457.0), so a spec that summed both and required each head '
+        'count to be at least its own FTE would catch a read that grabbed the wrong '
+        'table. That is new machinery, not a spec, and it would serve every NSW '
+        'agency that publishes both tables and no total. Its own caveat is worth '
+        'carrying too: "The figures are estimates compiled from the Annual '
+        'Workforce Profile, and do not include agency staff"',
     'nsw:Law Enforcement Conduct Commission':
         'A .pdf URL THAT SERVES A REACT PAGE, which is a new shape here and is '
         'why this is recorded rather than retried. lecc.nsw.gov.au lists '
@@ -931,10 +950,13 @@ NOT_IN_SOURCE = {
         'the interstitial at 28,824 bytes; a plain fetch answers 403 in 5,754. '
         'Nothing about whether it publishes a workforce figure is established — '
         'the page was never read',
-    'nsw:Forestry Corporation of NSW':
-        'the same Cloudflare challenge as Essential Energy, byte for byte the '
-        'same interstitial, and the same 180 s with no clearance (28,844 bytes). '
-        'Its annual-reports page was never read',
+    # FORESTRY CORPORATION IS NOW FILED at 611, THROUGH THE TABLED COPY, and its
+    # entry here is a comment because the measurement stands and the reason cannot
+    # print: forestrycorporation.com.au answers the same Cloudflare challenge as
+    # Essential Energy, byte for byte the same interstitial, and 180 s of warmed
+    # browser does not clear it (28,844 bytes). Its own site is still closed. The
+    # report reached the card from files.parliament.nsw.gov.au instead — which is
+    # the route Essential Energy and WaterNSW should be tried on next.
     'nsw:WaterNSW':
         'HALF-OPEN. waternsw.com.au/ clears a Cloudflare challenge in 30 s '
         'through a warmed browser, and the annual report under '
@@ -1034,11 +1056,15 @@ NOT_IN_SOURCE = {
         'through this proxy (502). The 2024-25 report is tabled in Parliament, '
         'whose host is blocked, so the document exists and no copy of it is '
         'reachable from here',
-    'nsw:Department of Planning, Housing and Infrastructure':
-        'no annual report on nsw.gov.au or planning.nsw.gov.au. The only '
-        '"annual-reports" page on either is the Valuer General\'s, a different '
-        'body, and planning.nsw.gov.au\'s own is for community consultative '
-        'committees',
+    # THIS CARD IS NOW FILED at 3,418 and its entry here is a comment for the
+    # same reason DCJ's and the Department of Education's are: the measurement is
+    # still true and the reason could never print again. It said "no annual report
+    # on nsw.gov.au or planning.nsw.gov.au. The only 'annual-reports' page on
+    # either is the Valuer General's, a different body". Both halves hold — the
+    # report is on neither of those hosts. It is TABLED, and the file API on
+    # files.parliament.nsw.gov.au serves it, which is the finding recorded beside
+    # the spec. "Not on the agency's own sites" was read as "not reachable", and
+    # that gap is the whole lesson.
     # Aboriginal Affairs NSW is a GROUP of the Premier's Department, which is now
     # filed at 1,072: p10 introduces it as one of the department's own areas and
     # the budget appendices carry it as "Major Activity Group 2: Aboriginal
@@ -3564,6 +3590,188 @@ NSW_AGENCY_REPORTS = {
         header=r'Census headcount\s+Census FTE',
         proof=r'2025 Workforce Profile Data',
         unit='headcount', asof='Jun 2025'),
+    # ── AND THE TABLED-PAPERS HOST IS NOT CLOSED. IT HAS A FILE API. ─────────
+    # This file has recorded NSW Parliament's tabled-papers host as unreachable
+    # for weeks, and that is true of exactly one hostname. Measured 2026-09-29 on
+    # the same document, seconds apart:
+    #
+    #   www.parliament.nsw.gov.au/tp/files/192117/<name>.pdf            403, 6,437 B
+    #   files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/
+    #       <name>.pdf?serverRelativeUrl=%2Ftp%2Ffiles%2F192117%2F<name+with+pluses>
+    #                                                          200, 5,966,343 B, %PDF
+    #
+    # Same file, same parliament, one hostname refused and the other served it.
+    # "The host is closed" was a measurement of www and was written down as a
+    # measurement of the institution — the same shape as the sitemap that lists
+    # pages, and as the Premier's Department table that was there all along.
+    #
+    # THE URL IS BUILDABLE FROM THE www ONE: take the /tp/files/<id>/<name>.pdf a
+    # search returns, put <name> percent-encoded after GetArtifact/, and repeat it
+    # in serverRelativeUrl with spaces as PLUS signs rather than %20. Both halves
+    # are required; the id alone 404s with a 64-byte "File" body, which is how a
+    # guessed filename announces itself.
+    #
+    # WHAT IT OPENS. Every NSW agency that only tables its report — the two below,
+    # and on the evidence of these two also the Independent Commission Against
+    # Corruption, IPART, Landcom, the Department of Parliamentary Services and the
+    # three state-owned corporations whose own hosts refuse this network. Those are
+    # not yet filed, and their NOT_IN_SOURCE reasons stand as written about their
+    # OWN hosts; this route is the next thing to try on each.
+
+    # p47, Table 13 "Number (based on headcount) of officers and employees by
+    # category": 2024-25 first, then 2023-24 — NEWEST COLUMN FIRST, so `now_i` is
+    # 0. Both columns reconcile exactly (2,703 + 509 + 0 + 206 and 2,485 + 624 + 1
+    # + 206), and Table 12 above it is the FTE version whose Total reads 2925 /
+    # 2951.2, which is why `comp` and the header are both pinned.
+    #
+    # THE PRIOR YEAR IS COMPARABLE HERE AND THE FOOTNOTE IS WHY IT LOOKS LIKE IT
+    # MIGHT NOT BE. Footnote 4: "Data for 2022-23 represents Department of Planning
+    # and Environment, while the 2024 and 2025 data represent Department of
+    # Planning, Housing, and Infrastructure following Machinery of Government
+    # changes." The machinery change lands between 2022-23 and 2023-24, and
+    # 2022-23 is not in this table — so the two columns that are in it are the
+    # same department.
+    #
+    # AND FOOTNOTE 5 SETTLES PROPERTY AND DEVELOPMENT NSW BELOW: the numbers
+    # "exclude employees in ... Property and Development NSW ...", among eleven
+    # bodies. So the 170 on that card is not inside this 3,418 and both can be
+    # filed — which is the opposite of the Taronga and Destination NSW calls, on
+    # the department's own statement rather than on the shape of the cluster.
+    'nsw-dphi': dict(
+        label='NSW: Planning, Housing and Infrastructure',
+        agency='Department of Planning, Housing and Infrastructure',
+        agency_id='nsw-gov-department-of-planning-housing-and-infrastructure',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'Department%20of%20Planning%20Housing%20and%20Infrastructure%20Annual'
+            '%20Report%202024-25%20-%20Volume%201.pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F192117%2FDepartment+of+Planning+Housing+and+'
+            'Infrastructure+Annual+Report+2024-25+-+Volume+1.pdf',
+        needle='based on headcount) of officers and employees by category',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Casual|Executive)\b',
+        ncols=2, now_i=0, prev_i=1, sums=[(0,), (1,)],
+        integers=True,
+        header=r'Category\s+2024-25\s+2023-24',
+        proof=r'based on headcount\) of officers and employees by category',
+        unit='headcount', asof='Jun 2025'),
+    # p11 of the 2023-24 report, "Number of officers and employees by category
+    # with previous year comparison": 170 / 154 / 130 across 2023-2024, 2022-2023
+    # and 2021-2022, all three reconciling (125 + 21 + 24, 114 + 16 + 24, 99 + 10
+    # + 21). A year behind because the 2024-25 edition is tabled but not indexed
+    # anywhere a search reaches, and the guessed filenames 404 — the same call as
+    # DCJ, whose card is also a year behind its peers.
+    #
+    # PDNSW EMPLOYS NOBODY, AND FILING IT IS STILL RIGHT. p30: "Under the Act,
+    # PDNSW is unable to employ staff. However, to enable it to exercise its
+    # functions, PDNSW can obtain personnel services from Government agencies",
+    # and p33 names the provider as DPHI. Normally that is the Taronga case and
+    # the card stays blank — but DPHI's own footnote 5 EXCLUDES Property and
+    # Development NSW from its published numbers, so these 170 people are on no
+    # other card and nothing double counts.
+    #
+    # NO PRIOR YEAR, BECAUSE THE PAGE CONTRADICTS ITSELF ABOUT WHICH COLUMNS
+    # SHARE A BASIS. The header marks "2023-2024* 2022-2023*" and the note says
+    # "2021-2022 & 2022-2023 headcounts exclude Hunter & Central Coast
+    # Corporation, Sydney Olympic Park Authority, Water Asset Management
+    # Corporation and Valuation General NSW". The asterisks and the sentence name
+    # different pairs, so which two columns are like for like cannot be read off
+    # the page, and a +10.4% built on the wrong pair would be a membership change.
+    # The prior column is still summed, which is what proves the parse.
+    'nsw-pdnsw': dict(
+        label='NSW: Property and Development NSW',
+        agency='Property and Development NSW',
+        agency_id='nsw-gov-property-and-development-nsw',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'PDNSW%20Annual%20Report%202023-24.pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F189915%2FPDNSW+Annual+Report+2023-24.pdf',
+        needle='Number of officers and employees by category',
+        total=r'^Total\b',
+        comp=r'^(?:Ongoing|Temporary|Executive)\b',
+        ncols=3, now_i=0, prev_i=None, sums=[(0,), (1,), (2,)],
+        header=r'2023-2024\*?\s+2022-2023\*?\s+2021-2022',
+        proof=r'Headcount data reported at end of reporting period',
+        unit='headcount', asof='Jun 2024'),
+    # ITS OWN HOST REFUSES THIS NETWORK TOO — icac.nsw.gov.au answers 403 behind a
+    # Cloudflare challenge — and the tabled copy does not. A YEAR BEHIND, because
+    # the 2023-24 report is the one a search reaches; the same call as DCJ.
+    #
+    # THE PROSE FIGURE IS AN AVERAGE FTE AND WOULD HAVE BEEN THE WRONG ONE. p62,
+    # under the heading "Number of officers and employees by category and compared
+    # to the prior year": "In 2023–24, the Commission employed an average of 150
+    # people, compared to 120 in 2022–23." Both numbers, both years, and it reads
+    # like the answer — but the table it introduces is Table 22, "AVERAGE full-time
+    # equivalent (FTE) employees by division", whose rows are 2.8, 3.0, 24.0, 59.2.
+    # So 150 is an average FTE and 120 is last year's, and a spec that took the
+    # sentence would have put an averaged FTE on a head-count tile.
+    #
+    # THE HEAD COUNT IS TABLE 24, the standard NSW diversity table: "Workforce
+    # Diversity Actual Staff Numbers (Non-casual Headcount at Census Date) – 2024",
+    # Total row 151. Its gender columns reconcile against it — 70 men + 81 women +
+    # 0 unspecified — and that row sum is the guard, because this table's HEADER is
+    # rendered mirrored by pdfplumber ("neM", "nemoW", "redneg defiicepsnU") and
+    # cannot be asserted on. No prior year: the diversity table covers one census.
+    'nsw-icac': dict(
+        label='NSW: ICAC',
+        agency='Independent Commission Against Corruption',
+        agency_id='nsw-gov-independent-commission-against-corruption',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'NSW%20ICAC%20Annual%20Report%202023-24.pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F189674%2FNSW+ICAC+Annual+Report+2023-24.pdf',
+        needle='Non-casual Headcount at Census Date',
+        total=r'^Total\b',
+        ncols=10, now_i=0, prev_i=None, sums=[(2, 3, 4, 0)],
+        proof=r'Non-casual Headcount at Census Date\) – 2024',
+        unit='headcount', asof='Jun 2024'),
+    # ITS OWN HOST REFUSES THIS NETWORK AND THE TABLED COPY DOES NOT — the
+    # finding above, applied. NOT_IN_SOURCE still carries the measurement that
+    # forestrycorporation.com.au sits behind a Cloudflare challenge 180 seconds of
+    # warmed browser cannot clear, because that is true and worth knowing; this
+    # spec is the way round it.
+    #
+    # p30 prints "Employee numbers – trend (full-time equivalent)" and "Employee
+    # numbers – trend (head count)" one under the other, TRANSPOSED against every
+    # other table here: the rows are years and the Total is a COLUMN. So the "total
+    # row" the machinery looks for is the year row — 2025** gives 387 flexible, 224
+    # rostered, 611 total — and `sums` asserts that those two categories add to it.
+    #
+    # NO PRIOR YEAR, BECAUSE IT IS A DIFFERENT ROW RATHER THAN A DIFFERENT COLUMN.
+    # 2024 reads 397 / 226 / 623 immediately above, so the figure exists and this
+    # path cannot reach two rows at once. Worth recording rather than leaving
+    # implicit: a transposed table is the one shape where prev is unavailable for a
+    # mechanical reason and not an editorial one.
+    #
+    # `after` EXISTS FOR THIS PAGE. The FTE table is identical to the head-count
+    # table in every respect the other selectors can see — same header, same two
+    # year rows, three numbers each, and both integral (378 + 219 = 597 against
+    # 387 + 224 = 611) — so `integers` cannot separate them and `header` matches
+    # both. The captions are page text, not table rows, so the table is chosen by
+    # sitting below the one word only its own caption carries.
+    #
+    # ITS REGEX HAS TO MATCH A WORD AND A LINE, because `after` constrains both
+    # paths and they look at different things: the table path tests it against
+    # each extracted WORD, the line fallback against each LINE. The first attempt
+    # here was r'^count\)$', which matches the word and not the line "Employee
+    # numbers – trend (head count)" — so the table path anchored correctly and the
+    # fallback refused outright. r'count\)$' satisfies both and still matches
+    # nothing else on the page.
+    #
+    # THE DATE IS THE FOOTNOTE, NOT THE YEAR LABEL: "**At final full pay period 15
+    # June 2025", which is what `proof` holds it to.
+    'nsw-forestry': dict(
+        label='NSW: Forestry Corporation',
+        agency='Forestry Corporation of NSW',
+        agency_id='nsw-gov-forestry-corporation-of-nsw',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            'forestry-corporation-nsw-annual-report-2024-25.pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F192061%2Fforestry-corporation-nsw-annual-report-'
+            '2024-25.pdf',
+        needle='Employee numbers – trend (head count)',
+        after=r'count\)$',
+        total=r'^2025',
+        ncols=3, now_i=2, prev_i=None, sums=[(0, 1, 2)],
+        header=r'Year ended 30 June\s+Flexible',
+        proof=r'At final full pay period 15 June 2025',
+        unit='headcount', asof='Jun 2025'),
     # NSW TRAINS IS NSW TrainLink, and that is why it looked like it had no
     # report. transport.nsw.gov.au's "NSW Trains Annual Reports" page links
     # documents titled "NSW TrainLink Annual Report" — one statutory corporation,
@@ -3787,7 +3995,41 @@ def _nsw_agency(spec):
             # the end of a footnote, and "Temporary part-time 93 87" appears
             # TWICE, which would silently double a component. The table form
             # keeps each table's own rows and is the same answer Tasmania needed.
-            for tab in pg.extract_tables():
+            # `after`: PICK THE TABLE BY THE HEADING ABOVE IT, when nothing
+            # inside it can tell it from its neighbour. Forestry Corporation
+            # prints "Employee numbers – trend (full-time equivalent)" and
+            # "Employee numbers – trend (head count)" one under the other and the
+            # two tables are IDENTICAL in every respect the other selectors can
+            # see: same "Year ended 30 June Flexible* Rostered* Total" header,
+            # same two year rows, three numbers each, and both sets integral
+            # (378 + 219 = 597 and 387 + 224 = 611), so `integers` cannot
+            # separate them either. The captions are page TEXT rather than table
+            # rows, so the only way in is position: find where the caption sits
+            # and ignore every table above it.
+            #
+            # `find_tables()` RATHER THAN `extract_tables()`, because only the
+            # former carries a bbox. It is used ONLY when `after` is set, so the
+            # thirty specs that do not ask for it keep the code path they were
+            # each measured against.
+            # `after` IS MATCHED AGAINST SINGLE WORDS AND MUST HIT EXACTLY ONCE,
+            # so the spec has to name the part of the caption that is unique to
+            # it. Forestry's two captions differ only in their last words —
+            # "(full-time equivalent)" against "(head count)" — so the spec says
+            # r'^count\)$' and nothing else on the page can answer to it. A
+            # regex that matched twice would be choosing a caption by luck.
+            tables = pg.extract_tables()
+            if spec.get('after'):
+                tops = [w['top'] for w in pg.extract_words()
+                        if re.search(spec['after'], w['text'])]
+                if len(tops) != 1:
+                    rejected.append(
+                        f'{spec["after"]!r} matched {len(tops)} words on the page, '
+                        f'not one — the table below it cannot be located')
+                    tables = []
+                else:
+                    tables = [t.extract() for t in pg.find_tables()
+                              if t.bbox[1] > tops[0]]
+            for tab in tables:
                 t_row, c_rows = None, []
                 for row in tab:
                     label, nums = cells(row)
@@ -3836,6 +4078,30 @@ def _nsw_agency(spec):
                     if not any(re.search(spec['header'], j) for j in joined):
                         rejected.append(f'no header row matching {spec["header"]!r}')
                         continue
+                # `integers`: A HEAD COUNT IS WHOLE PEOPLE AND AN FTE IS NOT,
+                # and on one page that is the only thing telling two tables apart.
+                # The Department of Planning, Housing and Infrastructure prints
+                # Table 12 (FTE) directly above Table 13 (head count) and they are
+                # STRUCTURALLY IDENTICAL — same "Category 2024-25 2023-24" header,
+                # same Ongoing/Temporary/Casual/Executive rows, same column count.
+                # `ncols` cannot separate them, `header` matches both, and the FTE
+                # table reconciles against its own components, so the first table
+                # won and the spec filed 2,925 where 3,418 was the answer. It did
+                # not fail; it produced a plausible number, which is the shape this
+                # codebase exists to refuse.
+                #
+                # EVERY NUMBER IS CHECKED, NOT JUST THE TOTAL, because this
+                # document's FTE total happens to be printed whole ("2925") while
+                # its components carry the decimals (2,413.3, 326.6, 185.05). A
+                # guard reading the total alone would have passed the wrong table.
+                if spec.get('integers'):
+                    vals = [v for row in [t_row, *c_rows] for v in row]
+                    fracs = [v for v in vals if abs(v - round(v)) > 1e-9]
+                    if fracs:
+                        rejected.append(
+                            f'{len(fracs)} non-integer value(s) in a table this spec '
+                            f'declares a head count (e.g. {fracs[0]}) — an FTE table')
+                        continue
                 why = _reconciles(spec, t_row, c_rows)
                 if why:
                     rejected.append(why)
@@ -3864,7 +4130,27 @@ def _nsw_agency(spec):
                                 f'{spec["header"]!r}, so the line fallback is '
                                 f'refused as well')
             elif total is None:
-                for line in txt.split('\n'):
+                # `after` CONSTRAINS THIS PATH TOO, and leaving it out of it was a
+                # guard that looked present and was not — the same failure as the
+                # header assertion above, one option later. Forestry Corporation's
+                # head-count table comes back from find_tables() with its Flexible
+                # and Rostered cells empty, so only the Total survives, `ncols=3`
+                # never matches and the run falls through to here — where the FIRST
+                # line starting "2025" belongs to the FTE table above the caption.
+                # Measured: it filed 597 where 611 was the answer, with `after` set
+                # and apparently working. Slicing the text at the caption is what
+                # makes the option mean the same thing in both paths.
+                lines = txt.split('\n')
+                if spec.get('after'):
+                    at = next((n for n, l in enumerate(lines)
+                               if re.search(spec['after'], l)), None)
+                    if at is None:
+                        rejected.append(f'no line matching {spec["after"]!r}, so the '
+                                        f'line fallback cannot be anchored either')
+                        lines = []
+                    else:
+                        lines = lines[at + 1:]
+                for line in lines:
                     for which in ('total', 'comp'):
                         pat = spec.get(which)
                         if not pat or (which == 'total' and total is not None):
