@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { LiveSkillTrend } from "@/employsi/lib/jobHistoryFn";
 import { fmtPay } from "@/employsi/lib/salaryParse";
 import { AboutPopover } from "./AboutPopover";
+import { PrivacyPopover } from "./PrivacyPopover";
 import { fmtChange, useCountUp, useLandingStats, useSkillMovers } from "./liveMarket";
 
 /** The page wrapper every marketing route renders inside. See site.css. */
@@ -47,15 +48,8 @@ export function SiteFooter() {
         <img src="/site/mark.svg" alt="" width={18} height={18} />
         <span className="ws-eyebrow">© 2026 employsi</span>
       </div>
-      {/* The design links a privacy policy at /privacy. No such page exists
-          yet, so it is left out rather than shipped as a 404. */}
       <nav aria-label="Footer">
-        <Link to="/product" className="ws-eyebrow">
-          Product
-        </Link>
-        <Link to="/login" className="ws-eyebrow">
-          Log in
-        </Link>
+        <PrivacyPopover />
       </nav>
     </footer>
   );

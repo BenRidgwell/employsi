@@ -656,7 +656,14 @@
 .ws-footer a {
   text-decoration: none;
 }
-.ws-footer a:hover {
+.ws-footer-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ws-footer a:hover,
+.ws-footer-link:hover {
   color: var(--ws-text);
   text-decoration: underline;
 }
