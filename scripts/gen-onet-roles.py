@@ -370,7 +370,14 @@ def load_onet(d):
             (r['Workplace Example'], r['Hot Technology'] == 'Y', r['In Demand'].strip() == 'Y')
         )
     zone = {r['O*NET-SOC Code']: int(r['Job Zone']) for r in rows(f'{d}/Job Zones.txt')}
-    return occ, index, by_occ, software, zone
+    # O*NET's related occupations, in its own order. Only the two "Primary"
+    # tiers: "Supplemental" reaches down to clerical support (HR Managers ->
+    # HR Assistants), which is a list of adjacent jobs, not of directions.
+    related = defaultdict(list)
+    for r in rows(f'{d}/Related Occupations.txt'):
+        if r['Relatedness Tier'].startswith('Primary'):
+            related[r['O*NET-SOC Code']].append(r['Related O*NET-SOC Code'])
+    return occ, index, by_occ, software, zone, related
 
 
 def lookup(title, index):
@@ -431,7 +438,7 @@ def review(nodes, occ, index, has_tasks):
 def main():
     d = sys.argv[1]
     nodes = load_nodes()
-    occ, index, by_occ, software, zone = load_onet(d)
+    occ, index, by_occ, software, zone, related = load_onet(d)
     has_tasks = set(by_occ)
     for lad, row in TABLE.items():
         for r, soc in row.items():
@@ -509,6 +516,15 @@ def main():
             if reviewed and soc is None:
                 f.write(f'  {json.dumps(rid)},\n')
         f.write('];\n')
+        f.write('\n/** O*NET-SOC -> its related occupations (O*NET\'s two Primary tiers, in\n'
+                ' *  O*NET\'s order), kept to occupations some rung maps to. What the\n'
+                ' *  card\'s "Other directions" are drawn from. */\n')
+        f.write('export const ONET_RELATED: Record<string, string[]> = {\n')
+        for soc in used:
+            rel = [r for r in related.get(soc, []) if r in occs and r != soc]
+            if rel:
+                f.write(f'  {json.dumps(soc)}: {json.dumps(rel)},\n')
+        f.write('};\n')
     print(f'{len(nodes)} rungs: {len(mapping)} mapped to {len(used)} occupations, '
           f'{len(ids) - len(mapping) - len(unreviewed)} with no O*NET equivalent -> {OUT}')
     if unreviewed:

@@ -19,7 +19,13 @@
  */
 import { readFileSync } from "node:fs";
 import { CAREER_PATHWAYS } from "../src/employsi/data/careerPathways";
-import { ONET_NONE, ONET_OCCUPATIONS, ONET_ROLES } from "../src/employsi/data/onetRoles";
+import {
+  ONET_NONE,
+  ONET_OCCUPATIONS,
+  ONET_RELATED,
+  ONET_ROLES,
+} from "../src/employsi/data/onetRoles";
+import { careerMoves } from "../src/employsi/lib/careerCard";
 
 let failed = 0;
 function check(name: string, ok: boolean, detail?: unknown) {
@@ -84,11 +90,57 @@ const IS: [string, string][] = [
 ];
 for (const [id, soc] of IS) check(`${id} is ${soc}`, ONET_ROLES[id] === soc, ONET_ROLES[id]);
 
+// ── Other directions (careerCard.careerMoves) ────────────────────────────────
+// A move is only ever O*NET's link between two mapped rungs, to another
+// ladder, published in the market, and not a drop of more than one rung.
+let movesSeen = 0;
+for (const n of CAREER_PATHWAYS.nodes) {
+  if (!n.markets.au) continue;
+  const id = `${n.family}|${n.track}|${n.rung}`;
+  const moves = careerMoves(CAREER_PATHWAYS, n, "au");
+  if (!(id in ONET_ROLES)) {
+    check(`${id}: no O*NET occupation, so no moves`, moves.length === 0, moves);
+    continue;
+  }
+  movesSeen += moves.length;
+  for (const m of moves) {
+    const [f, t, r] = m.id.split("|");
+    const dest = CAREER_PATHWAYS.nodes.find(
+      (x) => x.family === f && x.track === t && x.rung === Number(r),
+    );
+    check(`${id} -> ${m.id}: destination exists in the market`, !!dest?.markets.au);
+    check(`${id} -> ${m.id}: on another ladder`, !(f === n.family && t === n.track));
+    check(`${id} -> ${m.id}: at most one rung down`, Number(r) >= n.rung - 1);
+    check(
+      `${id} -> ${m.id}: O*NET relates the two occupations`,
+      (ONET_RELATED[ONET_ROLES[id]] ?? []).includes(ONET_ROLES[m.id]),
+    );
+    check(`${id} -> ${m.id}: overlap is a share`, m.overlap >= 0 && m.overlap <= 1);
+  }
+  check(
+    `${id}: moves ordered by skill overlap`,
+    moves.every((m, k) => k === 0 || moves[k - 1].overlap >= m.overlap),
+  );
+}
+// The example the feature was asked for.
+const headPayroll = CAREER_PATHWAYS.nodes.find(
+  (x) => x.family === "payroll" && x.track === "generalist" && x.rung === 5,
+);
+check(
+  "head of payroll can lead to chief people officer",
+  !!headPayroll &&
+    careerMoves(CAREER_PATHWAYS, headPayroll, "au").some((m) => m.id === "hr|generalist|6"),
+);
+
 const pane = readFileSync(
   new URL("../src/employsi/components/panels/CareerPathwaysPane.tsx", import.meta.url),
   "utf8",
 );
 check("the card credits O*NET under CC BY 4.0", /CC BY 4\.0/.test(pane) && /O\*NET/.test(pane));
+check(
+  "other directions say they are O*NET's links, not tracked moves",
+  /Related occupations per O\*NET/.test(pane) && /Nothing here tracks people/.test(pane),
+);
 
 if (failed) {
   console.error(`\n${failed} O*NET mapping check(s) failed.`);
@@ -96,5 +148,5 @@ if (failed) {
 }
 const share = Math.round((Object.keys(ONET_ROLES).length / rungs.size) * 100);
 console.log(
-  `✓ O*NET: ${Object.keys(ONET_ROLES).length} of ${rungs.size} rungs mapped (${share}%) to ${used.size} occupations; ${none.size} reviewed and left unmapped.`,
+  `✓ O*NET: ${Object.keys(ONET_ROLES).length} of ${rungs.size} rungs mapped (${share}%) to ${used.size} occupations; ${none.size} reviewed and left unmapped; ${movesSeen} other-direction links in AU.`,
 );
