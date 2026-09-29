@@ -1,0 +1,178 @@
+# Deploy PRODUCTION — `benridgwell-globe-gazer-hr`, which carries employsi.com.au.
+#
+# WHY THIS EXISTS. Until 2026-09-29 production was deployed only by hand, from a
+# shell holding CLOUDFLARE_API_TOKEN (Workers Scripts:Edit) and the real
+# VITE_MAPBOX_TOKEN. The sandbox this repo is usually worked in holds neither —
+# its Cloudflare token cannot see Workers at all — while this repo's Actions
+# secrets hold both, which is how deploy-preview.yml already ships the previews.
+# Added at the owner's request, to move the site preview's setup onto the apex.
+#
+# EVERY GUARD HERE IS ABOUT THE DEPLOY HAPPENING ONLY WHEN SOMEONE MEANT IT:
+#
+#   - workflow_dispatch ONLY. No push trigger, ever: a production deploy that
+#     happens because someone merged is a deploy nobody decided to do.
+#   - `confirm` must be typed as exactly `employsi.com.au`. A stray click on
+#     "Run workflow" deploys nothing.
+#   - it refuses any ref but `main`, so a feature branch cannot reach the live
+#     site through here.
+#   - the serving version is recorded BEFORE the deploy and printed with the
+#     rollback command; the listing failing is fatal, because a deploy with no
+#     way back is not one to make.
+#
+# THE APP STAYS GATED ON THE APEX. This deploys whatever `main` says in
+# src/lib/siteGate.ts: while APP_ONLY_PATHS holds "/app", employsi.com.au serves
+# the marketing pages only, /app 302s away, and /login shows the waitlist rather
+# than sign-in. The checks at the end assert exactly that, so releasing the app
+# (emptying APP_ONLY_PATHS) will turn the gate check red on purpose — update it
+# in the same change.
+#
+# Shares its token handling with deploy-preview.yml; the comments there explain
+# why each step is shaped the way it is (the account id, the pk. check,
+# `set -o pipefail`, --compressed on curl).
+
+name: deploy-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type employsi.com.au to deploy PRODUCTION'
+        type: string
+        required: true
+      reason:
+        description: 'What is being released (goes in the run summary)'
+        type: string
+        required: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Inputs go through env, never ${{ }} in a script body — see the note on
+      # `reason` in deploy-preview.yml.
+      - name: Confirm this is meant
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$CONFIRM" != "employsi.com.au" ]; then
+            echo "::error::confirm must be exactly 'employsi.com.au' — nothing deployed"
+            exit 1
+          fi
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::production deploys only from main (got $REF) — nothing deployed"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Tokens and account
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MAPBOX_FROM_SECRET: ${{ secrets.VITE_MAPBOX_TOKEN }}
+          MAPBOX_FROM_VAR: ${{ vars.VITE_MAPBOX_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID_SECRET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID_VAR: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          token="${MAPBOX_FROM_SECRET:-$MAPBOX_FROM_VAR}"
+          acct="$(printf '%s' "${CLOUDFLARE_ACCOUNT_ID_SECRET:-$CLOUDFLARE_ACCOUNT_ID_VAR}" | tr -d '[:space:]')"
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN missing"; exit 1; }
+          case "$token" in
+            pk.*) ;;
+            *) echo "::error::VITE_MAPBOX_TOKEN missing or not a Mapbox public token — the map would not render"; exit 1 ;;
+          esac
+          printf '%s' "$acct" | grep -qiE '^[0-9a-f]{32}$' \
+            || { echo "::error::CLOUDFLARE_ACCOUNT_ID missing or not 32 hex characters"; exit 1; }
+          echo "::add-mask::$token"
+          echo "::add-mask::$acct"
+          echo "VITE_MAPBOX_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_ACCOUNT_ID=$acct" >> "$GITHUB_ENV"
+
+      - run: npm ci
+
+      - name: What is serving now (the rollback point)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx wrangler deployments list --name benridgwell-globe-gazer-hr > before.txt 2>&1 \
+            || { echo "::error::cannot list production's deployments — refusing to deploy without a rollback point"; tail -20 before.txt; exit 1; }
+          tail -12 before.txt
+          prev=$(grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' before.txt | tail -1)
+          [ -n "$prev" ] || { echo "::error::no version id in the listing"; exit 1; }
+          echo "PREV_VERSION=$prev" >> "$GITHUB_ENV"
+          echo "serving now: $prev"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tail -20
+          grep -rlq "pk\.eyJ" .output/public/ \
+            || { echo "::error::no Mapbox public token in the bundle — not deploying"; exit 1; }
+
+      # The name is spelled out rather than inherited from wrangler.jsonc, so the
+      # target is readable here and does not move if that file's name ever does.
+      - name: Deploy production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx wrangler deploy --name benridgwell-globe-gazer-hr 2>&1 | tee deploy.txt
+          new=$(grep -oE 'Current Version ID: [0-9a-f-]+' deploy.txt | awk '{print $4}')
+          [ -n "$new" ] || { echo "::error::deploy printed no version id"; exit 1; }
+          [ "$new" != "$PREV_VERSION" ] || { echo "::error::version did not change"; exit 1; }
+          echo "NEW_VERSION=$new" >> "$GITHUB_ENV"
+
+      # What employsi.com.au must look like while the app is unreleased.
+      - name: Check the live site
+        run: |
+          fetch() { curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$1" || echo 000; }
+          title() { grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//'; }
+          fail=0
+          for wait in 0 5 10 20; do
+            sleep "$wait"; code=$(fetch https://employsi.com.au/); [ "$code" = 200 ] && break
+          done
+          t=$(title); echo "apex /          $code  $t"
+          case "$t" in *"Explore the world of work"*) ;; *) echo "::error::apex / is not the landing page"; fail=1 ;; esac
+          for p in /product /login; do
+            code=$(fetch "https://employsi.com.au$p"); echo "apex $p  $code"
+            [ "$code" = 200 ] || { echo "::error::apex $p answered $code"; fail=1; }
+          done
+          # /login chooses waitlist vs sign-in IN THE BROWSER (appGatedOn on
+          # window.location), so its HTML carries neither and cannot be grepped.
+          # The server-side half of the same gate is checkable: both of these
+          # 302 off the apex while APP_ONLY_PATHS holds them.
+          for p in /app /api/auth/get-session; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au$p")
+            echo "apex $p  $code"
+            [ "$code" = 302 ] || { echo "::error::apex $p answered $code, expected 302 while the app is gated"; fail=1; }
+          done
+          code=$(fetch https://benridgwell-globe-gazer-hr.employsi.workers.dev/app); t=$(title)
+          echo "workers.dev /app $code  $t"
+          case "$t" in *"labour-market globe"*) ;; *) echo "::error::workers.dev /app is not the app"; fail=1 ;; esac
+          exit $fail
+
+      - name: Summary
+        if: always()
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          {
+            echo '## employsi.com.au (benridgwell-globe-gazer-hr)'
+            echo
+            echo "Reason: ${REASON:-—}"
+            echo
+            echo "Replaced: \`${PREV_VERSION:-unknown}\`  →  now: \`${NEW_VERSION:-not deployed}\`"
+            echo
+            if [ -n "$PREV_VERSION" ]; then
+              echo "Rollback: \`npx wrangler rollback $PREV_VERSION --name benridgwell-globe-gazer-hr --message \"why\"\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
