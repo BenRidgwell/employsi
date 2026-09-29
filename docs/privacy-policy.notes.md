@@ -48,7 +48,7 @@ Replies will come from whatever mailbox the address forwards to, not from
 
 ## Still to decide before publishing
 
-- **Entity name, ABN, last-updated date** — the remaining `[CONFIRM]` markers.
+- **Entity name, ABN** — filled in 2026-09-29 (Employsi, ABN 59 964 624 290); the last-updated line was dropped at the owner's request. The published text lives in `src/site/PrivacyPopover.tsx`; change both together.
 - **Retention periods.** The policy says we keep information "only as long as
   necessary" and names the one limit that actually exists (30-day sessions). No
   retention or deletion job exists for anything else — see below.

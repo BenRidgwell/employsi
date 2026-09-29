@@ -32,4 +32,4 @@ We are committed to conducting our business in accordance with these principles 
 order to ensure that the confidentiality of personal information is protected and
 maintained.
 
-**[CONFIRM: entity name], ABN [CONFIRM]** · Last updated [CONFIRM: date]
+**Employsi, ABN 59 964 624 290**

@@ -12,10 +12,13 @@ export const authClient = createAuthClient({ basePath: "/api/auth" });
 
 export const { useSession, signIn, signOut } = authClient;
 
-/** Start an OAuth sign-in, returning to the page the user was already on. */
-export function startSignIn(provider: "google" | "linkedin"): void {
+/**
+ * Start an OAuth sign-in, returning to the page the user was already on — or
+ * to `callbackURL` when the page is only a doorway, as /login is to /app.
+ */
+export function startSignIn(provider: "google" | "linkedin", callbackURL?: string): void {
   void authClient.signIn.social({
     provider,
-    callbackURL: typeof window === "undefined" ? "/" : window.location.pathname,
+    callbackURL: callbackURL ?? (typeof window === "undefined" ? "/" : window.location.pathname),
   });
 }

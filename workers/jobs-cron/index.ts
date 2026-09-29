@@ -1405,6 +1405,81 @@ async function processCareerPathways(
   return out;
 }
 
+// ---- live skill trends cache ---------------------------------------------
+//
+// The "skills in demand" movers (src/employsi/lib/skillTrendsBuild.ts), the
+// same computation the app's getLiveSkillTrends runs, pre-computed once a
+// night for the WORLDWIDE, NON-ADMIN answer — the one the public landing
+// page's ticker and hero callouts ask for — and written to the KV key the app
+// reads first. Without it the first visitor to a cold isolate waited on a
+// 60-day archive scan: measured 2026-09-29 on employsi-site-preview, hero
+// callouts 8–13 s after the banner, 5–10 s of it this query.
+//
+// 00:12 UTC, AFTER THE DAY HAS LANDED AND AFTER MIDNIGHT. Every window ends on
+// the last COVERED day, never today, so the answer only changes when UTC
+// midnight moves "yesterday" — run just after it, and the entry is right for
+// the whole day. (23:52, the career-pathways minute, would compute the answer
+// for a day that ends eight minutes later.) The GitHub Actions feeds finish by
+// 23:30. "12 " is not a gov minute prefix (5, 15, 30, 45, 50), and the exact
+// match below runs before those anyway.
+//
+// Regional and admin answers are NOT pre-computed: the app still computes and
+// caches those for an hour on first request, as before.
+const TRENDS_CACHE_CRON = "12 0 * * *";
+
+async function processTrendsCache(
+  env: Env,
+  opts: { write?: boolean } = {},
+): Promise<Record<string, unknown>> {
+  const db = env.JOBS_ARCHIVE;
+  if (!db) return { skipped: "no JOBS_ARCHIVE binding" };
+  // Lazy for the same reason as the career-pathways build: the module pulls in
+  // the company roster (via markets.ts), which the other ticks never need.
+  const { buildLiveSkillTrends, trendsKvKey, TREND_WINDOWS, TRENDS_FRESH_MS } =
+    await import("../../src/employsi/lib/skillTrendsBuild");
+  const t0 = Date.now();
+  let rows = 0;
+  const value = await buildLiveSkillTrends(
+    async (sql, params) => {
+      const r = (
+        await db
+          .prepare(sql)
+          .bind(...params)
+          .all()
+      ).results as Record<string, string | number | null>[];
+      rows = r.length;
+      return r;
+    },
+    // Worldwide, as a visitor sees it — never the admin roll-up, which can
+    // include markets not yet released to the public.
+    { region: "", seesAll: false },
+  );
+  const counts = Object.fromEntries(TREND_WINDOWS.map((w) => [w.key, value[w.key].length]));
+  // An all-empty answer is not written: far likelier a failed read than a
+  // market with no movers, and yesterday's entry is better than a blank strip.
+  const empty = TREND_WINDOWS.every((w) => !value[w.key].length);
+  const write = (opts.write ?? true) && !empty;
+  const key = trendsKvKey(false, "");
+  if (write) {
+    await env.OPEN_ROLES_HISTORY.put(key, JSON.stringify({ at: Date.now(), src: "cron", value }), {
+      // Only garbage collection; the entry's `at` + `src` decide freshness.
+      expirationTtl: TRENDS_FRESH_MS.cron / 1000,
+    });
+  }
+  const out = {
+    key,
+    rows,
+    counts,
+    top24h: value["24h"].slice(0, 2).map((r) => `${r.name} ${r.v}`),
+    // Date.now() only advances on I/O inside a Worker: D1 + KV time, not CPU.
+    ioMs: Date.now() - t0,
+    written: write,
+  };
+  if (empty) console.error("trends: NOT written, every window empty", out);
+  else console.log("trends:", out);
+  return out;
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -1424,6 +1499,10 @@ export default {
       // cancelled run writes nothing. (The shard's "waitUntil() tasks did not
       // complete" cancellations above are that 30 s.)
       await processCareerPathways(env);
+    } else if (event.cron === TRENDS_CACHE_CRON) {
+      // AWAITED for the same reason as the career pathways: the 60-day read
+      // took 5–10 s from the app, and waitUntil would give it only 30 s.
+      await processTrendsCache(env);
     } else if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
       ctx.waitUntil(
         processPortals(
@@ -1489,6 +1568,24 @@ export default {
       }
       try {
         const out = await processCareerPathways(env, {
+          write: url.searchParams.get("dry") !== "1",
+        });
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
+          { status: 500 },
+        );
+      }
+    }
+    // Build the trends cache on demand. ?dry=1 computes and reports without
+    // writing KV — the way to check the read still fits before trusting it.
+    if (url.pathname === "/run-trends") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      try {
+        const out = await processTrendsCache(env, {
           write: url.searchParams.get("dry") !== "1",
         });
         return Response.json({ ok: true, ...out });
