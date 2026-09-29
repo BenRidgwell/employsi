@@ -220,10 +220,16 @@ jobs:
       #
       # The runner is the other side of that, and the log is the channel — the
       # same one that got South Australia's 98 source rows out of here. This asks
-      # WHO EMPLOYS each body rather than how many people it has, because nine of
-      # the ten are statutory offices, brands or wound-up bodies whose staff sit
-      # inside a department that is already filed.
-      - name: Probe the ten unexamined South Australian bodies
+      # WHO EMPLOYS each body rather than how many people it has, because these
+      # are statutory offices whose staff sit inside a department already filed.
+      #
+      # ROUND ONE (2026-09-29, run 36551128127) SETTLED FOUR AND PROVED THE
+      # CHANNEL: agd.sa.gov.au served 3.9 MB of PDF to the runner where this
+      # sandbox gets an interstitial. Round two asks the Attorney-General's
+      # report the employment question directly, with page numbers and context,
+      # and asks four hosts for their ROOT — round one's paths were guesses and
+      # four of them 404'd, which measured the guess rather than the site.
+      - name: Probe the remaining South Australian bodies
         if: always()
         continue-on-error: true
         run: python scripts/sa-agency-probe.py

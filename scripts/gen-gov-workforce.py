@@ -1038,7 +1038,10 @@ NOT_IN_SOURCE = {
         'exists, which is why the report does not report it, and this is the '
         '"Marathon Oil on the Houston roster" shape rather than a missing '
         'figure. The roster decision is the real fix: retire the card, or rename '
-        'it to the CTP Regulator, which would then fill from the existing row',
+        'it to the CTP Regulator, which would then fill from the existing row. '
+        'CORROBORATED FROM A SECOND DIRECTION 2026-09-29: mac.sa.gov.au no '
+        'longer RESOLVES — a clean runner answers "Name or service not known", '
+        'which is not a 403 and not a timeout but no such host',
     'sa:SA Lotteries':
         'A LICENCE, NOT A PUBLIC-SECTOR WORKFORCE. South Australia sold the right '
         'to run its lotteries to Tatts Group on 10 December 2012 on a 40-year '
@@ -1048,7 +1051,41 @@ NOT_IN_SOURCE = {
         'Lotteries page and why the workforce report has no row for it. '
         'THE PEOPLE ARE ALREADY ON A CARD: The Lottery Corporation is roster id '
         'melbourne-tlc, filed at 900 (and 902 in the WGEA register), so a figure '
-        'here would count them twice — the Destination NSW call, across sectors',
+        'here would count them twice — the Destination NSW call, across sectors. '
+        'salotteries.com.au does not resolve from a clean runner either '
+        '(2026-09-29), which is what a retired brand looks like from outside',
+    # ── Settled from the runner's read, 2026-09-29, run 36551128127 ─────────
+    # Two of the ten needed nothing but a page this sandbox cannot fetch and a
+    # runner can. Both answers are about WHAT THE BODY IS rather than about how
+    # many people it has, which is why neither is a missing figure.
+    'sa:Landscape SA':
+        'A NAME FOR NINE BOARDS, NOT A TENTH BODY. landscape.sa.gov.au is titled '
+        '"Landscape Boards SA" and states it in as many words — "There are nine '
+        'landscape boards across South Australia", the eight regional boards plus '
+        'Green Adelaide, established under the Landscape South Australia Act 2019 '
+        'and working with the Department for Environment and Water, which is '
+        'filed at 1,419. THE PEOPLE ARE ALREADY ON EIGHT CARDS: the workforce '
+        'report reports each regional board separately and every one of them is '
+        'filed — Murraylands and Riverland 78, Hills and Fleurieu 56, Limestone '
+        'Coast 43, Northern and Yorke 42, Kangaroo Island 34, SA Arid Lands 29, '
+        'Eyre Peninsula 26, Alinytjara Wilurara 16. Summing them to 324 here '
+        'would count the same 324 people a second time, which is the leap ALIAS '
+        'refuses — and the source does not report Green Adelaide at all, so even '
+        'the sum would be the wrong nine. The roster decision is to retire this '
+        'card; the eight it would duplicate are already filled',
+    'sa:Office of Hydrogen Power SA':
+        'DISSOLVED IN 2025, AND ITS WORK IS INSIDE A FILED DEPARTMENT. The Whyalla '
+        'hydrogen project was shelved in February 2025 after the steelworks went '
+        'into administration and the $593m was redirected to it; the Energy '
+        'Minister then said the office would "cease to function" and its '
+        'responsibilities pass to the Department for Energy and Mining, which the '
+        'workforce report carries at 377 (up 18.9% on 317 — consistent with '
+        'absorbing it, though this file does not treat a plausible movement as '
+        'evidence). Its head went to a new State Lead role for the steelworks. '
+        'That is why the report has no row: at 30 June 2025 there was no such '
+        "administrative unit to report. The runner's read agrees from the other "
+        'side — energymining.sa.gov.au answered 200 and 442 lines, and not one of '
+        'them names an Office of Hydrogen Power at all',
     # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
     'sa:TAFE SA':
         'not reachable. Its own site answers 404 at every annual-report path '
