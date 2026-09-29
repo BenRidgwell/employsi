@@ -1012,6 +1012,43 @@ NOT_IN_SOURCE = {
         'with nothing of this name among them. Roles advertised under it are '
         'employed by whichever agency runs the program, so their people are '
         'already inside one of the seventeen',
+    # ── Two South Australian cards that are not employers any more ───────────
+    # Settled from the public record and the roster rather than from a document
+    # on an SA host, since those are unreachable from here. Both are the shape
+    # check-company-live.ts exists for — a card for a body that has stopped
+    # being one — and both are worth a roster decision as well as this reason.
+    'sa:Parliament of SA':
+        'THE SOURCE SPLITS THE PARLIAMENTARY WORKFORCE IN TWO AND NEITHER HALF IS '
+        'THIS CARD. Its 98 rows carry "Legislature (Including Members)" at 220 and '
+        '"Electorate Services" at 284, both SPARE — reported by the source with no '
+        'roster card pointing at either. The first counts the MEMBERS themselves, '
+        'who are elected rather than employed, so it is not a staff figure; the '
+        'second is electorate-office staff, which is not the Parliament\'s '
+        'administration. Adding them to 504 would sum two rows the report keeps '
+        'apart AND keep the members inside the total, which is the leap ALIAS '
+        'refuses without evidence — and the evidence is on a host this sandbox '
+        'cannot read. The roster decision is the cheaper fix here too: a card for '
+        'either row as the source names it would fill at once',
+    'sa:Motor Accident Commission':
+        'NOT AN EMPLOYER SINCE 2019. MAC stopped being the CTP regulator and '
+        'insurer in July 2016 and CEASED OPERATIONS ON 30 JUNE 2019; its '
+        'regulatory functions went to the CTP Regulator, which the workforce '
+        'report carries at 25 as a SPARE row — reported by the source with no '
+        'roster card pointing at it. So the card names a body that no longer '
+        'exists, which is why the report does not report it, and this is the '
+        '"Marathon Oil on the Houston roster" shape rather than a missing '
+        'figure. The roster decision is the real fix: retire the card, or rename '
+        'it to the CTP Regulator, which would then fill from the existing row',
+    'sa:SA Lotteries':
+        'A LICENCE, NOT A PUBLIC-SECTOR WORKFORCE. South Australia sold the right '
+        'to run its lotteries to Tatts Group on 10 December 2012 on a 40-year '
+        'licence; the games now operate under The Lottery Corporation\'s "The '
+        'Lott". The Lotteries Commission of South Australia survives as the '
+        'licence-holding body, which is why treasury.sa.gov.au still has an SA '
+        'Lotteries page and why the workforce report has no row for it. '
+        'THE PEOPLE ARE ALREADY ON A CARD: The Lottery Corporation is roster id '
+        'melbourne-tlc, filed at 900 (and 902 in the WGEA register), so a figure '
+        'here would count them twice — the Destination NSW call, across sectors',
     # ── Probed 2026-09-27 with a headless browser ─────────────────────────────
     'sa:TAFE SA':
         'not reachable. Its own site answers 404 at every annual-report path '
