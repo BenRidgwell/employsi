@@ -123,6 +123,7 @@ Workers on the account, verified 2026-08-12:
 | --- | --- |
 | `benridgwell-globe-gazer-hr` | **PRODUCTION.** Carries `employsi.com.au` |
 | `employsi-preview` | Preview of the same app — deploy here to be looked at |
+| `employsi-site-preview` | Preview for the MARKETING SITE (`/`, `/product`, `/login`), added 2026-09-28 so website review does not redeploy over app review. Deployed by `deploy-preview.yml` with target `site` |
 | `benridgwell-globe-gazer-hr-mobile` | Mobile build |
 | `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
 | `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
@@ -138,8 +139,11 @@ and the real `OPEN_ROLES_HISTORY` KV. Reads are the point — the preview shows 
 data — but nothing is isolated, so a change that writes needs thinking about before
 it runs there.
 
-**THE APP IS AT `/app`. `/` IS THE WAITLIST, ON EVERY HOST.** `src/routes/index.tsx`
-is the marketing page; `src/routes/app.tsx` is the product. Send a reviewer to
+**THE APP IS AT `/app`. `/` IS THE MARKETING LANDING PAGE, ON EVERY HOST.**
+`src/routes/index.tsx` is the landing page (with `/product` and `/login` beside it,
+all under `src/site/`); `src/routes/app.tsx` is the product. Until 2026-09-28 `/`
+was a waitlist page; the waitlist form now lives on `/login`, and shows there only
+where sign-in is gated (see below). Send a reviewer to
 `…workers.dev/app` — a link to `/` shows them the waitlist and nothing you built.
 
 This is easy to get backwards, and this file said the opposite until 2026-08-12.
@@ -148,11 +152,14 @@ This is easy to get backwards, and this file said the opposite until 2026-08-12.
 is not: the frame only wraps the app when the hostname matches `-mobile`, and
 the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
 hydration and never shows up in the SSR HTML. Read the `<title>` instead —
-"Employsi map — the live labour-market globe" is the app, "Employsi — Exploring
-the world of work" is the waitlist.
+"Employsi map — the live labour-market globe" is the app, "employsi — Explore
+the world of work" is the landing page.
 
-The apex serves the waitlist ONLY: `employsi.com.au/app` 302s away (see
-`APP_ONLY_PATHS` in `src/server.ts`). So a production deploy of app work is
+The apex serves the marketing pages ONLY: `employsi.com.au/app` and `/api/auth`
+302 away (see `APP_ONLY_PATHS` in `src/lib/siteGate.ts`, which `src/server.ts`
+imports). `/login` reads the same module: on a gated host it shows the waitlist
+form instead of OAuth buttons that would 302. Releasing the app is emptying
+`APP_ONLY_PATHS`; the login page switches to real sign-in on the same deploy. So a production deploy of app work is
 reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
 else — checking `employsi.com.au` returns 200 proves the waitlist is up, not
 that the app deployed.
@@ -261,6 +268,31 @@ Until both halves of a provider exist, `authAvailable()` is false and the app
 says "Sign-in is not configured on this deployment" rather than offering a
 button that 500s. That message is the expected state of a half-set-up provider,
 not a bug to chase.
+
+**`employsi-site-preview` needs its own Better Auth setup**, because secrets
+are per-Worker and it was created with none. Measured 2026-09-29: its
+`/api/auth/get-session` answered 503 "Sign-in is not configured on this
+deployment." while `employsi-preview`'s answered 200. The code is the same
+Better Auth either way (`/login` uses `lib/authClient.ts`, like the app); what
+it needs is the six secrets listed at the top of `lib/auth.ts`, with
+`BETTER_AUTH_URL=https://employsi-site-preview.employsi.workers.dev`, and its
+two callback URLs registered with Google and LinkedIn:
+
+```
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/google
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/linkedin
+```
+
+**SET WORKER CONFIG AS SECRETS, NEVER AS PLAIN "VARIABLES".** A
+`wrangler deploy` keeps secrets but REPLACES plain-text variables with the ones
+the config declares — and this repo's config declares none, so every deploy
+deletes any variable added in the dashboard. Measured 2026-09-29 on
+`employsi-site-preview`: `STRIPE_PRICE_ID` had been added as a Variable (it is
+not sensitive, so that looked right), the next preview deploy removed it, and
+`/login` switched to "Subscriptions aren't set up on this deployment" while the
+Stripe key and webhook secret — both Secrets — carried on working. Re-added as
+a Secret, it survives. Non-sensitive values (`BETTER_AUTH_URL`, client ids,
+price ids) go in as Secrets too, for exactly this reason.
 
 **A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
 `wrangler secret put` does NOT deploy it. It uploads a new version and leaves
@@ -711,6 +743,35 @@ reads national-series data files the Worker bundle does not carry.
   the backstop, and the only one code cannot get wrong.
 - The secret is per-Worker: setting it on `employsi-preview` does not turn it on
   in production. Mind the secret-is-not-live trap above.
+
+### Subscriptions (Stripe Managed Payments)
+
+"Create account" on `/login` is two steps: sign up through Better Auth, then a
+Payment step that sends the visitor to a hosted Stripe Checkout with
+`managed_payments[enabled]=true` (Stripe is merchant of record and handles
+tax). `lib/billingFn.ts` creates the session and reads the offer;
+`lib/billing.ts` handles `POST /api/billing/webhook` (mounted in `server.ts`,
+raw body, signature-verified) and keeps `billing_subscription` in D1, created
+lazily like `llm_usage`. `lib/stripeApi.ts` is a fetch client pinned to the
+blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
+
+- **The price on the page is read from Stripe** (`STRIPE_PRICE_ID`), never
+  typed in. Create it with `scripts/stripe-create-subscription-product.ts`
+  (once with a test key, once live — separate ids).
+- **Per-Worker secrets**: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
+  `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
+  are not set up; without the third the webhook answers 503 and Stripe retries.
+- **Previews write the production D1**, so use TEST keys on them.
+- **`/app` is paywalled where payments are configured** (`getAppAccess` in
+  `billingFn.ts`, run by the route's `beforeLoad`): signed-out visitors go to
+  `/login`, signed-in ones without an `active`/`trialing` subscription to the
+  Payment step. A Worker without Stripe keys stays open (the app preview, and
+  production until its live keys are set); `ADMIN_EMAILS` always pass. It
+  gates the PAGE only — the data server functions stay callable.
+- **The success URL carries `session_id`**, and the paywall confirms that
+  Checkout Session with Stripe directly (`recordCheckoutSession`), because the
+  customer arrives before the webhook and would otherwise be bounced back to
+  pay again.
 
 ### Map layers
 

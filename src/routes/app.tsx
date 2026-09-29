@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { getAppAccess } from "@/employsi/lib/billingFn";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { MobileFramePreview } from "@/components/MobileFramePreview";
 
@@ -24,6 +25,22 @@ function useMobileFrameHost(): boolean {
 }
 
 export const Route = createFileRoute("/app")({
+  // THE PAYWALL — see getAppAccess in employsi/lib/billingFn.ts. Runs on the
+  // server for a first load (so a gated visitor gets a redirect, not the app
+  // shell) and again on client-side navigation. Open wherever payments are not
+  // configured, so the app preview and production behave as before until then.
+  beforeLoad: async ({ location }) => {
+    const sid = (location.search as Record<string, unknown>).session_id;
+    const access = await getAppAccess({
+      data: typeof sid === "string" ? { checkoutSessionId: sid } : {},
+    });
+    if (!access.allowed) {
+      throw redirect({
+        to: "/login",
+        search: access.to === "subscribe" ? { mode: "create" } : {},
+      });
+    }
+  },
   head: () => ({
     meta: [
       { title: "Employsi map — the live labour-market globe" },
