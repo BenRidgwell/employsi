@@ -1546,8 +1546,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 
 /** A faded role card on the ghost map. */
 /**
- * "Other directions", drawn on the map: a small pill of icons on the selected
- * card's edge, one per role on ANOTHER ladder it relates to
+ * "Other directions", drawn on the map: a small pill of icons centred on the
+ * selected card's edge, one per role on ANOTHER ladder it relates to
  * (careerCard.careerMoves). It sits on the edge the "Set as goal?" button does
  * not use — the top on the core lane, the bottom below it.
  *
@@ -1561,26 +1561,25 @@ function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => vo
   const m = hover != null ? node.moves[hover] : null;
   return (
     <div
-      className={`cpbranch${top ? "" : " below"}`}
-      style={{ left: node.x + CW - 10, top: top ? node.y : node.y + CH }}
+      className={`cpbranch${top ? "" : " below"}${m ? " tipping" : ""}`}
+      style={{ left: node.x + CW / 2, top: top ? node.y : node.y + CH }}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       onMouseLeave={() => setHover(null)}
     >
-      <span className="cpbranchlbl" aria-hidden="true">
+      <span className="cpbranchlbl" title="Other paths: related roles on other ladders">
         <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor">
           <path d="M6 20V9a5 5 0 0 1 5-5h7" />
           <path d="M15 1l3 3-3 3" />
           <path d="M6 13a5 5 0 0 1 5-5h2" />
         </svg>
-        Other paths
       </span>
       {node.moves.map((mv, i) => (
         <button
           key={mv.id}
           type="button"
           className={`cpbranchbtn${hover === i ? " on" : ""}`}
-          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. Related occupation per O*NET.`}
+          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. Related occupation per O*NET, not a tracked career move.`}
           onMouseEnter={() => setHover(i)}
           onFocus={() => setHover(i)}
           onBlur={() => setHover(null)}
@@ -1607,8 +1606,8 @@ function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => vo
             {m.payLabel === "—" ? "" : ` · ${m.payLabel} median`}
           </span>
           <span className="cpbranchnote">
-            Related occupations per O*NET; skills and employers from employsi&apos;s ads. Nothing
-            here tracks people making the move.
+            Related occupation per O*NET, not a tracked career move. Skills and employers are from
+            employsi&apos;s ads.
           </span>
         </div>
       )}

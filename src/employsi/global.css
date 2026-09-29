@@ -17843,27 +17843,26 @@ body {
 .cpbranch {
   position: absolute;
   z-index: 3;
-  transform: translate(-100%, -50%);
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 4px 3px 8px;
+  padding: 3px 4px 3px 7px;
   border-radius: 999px;
   background: var(--surface-page, #fff);
   border: 1px solid var(--border-subtle, #e5e5ea);
   box-shadow: 0 1px 3px rgba(28, 28, 30, 0.12);
   cursor: default;
 }
+.cpbranch.tipping {
+  /* Over the "Set as goal?" pop (z-index 5) while a hover card is open. */
+  z-index: 6;
+}
 .cpbranchlbl {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   margin-right: 2px;
-  font: 500 9px/1 "Inter", system-ui, sans-serif;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-tertiary, #8e8e93);
-  white-space: nowrap;
 }
 .cpbranchbtn {
   display: inline-flex;
@@ -17897,19 +17896,26 @@ body {
 }
 .cpbranchtip {
   position: absolute;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   top: calc(100% + 8px);
-  width: 240px;
+  width: 290px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 9px 12px;
   border-radius: 10px;
   background: var(--neutral-900, #1c1c1e);
   color: #fff;
   box-shadow: var(--shadow-md);
   pointer-events: none;
   text-align: left;
+}
+.cpbranchtitle,
+.cpbranchwhere {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cpbranchtip.up {
   top: auto;
