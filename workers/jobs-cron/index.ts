@@ -1623,12 +1623,21 @@ export default {
       // took 5–10 s from the app, and waitUntil would give it only 30 s.
       await processTrendsCache(env);
     } else if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
-      ctx.waitUntil(
-        processPortals(
-          env,
-          (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
-          PORTAL_TICKS[event.cron],
-        ).then(() => undefined),
+      // AWAITED since 2026-09-29, like the two branches above, and for the
+      // same reason: waitUntil gives a portal group 30 s, which is why every
+      // board over ~20 s was split into page windows with a tick each — and
+      // why the ticks ran out. 202 portal groups had taken 220 of the
+      // account's 250 cron triggers when batch 4 (scraper-gap ranks 121-160)
+      // needed ~40 more. An awaited scheduled handler gets the cron's 15
+      // minutes of wall clock, so one tick can walk a group of several boards
+      // in turn. Every group written before this fits 30 s and is unaffected;
+      // the groups packed for batch 4 onward depend on it. CPU time is a
+      // separate limit that awaiting does not raise — a packed group is sized
+      // by its measured CPU, not only its wall clock (see PORTAL_GROUPS).
+      await processPortals(
+        env,
+        (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
+        PORTAL_TICKS[event.cron],
       );
     } else if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
       // Every company every night, split over four ticks ten minutes apart so
