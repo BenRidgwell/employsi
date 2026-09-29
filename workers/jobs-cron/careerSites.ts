@@ -17802,6 +17802,38 @@ export const PORTAL_GROUPS: string[][] = [
     "beach",
     "sanfrancisco-dbx",
   ],
+  // Groups 209-214 — the 2026-09-29 fifth batch, PACKED: several boards to
+  // a tick, up to ~150 s of measured walk each, which is only sound because
+  // portal ticks are awaited (15 min) since the same day. The CPU each walk
+  // used was measured too, at 0.1-1.2 s a feed, so a group stays far inside
+  // the CPU limit. Windows of one board share a group, so they run back to
+  // back and the board has little time to move between them.
+  ["toronto-ry-a"],
+  ["toronto-ry-b", "toronto-ry-c"],
+  ["charlotte-bac", "denver-vfc"],
+  ["washington-dhr", "newyork-ma"],
+  ["dallas-cat", "sanjose-csco", "zurich-novn", "newyork-pfe"],
+  [
+    "newyork-met",
+    "newyork-gs",
+    "toronto-slf",
+    "toronto-slf-campus",
+    "london-sn",
+    "paris-pub",
+    "london-hln",
+    "sanjose-amd",
+    "sanjose-now",
+    "priv-perfection-fresh",
+    "zurich-givn",
+    "johannesburg-abg",
+    "priv-norco-co-op",
+    "hgo",
+    "johannesburg-gfi",
+    "johannesburg-sbk",
+    "brisbane-crn",
+    "melbourne-pxa",
+    "adelaide-c79",
+  ],
 ];
 
 const UA =
