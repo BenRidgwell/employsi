@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { currentUser, requestHeaders } from "./followsFn";
+import { getAuth, type AuthEnv } from "./auth";
 import {
   LIVE_STATUSES,
   billingDb,
@@ -42,6 +42,30 @@ export interface BillingState {
   currentPeriodEnd: number | null;
 }
 
+/**
+ * The signed-in Better Auth user, from this request's cookies.
+ *
+ * DELIBERATELY LOCAL AND UNEXPORTED — the same shape as followsFn's private
+ * helper, not an import of it. This module is imported by /login, a client
+ * route, and TanStack Start's import protection refuses any client bundle that
+ * still reaches @tanstack/react-start/server. A module-level helper that only
+ * server-function handlers call is stripped along with those handlers; an
+ * EXPORTED one is kept, and failed the build (2026-09-29, deploy-preview run
+ * 91) when followsFn's helper was exported for reuse here.
+ */
+async function sessionUser(): Promise<{ id: string; email: string } | null> {
+  const e = (await billingEnv()) as AuthEnv | null;
+  const auth = e ? getAuth(e) : null;
+  if (!auth) return null;
+  try {
+    const session = await auth.api.getSession({ headers: getRequest().headers });
+    const u = session?.user;
+    return u?.id ? { id: String(u.id), email: String(u.email || "") } : null;
+  } catch {
+    return null;
+  }
+}
+
 let offerMemo: { at: number; price: string; value: SubscriptionOffer } | null = null;
 const OFFER_MEMO_MS = 60 * 60 * 1000;
 
@@ -81,7 +105,7 @@ export const getBillingState = createServerFn({ method: "GET" }).handler(
     const e = await billingEnv();
     const payments = paymentsConfigured(e);
     const offer = payments ? await readOffer(e!.STRIPE_SECRET_KEY!, e!.STRIPE_PRICE_ID!) : null;
-    const user = await currentUser(requestHeaders());
+    const user = await sessionUser();
     const base: BillingState = {
       payments: payments && !!offer,
       offer,
@@ -128,7 +152,7 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
     if (!paymentsConfigured(e)) {
       return { error: "Payments are not set up on this deployment yet." };
     }
-    const user = await currentUser(requestHeaders());
+    const user = await sessionUser();
     if (!user) return { error: "Sign in first, then continue to payment." };
     const db = billingDb(e);
     const row = db ? await subscriptionFor(db, user.id).catch(() => null) : null;
