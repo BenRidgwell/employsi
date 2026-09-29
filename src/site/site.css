@@ -662,6 +662,8 @@
 /* ----- product: journey -------------------------------------------------- */
 
 .ws-intro {
+  position: relative;
+  z-index: 1;
   padding: clamp(128px, 11.7vw, 168px) var(--ws-gutter) 24px;
   display: flex;
   flex-direction: column;
@@ -722,7 +724,12 @@
   gap: clamp(40px, 5vw, 72px);
   align-items: start;
 }
-.ws-journey canvas {
+/* One backdrop behind the intro AND the journey: the globe contours and the
+   dotted path start behind the headline, not below the toggle. */
+.ws-stage {
+  position: relative;
+}
+.ws-stage > canvas {
   position: absolute;
   left: 0;
   top: 0;
@@ -865,7 +872,7 @@
   .ws-journey {
     grid-template-columns: minmax(0, 1fr);
   }
-  .ws-journey canvas,
+  .ws-stage > canvas,
   .ws-viewer {
     display: none;
   }

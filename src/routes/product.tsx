@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import siteCss from "@/site/site.css?url";
 import { ClosingCta, ShotStack, Site, SiteFooter, SiteNav } from "@/site/SiteChrome";
@@ -167,6 +167,9 @@ function useJourneyPath(
   section: React.RefObject<HTMLDivElement | null>,
   canvas: React.RefObject<HTMLCanvasElement | null>,
   textCol: React.RefObject<HTMLDivElement | null>,
+  // Elements the dots must leave clear — the intro's headline and toggle,
+  // now that the path runs up behind them.
+  avoid: React.RefObject<HTMLElement | null>[] = [],
 ) {
   const dots = useRef<Dot[]>([]);
   const geom = useRef({ W: 0, H: 0, dpr: 1 });
@@ -257,10 +260,36 @@ function useJourneyPath(
     const out: Dot[] = [];
     let seed = 11;
     const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    const secLeft = sec.getBoundingClientRect().left;
+    const secBox = sec.getBoundingClientRect();
+    const secLeft = secBox.left;
     const textEdge = textCol.current
       ? textCol.current.getBoundingClientRect().right - secLeft + 36
       : 516;
+    // The step-column rule only applies beside the steps. Above them, in the
+    // intro, it is the headline and toggle boxes that are kept clear instead.
+    const colTop = textCol.current ? textCol.current.getBoundingClientRect().top - secBox.top : 0;
+    const PAD = 28;
+    const keepOut = avoid
+      .map((r) => r.current?.getBoundingClientRect())
+      .filter((r): r is DOMRect => !!r)
+      .map((r) => ({
+        l: r.left - secLeft,
+        r: r.right - secLeft,
+        t: r.top - secBox.top,
+        b: r.bottom - secBox.top,
+      }));
+    // 0 inside a keep-out box (plus PAD), ramping to 1 over the next 60px.
+    const clearance = (x: number, y: number) => {
+      let f = 1;
+      for (const k of keepOut) {
+        const ox = Math.max(k.l - x, 0, x - k.r);
+        const oy = Math.max(k.t - y, 0, y - k.b);
+        const d = Math.hypot(ox, oy);
+        if (d < PAD) return 0;
+        f = Math.min(f, (d - PAD) / 60);
+      }
+      return Math.min(1, f);
+    };
     let i = 0;
     for (let d = 0; d <= L; d += step) {
       while (i < cum.length - 2 && cum[i + 1] < d) i++;
@@ -277,14 +306,19 @@ function useJourneyPath(
         if (rnd() > Math.pow(fall, 1.4) * 1.05) continue;
         const dx = x - ty * k * step;
         const dy = y + tx * k * step;
-        if (dx < textEdge) continue;
-        const edgeFade = Math.min(1, (dx - textEdge) / 60);
-        out.push({ x: dx, y: dy, t: d / L, f: fall * edgeFade });
+        let edgeFade = 1;
+        if (dy >= colTop) {
+          if (dx < textEdge) continue;
+          edgeFade = Math.min(1, (dx - textEdge) / 60);
+        }
+        const clear = clearance(dx, dy);
+        if (clear <= 0) continue;
+        out.push({ x: dx, y: dy, t: d / L, f: fall * edgeFade * clear });
       }
     }
     dots.current = out;
     paint(prog.current);
-  }, [section, canvas, textCol, paint]);
+  }, [section, canvas, textCol, avoid, paint]);
 
   return { build, paint };
 }
@@ -293,10 +327,16 @@ function ProductPage() {
   const [side, setSide] = useState<Side>("demand");
   const [active, setActive] = useState(0);
   const journey = useRef<HTMLDivElement | null>(null);
+  // The intro and the journey share one backdrop: the globe contours and the
+  // dotted path start behind the headline and run down beside the steps.
+  const stage = useRef<HTMLDivElement | null>(null);
+  const introTitle = useRef<HTMLHeadingElement | null>(null);
+  const introToggle = useRef<HTMLDivElement | null>(null);
+  const keepClear = useMemo(() => [introTitle, introToggle], []);
   const stepsCol = useRef<HTMLDivElement | null>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const progBar = useRef<HTMLDivElement | null>(null);
-  const { build, paint } = useJourneyPath(journey, canvas, stepsCol);
+  const { build, paint } = useJourneyPath(stage, canvas, stepsCol, keepClear);
   const { headline, steps } = JOURNEYS[side];
 
   // Which step is under the middle of the viewport, how far along the steps
@@ -317,7 +357,7 @@ function ProductPage() {
     const span = last.top + last.height / 2 - (first.top + first.height / 2);
     const p = Math.max(0, Math.min(1, (mid - (first.top + first.height / 2)) / span));
     if (progBar.current) progBar.current.style.width = `${(p * 100).toFixed(2)}%`;
-    const sr = sec.getBoundingClientRect();
+    const sr = (stage.current ?? sec).getBoundingClientRect();
     paint(Math.max(0, Math.min(1, (mid - sr.top) / sr.height)));
     setActive(on);
   }, [paint]);
@@ -359,90 +399,94 @@ function ProductPage() {
     <Site>
       <SiteNav current="product" />
       <main>
-        <section className="ws-intro" data-screen-label="Journey intro">
-          <h1 className="ws-display lg">{headline}</h1>
-          <div className="ws-sides" role="group" aria-label="Market side">
-            <button type="button" aria-pressed={side === "supply"} onClick={() => pick("supply")}>
-              <SupplyIcon />
-              <span>Supply</span>
-            </button>
-            <button type="button" aria-pressed={side === "demand"} onClick={() => pick("demand")}>
-              <DemandIcon />
-              <span>Demand</span>
-            </button>
-          </div>
-        </section>
-
-        <section className="ws-journey" ref={journey} data-screen-label="Journey">
+        <div className="ws-stage" ref={stage}>
           <canvas ref={canvas} aria-hidden />
-          <div className="ws-steps" ref={stepsCol}>
-            {steps.map((s, n) => (
-              <div
-                key={`${side}-${n}`}
-                data-step={n}
-                className={`ws-step${n === active ? " on" : ""}`}
-              >
-                <div className="ws-eyebrow kicker">
-                  <b>{String(n + 1).padStart(2, "0")}</b>
-                  <i />
-                  <span className="tag">{s.tag}</span>
-                </div>
-                <h2 className="ws-display md">{s.title}</h2>
-                <p className="ws-lede">{s.body}</p>
-                {/* Phones only (see site.css): the sticky viewer is hidden there. */}
-                <img
-                  className="inline-shot"
-                  src={s.shots[0].src}
-                  alt={s.shots[0].alt}
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
+          <section className="ws-intro" data-screen-label="Journey intro">
+            <h1 className="ws-display lg" ref={introTitle}>
+              {headline}
+            </h1>
+            <div className="ws-sides" role="group" aria-label="Market side" ref={introToggle}>
+              <button type="button" aria-pressed={side === "supply"} onClick={() => pick("supply")}>
+                <SupplyIcon />
+                <span>Supply</span>
+              </button>
+              <button type="button" aria-pressed={side === "demand"} onClick={() => pick("demand")}>
+                <DemandIcon />
+                <span>Demand</span>
+              </button>
+            </div>
+          </section>
 
-          <div className="ws-viewer" aria-hidden>
-            <div className="ws-frames">
-              {steps.map((s, n) => {
-                const d = n - active;
-                const style = {
-                  opacity: d === 0 ? 1 : 0,
-                  transform:
-                    d === 0
-                      ? "translateY(0px) scale(1)"
-                      : d < 0
-                        ? "translateY(-40px) scale(.96)"
-                        : "translateY(40px) scale(.96)",
-                };
-                return s.shots.length > 1 ? (
-                  <div key={`${side}-${n}`} className="ws-frame" style={style}>
-                    <div className="fan">
-                      <ShotStack shots={s.shots} fan="right" />
+          <section className="ws-journey" ref={journey} data-screen-label="Journey">
+            <div className="ws-steps" ref={stepsCol}>
+              {steps.map((s, n) => (
+                <div
+                  key={`${side}-${n}`}
+                  data-step={n}
+                  className={`ws-step${n === active ? " on" : ""}`}
+                >
+                  <div className="ws-eyebrow kicker">
+                    <b>{String(n + 1).padStart(2, "0")}</b>
+                    <i />
+                    <span className="tag">{s.tag}</span>
+                  </div>
+                  <h2 className="ws-display md">{s.title}</h2>
+                  <p className="ws-lede">{s.body}</p>
+                  {/* Phones only (see site.css): the sticky viewer is hidden there. */}
+                  <img
+                    className="inline-shot"
+                    src={s.shots[0].src}
+                    alt={s.shots[0].alt}
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="ws-viewer" aria-hidden>
+              <div className="ws-frames">
+                {steps.map((s, n) => {
+                  const d = n - active;
+                  const style = {
+                    opacity: d === 0 ? 1 : 0,
+                    transform:
+                      d === 0
+                        ? "translateY(0px) scale(1)"
+                        : d < 0
+                          ? "translateY(-40px) scale(.96)"
+                          : "translateY(40px) scale(.96)",
+                  };
+                  return s.shots.length > 1 ? (
+                    <div key={`${side}-${n}`} className="ws-frame" style={style}>
+                      <div className="fan">
+                        <ShotStack shots={s.shots} fan="right" />
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div key={`${side}-${n}`} className="ws-frame single" style={style}>
-                    <img src={s.shots[0].src} alt="" loading="lazy" />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="ws-progress">
-              <div className="bar">
-                <div ref={progBar} />
+                  ) : (
+                    <div key={`${side}-${n}`} className="ws-frame single" style={style}>
+                      <img src={s.shots[0].src} alt="" loading="lazy" />
+                    </div>
+                  );
+                })}
               </div>
-              <div className="labels">
-                {steps.map((s, n) => (
-                  <span
-                    key={s.tag}
-                    className={`${n <= active ? "done" : ""}${n === active ? " on" : ""}`}
-                  >
-                    {s.tag}
-                  </span>
-                ))}
+              <div className="ws-progress">
+                <div className="bar">
+                  <div ref={progBar} />
+                </div>
+                <div className="labels">
+                  {steps.map((s, n) => (
+                    <span
+                      key={s.tag}
+                      className={`${n <= active ? "done" : ""}${n === active ? " on" : ""}`}
+                    >
+                      {s.tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         <section className="ws-caps" data-screen-label="Capabilities">
           <h2 className="ws-display md">Built for both sides of the market.</h2>
