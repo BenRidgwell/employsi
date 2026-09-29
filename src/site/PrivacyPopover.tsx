@@ -2,15 +2,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
-/*
- * The three [CONFIRM: …] values were left open in the policy text as supplied.
- * They are shown as written rather than filled with a guess — an invented
- * contact address or ABN on a privacy policy is worse than a visible gap.
- * Replace them here before this reaches employsi.com.au.
- */
-const PRIVACY_CONTACT = "[CONFIRM: privacy contact email]";
-const ENTITY = "[CONFIRM: entity name], ABN [CONFIRM]";
-const UPDATED = "[CONFIRM: date]";
+const PRIVACY_CONTACT = "support@employsi.com.au";
+const ENTITY = "Employsi, ABN 59 964 624 290";
 
 // Each claim below was checked against the code on 2026-09-29: sessions expire
 // after 30 days (lib/auth.ts), a search is recorded without its text
@@ -69,17 +62,30 @@ export function PrivacyPopover() {
             Policy explains how we collect, use, disclose and protect personal information.
           </p>
           <ul className="list-disc space-y-2 pl-5 text-[13px] leading-relaxed text-ink-2">
-            {PRINCIPLES.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
+            {PRINCIPLES.map((p) => {
+              const [before, after] = p.split(PRIVACY_CONTACT);
+              return (
+                <li key={p}>
+                  {after === undefined ? (
+                    p
+                  ) : (
+                    <>
+                      {before}
+                      <a href={`mailto:${PRIVACY_CONTACT}`} className="text-ink underline">
+                        {PRIVACY_CONTACT}
+                      </a>
+                      {after}
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           <p className="text-[13px] leading-relaxed text-ink-2">
             We are committed to conducting our business in accordance with these principles in order
             to ensure that the confidentiality of personal information is protected and maintained.
           </p>
-          <p className="pt-1 text-[11px] text-ink-3">
-            {ENTITY} · Last updated {UPDATED}
-          </p>
+          <p className="pt-1 text-[11px] text-ink-3">{ENTITY}</p>
         </div>
       </PopoverContent>
     </Popover>
