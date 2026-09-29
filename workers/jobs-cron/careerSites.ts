@@ -165,7 +165,9 @@ type Platform =
   | "cjd"
   | "jibe"
   | "delorean"
-  | "googlecareers";
+  | "googlecareers"
+  | "data3"
+  | "glencore";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -399,6 +401,27 @@ interface SiteDef {
    * Everywhere else the board belongs to one employer and this is unused.
    */
   expectCompany?: string;
+  /**
+   * sfrmkapi only: sort the walk by this key instead of "recent", and PLACE
+   * roles by walking these facet values — for tenants whose search results
+   * carry no location at all.
+   *
+   * Standard Chartered is the case (measured 2026-09-29, totalJobs 1,173).
+   * Its rows carry id, title, start date, area and currency, and nothing that
+   * says where the role is, so without this every role would fall to the home
+   * hub. The location exists only as a search FACET, which the service filters
+   * on exactly (`facetFilters: {jobLocationCity: ["Bangalore"]}` -> 120).
+   *
+   * "date" rather than "recent" because the sort decides whether a walk reads
+   * the board or samples it. With "recent" (and "id") the order is re-shuffled
+   * per request — the same page twice shared 0 of 10 ids — and with "title"
+   * roles sharing a title tie, so the full walk held 835 unique of 1,173. With
+   * "date" the unfiltered walk returned 1,173 of 1,173 unique, and a filtered
+   * one 275 of 275 (China). Bendigo, the first tenant, leaves this unset and
+   * keeps the repeated-pass walk written for it.
+   */
+  sfRmkSort?: string;
+  sfRmkPlaces?: [facetField: string, value: string][];
 }
 
 // Google's own board places by METRO, not by city name — the county rule
@@ -6592,6 +6615,11 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
   // consecutive misses the walk gives up and returns what it has.
   const MISS_BUDGET = 3;
   let misses = 0;
+  // A WINDOW of the board, for a walk too long for one tick — the Woolworths
+  // pattern, which pageFrom already serves on Avature. This reader walks one
+  // page at a time, ~1s each, and a scheduled Worker cancels a walk of ~50s
+  // (measured on Woolworths), so the deepest boards are split across ticks.
+  const from = site.pageFrom ?? 0;
   for (let page = 0; page < max;) {
     const json = await getJson<{ total?: number; jobPostings?: WorkdayPosting[] }>(site.endpoint, {
       method: "POST",
@@ -6599,7 +6627,7 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
       body: JSON.stringify({
         appliedFacets: site.appliedFacets ?? {},
         limit: WD_PAGE,
-        offset: page * WD_PAGE,
+        offset: (from + page) * WD_PAGE,
         searchText: "",
       }),
     });
@@ -6645,9 +6673,15 @@ async function fetchWorkday(site: SiteDef): Promise<PortalJob[]> {
     }
     if (postings.length < WD_PAGE) break;
   }
-  if (advertised && out.length < advertised) {
+  // What THIS window should hold: the rest of the board from its first page,
+  // capped by its own page count.
+  const expected = advertised
+    ? Math.min(max * WD_PAGE, Math.max(0, advertised - from * WD_PAGE))
+    : 0;
+  if (expected && out.length < expected) {
     console.log(
-      `workday ${site.id}: ${out.length} rows vs ${advertised} advertised — walk incomplete`,
+      `workday ${site.key ?? site.id}: ${out.length} rows vs ${expected} expected ` +
+        `(${advertised} advertised) — walk incomplete`,
     );
   }
   return out;
@@ -8967,6 +9001,8 @@ interface SfRmkJob {
   filter2?: string[];
   businessUnit_obj?: string[];
   custEmploymentType?: string[];
+  /** Standard Chartered's "Area of Interest". */
+  mfield1?: string[];
 }
 
 /**
@@ -8992,7 +9028,111 @@ interface SfRmkJob {
 const SFRMK_PASSES = 4;
 const SFRMK_PAGES = 40;
 
+/** One page of the RMK search service, or null when it could not be read. */
+async function sfRmkPage(
+  site: SiteDef,
+  page: number,
+  facetFilters?: Record<string, string[]>,
+): Promise<{ hits: SfRmkJob[]; total: number } | null> {
+  const res = await getJson<{
+    jobSearchResult?: { response?: SfRmkJob }[];
+    totalJobs?: number;
+  }>(`${site.endpoint}/services/recruiting/v1/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      keywords: "",
+      locale: "en_GB",
+      location: "",
+      pageNumber: page,
+      sortBy: site.sfRmkSort ?? "recent",
+      ...(facetFilters ? { facetFilters } : {}),
+    }),
+  });
+  if (!res) return null;
+  return {
+    hits: (res.jobSearchResult ?? []).map((h) => h.response ?? {}).filter((r) => r.id),
+    total: res.totalJobs ?? 0,
+  };
+}
+
+/**
+ * Every role on a query, walked by its own advertised total in parallel
+ * windows. Only sound under a deterministic sort — see SiteDef.sfRmkSort.
+ */
+async function sfRmkWalk(
+  site: SiteDef,
+  facetFilters?: Record<string, string[]>,
+): Promise<SfRmkJob[] | null> {
+  const first = await sfRmkPage(site, 0, facetFilters);
+  if (!first) return null;
+  const out = [...first.hits];
+  const pages = Math.ceil(first.total / 10);
+  const rest = await pagedParallel(
+    async (i) => (await sfRmkPage(site, i + 1, facetFilters))?.hits ?? null,
+    10,
+    Math.max(0, pages - 1),
+    `${site.key ?? site.id}${facetFilters ? ` ${JSON.stringify(facetFilters)}` : ""}`,
+  );
+  return [...out, ...rest];
+}
+
+/**
+ * The faceted walk (SiteDef.sfRmkPlaces): the whole board once, bounded and
+ * checked by `totalJobs`, then one walk per place to say where each role is.
+ * A role no place claims is still archived — unplaced, with no location —
+ * which is the honest reading of a board that does not say.
+ */
+async function fetchSfRmkFaceted(site: SiteDef): Promise<PortalJob[]> {
+  const head = await sfRmkPage(site, 0);
+  if (!head || !head.total) return [];
+  const all = await sfRmkWalk(site);
+  if (!all) return [];
+  const byId = new Map(all.map((r) => [String(r.id), r]));
+  if (byId.size < head.total) {
+    console.log(
+      `sfrmkapi ${site.key ?? site.id}: walked ${byId.size} unique of ${head.total} — ` +
+        `the sort is no longer deterministic, or the board moved mid-walk`,
+    );
+  }
+  // FIRST place wins, so list the specific (a city) before the general (a
+  // market): a role tagged "Bangalore" is not then re-filed under "India".
+  const placeOf = new Map<string, string>();
+  const tagged = await Promise.all(
+    (site.sfRmkPlaces ?? []).map(async ([field, value]) => ({
+      value,
+      rows: (await sfRmkWalk(site, { [field]: [value] })) ?? [],
+    })),
+  );
+  for (const { value, rows } of tagged) {
+    for (const r of rows) if (!placeOf.has(String(r.id))) placeOf.set(String(r.id), value);
+  }
+
+  const out: PortalJob[] = [];
+  for (const r of byId.values()) {
+    const title = clean(r.unifiedStandardTitle ?? "");
+    if (!title) continue;
+    const posted = (r.unifiedStandardStart ?? "").replace(
+      /^(\d{2})\/(\d{2})\/(\d{4})$/,
+      "$3-$2-$1",
+    );
+    out.push(
+      job(
+        site,
+        title,
+        placeOf.get(String(r.id)) ?? "",
+        // urlTitle arrives HTML-escaped ("&amp;"), which is not part of the path.
+        `${site.origin}/job/${clean(r.urlTitle ?? "")}/${r.id}-en_GB`,
+        posted ? isoDay(posted) : "",
+        clean(r.mfield1?.[0] ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 async function fetchSfRmkApi(site: SiteDef): Promise<PortalJob[]> {
+  if (site.sfRmkPlaces) return fetchSfRmkFaceted(site);
   const rows = new Map<string, SfRmkJob>();
   let total = 0;
   for (let pass = 0; pass < SFRMK_PASSES; pass++) {
@@ -11553,9 +11693,142 @@ async function fetchGoogleCareers(site: SiteDef): Promise<PortalJob[]> {
   return out.filter((j) => !seen.has(j.url) && (seen.add(j.url), true));
 }
 
+// ── Data#3 ────────────────────────────────────────────────────────────────────
+/**
+ * No ATS on the public side. www.data3.com/advertised-roles/ iframes a
+ * Salesforce Sites Visualforce page, which server-renders the whole board on
+ * one page with no pager. Measured 2026-09-29: 18 roles, each a
+ * `div.job-row` holding labelled <li> fields — Title, Job Type, Location,
+ * Job Reference — a "Date Listed" as dd/mm/yyyy, and a D3JobPageDetail link.
+ *
+ * `?department=HR` in the iframe's URL is not a filter: with it and without it
+ * the page lists the same 18, and any other department returns none. The
+ * endpoint omits it.
+ *
+ * Locations are bare office names. All resolve through HUB_MATCH except the
+ * head office, Toowong, a Brisbane suburb — see the site's hubHints.
+ */
+async function fetchData3(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const blocks = html.split(/class="job-row\b/).slice(1);
+  if (!blocks.length && !/job-table/.test(html)) {
+    console.log("data3: no job-table on the page — the Visualforce template changed");
+  }
+  const field = (b: string, label: string): string =>
+    clean(
+      b.match(new RegExp(`<span class="label">${label}:\\s*</span>([\\s\\S]*?)</li>`))?.[1] ?? "",
+    );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const b of blocks) {
+    const title = field(b, "Title");
+    const href = b.match(/href="([^"]*D3JobPageDetail\?id=[^"]+)"/)?.[1];
+    if (!title || !href) continue;
+    const url = clean(href).replace(/(\.com)\/\/+/, "$1/");
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const listed = b.match(/Date Listed<\/div>\s*<div[^>]*>\s*(\d{2})\/(\d{2})\/(\d{4})/);
+    out.push(
+      job(
+        site,
+        title,
+        field(b, "Location"),
+        url,
+        listed ? `${listed[3]}-${listed[2]}-${listed[1]}` : today(),
+        field(b, "Job Type") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Glencore ─────────────────────────────────────────────────────────────────
+/**
+ * Glencore's own board, www.glencore.com/en/careers/jobs, is a Magnolia CMS
+ * widget over a public JSON endpoint that returns the WHOLE board in one call.
+ * It aggregates six upstream feeds (measured 2026-09-29, 314 rows): NGA.NET
+ * "Global" 123 + "Raglan" 8, Lever (Elk Valley Resources) 101, Workday
+ * "Australia Coal" 40 and "Glencore CH" 29, and SuccessFactors copper 13.
+ * NGA.NET is the host this file cannot read (an AWS WAF CAPTCHA; it 405s), so
+ * this endpoint is the only way to those 131 roles at all — and one reader
+ * here replaces five that would each have read one upstream board.
+ *
+ * `searchCriteria={"commodity":["!KCC"]}` is the filter glencore.com's own page
+ * sends, hiding the Kamoto (KCC, DRC) roles; without it the endpoint reports
+ * 322. The feed mirrors what Glencore itself publishes.
+ *
+ * ONE ROW PER ROLE. The Lever feed repeats a posting once per site, so 314 rows
+ * hold 282 distinct job URLs. A role is placed at its first listed site that
+ * lands on a hub, else recorded at its first site unplaced — the rule the
+ * Google feed uses. 38 rows carry a country of U+200B, a zero-width space;
+ * clean() does not strip it, so it is removed here.
+ */
+interface GlencoreRow {
+  title?: string;
+  url?: string;
+  city?: string;
+  region?: string;
+  country?: string;
+  feed?: string;
+  startDate?: number;
+}
+
+async function fetchGlencore(site: SiteDef): Promise<PortalJob[]> {
+  const q = new URLSearchParams({
+    locale: "en",
+    sortBy: "title-asc",
+    offset: "0",
+    limit: "1000",
+    searchCriteria: JSON.stringify({ commodity: ["!KCC"] }),
+    keyword: "",
+  });
+  const res = await getJson<{ totalResults?: number; data?: GlencoreRow[] }>(
+    `${site.endpoint}?${q}`,
+  );
+  const rows = res?.data ?? [];
+  if (res?.totalResults && rows.length < res.totalResults) {
+    console.log(`glencore: ${rows.length} rows of ${res.totalResults} — raise the limit`);
+  }
+  const home = HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/;
+  const byUrl = new Map<string, { r: GlencoreRow; locs: string[] }>();
+  for (const r of rows) {
+    const title = clean(r.title ?? "");
+    const url = (r.url ?? "").trim();
+    if (!title || !url) continue;
+    const loc = [r.city, r.region, r.country]
+      .map((x) => clean((x ?? "").replace(/\u200b/g, "")))
+      .filter(Boolean)
+      .join(", ");
+    const e = byUrl.get(url);
+    if (e) {
+      if (loc && !e.locs.includes(loc)) e.locs.push(loc);
+    } else byUrl.set(url, { r, locs: loc ? [loc] : [] });
+  }
+  const out: PortalJob[] = [];
+  for (const [url, { r, locs }] of byUrl) {
+    const loc =
+      locs.find((l) => hubFor(l, site.homeHub, home, site.hubHints) !== null) ?? locs[0] ?? "";
+    const ms = Number(r.startDate);
+    out.push(
+      job(
+        site,
+        clean(r.title ?? ""),
+        loc,
+        url,
+        ms > 1e12 && ms < 1e13 ? new Date(ms).toISOString().slice(0, 10) : today(),
+        clean(r.feed ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jibe: fetchJibe,
   googlecareers: fetchGoogleCareers,
+  data3: fetchData3,
+  glencore: fetchGlencore,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -11721,6 +11994,9 @@ export const SOURCE_TAG: Record<Platform, string> = {
   // Alphabet's own board, not a vendor platform — named for the page, as
   // `delorean` and `cjd` are.
   googlecareers: "googl",
+  // Data#3's own Salesforce Sites page, named for the employer as `cjd` is.
+  data3: "data3",
+  glencore: "glen",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
