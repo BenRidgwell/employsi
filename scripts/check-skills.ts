@@ -699,6 +699,25 @@ if (ACCOUNT && DB && TOKEN) {
     ["Hotel Cleanliness Expert", "Cleaning & Facilities"],
     ["Hotel Cleanliness Expert (Housekeeping Attendant)", "Cleaning & Facilities"],
     ["Assistant Director of Housekeeping", "Cleaning & Facilities"],
+
+    // Found 2026-09-29 by running the 562 occupations of Singapore's
+    // Occupational Wage Survey through the matcher as a vocabulary probe, then
+    // ranking the misses by how many archived rows they left unmapped. Together
+    // these five reached 2,464 titles / 4,518 rows that matched NOTHING.
+    ["Physical Therapist", "Allied Health"],
+    ["Physical Therapist", "Physiotherapy"],
+    ["Physical Therapy Assistant", "Physiotherapy"],
+    // RETAIL, not business development — asserted after checking the employers
+    // (Telstra Retail 362, Eagers Automotive 130, Spotlight, Flight Centre) and
+    // after this table first claimed the opposite and was wrong.
+    ["Sales Consultant", "Retail & Customer Service"],
+    ["Sales Consultant", "Retail Sales"],
+    ["New Vehicle Sales Consultant", "Retail Sales"],
+    ["Relationship Manager", "Banking & Lending"],
+    ["Premier Relationship Manager", "Banking & Lending"],
+    ["Guest Experience Expert", "Hospitality & Food Service"],
+    ["Network Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "Electrical Engineering"],
   ];
   const MUST_NOT: [string, string][] = [
     // The false positive itself, in the three shapes the archive holds: the
@@ -713,6 +732,16 @@ if (ACCOUNT && DB && TOKEN) {
     // And the term must still do its real job: these ARE commercial roles.
     ["Commercial Manager", "Cleaning & Facilities"],
     ["Commercial Finance Analyst", "Cleaning & Facilities"],
+
+    // "systems engineer" is REFUSED as a bare term on both sides. 453 of its 554
+    // unmapped rows are the bare title with nothing to disambiguate it, and the
+    // employers are BAE Systems, Worley, BHP and AECOM as much as Cloudflare. A
+    // bare term would hand all of them to IT and would also steal the control
+    // systems engineers that Instrumentation & Control maps correctly today.
+    ["Systems Engineer", "IT & Systems"],
+    ["Senior Systems Engineer", "IT & Systems"],
+    ["Control Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "IT & Systems"],
   ];
   const bad: string[] = [];
   for (const [title, skill] of MUST) {
