@@ -17764,6 +17764,7 @@ body {
 }
 .cponetcredit a {
   color: inherit;
+}
 
 /* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
 /* The card stays open across the switch and cross-fades its contents, rather
