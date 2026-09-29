@@ -1407,15 +1407,47 @@ NOT_IN_SOURCE = {
 
     # Independent statutory authorities. None of the 38 rows is one of these,
     # so the absence is the collection's scope rather than a naming mismatch.
-    'qld:Queensland Building and Construction Commission':
-        'no row names it, and no independent statutory authority appears in '
-        'any of the 38 rows',
     'qld:Queensland Curriculum and Assessment Authority':
         'no row names it; statutory authority, outside the collection',
-    'qld:Crime and Corruption Commission':
-        'no row names it; independent statutory body, outside the collection',
+    # ── CROSS RIVER RAIL: THE REPORT OPENS AND GIVES TWO DIFFERENT TOTALS ───
+    # Reachable and read (crossriverrail.qld.gov.au links the 2025-26 report from
+    # its own root, 6,963,181 bytes), so "outside the collection" is answered and
+    # what replaces it is about the document. It states the same quantity twice,
+    # in almost the same words, and the two disagree:
+    #
+    #   p20   "The number of employees (including full-time and part-time
+    #          employees) measured on a full-time equivalent (FTE) basis was
+    #          238 as at 30 June 2026"
+    #   p35   Note 4, under "The number of employees including both full-time
+    #          employees and part-time employees measured on a full-time
+    #          equivalent basis is:" — Total 283 (2025: 309)
+    #
+    # 238 AND 283 ARE THE SAME DIGITS TRANSPOSED, and the note is the one that
+    # adds up: 210 funded by the Delivery Authority plus 73 funded by DTMR and
+    # QR is 283, and 236 + 73 is 309. So the prose is very probably the typo —
+    # but "very probably" is an inference about which number a proofreader
+    # missed, not a measurement, and this file does not file those.
+    #
+    # AND EVEN THE NOTE WOULD NEED A DECISION. Its own split says 73 of the 283
+    # are "Employees funded by DTMR and QR", and p20 says the Authority "may
+    # also engage officers on secondment and interchange from other Queensland
+    # Government entities" — so filing 283 puts 73 people on this card who are
+    # most likely inside Transport and Main Roads' 6,573, while filing 210 takes
+    # a component and calls it the total. Two separate reasons not to file, and
+    # only the first goes away if the next edition agrees with itself.
     'qld:Cross River Rail Delivery Authority':
-        'no row names it; statutory authority, outside the collection',
+        'ITS REPORT OPENS AND GIVES TWO DIFFERENT TOTALS FOR THE SAME THING. '
+        'crossriverrail.qld.gov.au links the 2025-26 annual report from its own '
+        'root and it reads fine, so "outside the collection" is answered. p20 '
+        'says the FTE workforce "was 238 as at 30 June 2026"; Note 4 on p35, '
+        'introduced with almost the same sentence, gives Total 283 (2025: 309). '
+        'The note is the one that adds up — 210 funded by the Delivery Authority '
+        'plus 73 funded by DTMR and QR — so the prose is probably a '
+        'transposition, and probably is not a measurement. Separately, those 73 '
+        'are other agencies\' people: 283 would put them on this card as well as '
+        "inside Transport and Main Roads' 6,573, and 210 is a component being "
+        'called a total. The first objection goes away if the next edition '
+        'agrees with itself; the second does not',
     'qld:Office of the Public Guardian':
         'no row names it; independent statutory office, outside the collection',
     'qld:QLeave':
@@ -1423,14 +1455,10 @@ NOT_IN_SOURCE = {
         'statutory body, outside the collection',
     'qld:Queensland Racing Integrity Commission':
         'no row names it; statutory body, outside the collection',
-    'qld:Health and Wellbeing Queensland':
-        'no row names it; statutory body, outside the collection',
     'qld:National Injury Insurance Agency Queensland':
         'no row names it; statutory agency, outside the collection',
     'qld:Queensland Mental Health Commission':
         'no row names it; statutory body, outside the collection',
-    'qld:Queensland Rural and Industry Development Authority':
-        'no row names it; statutory authority, outside the collection',
     'qld:Energy and Water Ombudsman Queensland':
         'no row names it; statutory scheme, outside the collection',
     'qld:Stadiums Queensland':
@@ -2906,6 +2934,136 @@ AGENCY_REPORTS = {
     # 85 + 2,249 + 189 + 21 = 2,544. Pointed at a component column instead, the
     # spec fails with "columns [0, 1, 2, 3] of the row sum to 2,544.0 against the
     # 2,249.0 in column 1".
+    # ── QUEENSLAND'S STATUTORY BODIES, ONE REPORT AT A TIME ─────────────────
+    # Nineteen Queensland cards say some version of "no row names it; statutory
+    # authority, outside the collection". That is true of the State of the Sector
+    # workbooks, which cover DEPARTMENTS, and it was never a statement about the
+    # bodies — each of them publishes an annual report under the Queensland
+    # annual-report requirements, which mandate a workforce section. These are
+    # the first of them, and they are the reason this table stopped being called
+    # NSW_AGENCY_REPORTS.
+    #
+    # THEY ARE A YEAR AHEAD OF NEW SOUTH WALES, which is worth expecting rather
+    # than reading as an error: Queensland's 2025-26 reports were published in
+    # September 2026, so these say Jun 2026 where the NSW specs say Jun 2025.
+    # The jurisdiction's existing `qld` source is different again — Mar 2026,
+    # from the workbook — so a Queensland card filed from here and one filed
+    # from the workbook carry different dates ON PURPOSE. That is exactly why
+    # each report is its own source.
+    #
+    # AND THEY ARE FTE, like the rest of Queensland. The workbooks publish FTE
+    # and so do these, so the jurisdiction stays internally comparable.
+
+    # p92, Note 3 to the financial statements: "Number of full-time equivalent
+    # (FTE) employees¹ 337 338" under a 2026 / 2025 header.
+    #
+    # TABLE 4 ON p68 IS THE SAME FIGURE UNROUNDED AND CANNOT BE REACHED FROM
+    # HERE. It gives FTE by division — 90.56 + 62.84 + 7.00 + 73.14 + 76.70 +
+    # 26.55 = 336.79 exactly — which is the strongest check in the document and
+    # is twenty-four pages from the total this spec reads. `stated` only ever
+    # sees pages carrying the needle, so the reconciliation was done by hand and
+    # `header` is what the machine holds. 336.79 rounds to the 337 filed.
+    #
+    # SIXTY-TWO OF THESE PEOPLE ARE ALSO ON THE QUEENSLAND POLICE CARD, and the
+    # report says so in the footnote this spec reads past: "As at 30 June 2026 it
+    # includes 62 (2025: 62) police FTE positions seconded from the QPS and paid
+    # for by the CCC". Table 4's note puts it as a share — 18.41 per cent police,
+    # 81.59 per cent civilian. So the card shows 337 and 62 of them are inside
+    # the Queensland Police Service's 19,132 as well.
+    #
+    # FILED ANYWAY, AND THE REASONING IS NOT THE DESTINATION NSW ONE. There the
+    # WHOLE card sat inside another figure and filing it would have put the same
+    # 187 people on two cards with nothing left over. Here 275 of 337 are the
+    # CCC's own, the overlap is the CCC's own published composition, and
+    # subtracting 62 would publish a number this codebase computed rather than
+    # one the document states. The overlap is 0.3% of the Queensland Police
+    # figure and is recorded here rather than netted out.
+    'qld-ccc': dict(
+        label='QLD: Crime and Corruption Commission',
+        agency='Crime and Corruption Commission',
+        agency_id='qld-gov-crime-and-corruption-commission',
+        url='https://www.ccc.qld.gov.au/sites/default/files/Docs/Publications/'
+            'CCC/CCC-Annual-Report-2025-26.pdf',
+        needle='Number of full-time equivalent (FTE) employees',
+        total=r'^Number of full-time equivalent \(FTE\) employees',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2026 2025',
+        proof=r'Financial Statements 2025.26',
+        unit='fte', asof='Jun 2026'),
+    # p18, Table 1a "QRIDA employees by employment type as at 30 June 2026":
+    # Permanent 142.20 / 143.26, Temporary 47.90 / 47.98, Total (FTE) 190.10 /
+    # 191.24. Both columns reconcile exactly.
+    #
+    # THE COLUMNS ARE OLDEST FIRST AND THAT IS THE WHOLE TRAP. The header reads
+    # "2024-25 2025-26", so `now_i` is 1 — the opposite of DPHI, where 2024-25
+    # comes first and `now_i` is 0. Nothing in the numbers says which way round a
+    # table runs; 190.10 and 191.24 are both plausible as either year, and the
+    # components reconcile in both columns, so the control for `now_i=0` files
+    # 190.10 without complaint. `header` is the only thing that makes column 1
+    # the current year, and it is asserted verbatim for that reason.
+    #
+    # NOT THE FINANCIAL NOTE THIS TIME, unlike the CCC: p40 gives "Full-time
+    # equivalent employees as at 30 June* 191 191" — both years rounded to the
+    # same integer, so it cannot show a change at all. Table 1a carries the
+    # decimals and the movement.
+    'qld-qrida': dict(
+        label='QLD: Rural and Industry Development Authority',
+        agency='Queensland Rural and Industry Development Authority',
+        agency_id='qld-gov-queensland-rural-and-industry-development-authority',
+        url='https://www.qrida.qld.gov.au/sites/default/files/2026-09/'
+            'QRIDA_annual_report_2025-2026_full_compressed.pdf',
+        needle='QRIDA employees by employment type as at 30 June 2026',
+        total=r'^Total \(FTE\)',
+        comp=r'^(?:Permanent|Temporary)\b',
+        ncols=2, now_i=1, prev_i=0, sums=[(0,), (1,)],
+        header=r'2024-25 2025-26',
+        proof=r'as at 30 June 2026',
+        unit='fte', asof='Jun 2026'),
+    # Note 6 to the financial statements: "Full-Time Equivalent Employees 71.10
+    # 67.55" under 2026 / 2025. Corroborated on p39 — "As at the fortnight ending
+    # 30 June 2026, HWQld's total workforce comprised 71.1 full-time equivalent
+    # (FTE)" — which also names the basis: MOHRI, the fortnight ending 30 June.
+    #
+    # THE SMALLEST CARD FILED ON THIS ROUTE, and the corroboration is on another
+    # page, so `header` is again the whole machine-checked guard. Its p39 note
+    # that HWQld "maintains a core-funded, ongoing establishment of 69 FTE
+    # positions" is the sanity check a reader wants beside 71.10: the workforce
+    # is slightly over its funded establishment, not wildly away from it.
+    # B2-4 in the financial statements: "Full-Time Equivalent Employees 688
+    # 673" under "Notes 2026 2025". Same shape as Health and Wellbeing
+    # Queensland's, which is not a coincidence — it is the form Queensland
+    # Treasury's financial reporting requirements prescribe, so this pair of
+    # specs is the template for the rest of the jurisdiction.
+    #
+    # THE SANITY CHECK IS ON p41 AND IS AN ESTABLISHMENT, NOT AN ACTUAL: the
+    # report says the QBCC operated within "its approved workforce establishment
+    # of 765 FTE employees". 688 against an approved 765 is the right side of
+    # that ceiling, which is what a reader wants beside the number — but a
+    # ceiling cannot corroborate a count and is not used as one.
+    'qld-qbcc': dict(
+        label='QLD: Building and Construction Commission',
+        agency='Queensland Building and Construction Commission',
+        agency_id='qld-gov-queensland-building-and-construction-commission',
+        url='https://www.qbcc.qld.gov.au/sites/default/files/documents/'
+            'publications-qbcc-annual-report-2025-2026.pdf',
+        needle='Full-Time Equivalent Employees',
+        total=r'^Full-Time Equivalent Employees',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2026 2025',
+        proof=r'for the year ended 30 June 2026',
+        unit='fte', asof='Jun 2026'),
+    'qld-hwq': dict(
+        label='QLD: Health and Wellbeing Queensland',
+        agency='Health and Wellbeing Queensland',
+        agency_id='qld-gov-health-and-wellbeing-queensland',
+        url='https://hw.qld.gov.au/wp-content/uploads/2026/09/'
+            'HWQld-AnnualReport-2025-2026.pdf',
+        needle='Full-Time Equivalent Employees',
+        total=r'^Full-Time Equivalent Employees',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2026 2025',
+        proof=r'for the year ended 30 June 2026',
+        unit='fte', asof='Jun 2026'),
     'aps-asic': dict(
         label='APS: Australian Securities and Investments Commission',
         agency='Australian Securities and Investments Commission',

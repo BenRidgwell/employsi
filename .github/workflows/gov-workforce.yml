@@ -170,7 +170,7 @@ jobs:
           # it simply never refreshes again, which is a card going quietly
           # stale rather than visibly blank. That is the harder failure to see,
           # so the list is kept in step with NSW_AGENCY_REPORTS.
-          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw,nsw-tco,nsw-premiers,nsw-trains,nsw-dphi,nsw-pdnsw,nsw-forestry,nsw-icac,nsw-essential,nsw-waternsw,nsw-landcom,nsw-ipart,nsw-rfs,nsw-tafensw,nsw-maas,nsw-taronga,nsw-epa,aps-asic \
+          python scripts/gen-gov-workforce.py --only qld,sa,nsw,nz,nt,tas,perth,nsw-nesa,nsw-dcj,nsw-dcs,nsw-dcceew,nsw-doe,nsw-dpird,nsw-ra,nsw-lls,nsw-icare,nsw-treasury,nsw-tfnsw,nsw-dciths,nsw-tag,nsw-snsw,nsw-sport,nsw-soh,nsw-ecnsw,nsw-slnsw,nsw-ausmus,nsw-ses,nsw-ombo,nsw-mnsw,nsw-agnsw,nsw-sydwater,nsw-huntwater,nsw-audit,nsw-odpp,nsw-mhnsw,nsw-tco,nsw-premiers,nsw-trains,nsw-dphi,nsw-pdnsw,nsw-forestry,nsw-icac,nsw-essential,nsw-waternsw,nsw-landcom,nsw-ipart,nsw-rfs,nsw-tafensw,nsw-maas,nsw-taronga,nsw-epa,aps-asic,qld-ccc,qld-qrida,qld-hwq,qld-qbcc \
             ${DUMP:+--dump-source "$DUMP"} \
             2>&1 | tee /tmp/gov-diagnosis.txt
 
@@ -219,6 +219,27 @@ jobs:
       # One of its six documents still needs a runner — safework.sa.gov.au 403s
       # the authoring sandbox — so if that probe alone prints a refusal, that is
       # the expected result rather than a stale citation.
+
+      # QUEENSLAND'S STATUTORY BODIES, WHERE SOUTH AUSTRALIA'S PROBE LEFT OFF.
+      # Nineteen cards said "statutory authority, outside the collection", which
+      # is true of the State of the Sector workbooks and was never true of the
+      # bodies — each publishes an annual report with a workforce section. Four
+      # are now filed from theirs. The rest are behind the doorman this whole
+      # workflow exists for: qcaa.qld.edu.au, qleave, qric, the Ombudsman and
+      # EWOQ all answer 403 to the authoring sandbox, and
+      # publications.qld.gov.au — the portal that would list every one of these
+      # at once — serves its homepage but answers its /dataset SEARCH with
+      # `202 and zero bytes`, the AWS WAF challenge shape already recorded for
+      # data.qld.gov.au.
+      #
+      # It asks WHERE THE DOCUMENT IS, not how many people. Four rounds of the
+      # South Australian probe established that guessing a path measures the
+      # guess, so this prints the links each site publishes and the specs get
+      # written against documents.
+      - name: Probe the Queensland statutory bodies
+        if: always()
+        continue-on-error: true
+        run: python scripts/qld-agency-probe.py
 
       # New South Wales publishes no downloadable workforce profile any more —
       # the PSC page carries none even rendered. Its Local Health Districts
