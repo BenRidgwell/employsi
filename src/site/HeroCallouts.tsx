@@ -50,7 +50,10 @@ const AY_UP = 440;
 const AY_DOWN = 640;
 const MID_Y = (AY_UP + AY_DOWN) / 2;
 const LOWEST_Y = AY_DOWN + 62 + 210 + 24;
-const MONO = "'JetBrains Mono', monospace";
+// The label face. The Callouts Overlay design set these in JetBrains Mono; the
+// owner asked for Inter, the site's label face everywhere else (__root.tsx loads
+// it), so it matches the ticker and eyebrows beside it.
+const LABEL = "var(--ws-label)";
 // Scene cues (seconds): Draw 1.6, Rising 0.9, Falling 3.5, Out 1.
 const CUE_RISING = 1.6;
 const CUE_FALLING = 2.5;
@@ -214,7 +217,7 @@ function Callout({
       >
         <div
           style={{
-            fontFamily: MONO,
+            fontFamily: LABEL,
             fontSize: 15,
             letterSpacing: "0.16em",
             textTransform: "uppercase",
@@ -253,7 +256,7 @@ function Callout({
           >
             <span
               style={{
-                fontFamily: MONO,
+                fontFamily: LABEL,
                 fontSize: 13,
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
@@ -262,7 +265,7 @@ function Callout({
             >
               Median salary
             </span>
-            <span style={{ fontFamily: MONO, fontSize: 20, fontWeight: 500 }}>
+            <span style={{ fontFamily: LABEL, fontSize: 20, fontWeight: 500 }}>
               {aud(skill.pay)}
             </span>
           </div>

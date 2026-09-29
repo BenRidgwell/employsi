@@ -16,25 +16,6 @@
    for every route by src/routes/__root.tsx.
    ========================================================================== */
 
-/* JetBrains Mono, for the hero callouts only — the Callouts Overlay design
-   sets their labels and salary in it. Nothing else on the site uses it, and
-   __root.tsx no longer loads it (Inter replaced it app-wide), so it is
-   declared here from the same files the old waitlist shipped. */
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/site/fonts/jetbrains-mono-400.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/site/fonts/jetbrains-mono-500.woff2") format("woff2");
-}
-
 .ws {
   --ws-n0: #ffffff;
   --ws-n50: #fafafa;
