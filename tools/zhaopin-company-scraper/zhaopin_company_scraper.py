@@ -102,6 +102,18 @@ def parse_result(r: dict) -> dict | None:
     }
 
 
+# A CSS-SELECTOR READING OF THIS PAGE WAS TRIED AND LOST, 2026-09-29. When the
+# Oxylabs credential died nobody could load a real results page, so the feed
+# briefly shipped two parsers — this one and a port of the card reading in
+# jiangyuxue666/job-market-analyzer (.joblist-box__item / .jobinfo__name / …) —
+# and reported which fired. The first run through a China exit answered
+# `__INITIAL_STATE__×13` with the card reading matching nothing, so it was
+# removed rather than carried as a parser nobody was sure about.
+#
+# What that repo contributed was the TRANSPORT, not the parsing: curl_cffi
+# presenting Chrome's TLS fingerprint, which is what scripts/zhaopin-to-d1.py
+# --cffi uses. This parser was never wrong; it only looked wrong because the
+# unblocker beneath it had stopped working.
 def parse_search_html(html: str) -> list:
     """Parse a rendered sou.zhaopin.com page (as returned by the Oxylabs Web
     Scraper API) into job dicts — the no-browser counterpart of scrape_company.

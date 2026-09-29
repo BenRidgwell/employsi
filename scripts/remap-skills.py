@@ -27,6 +27,8 @@ import json
 import os
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,15 +48,43 @@ if not TOKEN:
     sys.exit('CLOUDFLARE_API_TOKEN is required (needs D1 edit).')
 
 
-def d1(sql, params=None):
+def d1(sql, params=None, _tries=6):
+    """One D1 statement, with backoff.
+
+    THE WRITE LOOP BELOW IS RATE-LIMITED AND USED NOT TO KNOW IT. A remap of
+    ~3,800 rows issued ~3,800 requests and Cloudflare answered 429 partway
+    through every one of five patterns on 2026-09-29, leaving 445 rows written
+    and 3,355 not. The run reported nothing: the caller piped stdout through
+    `tail`, so the shell saw tail's exit status and the traceback scrolled past.
+
+    A 429 is not a failure to report and give up on, it is a rate to respect, so
+    it is retried here rather than raised. 5xx is retried too — a D1 hiccup
+    mid-remap leaves the archive half-rewritten, which is worse than slow.
+    """
     body = json.dumps({'sql': sql, 'params': params or []}).encode()
-    req = urllib.request.Request(API, data=body, headers={
-        'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        j = json.loads(r.read().decode())
-    if not j.get('success'):
-        raise RuntimeError(j.get('errors'))
-    return j['result'][0]['results']
+    delay = 1.0
+    for attempt in range(_tries):
+        req = urllib.request.Request(API, data=body, headers={
+            'Authorization': f'Bearer {TOKEN}', 'Content-Type': 'application/json'})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                j = json.loads(r.read().decode())
+            if not j.get('success'):
+                raise RuntimeError(j.get('errors'))
+            return j['result'][0]['results']
+        except urllib.error.HTTPError as e:
+            if e.code not in (429, 500, 502, 503, 504) or attempt == _tries - 1:
+                raise
+            # Honour Retry-After when D1 sends one; it knows better than we do.
+            wait = float(e.headers.get('Retry-After') or 0) or delay
+            sys.stderr.write(f'  {e.code}; waiting {wait:.0f}s\n')
+            time.sleep(wait)
+            delay = min(delay * 2, 30)
+        except urllib.error.URLError:
+            if attempt == _tries - 1:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 30)
 
 
 def map_skills(titles):
@@ -78,7 +108,34 @@ def map_skills(titles):
 #
 # The script also WRITES NULL when a row maps to nothing, so it was manufacturing
 # rows it could never revisit.
-rows = d1('SELECT job_key, title, company, skills FROM jobs '
+# SOURCES WHOSE SKILLS CANNOT BE REPRODUCED FROM THE TITLE, and which this
+# script must therefore never SHRINK.
+#
+# A remap re-runs skillsForText over the row's own title. That is faithful only
+# where the scrape used the title alone. Six source families did not:
+#
+#   mycareersfuture  title + the ad's own skill tags
+#   nt-gov           title + section
+#   tas-gov          title + category
+#   vic-gov          title + occupation
+#   wa-gov           title + occupation
+#   portal-*         title + the employer's sector (careerSites)
+#
+# NONE of that extra text is stored in the jobs table, so it cannot be replayed.
+# A title-only remap of those rows deletes every skill that came from it — and
+# mycareersfuture alone is 48,595 rows, the archive's second-largest source.
+#
+# So for these the write is a UNION: new skills are added, old ones kept.
+# Everywhere else the row is replaced as before, which is what the original
+# 'Principal' narrowing needed. Widening still reaches every row; only the
+# deletions are held back, and only where a deletion would be an artefact of
+# what this script cannot see rather than a decision the taxonomy made.
+def keeps_old(source):
+    return (source or '').startswith('portal-') or (source or '') in {
+        'mycareersfuture', 'nt-gov', 'tas-gov', 'vic-gov', 'wa-gov',
+    }
+
+rows = d1('SELECT job_key, title, company, source, skills FROM jobs '
           'WHERE title LIKE ? LIMIT ?', [LIKE, LIMIT])
 sys.stderr.write(f'{len(rows)} rows matching {LIKE!r}\n')
 
@@ -89,8 +146,13 @@ for r, sk in zip(rows, fresh):
         old = json.loads(r['skills'] or '[]')
     except Exception:
         old = []
-    if sorted(map(str, old)) != sorted(sk):
-        changed.append((r['job_key'], r['title'], r['company'], old, sk))
+    new = sk
+    if keeps_old(r.get('source')):
+        # Union, order-stable: everything the row already had, plus anything
+        # the current taxonomy now finds in the title.
+        new = list(old) + [x for x in sk if x not in old]
+    if sorted(map(str, old)) != sorted(map(str, new)):
+        changed.append((r['job_key'], r['title'], r['company'], old, new))
 
 sys.stderr.write(f'{len(changed)} rows would change\n')
 for k, t, c, old, new in changed[:15]:
@@ -101,8 +163,27 @@ if len(changed) > 15:
 if DRY or not changed:
     sys.exit(0)
 
-for i in range(0, len(changed), 20):
-    for k, _t, _c, _old, new in changed[i:i + 20]:
-        d1('UPDATE jobs SET skills = ? WHERE job_key = ?',
-           [json.dumps(new) if new else None, k])
+# ONE STATEMENT PER BATCH, not per row. The old loop sent an UPDATE for every
+# changed row, which is how a 3,800-row remap became 3,800 requests and met the
+# rate limit. A CASE over the batch's job_keys does the same writes in one
+# statement, so the same remap is ~40 requests. The keys are bound as parameters
+# rather than interpolated, so a title's quoting cannot reach the SQL.
+# 33, MEASURED, NOT CHOSEN. Each row costs three bound parameters — the key and
+# the value in the CASE, and the key again in the WHERE — and D1 refuses more
+# than 100 per statement with "too many SQL variables: SQLITE_ERROR". 33 rows is
+# 99. Measured 2026-09-29: 50 fails, 33 passes. Raising this without re-measuring
+# turns every write into a 400.
+BATCH = 33
+done = 0
+for i in range(0, len(changed), BATCH):
+    chunk = changed[i:i + BATCH]
+    cases = ' '.join('WHEN ? THEN ?' for _ in chunk)
+    marks = ','.join('?' for _ in chunk)
+    params = []
+    for k, _t, _c, _old, new in chunk:
+        params += [k, json.dumps(new) if new else None]
+    params += [k for k, _t, _c, _old, _n in chunk]
+    d1(f'UPDATE jobs SET skills = CASE job_key {cases} END WHERE job_key IN ({marks})', params)
+    done += len(chunk)
+    sys.stderr.write(f'  {done}/{len(changed)}\n')
 sys.stderr.write(f'Updated {len(changed)} rows.\n')

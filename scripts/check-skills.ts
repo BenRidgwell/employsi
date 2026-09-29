@@ -699,6 +699,50 @@ if (ACCOUNT && DB && TOKEN) {
     ["Hotel Cleanliness Expert", "Cleaning & Facilities"],
     ["Hotel Cleanliness Expert (Housekeeping Attendant)", "Cleaning & Facilities"],
     ["Assistant Director of Housekeeping", "Cleaning & Facilities"],
+
+    // Found 2026-09-29 by running the 562 occupations of Singapore's
+    // Occupational Wage Survey through the matcher as a vocabulary probe, then
+    // ranking the misses by how many archived rows they left unmapped. Together
+    // these five reached 2,464 titles / 4,518 rows that matched NOTHING.
+    ["Physical Therapist", "Allied Health"],
+    ["Physical Therapist", "Physiotherapy"],
+    ["Physical Therapy Assistant", "Physiotherapy"],
+    // RETAIL, not business development — asserted after checking the employers
+    // (Telstra Retail 362, Eagers Automotive 130, Spotlight, Flight Centre) and
+    // after this table first claimed the opposite and was wrong.
+    ["Sales Consultant", "Retail & Customer Service"],
+    ["Sales Consultant", "Retail Sales"],
+    ["New Vehicle Sales Consultant", "Retail Sales"],
+    ["Relationship Manager", "Banking & Lending"],
+    ["Premier Relationship Manager", "Banking & Lending"],
+    ["Guest Experience Expert", "Hospitality & Food Service"],
+    ["Network Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "Electrical Engineering"],
+
+    // Found 2026-09-29 while checking whether a %commercial% remap was safe: the
+    // archive held skills the taxonomy could no longer produce, because these
+    // two had gone missing. "site manager" mapped and "site engineer" did not;
+    // the hospitality terms had every word for the trade except its own.
+    ["Site Engineer", "Construction Management"],
+    ["Site Engineer - Commercial Construction", "Construction Management"],
+    ["Food and Beverage Attendant", "Hospitality & Food Service"],
+    // BOTH SPELLINGS THROUGH ONE TERM. norm() rewrites "&" to " and " in the
+    // title, but termMatches uses the term verbatim — so the term must be
+    // "f and b", and a term written "f&b" can never match anything at all.
+    ["F&B Supervisor", "Hospitality & Food Service"],
+    ["F and B Attendant", "Hospitality & Food Service"],
+    ["F&B Service Expert", "Hospitality & Food Service"],
+
+    // "reliability engineer" is a MINING term and it claimed all 208 archived
+    // rows of "Site Reliability Engineer". The two senses split on one word:
+    // without "site" the employers are BHP, Alcoa, Fortescue and BlueScope;
+    // with it they are Google, TCS, Macquarie and CBA.
+    ["Site Reliability Engineer", "Cloud & DevOps"],
+    ["Site Reliability Engineer", "Site Reliability & Platform"],
+    ["SRE Manager", "Cloud & DevOps"],
+    // The industrial sense must survive the fix — it is the term's real job.
+    ["Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Maintenance Engineer", "Fixed Plant Maintenance"],
   ];
   const MUST_NOT: [string, string][] = [
     // The false positive itself, in the three shapes the archive holds: the
@@ -713,6 +757,26 @@ if (ACCOUNT && DB && TOKEN) {
     // And the term must still do its real job: these ARE commercial roles.
     ["Commercial Manager", "Cleaning & Facilities"],
     ["Commercial Finance Analyst", "Cleaning & Facilities"],
+
+    // "systems engineer" is REFUSED as a bare term on both sides. 453 of its 554
+    // unmapped rows are the bare title with nothing to disambiguate it, and the
+    // employers are BAE Systems, Worley, BHP and AECOM as much as Cloudflare. A
+    // bare term would hand all of them to IT and would also steal the control
+    // systems engineers that Instrumentation & Control maps correctly today.
+    ["Systems Engineer", "IT & Systems"],
+    ["Senior Systems Engineer", "IT & Systems"],
+    ["Control Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "IT & Systems"],
+    // "site engineer" must not reach the SRE / web senses of the word.
+    ["Facebook Engineer", "Hospitality & Food Service"],
+    ["Website Engineer", "Construction Management"],
+    // Mining must not take the SRE sense back.
+    ["Site Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Senior Site Reliability Engineer", "Fixed Plant Maintenance"],
+    // ...and "sre" must carry its trailing space, or it claims every name
+    // starting with those three letters.
+    ["Sreekanth Consulting", "Cloud & DevOps"],
+    ["Sreekanth Consulting", "Site Reliability & Platform"],
   ];
   const bad: string[] = [];
   for (const [title, skill] of MUST) {

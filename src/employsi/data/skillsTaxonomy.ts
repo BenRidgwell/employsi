@@ -112,6 +112,17 @@ const RAW_SKILLS: SkillDef[] = [
       "fixed plant",
       "processing maintenance",
     ],
+    except: [
+      // "SITE Reliability Engineer" IS NOT A MINING JOB, and "reliability
+      // engineer" above claimed all 208 archived rows of it. The two senses
+      // separate cleanly on the word "site": without it the employers are BHP,
+      // Alcoa, Evolution Mining, Fortescue and BlueScope; with it they are
+      // Google, TCS, Macquarie and CBA. Measured 2026-09-29 over 219 rows.
+      //
+      // Excepted here rather than narrowing the term, because "reliability
+      // engineer" is the right term for the 468 industrial rows that keep it.
+      "site reliability",
+    ],
   },
 
   // ── Oil, gas & energy ──────────────────────────────────────────────────
@@ -148,7 +159,17 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Electrical Engineering",
     cat: "Engineering",
-    terms: ["electrical engineer", "electrical engineering", "high voltage", "hv "],
+    // "power systems engineer" is 57 of the unmapped "systems engineer" rows and
+    // is unambiguously this discipline — grid and generation work at Worley,
+    // AECOM and the utilities, not IT infrastructure. See the note in IT &
+    // Systems for why the bare term is refused on both sides.
+    terms: [
+      "electrical engineer",
+      "electrical engineering",
+      "power systems engineer",
+      "high voltage",
+      "hv ",
+    ],
   },
   {
     skill: "Mechanical Engineering",
@@ -721,7 +742,12 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Cloud & DevOps",
     cat: "Digital",
-    terms: ["cloud", "aws", "azure", "devops", "kubernetes"],
+    // "site reliability" and "sre" are here as well as on the speciality below,
+    // because a speciality only matches inside a parent the title already
+    // claimed — and none of cloud/aws/azure/devops/kubernetes appears in "Site
+    // Reliability Engineer". The child could never fire, so the 219 rows went to
+    // mining by default rather than being contested.
+    terms: ["cloud", "aws", "azure", "devops", "kubernetes", "site reliability", "sre "],
   },
 
   // ── Cloud & DevOps · specialities ────────────────────────────────────────────────────
@@ -749,7 +775,10 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Cloud & DevOps",
     // 49 titles. The gate holds back 204, nearly all of them "platform" used of
     // a business platform rather than an engineering one.
-    terms: ["site reliability", "sre", "platform engineer"],
+    // "sre " with the trailing space, not a bare "sre": the term anchors the START
+    // of a word, so the bare form claims "Sreekanth Consulting" and every other
+    // name beginning those three letters. Same idiom as "physio " and "hv ".
+    terms: ["site reliability", "sre ", "platform engineer"],
   },
   {
     skill: "Cybersecurity",
@@ -817,6 +846,20 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Digital",
     terms: [
       "it support",
+      // "SYSTEMS ENGINEER" IS NOT HERE, DELIBERATELY. 554 archived rows carry it
+      // unmapped and only ~71 are IT: the employers are BAE Systems (172),
+      // Worley, BHP and AECOM alongside Cloudflare, and the titles are power,
+      // control and defence systems engineering as often as infrastructure.
+      // 453 of the 554 are the bare title with nothing to disambiguate it, and a
+      // bare term would hand every one of them to IT while also claiming
+      // "Control Systems Engineer", which Instrumentation & Control already maps
+      // correctly. So only the forms that say which kind they are:
+      "network systems engineer",
+      "linux systems engineer",
+      "windows systems engineer",
+      "infrastructure systems engineer",
+      "security systems engineer",
+      "systems engineer - network",
       // 133 archived titles say "service desk" or "help desk" and 107 of them
       // mapped to NO SKILL AT ALL — "it support" above never reached the words
       // the function is actually advertised under. Found by a gate case for the
@@ -1873,6 +1916,10 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "banking",
       "bank worker",
+      // 622 rows over 358 titles, unmapped. Checked who advertises it before
+      // placing it here rather than under Sales: HSBC 238, UOB 124, OCBC 115,
+      // HDFC 43, Westpac 34 — retail and wealth banking, not general B2B sales.
+      "relationship manager",
       "lending",
       "credit",
       "mortgage",
@@ -2154,6 +2201,10 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Health",
     terms: [
       "physiotherap",
+      // The parent needs it too, or the gate holds the child back: a speciality
+      // only matches inside a parent the title already claimed. See the note on
+      // Physiotherapy's own terms for the 1,938 rows this reaches.
+      "physical therap",
       "occupational therap",
       "podiatr",
       "speech pathol",
@@ -2205,7 +2256,14 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Allied Health",
     // 386 titles, 22.4%. "physio " with the trailing space is the abbreviation
     // as a whole word; without it the stem already covers physiotherapist.
-    terms: ["physiotherap", "physio "],
+    //
+    // "physical therap" is the AMERICAN NAME FOR THE SAME PROFESSION and was the
+    // single largest gap in the taxonomy: 1,938 archived rows over 1,206 titles
+    // matching NOTHING, measured 2026-09-29, while "physiotherapist" a word away
+    // mapped correctly. US-sourced feeds use it exclusively. Found by running the
+    // 562 occupations of Singapore's Occupational Wage Survey through the matcher
+    // as a vocabulary probe, then ranking the misses by archive volume.
+    terms: ["physiotherap", "physio ", "physical therap"],
   },
   {
     skill: "Speech Pathology",
@@ -2655,6 +2713,19 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "chef",
       "cook",
+      // 334 rows over 164 titles mapped to NOTHING: "F&B Service Expert",
+      // "F&B Supervisor", "Food and Beverage Operations Manager". The trade's
+      // own shorthand, and neither spelling was here. Measured 2026-09-29.
+      "food and beverage",
+      // "f and b", NOT "f&b". norm() rewrites "&" to " and " in the TITLE but
+      // termMatches uses the term verbatim, so any term containing an ampersand
+      // can never match anything. Both spellings of the shorthand reach this one
+      // term because the haystack is normalised before it is tested.
+      "f and b",
+      // 539 rows over 262 titles, unmapped. "Guest Experience Expert" is
+      // Marriott's name for front-of-house, and the phrase is hotel-specific
+      // enough to carry on its own.
+      "guest experience",
       "waiter",
       "barista",
       "bar attendant",
@@ -2735,6 +2806,10 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "construction manager",
       "site manager",
+      // 125 rows over 35 titles unmapped while "site manager" a word away
+      // mapped. The employers are Downer, Georgiou, BMD, Ertech and Lendlease
+      // — contractors, not IT field service. Measured 2026-09-29.
+      "site engineer",
       "superintendent",
       "foreman",
       "building and surveying",
@@ -3067,6 +3142,15 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Sales",
     terms: [
       "sales assistant",
+      // 719 rows over 305 titles matched NOTHING, because "sales consultant" was
+      // a Retail Sales term with no way through this gate. It belongs here and
+      // not on Sales & Business Dev, which was the first attempt: the employers
+      // are Telstra Retail (362), Eagers Automotive (130), Spotlight, Flight
+      // Centre and Reece, and the titles are "Telstra Retail: Customer Service &
+      // Sales Consultant" and "New Vehicle Sales Consultant". Showroom floor,
+      // not business development. check-skills.ts caught the first placement as
+      // a broad/speciality term collision, which is what that rule is for.
+      "sales consultant",
       "checkout",
       "service station",
       "customer service",

@@ -56,6 +56,7 @@ bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the cl
 bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
 bun run scripts/check-career-ladder.ts     # every title lands on the right rung
 bun run scripts/check-career-card.ts       # the career card's series, trend and model
+bun run scripts/check-onet-roles.ts        # every career rung's O*NET occupation is a reviewed decision
 bun run scripts/check-analyst-llm.ts        # the AI analyst only says figures a tool returned
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
@@ -556,6 +557,18 @@ deployed employsi-preview successfully at 12:37 the same day (version
 `1e83de7c`), verified afterwards: `/app` served the app's title, production's
 version ids were byte-identical before and after.
 
+**PRODUCTION HAS A WORKFLOW SINCE 2026-09-29: `.github/workflows/deploy-production.yml`.**
+Manual dispatch only, from `main` only, and it deploys nothing unless `confirm` is
+typed as `employsi.com.au`. It exists because the sandbox's Cloudflare token cannot
+see Workers at all ("No access to the specified resource" on every script), while
+the repo's Actions secrets carry both tokens. It records the serving version first
+(and refuses without one), deploys with `--name benridgwell-globe-gazer-hr` spelled
+out, then asserts the apex serves the landing page, `/product` and `/login` answer
+200, `/app` and `/api/auth/*` still 302 off the apex, and workers.dev `/app` is the
+app. The same "asked for in this conversation" rule applies to dispatching it.
+**Releasing the app turns its gate check red on purpose** — change the check in the
+same PR that empties `APP_ONLY_PATHS`.
+
 Deploys, when actually asked for:
 
 ```bash
@@ -743,6 +756,25 @@ reads national-series data files the Worker bundle does not carry.
   the backstop, and the only one code cannot get wrong.
 - The secret is per-Worker: setting it on `employsi-preview` does not turn it on
   in production. Mind the secret-is-not-live trap above.
+
+### O*NET tasks and tools on the career card
+
+Each career rung shows the core tasks and in-demand software of an O*NET
+occupation (`src/employsi/data/onetRoles.ts`, from `scripts/gen-onet-roles.py`
+over the O*NET text database — download link in the script). Three rules:
+
+- **The reviewed `TABLE` in the generator IS the mapping.** The title matcher
+  only suggests (`--review`), and a third of what it found was wrong — "chief
+  people officer" matched Probation Officers. A rung the table has not decided
+  is left out, and `check-onet-roles.ts` fails until someone decides it, so a
+  regenerated `careerPathways.ts` with a new rung needs a table entry.
+- **None is an answer.** A rung whose titles span occupations (allied health
+  generalist) or have no US counterpart (workforce planning) maps to nothing,
+  and the card says so rather than borrowing the nearest-sounding occupation.
+- **It is described, not measured.** The card names the US occupation, links
+  to it and says it is not from our ads. Only O*NET's per-occupation
+  "In Demand" software is shown; "Hot Technology" is economy-wide and says
+  nothing about the job. The CC BY 4.0 credit is a licence condition.
 
 ### Subscriptions (Stripe Managed Payments)
 

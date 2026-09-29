@@ -17684,3 +17684,153 @@ body {
     display: none;
   }
 }
+
+/* ── Career card: tasks & tools (O*NET) ──────────────────────────────────────
+   O*NET's description of the US occupation a role maps to. Set apart by a
+   rule rather than a tile: it is described, not measured, and should not read
+   as one more of the card's counts. */
+.cponet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle, #e5e5ea);
+  min-width: 0;
+}
+.cponethead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.cponetocc {
+  font: 500 12px/1.3 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: none;
+}
+.cponetocc:hover {
+  color: var(--text-primary, #1c1c1e);
+  text-decoration: underline;
+}
+.cponettasks {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font: 400 13px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+}
+.cponetmore {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cponetsw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cponetchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cponetchip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-subtle, #f4f4f5);
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+  white-space: nowrap;
+}
+.cponetnote,
+.cponetnone {
+  margin: 0;
+  font: 400 11.5px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-tertiary, #8e8e93);
+}
+.cponetnone {
+  font-size: 12.5px;
+  color: var(--text-secondary, #636366);
+}
+.cponetcredit a {
+  color: inherit;
+}
+
+/* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
+/* The card stays open across the switch and cross-fades its contents, rather
+   than swapping every figure on one frame — which read as a different card
+   rather than the same one answering a different question.
+
+   THE TITLE ROW IS DELIBERATELY EXEMPT. The skill's name and icon are identical
+   in both modes, so fading them would be animating the one thing that did not
+   change, and the card would look like it had reloaded — the opposite of
+   staying open. Everything that DOES differ fades: the workforce/demand band,
+   the scale keys, the series, the stat rows and the copy. `.gscardactions` is
+   named separately because it lives inside the header with the title. */
+.gscard > *:not(.gscardhd),
+.gscard .gscardactions {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gscard.swapping > *:not(.gscardhd),
+.gscard.swapping .gscardactions {
+  opacity: 0;
+  /* Settles rather than slides: the card is pinned to a corner and a lateral
+     move would read as it leaving. Same reasoning as .railswapl's scale. */
+  transform: scale(0.985);
+}
+/* The card must not resize under the fade, or the corner it is pinned to would
+   jump while the contents are invisible. Supply and demand bodies differ by a
+   row, so the height is held for the duration of the swap. */
+.gscard.swapping {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gscard > *:not(.gscardhd),
+  .gscard .gscardactions {
+    transition: none;
+  }
+  .gscard.swapping > *:not(.gscardhd),
+  .gscard.swapping .gscardactions {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── The globe crossing between Supply and Demand ────────────────────────── */
+/* The heat blobs fade through their own Mapbox paint transition (see
+   HEAT_OPACITY and the heatMarket effect). The hub markers cannot: Mapbox
+   rewrites a marker ROOT's style.opacity every frame for the globe's occlusion
+   fade, so anything set there is gone by the next frame. The inner wrapper is
+   the same element every other marker state on this map is applied to. */
+.worldmount .mk {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.worldmount.heatswap .mk {
+  opacity: 0;
+  /* Settles in place rather than sliding: a hub marker sits ON its coordinate
+     and a lateral move would read as the city itself shifting. */
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .worldmount .mk {
+    transition: none;
+  }
+  .worldmount.heatswap .mk {
+    opacity: 1;
+    transform: none;
+  }
+}

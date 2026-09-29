@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 /**
  * Invariants for the company card's per-skill demand reconstruction
  * (foldSkillRows in src/employsi/lib/jobHistoryFn.ts).
@@ -2754,6 +2755,125 @@ console.log("\nthe NZ supply figure names its group, not the skill:");
     .flatMap((s) => ["auckland", "wellington"].map((c) => cityEmployment(s, c, m)))
     .filter((r) => r && r.n < NZ_MIN_EMPLOYED);
   check("no figure is below the rounding floor", tooSmall.length === 0, `${tooSmall.length}`);
+}
+
+// ── the skill card survives a Supply/Demand switch ──────────────────────────
+// The card stays mounted across the switch already; what this protects is that
+// its CONTENTS cross-fade instead of changing on one frame. Two ways it breaks
+// back, both of which look like a tidy-up:
+//
+//   · buildSkillCard is handed the live mode again instead of the lagged one,
+//     so every figure flips before the fade and the animation animates nothing;
+//   · the title row loses its exemption, so the card fades its own name — the
+//     one thing identical in both modes — and reads as having reloaded.
+// ── the globe reacts to the Supply/Demand switch, and crosses smoothly ──────
+// THE FIRST HALF IS A BUG GUARD, NOT A POLISH ONE. applyView has read heatMode
+// since the supply-heat work, but only through getState(): marketMode was never
+// subscribed in WorldMapbox and never in any effect's deps, so NOTHING re-ran on
+// the click and the globe kept the previous dataset until a search, a month
+// scrub or a selection happened to move it. In ordinary use a switch is followed
+// by a search, which is exactly why it looked like it worked.
+console.log("\nthe globe follows the Supply/Demand switch:");
+{
+  const w = readFileSync("src/employsi/components/WorldMapbox.tsx", "utf8");
+  const css = readFileSync("src/employsi/global.css", "utf8");
+  check(
+    "marketMode is subscribed, not only read from getState",
+    /useAppStore\(\(s\) => s\.marketMode\)/.test(w),
+  );
+  check("demandMode is subscribed too", /useAppStore\(\(s\) => s\.demandMode\)/.test(w));
+  // The dep list is what actually makes the globe rebuild.
+  // lastIndexOf, not indexOf: rebuildMarkersRef.current?.() is called from three
+  // places in this file and only the LAST is the effect with the dep array. The
+  // first slice landed on a handler at line 1736 and failed against deps that
+  // were present — the third time a source-scanning check here has been wrong
+  // about WHERE to look rather than what to look for.
+  const deps = w.slice(w.lastIndexOf("rebuildMarkersRef.current?.();"));
+  // COMMENTS STRIPPED, because the dep array carries a comment that names
+  // heatMarket. With it left in, deleting the dep itself still passed — the
+  // regex was reading the prose explaining the dep rather than the dep.
+  const list = deps.slice(0, deps.indexOf("]);")).replace(/\/\/[^\n]*/g, "");
+  check("the rebuild depends on the lagged market", /\bheatMarket\b/.test(list));
+  check("...and on the demand metric", /\bdemandMode\b/.test(list));
+  // The lag, so the swap animates something.
+  check("the globe is drawn from the lagged mode", /heatMarketRef\.current === "supply"/.test(w));
+  check("...and not from the live store mode", !/s\.marketMode === "supply"/.test(w));
+  check("the heat opacity curve is hoisted so it can be restored", /const HEAT_OPACITY/.test(w));
+  check(
+    "...and the swap puts that curve back rather than a flat value",
+    /setPaintProperty\(SKILL_LAYER, "heatmap-opacity", HEAT_OPACITY\)/.test(w),
+  );
+  check(
+    "the layer has a transition, or the fade would cut",
+    /"heatmap-opacity-transition"/.test(w),
+  );
+  // Markers fade on the INNER wrapper; Mapbox owns the root's opacity.
+  const swapAt = css.indexOf(".worldmount.heatswap .mk");
+  check("markers fade on the inner wrapper", swapAt > 0);
+  check(
+    "...never on the marker root, whose opacity Mapbox rewrites each frame",
+    !/\.worldmount\.heatswap \.mapboxgl-marker\s*\{/.test(css),
+  );
+  const jsMs = Number(/const HEAT_SWAP_MS = (\d+)/.exec(w)?.[1] ?? 0);
+  const cardMs = Number(
+    /const CARD_SWAP_MS = (\d+)/.exec(
+      readFileSync("src/employsi/components/GlobalSearch.tsx", "utf8"),
+    )?.[1] ?? 0,
+  );
+  check(
+    "the globe and the card cross at the same speed",
+    jsMs > 0 && jsMs === cardMs,
+    `globe ${jsMs} vs card ${cardMs}`,
+  );
+}
+
+console.log("\nthe skill card cross-fades rather than blinking:");
+{
+  const src = readFileSync("src/employsi/components/GlobalSearch.tsx", "utf8");
+  const css = readFileSync("src/employsi/global.css", "utf8");
+
+  check("the card is built from the lagged mode", /buildSkillCard\([^)]*cardMode\)/.test(src));
+  check(
+    "...and the live mode no longer reaches it",
+    !/buildSkillCard\([^)]*demandMode\)/.test(src),
+  );
+  check("the lagged mode is in the card's deps", /archiveTrend,\s*cardMode\]/.test(src));
+  check("a swap state drives the class", /gscard\$\{swapping \? " swapping" : ""\}/.test(src));
+  check("the fade is timed by one constant", /const CARD_SWAP_MS = (\d+)/.test(src));
+
+  // The CSS half: the title row must be excluded, and the duration must agree
+  // with the JS timer or the content flips mid-fade or after it has come back.
+  const rule = css.slice(css.indexOf(".gscard.swapping"));
+  check("the swap rule exists", rule.length > 0);
+  // SCOPED TO THE LIVE RULE, not the whole file: the reduced-motion block below
+  // repeats the same selector, so an unscoped test passes even after the real
+  // exemption is deleted. That is exactly how this assertion first failed to
+  // catch its own regression.
+  // The region is found from the rule OUTWARDS, not from the top of the file:
+  // global.css carries other prefers-reduced-motion blocks long before this one,
+  // so slicing at the first of them cut the rule out of the search entirely and
+  // failed the assertion against correct CSS.
+  const swapAt = css.indexOf(".gscard.swapping > ");
+  const rmAt = css.indexOf("@media (prefers-reduced-motion", swapAt);
+  const live = swapAt < 0 ? "" : css.slice(swapAt, rmAt < 0 ? undefined : rmAt);
+  check(
+    "the title row is exempt from the fade",
+    /\.gscard\.swapping > \*:not\(\.gscardhd\)/.test(live),
+  );
+  check("...and so is nothing else in the header", /\.gscard\.swapping \.gscardactions/.test(live));
+  const ms = Number(/const CARD_SWAP_MS = (\d+)/.exec(src)?.[1] ?? 0);
+  const cssMs = Number(
+    /\.gscard > \*:not\(\.gscardhd\)[\s\S]{0,160}?opacity (\d+)ms/.exec(css)?.[1] ?? 0,
+  );
+  check(
+    "the CSS fade and the JS timer agree",
+    ms > 0 && cssMs > 0 && Math.abs(ms - cssMs) <= 20,
+    `js ${ms}ms vs css ${cssMs}ms`,
+  );
+  check(
+    "reduced motion turns the fade off rather than leaving it invisible",
+    /prefers-reduced-motion[\s\S]{0,400}\.gscard\.swapping[\s\S]{0,120}opacity: 1/.test(css),
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");
