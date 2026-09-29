@@ -303,15 +303,15 @@ _CHALLENGE = ('Security Verification', '安全验证', '验证码')
 
 
 def cffi_parse(html: str):
-    """(jobs, which_parser). Tries both readings of the page — see
-    parse_cards_html() in the tools module for why both exist."""
+    """(jobs, which_parser).
+
+    The tuple survives the second parser it was built to choose between: a run
+    that collects nothing needs to say whether the page was unreadable or
+    merely empty, and this is what the summary line prints. See the note above
+    parse_search_html() for the reading that was tried and dropped.
+    """
     jobs = zp.parse_search_html(html)
-    if jobs:
-        return jobs, '__INITIAL_STATE__'
-    jobs = zp.parse_cards_html(html)
-    if jobs:
-        return jobs, 'cards'
-    return [], ''
+    return (jobs, '__INITIAL_STATE__') if jobs else ([], '')
 
 
 def main() -> int:

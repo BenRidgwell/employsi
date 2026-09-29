@@ -1037,13 +1037,23 @@ is unconfirmed**; the targeting flag is accepted syntactically and nothing more
 is known. The walk reports companies that got the interstitial as CHALLENGED
 rather than as employers with no vacancies, so one dispatch answers it.
 
-**Two parsers ship on purpose.** Nobody has loaded a real results page since the
-credential died, so writing one parser on a guess about markup no one can
-currently see is exactly what this repo's conventions forbid. The feed tries the
-`__INITIAL_STATE__` reading that worked under Oxylabs and the upstream tool's
-card reading, then prints which one fired. Delete the loser once a real run has
-spoken — keeping both forever is two parsers nobody is sure about instead of one
-that was measured.
+**IT WORKS, AND THE POOL DOES HAVE CHINESE EXITS.** That was the open question;
+the first run through `SCRAPE_PROXY_COUNTRY=cn` answered it on 2026-09-29 —
+6 of 6 companies, **94 listings in 42 seconds**, no challenge anywhere. The
+nightly schedule moved onto `cffi` on that evidence.
+
+**Two parsers shipped on purpose, and one of them lost.** Nobody could load a
+real results page while the credential was dead, so writing a single parser on a
+guess about unseen markup was exactly what this repo's conventions forbid. The
+feed therefore tried the `__INITIAL_STATE__` reading that worked under Oxylabs
+AND the upstream tool's card reading, and printed which fired. The answer was
+`__INITIAL_STATE__×13`, cards zero — so the card reading was removed rather than
+carried as a parser nobody was sure about.
+
+**What the upstream repo actually contributed was the TRANSPORT, not the
+parsing.** The existing parser was never wrong; it only looked wrong because the
+unblocker beneath it had died. Worth remembering the next time a feed goes quiet:
+the thing that broke is not always the thing nearest the symptom.
 
 `scripts/test_zhaopin_parsers.py` guards what is ours rather than what is
 Zhaopin's: that each parser reads its shape into the dict `upsert()` expects,
@@ -1051,9 +1061,14 @@ and that **a challenge page parses to nothing from both**. The interstitial is a
 HTTP 200 with an ordinary body, so a parser that scraped one stray element out
 of it would file invented vacancies on a real company's card, green.
 
-**The schedule still runs the Oxylabs path and still goes red nightly.** That is
-deliberate until the replacement is proven from a runner: retiring the schedule
-would turn a visibly broken feed into an invisibly absent one.
+**The schedule ran the Oxylabs path and went red nightly until 2026-09-29**,
+deliberately — retiring it would have turned a visibly broken feed into an
+invisibly absent one. It now runs `cffi`.
+
+**A scheduled fire gets no `inputs`**, so both the transport fallback and the
+`Install curl_cffi` step's condition default to `cffi` in the workflow. If only
+one had been moved, the nightly run would either skip the install and then fail
+importing it, or install a browser stack it never uses.
 
 ### What each of the five would actually need
 

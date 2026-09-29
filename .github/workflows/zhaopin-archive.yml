@@ -9,8 +9,9 @@
 # same credential took Indeed down the same day. The run going red is the guard
 # working; it has simply been red for a month.
 #
-# `transport: cffi` IS THE REPLACEMENT BEING TESTED, and it is dispatch-only
-# until a run proves it. It borrows the technique in jiangyuxue666/job-market-
+# `transport: cffi` IS WHAT THE SCHEDULE NOW RUNS, proven from a hosted runner
+# on 2026-09-29 (6 of 6 companies, 94 listings, 42s, no challenge). It borrows
+# the technique in jiangyuxue666/job-market-
 # analyzer (MIT): curl_cffi presenting Chrome's TLS fingerprint
 # (`impersonate=chrome131`), no browser and no paid unblocker. Zhaopin's wall
 # reads the TLS ClientHello, so a stock Python client is refused before it sends
@@ -31,16 +32,17 @@
 # it is a domestic Chinese tool: from inside China the fingerprint is the only
 # wall. So this pairs it with SCRAPE_PROXY_COUNTRY=cn.
 #
-# WHETHER THE POOL HAS CHINESE ADDRESSES IS THE OPEN QUESTION. IPRoyal targeting
-# is accepted syntactically (http_fetch folds _country-cn onto the password);
-# nobody here has confirmed it resolves to a mainland exit. The run says so
-# plainly: it counts companies that got the interstitial and reports them as
-# CHALLENGED rather than as employers with no vacancies.
+# THE POOL DOES HAVE CHINESE ADDRESSES — that was the open question and the
+# 2026-09-29 run answered it. The walk still counts companies that get the
+# interstitial and reports them as CHALLENGED rather than as employers with no
+# vacancies, because the day the exit stops working is the day that distinction
+# decides whether you go looking at the proxy or at the roster.
 #
-# TWO PARSERS SHIP, DELIBERATELY. No one has loaded a real results page since
-# the credential died, so the feed tries the __INITIAL_STATE__ reading that
-# worked under Oxylabs AND the upstream tool's CSS-selector reading, then prints
-# which one fired. Delete the loser once a real run has spoken.
+# THE PARSER QUESTION IS SETTLED TOO. This shipped with two readings of the page
+# because nobody could load one; the run reported `__INITIAL_STATE__×13` and the
+# card reading matched nothing, so the JSON parser is the live one and the
+# ported CSS-selector reading has been removed. The existing parser was never
+# wrong — it only ever looked wrong because the unblocker under it had died.
 #
 # Required repo secrets:
 #   OXYLABS_USERNAME, OXYLABS_PASSWORD  — Oxylabs Web Scraper API credentials
@@ -53,11 +55,14 @@
 name: zhaopin-archive
 
 on:
-  # STILL SCHEDULED ON THE OXYLABS PATH, which is dead — so this fires nightly
-  # and goes red nightly. That is deliberate for now: the replacement has not
-  # been proven from a runner, and silently retiring the schedule would turn a
-  # visibly broken feed into an invisibly absent one. Point the schedule at
-  # `cffi` once a dispatch has collected rows through a cn exit.
+  # THE SCHEDULE RUNS `cffi` FROM 2026-09-29. It ran the Oxylabs path until
+  # then and went red nightly for a month; the replacement is now proven from a
+  # hosted runner, so the nightly run uses it.
+  #
+  # What earned the switch, measured 2026-09-29 through SCRAPE_PROXY_COUNTRY=cn:
+  # a 6-company solve returned 94 listings from 6 of 6 companies in 42s, no
+  # challenge anywhere. That also answered the question this file could not:
+  # IPRoyal's pool DOES resolve _country-cn to an address Zhaopin serves.
   schedule:
     - cron: '30 20 * * *' # 20:30 UTC daily — staggered after Indeed
   workflow_dispatch:
@@ -100,16 +105,19 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-      # curl_cffi carries its own libcurl-impersonate build; lxml is what the
-      # card parser reads markup with. Unpinned deliberately — the TLS profiles
-      # ship in the package, so when Chrome moves, a fresh release is the fix
-      # and a pin is the thing that breaks.
+      # curl_cffi carries its own libcurl-impersonate build. Unpinned
+      # deliberately — the TLS profiles ship in the package, so when Chrome
+      # moves, a fresh release is the fix and a pin is the thing that breaks.
       - name: Install curl_cffi
-        if: ${{ (inputs.transport || 'oxylabs') == 'cffi' }}
+        # DEFAULTS TO cffi, matching the run step below. A scheduled fire gets
+        # no `inputs`, so if this fallback said 'oxylabs' the nightly run would
+        # skip the install and then try to import curl_cffi — a green install
+        # step and an immediate failure, which is a worse signal than either.
+        if: ${{ (inputs.transport || 'cffi') == 'cffi' }}
         run: |
           python -m pip install --upgrade pip
-          pip install curl_cffi beautifulsoup4 lxml
-          python -c "import curl_cffi, bs4, lxml; print('curl_cffi', curl_cffi.__version__)"
+          pip install curl_cffi
+          python -c "import curl_cffi; print('curl_cffi', curl_cffi.__version__)"
 
       - name: Scrape Zhaopin → D1
         env:
@@ -128,11 +136,10 @@ jobs:
         #
         # A SCHEDULED FIRE GETS NO `inputs` — a workflow_dispatch default does
         # not apply to a cron run — so the fallback below is what the nightly
-        # run reads. It is 'oxylabs' ON PURPOSE: that keeps the schedule on the
-        # path this file has always run until the replacement is proven, rather
-        # than quietly promoting an untested transport by way of a default.
+        # run actually reads. Changing it is what moves the schedule; the
+        # `default:` on the input above only affects the dispatch form.
         run: |
-          TRANSPORT="${{ inputs.transport || 'oxylabs' }}"
+          TRANSPORT="${{ inputs.transport || 'cffi' }}"
           if [ "$TRANSPORT" = "cffi" ]; then
             if [ -z "$SCRAPE_PROXY" ]; then
               echo "SCRAPE_PROXY is not set. Measured 2026-09-29: the runner's own"
