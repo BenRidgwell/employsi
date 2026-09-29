@@ -211,6 +211,23 @@ jobs:
       # the PSC page carries none even rendered. Its Local Health Districts
       # carry two thirds of the jurisdiction's live ads, and a health annual
       # report's appendix is where staff numbers by organisation usually sit.
+      # TEN SOUTH AUSTRALIAN CARDS ARE BLANK AND EVERY ANSWER IS ON A HOST THIS
+      # REPO'S AUTHORING SANDBOX CANNOT REACH. Measured 2026-09-29 with a warmed
+      # browser — the fallback that clears the Northern Territory and Tasmania —
+      # publicsector.sa.gov.au, agd.sa.gov.au and safework.sa.gov.au all stayed
+      # behind the same Cloudflare challenge at ~28.8 KB, and 180 seconds was
+      # already shown not to help on the equivalent NSW hosts. It is the exit IP.
+      #
+      # The runner is the other side of that, and the log is the channel — the
+      # same one that got South Australia's 98 source rows out of here. This asks
+      # WHO EMPLOYS each body rather than how many people it has, because nine of
+      # the ten are statutory offices, brands or wound-up bodies whose staff sit
+      # inside a department that is already filed.
+      - name: Probe the ten unexamined South Australian bodies
+        if: always()
+        continue-on-error: true
+        run: python scripts/sa-agency-probe.py
+
       - name: Probe the NSW Health annual report appendix
         if: always()
         continue-on-error: true
