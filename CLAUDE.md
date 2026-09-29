@@ -123,6 +123,7 @@ Workers on the account, verified 2026-08-12:
 | --- | --- |
 | `benridgwell-globe-gazer-hr` | **PRODUCTION.** Carries `employsi.com.au` |
 | `employsi-preview` | Preview of the same app — deploy here to be looked at |
+| `employsi-site-preview` | Preview for the MARKETING SITE (`/`, `/product`, `/login`), added 2026-09-28 so website review does not redeploy over app review. Deployed by `deploy-preview.yml` with target `site` |
 | `benridgwell-globe-gazer-hr-mobile` | Mobile build |
 | `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
 | `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
@@ -267,6 +268,20 @@ Until both halves of a provider exist, `authAvailable()` is false and the app
 says "Sign-in is not configured on this deployment" rather than offering a
 button that 500s. That message is the expected state of a half-set-up provider,
 not a bug to chase.
+
+**`employsi-site-preview` needs its own Better Auth setup**, because secrets
+are per-Worker and it was created with none. Measured 2026-09-29: its
+`/api/auth/get-session` answered 503 "Sign-in is not configured on this
+deployment." while `employsi-preview`'s answered 200. The code is the same
+Better Auth either way (`/login` uses `lib/authClient.ts`, like the app); what
+it needs is the six secrets listed at the top of `lib/auth.ts`, with
+`BETTER_AUTH_URL=https://employsi-site-preview.employsi.workers.dev`, and its
+two callback URLs registered with Google and LinkedIn:
+
+```
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/google
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/linkedin
+```
 
 **A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
 `wrangler secret put` does NOT deploy it. It uploads a new version and leaves

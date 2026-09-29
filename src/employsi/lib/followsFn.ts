@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { roleForEmail, type Role } from "./roles";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
-import { getAuth, authProviders, type AuthEnv } from "./auth";
+import { getAuth, authAvailable, authProviders, type AuthEnv } from "./auth";
 
 /**
  * Followed companies and skills, and the one-time claim of what was already in
@@ -101,7 +101,13 @@ const SAFE_REF = /^[\w &+/'().-]{1,80}$/;
 export const getSession = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionInfo> => {
     const e = await env();
-    const providers = authProviders(e ?? undefined);
+    // Only when Better Auth can actually START: authProviders looks at the
+    // provider client id/secret alone, but /api/auth answers 503 unless
+    // BETTER_AUTH_SECRET and BETTER_AUTH_URL are set too (authAvailable). A
+    // Worker with the OAuth pair but not those — a half-configured preview —
+    // used to get buttons that failed on click, in the app's sign-in panel and
+    // on /login alike. Now both say sign-in is not set up, which is true.
+    const providers = authAvailable(e ?? undefined) ? authProviders(e ?? undefined) : [];
     const user = await currentUser(requestHeaders());
     const none = { followedIds: [], followedSkills: [], careerGoal: null };
     if (!user) return { user: null, role: "user", providers, ...none };
