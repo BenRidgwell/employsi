@@ -20,6 +20,7 @@
 //   NSW: Ombudsman: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: State Emergency Service: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: State Library: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
+//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Electoral Commission: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Sydney Opera House: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Office of Sport: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
@@ -35,12 +36,12 @@
 //   NSW: Premier's Department: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Planning, Housing and Infrastructure: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Property and Development NSW: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
+//   NSW: Landcom: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: Essential Energy: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: WaterNSW: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: ICAC: 1 agencies published as at Jun 2024 — refreshed 2026-09-29
 //   NSW: Forestry Corporation: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
 //   NSW: NSW Trains: 1 agencies published as at Jun 2025 — refreshed 2026-09-29
-//   NSW: Australian Museum: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   Queensland: 38 agencies published, as FTE not headcount, as at Mar 2026 — KEPT, not refreshed this run
 //   South Australia: 101 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   New South Wales: 28 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
@@ -123,6 +124,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-hunter-water": { now: 568, prev: 560, yoy: 1.4, asof: "Jun 2025", span: 1 },
   "nsw-gov-icare-nsw": { now: 1850, prev: 1879, yoy: -1.5, asof: "Jun 2025", span: 1 },
   "nsw-gov-independent-commission-against-corruption": { now: 151, yoy: null, asof: "Jun 2024", span: 1 },
+  "nsw-gov-landcom": { now: 199, yoy: null, asof: "Jun 2025", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
   "nsw-gov-museums-of-history-nsw": { now: 483, prev: 456, yoy: 5.9, asof: "Jun 2025", span: 1 },

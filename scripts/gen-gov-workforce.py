@@ -912,6 +912,18 @@ NOT_IN_SOURCE = {
         'pages do carry "1,044 total staff team members", in an infographic with '
         'no as-at date anywhere near it, so even taken alone it could not be '
         'filed — but the reason it is not filed is the double count',
+    'nsw:Energy Security Corporation':
+        'INSIDE the DCCEEW head count, which is filed, and its own report says so '
+        'in one sentence — p14 of its 2024-25 Annual Information Statement: "As at '
+        '30 June 2025, no employees were directly employed by the ESC", with "All '
+        'employees and contractors were engaged by DCCEEW to establish the ESC and '
+        'commence operations" directly above it. p25 adds that the Corporation HAS '
+        'the power to employ under section 9 of its Act and does not use it, and '
+        'p27 books the personnel services it reimburses DCCEEW for. A LITERAL ZERO '
+        'WOULD BE THE WRONG CARD even though the report states one: people work for '
+        'the ESC, they are simply DCCEEW employees, and that department carries '
+        'them. Third body in this cluster to land here, after Taronga and the '
+        'Natural Resources Access Regulator',
     'nsw:Natural Resources Access Regulator':
         'INSIDE the DCCEEW head count, which is filed. Named in the same '
         'personnel-services list as Taronga on p53 of the department\'s 2024-25 '
@@ -964,6 +976,21 @@ NOT_IN_SOURCE = {
     # browser does not clear it (28,844 bytes). Its own site is still closed. The
     # report reached the card from files.parliament.nsw.gov.au instead — which is
     # the route Essential Energy and WaterNSW should be tried on next.
+    'tas:Building Tasmania':
+        'A STATE SERVICE BRAND, AND THE JOBS BOARD SAYS WHOSE. Its agency page is '
+        'tas.gov.au/jobs/work-with-us/about-us/our-agencies/DEPARTMENT-OF-STATE-'
+        'GROWTH, and that page is titled "Building Tasmania | Tasmanian State '
+        'Service Careers" — one URL, both names — so the board files it under '
+        'State Growth, which the workforce report publishes at 1,054. Filing that '
+        'here would put a whole department on one of its brands. '
+        'WORTH MORE THAN A REFUSAL, THOUGH: "Department of State Growth" is in the '
+        "SPARE list for this jurisdiction, meaning the source reports it and the "
+        'roster carries no card for it. Adding one would fill immediately, and '
+        'would be the right place for these 1,054 people. '
+        '(Measured 2026-09-29 through a warmed browser, 42,714 bytes. The same URL '
+        'refused a second attempt minutes later at 28,794 bytes, so tas.gov.au '
+        'clears INTERMITTENTLY rather than reliably — worth knowing before reading '
+        'one refusal from it as a closed door.)',
     'tas:Whole of Government Programs':
         'A JOB-BOARD CATEGORY, NOT AN AGENCY, which is why no workforce figure '
         'can exist for it. jobs.tas.gov.au/agency/19 is titled "Whole of '
@@ -3691,6 +3718,44 @@ NSW_AGENCY_REPORTS = {
         header=r'2023-2024\*?\s+2022-2023\*?\s+2021-2022',
         proof=r'Headcount data reported at end of reporting period',
         unit='headcount', asof='Jun 2024'),
+    # p59, Table 14 "Employee location by gender, FY25": Parramatta 105 + 90 = 195,
+    # Other 1 + 3 = 4, Total 106 + 93 = 199. `sums` asserts that row.
+    #
+    # THE PAGE CARRIES SIX Total ROWS OF THREE NUMBERS and only one of them is the
+    # workforce. Table 12 (award staff) ends "Total 149 145 132", Table 13
+    # (non-award contract staff) "Total 50 46 38", and Table 15 prints a Total for
+    # each age group as well as the whole. Every one is three numbers wide, so
+    # `ncols` is no help and the last match would win. `after` anchors on
+    # "Location", which appears exactly once on the page with that capital — the
+    # caption above it writes "location" in lower case and the match is
+    # case-sensitive. Dropping it does not file a wrong number: the run then
+    # lands on Table 12 and the row sum rejects it — "[0, 1] sum to 294.0
+    # against 132.0 in the same row". Same shape as Essential Energy: `sums` is
+    # the guard and `after` is what lets a parse happen at all.
+    #
+    # THE FIGURE IS CORROBORATED TWICE ON ITS OWN PAGE. Table 12 and Table 13
+    # together give 149 + 50 = 199, and Table 15's age groups give 23 + 136 + 40 =
+    # 199. Those are the two independent checks; neither is machine-asserted here,
+    # because both would mean summing across tables.
+    #
+    # NO PRIOR YEAR, AND IT IS ONE ADDITION AWAY — 145 + 46 = 191 from the FY24
+    # columns of those same two tables. Table 14 is FY25 only, and reaching across
+    # two tables to build a comparator is arithmetic this path does not do and
+    # should not learn for one card.
+    'nsw-landcom': dict(
+        label='NSW: Landcom',
+        agency='Landcom',
+        agency_id='nsw-gov-landcom',
+        url='https://files.parliament.nsw.gov.au/fileapi/ParlFiles/GetArtifact/'
+            '10311%20Landcom%20AR%202025%20-%20Final%20(web).pdf?serverRelativeUrl='
+            '%2Ftp%2Ffiles%2F192121%2F10311+Landcom+AR+2025+-+Final+(web).pdf',
+        needle='Employee location by gender',
+        after=r'Location',
+        total=r'^Total\b',
+        ncols=3, now_i=2, prev_i=None, sums=[(0, 1, 2)],
+        header=r'Female\s+Male\s+Total',
+        proof=r'Employee location by gender, FY25',
+        unit='headcount', asof='Jun 2025'),
     # ── The two state-owned corporations the file API was meant to reach ─────
     # Both NOT_IN_SOURCE entries stand as written, because both measurements are
     # still true: essentialenergy.com.au and waternsw.com.au are behind a
