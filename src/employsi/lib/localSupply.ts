@@ -2,6 +2,7 @@ import type { Company } from "../data/companies";
 import { filedHeadcount } from "./companyCard";
 import { AU_RATE_HUBS, employmentFor, NZ_SUPPLY_CITIES } from "./vacancyRate";
 import { NZ_GROUP_NAME, NZ_SKILL_GROUP, NZ_SUPPLY_YEARS } from "../data/nzOccupationSupply";
+import { SG_SKILL_GROUP, SG_SUPPLY_YEARS } from "../data/sgOccupationSupply";
 import { quarterLabelFor } from "./skillCard";
 
 /**
@@ -104,6 +105,18 @@ export interface CityEmployment {
   /** Reporting period, e.g. "Feb 2026 quarter" or "2023 Census". */
   asof: string;
   source: string;
+  /**
+   * The classification level, for a tooltip rather than the visible line.
+   *
+   * It belongs SOMEWHERE — "Professionals" and "Health Professionals" both read
+   * as "group" and nothing on screen says one divides a workforce eight ways and
+   * the other forty-three. It does not belong in the rendered label: `.lvblabel`
+   * is `white-space: nowrap` inside a flex row, and on desktop `.lvb` has no
+   * right edge or overflow, so a long enough stat runs past the viewport. (Mobile
+   * scrolls sideways and would have survived it, which is exactly the kind of
+   * difference that gets a layout shipped broken on one of the two.)
+   */
+  note?: string;
 }
 
 /**
@@ -114,14 +127,20 @@ export interface CityEmployment {
  *   · the eight Australian capitals, from ABS EQ08 at unit-group grain -> the
  *     skill's own figure, labelled with the skill;
  *   · Auckland and Wellington, from the 2023 Census at sub-major grain -> the
- *     ANZSCO group's figure, labelled with the group.
+ *     ANZSCO group's figure, labelled with the group (43 groups);
+ *   · Singapore, from MOM's Labour Force Survey at SSOC MAJOR grain -> the
+ *     group's figure, labelled with the group and with the level named (8).
  *
- * SINGAPORE IS STILL EXCLUDED, and that is not an oversight. SingStat M182081 is
- * EIGHT SSOC majors — it reads 495,500 for Nursing because Nursing, Legal and
- * Software Engineering share "Professionals". The same group-labelling could in
- * principle rescue it, but eight groups is coarse enough that the label would be
- * doing all the work and the number almost none; NZ's 43 are a different
- * proposition. employmentFor still uses it as a disclosed rate denominator.
+ * SINGAPORE IS THE COARSEST AND SAYS SO IN THE LINE ITSELF. SingStat M182081 is
+ * EIGHT SSOC majors and nothing finer is published — the generator header records
+ * the 2026-09-29 catalogue search that establishes it. So Nursing in Singapore
+ * returns 624,400 "Professionals", the number it shares with Medical Practice,
+ * Legal, Software Engineering and every other degree occupation.
+ *
+ * That is thin enough that the group name alone is not quite enough warning, so
+ * `note` carries the classification level and what shares the figure. The
+ * alternative was to keep showing nothing, which tells the reader less than a
+ * true number whose breadth they can see.
  *
  * Everywhere else returns null, and the banner SAYS so rather than reaching for
  * a covered city's figure.
@@ -146,7 +165,32 @@ export function cityEmployment(
     // rather than assume, because a figure shown without its group name is the
     // exact thing this type exists to prevent.
     if (n === null || !label) return null;
-    return { n, label, grain: "group", asof: nzCensusAsof(month), source: "Stats NZ" };
+    return {
+      n,
+      label,
+      grain: "group",
+      asof: nzCensusAsof(month),
+      source: "Stats NZ",
+      note: `ANZSCO sub-major group — one of 43. Every skill in "${label}" shares this figure.`,
+    };
+  }
+  if (city === "singapore") {
+    const n = employmentFor(skill, city, month);
+    const label = SG_SKILL_GROUP[skill];
+    // The SSOC group name IS the label here — SG_SKILL_GROUP maps a skill
+    // straight to the group's published name rather than to a code.
+    if (n === null || !label) return null;
+    const year = month.slice(0, 4);
+    // Newest-first, matching the source table.
+    const y = SG_SUPPLY_YEARS.find((v) => v <= year) ?? SG_SUPPLY_YEARS[0];
+    return {
+      n,
+      label,
+      grain: "group",
+      asof: y,
+      source: "MOM",
+      note: `SSOC major group — one of 8, the coarsest supply source in the app. Every skill in "${label}" shares this figure.`,
+    };
   }
   return null;
 }

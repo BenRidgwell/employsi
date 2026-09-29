@@ -151,14 +151,21 @@ async function workerEnv(): Promise<Record<string, unknown> | null> {
   }
 }
 
+/** The UTC day llm_usage is bucketed by. One definition, because visitorKey
+ *  keys on it too and the two must agree or a visitor gets a fresh allowance
+ *  mid-request. */
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 let usageTable = false;
 /**
  * Count one model call against today's allowances and report whether it fits.
  * The increment and the read are one statement, so two tabs racing cannot
- * both see the last free call. A visitor is a salted hash of their IP — the
- * address itself is never stored.
+ * both see the last free call. A visitor is an HMAC of their IP under a Worker
+ * secret — the address itself is never stored. See visitorKey.
  */
-async function withinAllowance(db: D1Like, visitor: string): Promise<boolean> {
+async function withinAllowance(db: D1Like, visitor: string, day: string): Promise<boolean> {
   if (!usageTable) {
     await db
       .prepare(
@@ -172,7 +179,6 @@ async function withinAllowance(db: D1Like, visitor: string): Promise<boolean> {
       .run();
     usageTable = true;
   }
-  const day = new Date().toISOString().slice(0, 10);
   const bump = (who: string) =>
     db
       .prepare(
@@ -186,19 +192,60 @@ async function withinAllowance(db: D1Like, visitor: string): Promise<boolean> {
   return Number(site?.n) <= SITE_DAILY && Number(mine?.n) <= PER_VISITOR_DAILY;
 }
 
-async function visitorKey(): Promise<string> {
-  let ip = "unknown";
+/**
+ * The per-visitor bucket for the daily allowance: an HMAC of the caller's IP
+ * under a Worker secret, never the address itself.
+ *
+ * THIS WAS A BARE DIGEST OF A PUBLIC PREFIX and the comment above already
+ * claimed it was salted, which it was not. `SHA-256("employsi-llm|" + ip)`
+ * commits to nothing secret, so the whole IPv4 space is 4.3 billion digests —
+ * minutes on a GPU — and anyone who read llm_usage could recover every address
+ * in it. A hash only hides an input drawn from a large space; an IP address is
+ * drawn from a small one, so the secret has to do the hiding.
+ *
+ * THE DAY IS IN THE MESSAGE, not just the table key. llm_usage is keyed
+ * (day, who) either way, so including it costs nothing and means one visitor's
+ * key differs every day — a stolen table cannot be used to follow a single
+ * address across dates, even by someone holding the secret.
+ *
+ * WITHOUT A SECRET IT RETURNS ONE SHARED BUCKET rather than falling back to the
+ * old digest. That is the safe direction: the per-visitor cap degrades to a
+ * collective one and heavy use lands on the free rule-based router sooner, which
+ * is this feature's designed way to fail. The alternative — storing a
+ * reversible IP hash because a secret was missing — is the bug being fixed, and
+ * a fallback that reintroduces it would be worse than the degradation.
+ *
+ * LLM_VISITOR_SALT is preferred; BETTER_AUTH_SECRET is accepted because it is
+ * already set wherever the app is deployed, and this use is domain-separated by
+ * the "llm|" prefix on the message. Set the dedicated secret per Worker:
+ *   npx wrangler secret put LLM_VISITOR_SALT --name <worker>
+ * and remember a secret is not live until its version is deployed (see
+ * CLAUDE.md).
+ */
+async function visitorKey(env: Record<string, unknown> | null, day: string): Promise<string> {
+  let ip = "";
   try {
     const h = getRequest().headers;
-    ip = h.get("cf-connecting-ip") || h.get("x-forwarded-for")?.split(",")[0]?.trim() || ip;
+    ip = h.get("cf-connecting-ip") || h.get("x-forwarded-for")?.split(",")[0]?.trim() || "";
   } catch {
-    // Off-request (should not happen in a server fn): one shared bucket.
+    // Off-request (should not happen in a server fn).
   }
-  const bytes = new TextEncoder().encode(`employsi-llm|${ip}`);
-  const hash = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(hash).slice(0, 12)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const salt =
+    (typeof env?.LLM_VISITOR_SALT === "string" && env.LLM_VISITOR_SALT) ||
+    (typeof env?.BETTER_AUTH_SECRET === "string" && env.BETTER_AUTH_SECRET) ||
+    "";
+  if (!ip || !salt) return "shared";
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(salt),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`llm|${day}|${ip}`));
+  // 96 bits is far more than enough to keep a day's visitors apart, and a
+  // shorter value is less to store.
+  return [...new Uint8Array(mac).slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** A tool input reduced to its string fields, which is all either tool takes. */
@@ -321,6 +368,10 @@ export const analystLlmStep = createServerFn({ method: "POST" })
     // No key, or no database to count against: off. Failing closed on the
     // counter is deliberate — an uncounted model is an uncapped bill.
     if (!key || !db) return { kind: "unavailable", reason: "disabled" };
+    // One day value for the whole request: both the visitor key and the table
+    // bucket are derived from it, and a request that straddled midnight with two
+    // separate reads would hand out a second allowance.
+    const day = today();
 
     const messages = sanitise(data?.messages);
     if (!messages) return { kind: "unavailable", reason: "error" };
@@ -338,7 +389,7 @@ export const analystLlmStep = createServerFn({ method: "POST" })
     }
 
     try {
-      if (!(await withinAllowance(db, await visitorKey()))) {
+      if (!(await withinAllowance(db, await visitorKey(env, day), day))) {
         return {
           kind: "unavailable",
           reason: "limit",
@@ -419,7 +470,7 @@ export const analystLlmStep = createServerFn({ method: "POST" })
        * tools. It is a model call like any other and is counted as one; if
        * the rewrite still fails the check, the pane shows the data answer.
        */
-      if (!(await withinAllowance(db, await visitorKey()))) {
+      if (!(await withinAllowance(db, await visitorKey(env, day), day))) {
         return { kind: "reply", text, verified: false };
       }
       const redo = await client.messages.create({

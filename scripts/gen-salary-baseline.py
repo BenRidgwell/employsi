@@ -68,6 +68,48 @@ reasoning" failure this file exists to avoid.
 If Singapore is wanted later, the thing to look for is a finer MOM occupational
 wage table — not a way to present eight numbers as a hundred.
 
+THAT TABLE HAS NOW BEEN FOUND, AND IS STILL NOT WIRED IN. Read this before
+looking again. The MOM OCCUPATIONAL WAGE SURVEY is on data.gov.sg as
+d_9917e751f7498502f70052a940a3f312 ("Resident Occupational Wages, June 2024"),
+with three siblings splitting the same survey by sex, establishment size and
+industry. It is exactly what the paragraph above asks for:
+
+    562 occupations at true SSOC detail — "accountant (excluding tax
+    accountant)", "actuary", "anaesthesiologist" — with 25th/50th/75th
+    percentile BASIC and GROSS monthly wage.
+
+Run through skillsForText it maps 333 of the 562 (59%) and reaches 78 DISTINCT
+SKILLS, against AU's ~69 and NZ's 67. On grain it would be the best market in
+this file. The 2026-08-25 pass missed it because data.gov.sg's search ignores its
+query parameter — the same obstacle recorded above — and the dataset is only
+findable by id.
+
+IT IS STILL NOT USED, for three reasons that are about fit rather than quality:
+
+  1. ONE YEAR. data.gov.sg carries June 2024 and nothing else; earlier rounds
+     (2013, 2022 pages exist) are on stats.mom.gov.sg, which is Imperva-blocked
+     from this sandbox — retried 2026-09-29 with a real headless browser and the
+     proxy CA, still a flat 403 with no challenge to solve. This file exists to
+     answer "is this skill worth more than it used to be". One year cannot.
+  2. SINGAPORE IS NOT SHORT OF PAY DATA. 48,698 of its 50,830 archived ads state
+     a salary — 96%, the best-covered market in the archive, against Perth's 16%.
+     The gap this file fills elsewhere is not a gap there.
+  3. NOTHING CONSUMES THIS FILE YET. Nothing in src/ imports salaryBaseline.ts;
+     only the generator and check-salary-baseline.ts touch it. Adding a market
+     would add rows nothing reads.
+
+If a use appears, note the basis: residents, PRIVATE sector establishments with
+at least 25 employees, excluding bonuses and employer CPF. Narrower than the
+ATO's received income and the NZ census's total personal income, so it belongs in
+its own market with its own basis string, exactly as the section below requires —
+not merged onto either axis.
+
+Worth knowing separately: those 562 occupation names are the best vocabulary
+probe in reach for the skills taxonomy. The 229 misses include real gaps, not
+just Singapore phrasing — "anaesthesiologist" reaches nothing while
+"anaesthetist" reaches Medical Practice, and aerospace engineering has no
+coverage at all.
+
 THE MARKETS DO NOT SHARE AN AXIS, AND MUST NOT BE MADE TO
 AU is eight financial years with a state split in one of them; NZ is three
 census years with a regional split in all three. Their bases differ too — the

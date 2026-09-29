@@ -1,0 +1,1283 @@
+/* ==========================================================================
+   employsi · marketing site (/, /product, /login)
+
+   Ported from the Claude Design "employsi design system" exports. The design
+   files are fixed 1440px canvases with inline styles; this is the same
+   geometry as classes, with the breakpoints the canvases never had to have.
+
+   EVERY TOKEN IS PREFIXED --ws-. The design system names them --radius-xl,
+   --shadow-lg, --text-h1 …, and Tailwind v4 already defines several of those
+   names on :root for its own utilities. Declaring the design's values under
+   the same names would silently restyle any Tailwind utility rendered inside
+   these pages (the About popover is one). Scoped to .ws as well, so nothing
+   here reaches the map app at /app.
+
+   Fonts are NOT loaded here: Mona Sans and Inter are already requested once
+   for every route by src/routes/__root.tsx.
+   ========================================================================== */
+
+.ws {
+  --ws-n0: #ffffff;
+  --ws-n50: #fafafa;
+  --ws-n100: #f4f4f5;
+  --ws-n150: #ededf0;
+  --ws-n200: #e5e5ea;
+  --ws-n300: #d1d1d6;
+  --ws-n400: #b4b4ba;
+  --ws-n500: #8e8e93;
+  --ws-n600: #6c6c72;
+  --ws-n700: #48484a;
+  --ws-n800: #2c2c2e;
+  --ws-n900: #1c1c1e;
+
+  --ws-up: #2f8f63; /* green-500 */
+  --ws-down: #c4463b; /* red-500 */
+  --ws-flat: #8e8e93;
+
+  --ws-text: var(--ws-n900);
+  --ws-text-2: var(--ws-n600);
+  --ws-text-3: var(--ws-n500);
+  --ws-surface-subtle: var(--ws-n50);
+  --ws-surface-sunken: var(--ws-n100);
+  --ws-border-subtle: var(--ws-n150);
+  --ws-border: var(--ws-n200);
+  --ws-border-strong: var(--ws-n300);
+
+  --ws-sans: "Mona Sans Variable", "Mona Sans", system-ui, -apple-system, sans-serif;
+  --ws-label: "Inter", system-ui, -apple-system, sans-serif;
+
+  --ws-shadow-xs: 0 1px 2px rgba(28, 28, 30, 0.05);
+  --ws-shadow-md: 0 2px 4px rgba(28, 28, 30, 0.05), 0 4px 12px rgba(28, 28, 30, 0.07);
+  --ws-shadow-lg: 0 4px 8px rgba(28, 28, 30, 0.05), 0 12px 32px rgba(28, 28, 30, 0.1);
+  --ws-shadow-xl: 0 8px 16px rgba(28, 28, 30, 0.06), 0 24px 56px rgba(28, 28, 30, 0.14);
+  --ws-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* The design's 40px page gutter, stepping down to 16px on a phone. */
+  --ws-gutter: clamp(16px, 2.8vw, 40px);
+
+  min-height: 100vh;
+  background: #fff;
+  color: var(--ws-text);
+  font-family: var(--ws-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+.ws *,
+.ws *::before,
+.ws *::after {
+  box-sizing: border-box;
+}
+:where(.ws) a {
+  color: inherit;
+}
+.ws :focus-visible {
+  outline: 2px solid var(--ws-n900);
+  outline-offset: 2px;
+}
+
+/* ----- type ------------------------------------------------------------- */
+
+.ws-display {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.ws-display.xl {
+  font-size: clamp(44px, 5.6vw, 80px);
+}
+.ws-display.lg {
+  font-size: clamp(34px, 3.9vw, 56px);
+}
+.ws-display.md {
+  font-size: clamp(30px, 3.35vw, 48px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+.ws-lede {
+  margin: 0;
+  font-size: clamp(17px, 1.4vw, 20px);
+  line-height: 1.55;
+  color: var(--ws-text-2);
+  text-wrap: pretty;
+}
+.ws-eyebrow {
+  font-family: var(--ws-label);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ws-text-3);
+}
+
+/* ----- buttons ---------------------------------------------------------- */
+
+.ws-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: var(--ws-sans);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 13px 28px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    transform 0.12s,
+    background 0.16s,
+    color 0.16s;
+}
+.ws-btn:active {
+  transform: scale(0.98);
+}
+/* White pill on a dark ground; inverts to an outline on hover. */
+.ws-btn.light {
+  color: var(--ws-n900);
+  background: #fff;
+  border-color: #fff;
+}
+.ws-btn.light:hover {
+  background: transparent;
+  color: #fff;
+}
+.ws-btn.ghost {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.ws-btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* ----- nav -------------------------------------------------------------- */
+
+.ws-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  /* The design lays the bar OVER the first section rather than above it. */
+  margin-bottom: -72px;
+  padding: 0 var(--ws-gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+}
+.ws-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--ws-text);
+}
+.ws-brand img {
+  width: 24px;
+  height: 24px;
+}
+.ws-brand span {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.ws-navlinks {
+  display: flex;
+  align-items: center;
+  gap: clamp(2px, 1vw, 12px);
+}
+.ws-navlink {
+  text-decoration: none;
+  font-family: var(--ws-sans);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ws-text-2);
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition:
+    background 0.16s,
+    color 0.16s;
+}
+.ws-navlink:hover,
+.ws-navlink[aria-current="page"] {
+  background: var(--ws-surface-subtle);
+  color: var(--ws-text);
+}
+.ws-navlink[aria-current="page"] {
+  font-weight: 600;
+}
+.ws-navcta {
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--ws-n900);
+  padding: 10px 20px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: transform 0.12s;
+}
+.ws-navcta:hover {
+  background: var(--ws-n800);
+  color: #fff;
+}
+.ws-navcta:active {
+  transform: scale(0.98);
+}
+@media (max-width: 520px) {
+  .ws-navlinks {
+    gap: 0;
+  }
+  .ws-navlink {
+    padding: 8px 8px;
+    font-size: 14px;
+  }
+  .ws-navcta {
+    margin-left: 4px;
+    padding: 9px 14px;
+    font-size: 14px;
+  }
+  .ws-brand span {
+    font-size: 20px;
+  }
+}
+
+/* ----- landing: top banner ---------------------------------------------- */
+
+.ws-banner {
+  position: relative;
+  /* 1440 x 810 in the design — 16:9 — held to a sane range either side. */
+  height: clamp(600px, 56.25vw, 900px);
+  background: #0d0d0e;
+  overflow: hidden;
+}
+.ws-banner video,
+.ws-banner .poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* No CSS filter: the film is encoded grayscale already. A filter on a
+     <video> costs a GPU pass on every frame and was one cause of the hero
+     juddering. */
+  display: block;
+}
+.ws-banner .scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    0deg,
+    rgba(28, 28, 30, 0.84) 0%,
+    rgba(28, 28, 30, 0.52) 55%,
+    rgba(28, 28, 30, 0.38) 100%
+  );
+}
+.ws-banner .copy {
+  position: absolute;
+  left: var(--ws-gutter);
+  right: var(--ws-gutter);
+  bottom: clamp(48px, 6.7vw, 96px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: #fff;
+}
+.ws-banner .copy .ws-lede {
+  color: #fff;
+  max-width: 680px;
+}
+
+/* The two skills callouts drawn over the footage (HeroCallouts.tsx). Drawn
+   in the design's own 1920x1080 space and scaled to the banner's width. */
+.ws-callouts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.ws-callouts .stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 0 0;
+}
+@media (max-width: 1279px) {
+  /* The cards sit at x 1700 of 1920 and their lines start at x 836, scaled
+     to the banner's width. Below ~1280px the headline stops shrinking as
+     fast as the stage does, and the lines' start runs into "world of work."
+     Measured on the earlier x 1300 placement at 1024px: the red card sat
+     across "…to the world." Hidden rather than collided. */
+  .ws-callouts {
+    display: none;
+  }
+}
+
+/* ----- landing: split feature rows -------------------------------------- */
+
+.ws-split {
+  padding: clamp(72px, 8.3vw, 120px) var(--ws-gutter) clamp(72px, 7.8vw, 112px);
+  display: grid;
+  grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+  gap: clamp(40px, 5vw, 72px);
+  align-items: center;
+}
+.ws-split.reverse {
+  background: var(--ws-surface-subtle);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+}
+.ws-split .text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 28px;
+}
+@media (max-width: 900px) {
+  .ws-split,
+  .ws-split.reverse {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Text first on a phone, whichever side it sat on at desktop. */
+  .ws-split.reverse .text {
+    order: -1;
+  }
+}
+
+/* A fanned stack of app screenshots that cycles front-to-back. */
+.ws-stackwrap {
+  width: 100%;
+  max-width: 720px;
+  padding-top: 56px;
+}
+.ws-stackwrap.end {
+  justify-self: end;
+}
+.ws-stackwrap.start {
+  justify-self: start;
+  display: flex;
+  justify-content: flex-end;
+}
+.ws-stack {
+  position: relative;
+  width: calc(100% - 56px);
+  aspect-ratio: 2912 / 1476;
+}
+.ws-shot {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--ws-border-subtle);
+  box-shadow: var(--ws-shadow-lg);
+  transition:
+    transform 0.9s var(--ws-ease),
+    opacity 0.9s var(--ws-ease);
+}
+.ws-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+}
+@media (max-width: 900px) {
+  .ws-stackwrap,
+  .ws-stackwrap.end,
+  .ws-stackwrap.start {
+    justify-self: stretch;
+    max-width: none;
+    padding-top: 40px;
+  }
+  .ws-stack {
+    width: calc(100% - 40px);
+  }
+}
+
+/* ----- closing CTA, stats, ticker (shared by / and /product) ------------- */
+
+.ws-closing {
+  padding: 40px var(--ws-gutter) 48px;
+}
+.ws-closing .panel {
+  position: relative;
+  background: var(--ws-n900);
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ws-closing .head {
+  padding: clamp(72px, 8.3vw, 120px) clamp(20px, 2.8vw, 40px) 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+}
+.ws-closing .head h2 {
+  color: #fff;
+  max-width: 960px;
+}
+.ws-closing .head .ws-lede {
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 640px;
+}
+.ws-closing .ctas {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ws-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  margin: 0 clamp(20px, 2.8vw, 40px);
+}
+.ws-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 32px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.ws-stat .n {
+  font-size: clamp(34px, 3.35vw, 48px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.ws-stat .l {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.72);
+}
+@media (max-width: 900px) {
+  .ws-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ws-stat {
+    padding: 22px 20px;
+  }
+  .ws-stat:nth-child(odd) {
+    border-left: 0;
+  }
+  .ws-stat:nth-child(n + 3) {
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+}
+
+.ws-ticker {
+  margin: 48px clamp(20px, 2.8vw, 40px) 40px;
+  background: #fff;
+  border-radius: 999px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  box-shadow: var(--ws-shadow-md);
+}
+.ws-ticker .chip {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--ws-n900);
+  color: #fff;
+  border-radius: 999px;
+  padding: 14px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 12px 0 16px #fff;
+}
+.ws-ticker .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #3fae7a;
+}
+.ws-ticker .sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.28);
+}
+.ws-ticker .win {
+  color: rgba(255, 255, 255, 0.72);
+}
+.ws-ticker .lane {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 4%, #000 94%, transparent);
+}
+.ws-ticker .track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: ws-marquee var(--ws-marquee-s, 80s) linear infinite;
+}
+.ws-ticker:hover .track {
+  animation-play-state: paused;
+}
+@keyframes ws-marquee {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.ws-ticker .row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+  padding: 0 28px;
+  border-right: 1px solid var(--ws-border-subtle);
+}
+.ws-ticker .name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ws-text);
+}
+.ws-ticker .pay {
+  font-size: 16px;
+  color: var(--ws-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.ws-ticker .chg {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.ws-ticker .chg small {
+  margin-left: 6px;
+  font-family: var(--ws-label);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ws-ticker .note {
+  padding: 0 28px;
+  font-size: 15px;
+  color: var(--ws-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-ticker .skel {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--ws-n150);
+}
+@media (max-width: 640px) {
+  .ws-ticker {
+    border-radius: 22px;
+    padding: 5px;
+  }
+  .ws-ticker .chip {
+    padding: 10px 14px;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    gap: 8px;
+  }
+  .ws-ticker .chip .sep,
+  .ws-ticker .chip .win {
+    display: none;
+  }
+  .ws-ticker .row {
+    padding: 0 16px;
+    gap: 10px;
+  }
+  .ws-ticker .row svg {
+    display: none;
+  }
+  .ws-ticker .name {
+    font-size: 15px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ws-ticker .track {
+    animation: none;
+  }
+  .ws-ticker .lane {
+    overflow-x: auto;
+  }
+}
+
+/* ----- footer ----------------------------------------------------------- */
+
+.ws-footer {
+  border-top: 1px solid var(--ws-border-subtle);
+  padding: 28px var(--ws-gutter);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+.ws-footer .mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ws-footer .mark img {
+  width: 18px;
+  height: 18px;
+}
+.ws-footer .mark {
+  flex-wrap: wrap;
+}
+/* A hairline between the copyright and the ABN, the same grey as the text. */
+.ws-footer-abn {
+  padding-left: 10px;
+  border-left: 1px solid var(--ws-border-subtle);
+}
+.ws-footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 6px;
+}
+.ws-footer-social a {
+  display: inline-flex;
+  color: var(--ws-text-3);
+  transition: color 0.15s;
+}
+.ws-footer .ws-footer-social a:hover {
+  color: var(--ws-text);
+  text-decoration: none;
+}
+.ws-footer nav {
+  display: flex;
+  gap: 24px;
+}
+.ws-footer a {
+  text-decoration: none;
+}
+.ws-footer-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ws-footer a:hover,
+.ws-footer-link:hover {
+  color: var(--ws-text);
+  text-decoration: underline;
+}
+
+/* ----- product: journey -------------------------------------------------- */
+
+.ws-intro {
+  position: relative;
+  z-index: 1;
+  padding: clamp(128px, 11.7vw, 168px) var(--ws-gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+}
+/* Smaller than the site's .ws-display.lg (56px) on request: this headline
+   is a long sentence, and at the full size it outweighed the journey below. */
+.ws-intro h1.ws-display {
+  max-width: 700px;
+  font-size: clamp(30px, 3.2vw, 46px);
+}
+.ws-sides {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px;
+  margin-top: 8px;
+  background: var(--ws-surface-subtle);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--ws-border-subtle);
+}
+.ws-sides button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ws-sans);
+  font-size: clamp(15px, 1.25vw, 18px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: clamp(9px, 0.8vw, 11px) clamp(18px, 1.9vw, 26px);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ws-text-3);
+  transition:
+    background 0.25s var(--ws-ease),
+    color 0.25s var(--ws-ease);
+}
+.ws-sides button svg {
+  width: 18px;
+  height: 18px;
+}
+.ws-sides button[aria-pressed="true"] {
+  background: var(--ws-n900);
+  color: #fff;
+}
+.ws-sides button:active {
+  transform: scale(0.98);
+}
+
+.ws-journey {
+  position: relative;
+  padding: 0 var(--ws-gutter) 80px;
+  display: grid;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: clamp(40px, 5vw, 72px);
+  align-items: start;
+}
+/* One backdrop behind the intro AND the journey: the globe contours and the
+   dotted path start behind the headline, not below the toggle. */
+.ws-stage {
+  position: relative;
+}
+.ws-stage > canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.ws-steps {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 0 160px;
+}
+.ws-step {
+  min-height: 640px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  transition:
+    opacity 0.6s var(--ws-ease),
+    transform 0.6s var(--ws-ease);
+}
+.ws-step:not(.on) {
+  opacity: 0.28;
+  transform: translateX(-8px);
+}
+.ws-step .kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ws-step .kicker b {
+  font-weight: 600;
+  color: var(--ws-text);
+}
+.ws-step .kicker i {
+  width: 24px;
+  height: 1px;
+  background: var(--ws-border-strong);
+}
+.ws-step .kicker .tag {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--ws-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: #fff;
+  background: var(--ws-n900);
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+.ws-step .inline-shot {
+  display: none;
+}
+.ws-viewer {
+  position: sticky;
+  z-index: 1;
+  top: 112px;
+  height: 720px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+}
+.ws-frames {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2912 / 1476;
+}
+.ws-frame {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity 0.7s var(--ws-ease),
+    transform 0.7s var(--ws-ease);
+}
+.ws-frame.single {
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--ws-border-subtle);
+  box-shadow: var(--ws-shadow-xl);
+}
+.ws-frame.single img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: left top;
+}
+.ws-frame .fan {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(100% - 56px);
+  height: calc(100% - 28px);
+}
+.ws-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ws-progress .bar {
+  height: 2px;
+  background: var(--ws-border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.ws-progress .bar div {
+  height: 100%;
+  width: 0%;
+  background: var(--ws-n900);
+}
+.ws-progress .labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ws-progress .labels span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ws-text-3);
+  transition: color 0.3s;
+}
+.ws-progress .labels span.done {
+  color: var(--ws-text);
+}
+.ws-progress .labels span.on {
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  /* No sticky viewer on a phone: there is no second column to hold it. Each
+     step carries its own screenshot instead, and every step is fully lit. */
+  .ws-journey {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ws-stage > canvas,
+  .ws-viewer {
+    display: none;
+  }
+  .ws-steps {
+    padding: 24px 0 24px;
+    gap: 64px;
+  }
+  .ws-step {
+    min-height: 0;
+  }
+  .ws-step:not(.on) {
+    opacity: 1;
+    transform: none;
+  }
+  .ws-step .inline-shot {
+    display: block;
+    width: 100%;
+    border-radius: 14px;
+    border: 1px solid var(--ws-border-subtle);
+    box-shadow: var(--ws-shadow-lg);
+  }
+}
+
+.ws-caps {
+  padding: clamp(72px, 7.8vw, 112px) var(--ws-gutter);
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+.ws-caps h2 {
+  max-width: 760px;
+}
+.ws-caps .grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px;
+}
+.ws-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 32px 8px 0;
+  border-top: 1px solid var(--ws-border-strong);
+}
+.ws-cap h3 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.ws-cap p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ws-text-2);
+  text-wrap: pretty;
+}
+@media (max-width: 900px) {
+  .ws-caps .grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ws-cap {
+    padding-right: 0;
+  }
+}
+
+/* ----- login ------------------------------------------------------------ */
+
+.ws-auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100vh;
+}
+.ws-auth .media {
+  position: relative;
+  background: var(--ws-n900);
+  min-height: 100vh;
+  overflow: hidden;
+}
+.ws-auth .media video,
+.ws-auth .media img.poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ws-auth .media .tint {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 28, 30, 0.5);
+}
+.ws-auth .media .grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(28, 28, 30, 0.55) 0%,
+    rgba(28, 28, 30, 0) 35%,
+    rgba(28, 28, 30, 0) 65%,
+    rgba(28, 28, 30, 0.7) 100%
+  );
+}
+.ws-auth .media .ws-brand {
+  position: absolute;
+  top: 32px;
+  left: 36px;
+  color: #fff;
+}
+.ws-auth .media .tagline {
+  position: absolute;
+  left: 36px;
+  right: 36px;
+  bottom: 36px;
+  color: #fff;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  max-width: 520px;
+}
+.ws-auth .pane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+  min-height: 100vh;
+}
+.ws-auth .form {
+  width: 100%;
+  max-width: 400px;
+}
+.ws-auth .back {
+  display: none;
+}
+.ws-tabs {
+  display: flex;
+  background: var(--ws-surface-sunken);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 2px;
+}
+.ws-tabs button {
+  flex: 1;
+  height: 40px;
+  border-radius: 9px;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--ws-sans);
+  font-size: 15px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--ws-text-3);
+}
+.ws-tabs button[aria-selected="true"] {
+  font-weight: 600;
+  background: #fff;
+  color: var(--ws-text);
+  box-shadow: var(--ws-shadow-xs);
+}
+.ws-auth h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+.ws-auth .sub {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: var(--ws-text-3);
+  text-wrap: pretty;
+}
+.ws-auth .fine {
+  margin: 20px 0 0;
+  font-size: 12.5px;
+  color: var(--ws-text-3);
+  text-align: center;
+  text-wrap: pretty;
+}
+.ws-auth .swap {
+  margin: 28px 0 0;
+  font-size: 14px;
+  color: var(--ws-text-3);
+  text-align: center;
+}
+.ws-auth .swap button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ws-text);
+  cursor: pointer;
+}
+.ws-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+.ws-provider {
+  height: 50px;
+  border-radius: 999px;
+  border: 1px solid var(--ws-border);
+  background: #fff;
+  color: var(--ws-text);
+  font-family: var(--ws-sans);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-decoration: none;
+  transition: transform 0.12s;
+}
+.ws-provider:hover {
+  background: var(--ws-surface-subtle);
+}
+.ws-provider:active {
+  transform: scale(0.98);
+}
+.ws-provider.primary {
+  background: var(--ws-n900);
+  border-color: var(--ws-n900);
+  color: #fff;
+  font-weight: 600;
+}
+.ws-provider.primary:hover {
+  background: var(--ws-n800);
+}
+.ws-provider:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.ws-field {
+  height: 50px;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--ws-border);
+  padding: 0 22px;
+  font-family: var(--ws-sans);
+  font-size: 15px;
+  color: var(--ws-text);
+  background: #fff;
+}
+.ws-field::placeholder {
+  color: var(--ws-text-3);
+}
+.ws-field:focus {
+  outline: none;
+  border-color: var(--ws-n900);
+  box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.14);
+}
+.ws-msg {
+  margin: 12px 0 0;
+  font-size: 14px;
+  text-align: center;
+}
+.ws-msg.err {
+  color: #97332b;
+}
+.ws-msg.ok {
+  border-radius: 14px;
+  padding: 14px 18px;
+  background: #e8f3ec;
+  color: #1f6a48;
+}
+.ws-skeleton-btn {
+  height: 50px;
+  border-radius: 999px;
+  background: var(--ws-n100);
+}
+@media (max-width: 860px) {
+  .ws-auth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The film is atmosphere; on a phone it would push the form below the
+     fold, so the panel shrinks to a header band. */
+  .ws-auth .media {
+    min-height: 200px;
+  }
+  .ws-auth .media .tagline {
+    font-size: 24px;
+    left: 20px;
+    bottom: 20px;
+  }
+  .ws-auth .media .ws-brand {
+    top: 20px;
+    left: 20px;
+  }
+  .ws-auth .pane {
+    min-height: 0;
+    padding: 36px 20px 56px;
+    align-items: flex-start;
+  }
+}
+.ws-auth .swap a {
+  font-weight: 600;
+  color: var(--ws-text);
+  text-decoration: none;
+}
+
+/* ----- login: create-account steps and the subscription card ------------ */
+
+.ws-stepbar {
+  display: flex;
+  gap: 8px;
+}
+.ws-stepbar > div {
+  flex: 1;
+}
+.ws-stepbar .bar {
+  height: 3px;
+  border-radius: 999px;
+  background: var(--ws-n200);
+}
+.ws-stepbar .done .bar {
+  background: var(--ws-n900);
+}
+.ws-stepbar .lbl {
+  margin-top: 8px;
+  font-family: var(--ws-label);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ws-text-3);
+}
+.ws-stepbar .lbl.on {
+  color: var(--ws-text);
+}
+.ws-plan {
+  border: 1px solid var(--ws-border-subtle);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+}
+.ws-plan .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.ws-plan .name {
+  font-weight: 600;
+}
+.ws-plan .price {
+  font-family: var(--ws-label);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ws-plan .muted,
+.ws-plan .row.muted {
+  color: var(--ws-text-3);
+}
+.ws-plan .rule {
+  height: 1px;
+  background: var(--ws-border-subtle);
+}
+.ws-linkbtn {
+  height: 40px;
+  border: 0;
+  background: none;
+  color: var(--ws-text-3);
+  font-family: var(--ws-sans);
+  font-size: 14px;
+  cursor: pointer;
+}
