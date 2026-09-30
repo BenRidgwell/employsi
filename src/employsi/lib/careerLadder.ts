@@ -1349,7 +1349,7 @@ export const FAMILIES: FamilyDef[] = [
     // superannuation, money; cleaners and cooks in aged care are their own
     // ladders; nurses are nursing's.
     exclude:
-      /\bchild ?care\b|\bteach\w*\b|\bcleaner\b|\bcleaning\b|\bcook\b|\bchef\b|\bkitchen\b|\bcall centre\b|\bcustomer (?:support|care)\b|\brostering\b|\bworkers compensation\b|\binjury management\b|\bsuperannuation\b|\binvestigations\b|\bclaims\b|\bfinancial counsell?or\b|\bgenetic counsell?or\b|\bnurse\b|\brn\b|\blpn\b|\binsurance\b|\bsales\b|\blecturer\b|\bprofessor\b|\bhead of school\b|\bdisaster recovery\b|\bhealth care worker\b/,
+      /\bchild ?care\b|\bteach\w*\b|\bcleaner\b|\bcleaning\b|\bcook\b|\bchef\b|\bkitchen\b|\bcall centre\b|\bcustomer (?:support|care)\b|\brostering\b|\bworkers compensation\b|\binjury management\b|\bsuperannuation\b|\binvestigations\b|\bclaims\b|\bfinancial counsell?or\b|\binvestment counsell?or\b|\bgenetic counsell?or\b|\bnurse\b|\brn\b|\blpn\b|\binsurance\b|\bsales\b|\blecturer\b|\bprofessor\b|\bhead of school\b|\bdisaster recovery\b|\bhealth care worker\b/,
     tracks: [
       {
         id: "social-work",
@@ -2363,6 +2363,15 @@ export interface PathwayMarket {
    * counts every employer, this lists the ones the map can show.
    */
   companies: [string, number, number][];
+  /**
+   * The same roster companies split by city (hub id): [company id, roles
+   * advertised in that city in the window], most first. What the local layer
+   * shows when a role is picked and the reader is in one city — a
+   * multinational's roles elsewhere are not this city's. A role is counted in
+   * the city it was advertised in (its row's hub); a role with no hub is in
+   * `companies` and in no city here.
+   */
+  cityCompanies: Record<string, [string, number][]>;
 }
 
 export interface PathwayEdge {

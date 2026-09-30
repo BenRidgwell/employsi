@@ -173,6 +173,9 @@ export interface CardNode {
   /** Roster companies that advertised this role in the window —
    *  [company id, roles advertised, still live] — for the map's highlight. */
   companies: [string, number, number][];
+  /** The same companies by city (hub): city → [company id, roles there]. The
+   *  local layer reads its own city's, so a pin counts that city's roles. */
+  companiesByCity: Record<string, [string, number][]>;
   /** Roles on OTHER ladders this one could lead to — see careerMoves. */
   moves: CardMove[];
 }
@@ -479,6 +482,7 @@ export function careerCard(
       skills: n.skills.map(([s]) => s),
       skillLive: m.skillLive,
       companies: m.companies ?? [],
+      companiesByCity: m.cityCompanies ?? {},
       moves: careerMoves(p, n, country),
     };
   });

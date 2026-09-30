@@ -441,6 +441,7 @@ export class PathwayBuilder {
     const skillLive: Record<string, number> = {};
     const employers = new Set<string>();
     const roster = new Map<string, [number, number]>();
+    const byCity = new Map<string, Map<string, number>>();
     let live = 0;
     for (const r of roles) {
       if (r.employer) employers.add(r.employer);
@@ -449,6 +450,11 @@ export class PathwayBuilder {
         c[0]++;
         if (r.live) c[1]++;
         roster.set(r.employer, c);
+        if (r.hub) {
+          let m = byCity.get(r.hub);
+          if (!m) byCity.set(r.hub, (m = new Map()));
+          bump(m, r.employer);
+        }
       }
       if (!r.live) continue;
       live++;
@@ -469,6 +475,12 @@ export class PathwayBuilder {
         .map(([id, [n, l]]): [string, number, number] => [id, n, l])
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .slice(0, MAX_COMPANIES),
+      cityCompanies: Object.fromEntries(
+        [...byCity].map(([hub, m]) => [
+          hub,
+          [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_COMPANIES),
+        ]),
+      ),
     };
   }
 

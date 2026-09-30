@@ -87,6 +87,9 @@ const FIXTURES: [string, Want][] = [
   ["Payroll Officer", ["payroll", "generalist", 2]],
   ["HR & Payroll Officer", ["payroll", "generalist", 2]],
   ["Recruitment Consultant", null], // agency sales ladder
+  // A wealth manager's title (2026-09-30: six US "investment counselor …
+  // managing director" ads made a mental-health rung 5 on their own).
+  ["Managing Director Investment Counselor Palo Alto", null],
   ["Barista $32/hr", ["hospitality", "generalist", 1]], // "hr" in pay text is not HR
   ["Casual Cleaner - 24 hr roster", ["facilities", "generalist", 1]], // not HR
   ["People Leader - Customer Service", null], // a line manager, not HR

@@ -822,6 +822,14 @@ thresholds (`CROSS_GLOBAL_TO_DOMESTIC` etc.) plus a `LAYER_COOLDOWN` barrier so 
 gesture can't skip a layer. Those constants are **zoom levels, not pixels** — resizing the
 map frame does not invalidate them.
 
+**The local layer counts ONE CITY.** A company id is one employer everywhere
+(`melbourne-csl` is CSL in every city it hires), so a pin's ad count must be
+that city's, or a multinational shows its every office on each pin. A skill
+reads `byMonthCity` / `liveByCity` from `getSkillCompanyMonths` (the archive's
+`hub`); a career role reads its rung's `cityCompanies`. The live KV skill
+index has no per-city split and is only the fallback where D1 cannot answer.
+An ad whose location `hubFor` could not place has no hub and counts in no city.
+
 Company pin placement is `spreadCoordsCity()` in `data/rosters.ts`: a phyllotaxis fan around
 a verified CBD anchor, with per-city `CITY_PLACEMENT` arcs chosen to keep pins off water.
 Those arcs were measured against OpenStreetMap coastlines; changing one moves real markers

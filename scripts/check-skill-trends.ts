@@ -2411,6 +2411,9 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
   const months = {
     months: ["2026-07", "2026-08"],
     byMonth: { "2026-07": { a: 3, b: 1 }, "2026-08": {} },
+    // `a` is a multinational: 3 ads in July, 2 in Perth and 1 in Brisbane.
+    byMonthCity: { "2026-07": { perth: { a: 2, b: 1 }, brisbane: { a: 1 } } },
+    liveByCity: { perth: { a: 1 }, brisbane: { a: 4 } },
   };
   const at = (m: string) => demandByCompanyAt(idx, months, "Strategy", m);
   check("a covered month uses that month's employers", eq(at("2026-07").demand, { a: 3, b: 1 }));
@@ -2423,6 +2426,35 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
   check(
     "no month data at all holds too",
     eq(demandByCompanyAt(idx, null, "Strategy", "2026-07").demand, { live: 9 }),
+  );
+
+  // In a city, a company's pin counts THAT CITY's ads — never its every
+  // office's. The local layer passes its city; nothing else does.
+  const inCity = (m: string, c: string) => demandByCompanyAt(idx, months, "Strategy", m, c);
+  check(
+    "a city's covered month is that city's ads only",
+    eq(inCity("2026-07", "perth").demand, { a: 2, b: 1 }),
+  );
+  check(
+    "...so a multinational's other offices stay out of it",
+    eq(inCity("2026-07", "brisbane").demand, { a: 1 }),
+  );
+  check(
+    "a covered month with nothing in the city is a real zero",
+    eq(inCity("2026-08", "perth").demand, {}),
+  );
+  check(
+    "outside the archive a city holds at ITS live ads, not the company-wide index",
+    eq(inCity("2014-03", "brisbane").demand, { a: 4 }) &&
+      inCity("2014-03", "brisbane").dated === false,
+  );
+  check(
+    "a city with no archive rows at all is empty, not the company-wide index",
+    eq(inCity("2014-03", "darwin").demand, {}),
+  );
+  check(
+    "with no archive, a city falls back to the company-wide index (all there is)",
+    eq(demandByCompanyAt(idx, null, "Strategy", "2026-07", "perth").demand, { live: 9 }),
   );
 
   // The month walk behind all of it. December is where this kind of thing

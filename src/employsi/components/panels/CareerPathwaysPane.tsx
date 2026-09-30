@@ -258,6 +258,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
       title: o.title,
       companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
       cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
+      byCity: Object.fromEntries(
+        Object.entries(o.companiesByCity).map(([hub, cs]) => [hub, Object.fromEntries(cs)]),
+      ),
     });
 
   const nodes: Placed[] = useMemo(
