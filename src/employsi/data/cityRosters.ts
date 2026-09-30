@@ -34,7 +34,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // Perenti, its closest listed peer (mining equipment maintenance).
       ["MAD", "Mader Group", ENR],
       ["OBM", "Ora Banda Mining", ENR],
-      ["PDI", "Predictive Discovery", ENR],
+      // Renamed 2026: Predictive Discovery is PDI Gold Limited, ticker unchanged
+      // ("PDI Gold (ASX: PDI, TSX: PDI)", pdigold.com, read 2026-09-30; the old
+      // predictivediscovery.com redirects there). Still 4 Charles Street, South
+      // Perth. The id is rosterId(city, ticker), so it does not move.
+      ["PDI", "PDI Gold", ENR],
       ["PRN", "Perenti", ENR],
       ["RSG", "Resolute Mining", ENR],
       ["VAU", "Vault Minerals", ENR],
@@ -460,7 +464,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["DASH", "DoorDash", TMT],
       ["NET", "Cloudflare", TMT, "NYSE"],
       ["META", "Meta Platforms", TMT],
-      ["EQIX", "Equinix", FIN],
+      // A data-centre REIT: the REIT is its tax structure, the business is
+      // digital infrastructure. Grouped with NextDC (Brisbane), its closest
+      // peer on the roster, rather than with the banks. Was FIN to 2026-09-30.
+      ["EQIX", "Equinix", TMT],
       ["GILD", "Gilead Sciences", HLT],
       ["LRCX", "Lam Research", TMT],
       ["PLD", "Prologis", FIN, "NYSE"],

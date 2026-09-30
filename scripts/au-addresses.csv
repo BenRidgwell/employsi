@@ -315,7 +315,7 @@ melbourne,Private company,priv-st-vincent-de-paul,St Vincent de Paul,Social serv
 melbourne,Private company,priv-racv,RACV,Insurance & motoring club,"485 Bourke Street, Melbourne VIC 3000",high
 melbourne,Private company,priv-patterson-cheney,Patterson Cheney,Automotive retail,"200 Cheltenham Road, Keysborough VIC 3173",google_maps
 melbourne,Private company,priv-apco-service-stations,Apco Service Stations,Fuel & convenience retail,"57 Ormond Road, East Geelong VIC 3219",google_maps
-melbourne,Private company,priv-grand-motors,Grand Motors,Automotive retail,"265 Ferry Road, Southport QLD 4215",google_maps
+brisbane,Private company,priv-grand-motors,Grand Motors,Automotive retail,"265 Ferry Road, Southport QLD 4215",google_maps
 melbourne,Private company,priv-cci,CCI,Insurance,"Suite 7116, Level 7, 180 Flinders Street, Melbourne VIC 3000",google_maps
 melbourne,Private company,priv-king-wood-mallesons,King & Wood Mallesons,Legal services,"Level 27, Collins Arch, 447 Collins Street, Melbourne VIC 3000",high
 melbourne,Private company,priv-defence-health,Defence Health,Private health insurance,"380 St Kilda Road, Melbourne VIC 3004",medium
@@ -422,7 +422,7 @@ brisbane,Private company,priv-workpac,WorkPac,Labour hire,"Level 16, 31 Duncan S
 brisbane,Private company,priv-sunpork-group,SunPork Group,Pork production,"1/6 Eagleview Place, Eagle Farm QLD 4009",google_maps
 brisbane,Private company,priv-bac-holdings,BAC Holdings,Airport operations,"11 The Circuit, Brisbane Airport QLD 4008",high
 brisbane,Private company,priv-firstmac,Firstmac,Non-bank lending,"Level 40, 111 Eagle Street, Brisbane QLD 4000",medium
-brisbane,Private company,priv-perfection-fresh,Perfection Fresh,Fresh produce,"Level 4, Building F, 1 Homebush Bay Drive, Rhodes NSW 2138",google_maps
+sydney,Private company,priv-perfection-fresh,Perfection Fresh,Fresh produce,"Level 4, Building F, 1 Homebush Bay Drive, Rhodes NSW 2138",google_maps
 brisbane,Private company,priv-mort-co,Mort & Co,Cattle feedlots,"91 Mort Street, Toowoomba QLD 4350",google_maps
 brisbane,Private company,priv-mpc-kinetic,MPC Kinetic,Energy services,"Shop 4, 15 Marshall Street, Fortitude Valley QLD 4006",google_maps
 brisbane,Private company,priv-great-southern-bank,Great Southern Bank,Mutual banking,"145 Ann Street, Brisbane QLD 4000",medium
@@ -552,7 +552,7 @@ perth,Listed company,nst,Northern Star Resources,Gold,"Level 4, 500 Hay Street, 
 perth,Listed company,wes,Wesfarmers,Diversified Retail,"Level 14, Brookfield Place Tower 2, 123 St Georges Terrace, Perth WA 6000",high
 perth,Listed company,perth-cyl,Catalyst Metals,Energy & Natural Resources,"3/50 Colin Street, West Perth WA 6005",google_maps
 perth,Listed company,perth-emr,Emerald Resources,Energy & Natural Resources,"1110 Hay Street, West Perth WA 6005",google_maps
-perth,Listed company,perth-pdi,Predictive Discovery,Energy & Natural Resources,"4 Charles Street, South Perth WA 6151",google_maps
+perth,Listed company,perth-pdi,PDI Gold,Energy & Natural Resources,"4 Charles Street, South Perth WA 6151",google_maps
 perth,Private company,priv-hancock-prospecting,Hancock Prospecting,Iron ore mining,"HPPL House, 28-42 Ventnor Avenue, West Perth WA 6005",high
 perth,Private company,priv-cbh-group,CBH Group,Grain handling co-operative,"Gayfer House, 30 Delhi Street, West Perth WA 6005",high
 perth,Private company,priv-vgw-holdings,VGW Holdings,Online social gaming,"Level 11, Australia Place, 15-17 William Street, Perth WA 6000",google_maps

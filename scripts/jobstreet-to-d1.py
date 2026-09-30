@@ -142,6 +142,31 @@ from advertiser_match import (  # noqa: E402
 _ = (ADVERTISER_ALIAS, CORPORATE_WORDS)
 
 
+# Advertisers whose DISPLAY name passes advertiser_matches() but whose own
+# registered entity is a different employer, keyed by (country, advertiser id).
+# The display name is what the rule reads (companyName comes first below), and a
+# local distributor that shows only the brand is indistinguishable from the
+# brand owner by name alone — so this is keyed on the one thing that cannot
+# collide, the board's advertiser id, and it is per country.
+#
+#   ph 60242409  displays as "Toyota"; the advertiser record is TOYOTA MOTOR
+#                PHILIPPINES CORPORATION. That is the Philippine distributor
+#                and assembler, majority-owned by GT Capital with Toyota Motor
+#                Corporation a minority holder — not the Toyota Motor
+#                Corporation on the Tokyo roster. Measured 2026-09-30: it was
+#                20 of the 168 PH hits for "Toyota Motor", and every one of the
+#                34 archive rows under tokyo-7203 came from it (Makati marketing,
+#                planning and dealer-support roles). The dealerships in the same
+#                search ("Toyota Makati", "Toyota Taytay") are already rejected
+#                by the token rule.
+#
+# A rejected advertiser is reported with the near misses, so an entry here stays
+# visible in every run's log rather than silently dropping rows.
+NOT_THIS_EMPLOYER: dict[tuple[str, str], str] = {
+    ('ph', '60242409'): 'Toyota Motor Philippines Corporation',
+}
+
+
 def job_key(source: str, title: str, company: str, location: str) -> str:
     return '|'.join([source, norm(title), norm(company), norm(location)])[:400]
 
@@ -221,6 +246,11 @@ def fetch_company(name: str, misses: set) -> list:
             if not advertiser_matches(advertiser, name):
                 if near_miss(advertiser, name):
                     misses.add(f'{advertiser}  (searching {name})')
+                continue
+            adv_id = str((j.get('advertiser') or {}).get('id') or '')
+            other = NOT_THIS_EMPLOYER.get((COUNTRY, adv_id))
+            if other:
+                misses.add(f'{advertiser} = {other}, NOT_THIS_EMPLOYER  (searching {name})')
                 continue
             jid = str(j.get('id') or '')
             if jid in seen:

@@ -17370,10 +17370,9 @@ export const SITES: SiteDef[] = [
   // perfection.elmotalent.com.au/careers/joinus/jobs?layout=iframe; the path without ?layout is
   // the server-rendered list fetchElmo walks. Board prints '1 - 2 of 2 jobs shown', both
   // 'Homebush, Distribution Centre' (Sydney Markets, Homebush West NSW) -- a bare site name
-  // with no state, so hubHints ['homebush','sydney'] (2). homeHub kept as the roster city
-  // brisbane, but NOTE the company's head office and DC are in Sydney (Homebush); the roster
-  // city looks wrong and should be reviewed. Every ELMO card carries a location so homeHub only
-  // catches a blank one.
+  // with no state, so hubHints ['homebush','sydney'] (2). The head office and DC are in Sydney
+  // (Rhodes / Homebush), and the roster moved the company from Brisbane to Sydney on 2026-09-30.
+  // Every ELMO card carries a location, so homeHub (null) only matters for a blank one.
   {
     id: "priv-perfection-fresh",
     name: "Perfection Fresh",
@@ -18077,12 +18076,12 @@ export const SITES: SiteDef[] = [
   // perth), Derrimut (1, Australia -> melbourne), Englewood (2, the description names 'DE2
   // Denver' -> denver, not Englewood NJ), Elk Grove Village (1, US -> chicago), Torrance (1, US
   // -> losangeles). Unplaced 142: 'N Locations' multi-site rows (73) and non-hub cities
-  // (Frankfurt, Amsterdam, Warsaw, Slough, Osaka...). Roster sector says Financial Services;
-  // Equinix is a data-centre REIT - sector kept as roster.
+  // (Frankfurt, Amsterdam, Warsaw, Slough, Osaka...). Equinix is a data-centre REIT; the roster
+  // moved it from Financial Services to TMT on 2026-09-30 (beside NextDC), and this follows.
   {
     id: "sanfrancisco-eqix",
     name: "Equinix",
-    sector: "Financial Services",
+    sector: "Technology, Media and Telecommunications",
     platform: "workday",
     endpoint: "https://equinix.wd1.myworkdayjobs.com/wday/cxs/equinix/External/jobs",
     origin: "https://equinix.wd1.myworkdayjobs.com/en-US/External",
