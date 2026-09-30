@@ -6,6 +6,13 @@
   "main": "index.ts",
   "compatibility_date": "2026-07-17",
   "compatibility_flags": ["nodejs_compat"],
+  // CPU ceiling per invocation, raised 2026-09-30 from the 30 s default. Portal
+  // ticks are awaited and packed, and some now carry measured CPU near that
+  // default (TJX's six windows ~29 s, Target's groups ~16 s, Lockheed ~13.5 s,
+  // mostly skillsForText over titles). A tick that hit it would be killed
+  // mid-group and lose every feed after the one running. Billing is for CPU
+  // used, not for the ceiling.
+  "limits": { "cpu_ms": 300000 },
   "kv_namespaces": [
     { "binding": "OPEN_ROLES_HISTORY", "id": "6f8be3a8968d4e24a05ae82b235a6a97" }
   ],
