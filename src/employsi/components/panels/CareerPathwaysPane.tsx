@@ -147,7 +147,10 @@ export function CareerPathwaysPane() {
   const dragRef = useDraggablePane<HTMLDivElement>(open);
 
   // Click-away without a scrim, so the map behind stays zoomable.
-  useClickAway(open, close, ".cppane");
+  // The map and the company card do not close it: the card is used WHILE
+  // exploring — pick a role, then find the country, city and company
+  // advertising it. Close is the ✕, the rail button, Esc or another pane.
+  useClickAway(open, close, ".cppane", ".mapframe, .cc");
 
   if (!open) return null;
   return (

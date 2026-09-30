@@ -517,6 +517,11 @@ const EXCLUSIVE_GROUPS: readonly (readonly PanelFlag[])[] = [
  * mobileMenuOpen is deliberately in BOTH groups: it is a full-screen overlay,
  * so it displaces everything, and everything displaces it.
  */
+/** Desktop layout, where the rail's panes and the company card sit side by
+ *  side (global.css puts both into full-width sheets at 680px and below). */
+const wideScreen = () =>
+  typeof window !== "undefined" && window.matchMedia("(min-width: 681px)").matches;
+
 function solo(flag: PanelFlag, open: boolean): Partial<Record<PanelFlag, boolean>> {
   const next: Partial<Record<PanelFlag, boolean>> = { [flag]: open };
   if (!open) return next;
@@ -607,7 +612,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
-      careerOpen: false,
+      // Career pathways stays open beside a company card on desktop: its job
+      // is to take the reader from a role to the companies advertising it, so
+      // opening one of them must not close it. On a phone both are full-width
+      // sheets and the company replaces it, as before.
+      careerOpen: get().careerOpen && id != null && wideScreen(),
       dataQualityOpen: false,
       flowsOpen: false,
       feedbackOpen: false,
