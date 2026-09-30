@@ -65,7 +65,11 @@ export function LocalBanner() {
         filedStaff >= 1000
           ? `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`
           : filedStaff.toLocaleString("en-AU"),
-      label: `staff at ${filedCount.toLocaleString("en-AU")} filed`,
+      // Just "staff". The employer count that used to sit here ("staff at 135
+      // employers") is still one hover away in `note`, which is the
+      // right place for provenance — in the label it competed with the
+      // figure and read as though 135 were part of the measurement.
+      label: "staff",
       note: `Total staff, all occupations, at the ${filedCount} of ${companies.length} employers on this map with a filed headcount.`,
     });
     // The skill's employment for the whole city, from ABS in the Australian
@@ -97,7 +101,7 @@ export function LocalBanner() {
     });
     stats.push({
       value: `${Math.round(filedStaff / 1000).toLocaleString("en-AU")}K`,
-      label: `staff at ${filedCount.toLocaleString("en-AU")} employers`,
+      label: "staff",
       note: `Total staff, all occupations, at the ${filedCount} of ${companies.length} employers on this map with a filed headcount.`,
     });
   }
