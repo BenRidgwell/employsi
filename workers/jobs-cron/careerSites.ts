@@ -35597,7 +35597,14 @@ async function fetchAppleJobs(site: SiteDef): Promise<PortalJob[]> {
     label,
   );
   if (!rest) return [];
-  const out: PortalJob[] = [];
+  // ONE ROW PER ROLE. The search returns a separate result, with its own
+  // `id`, for every location of one requisition: measured 2026-09-30, 6,107
+  // results were 4,856 positionIds (842 of them at 2+ places, e.g. one Privacy
+  // Counsel at Shanghai AND Beijing). Location is part of job_key, so a row per
+  // place would count one vacancy several times. The role is filed once, at
+  // its first location that lands on a hub (else its first), as Fox and
+  // Lockheed's multi-site roles are.
+  const byPos = new Map<string, PortalJob[]>();
   const seen = new Set<string>();
   for (const r of [...head, ...rest]) {
     const title = clean(r.postingTitle ?? "");
@@ -35608,17 +35615,20 @@ async function fetchAppleJobs(site: SiteDef): Promise<PortalJob[]> {
     const l = r.locations?.[0];
     const name = clean(l?.name ?? "");
     const country = clean(l?.countryName ?? "");
-    out.push(
-      job(
-        site,
-        title,
-        name && name !== country ? `${name}, ${country}` : country || name,
-        `${site.origin}/en-us/details/${r.positionId ?? id}/${r.transformedPostingTitle ?? ""}`,
-        r.postDateInGMT ? isoDay(r.postDateInGMT) : today(),
-        clean(r.team?.teamName ?? "") || "Career portal",
-      ),
+    const pos = r.positionId ?? id;
+    const row = job(
+      site,
+      title,
+      name && name !== country ? `${name}, ${country}` : country || name,
+      `${site.origin}/en-us/details/${pos}/${r.transformedPostingTitle ?? ""}`,
+      r.postDateInGMT ? isoDay(r.postDateInGMT) : today(),
+      clean(r.team?.teamName ?? "") || "Career portal",
     );
+    const list = byPos.get(pos);
+    if (list) list.push(row);
+    else byPos.set(pos, [row]);
   }
+  const out = [...byPos.values()].map((rows) => rows.find((x) => x.city) ?? rows[0]);
   // Pipelines are counted in `total` and deliberately dropped above.
   reportGap(label, seen.size, total);
   return out;
