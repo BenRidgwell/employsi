@@ -217,7 +217,8 @@ type Platform =
   | "sgquantum"
   | "wisetech"
   | "x0pa"
-  | "workdaystores";
+  | "workdaystores"
+  | "mcloud";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -548,6 +549,32 @@ interface SiteDef {
    * every multi-site role on a board that already has rows.
    */
   firstLocationOnly?: boolean;
+  /**
+   * Radancy only: send an EMPTY SearchFiltersModuleName, so the response
+   * carries no `filters` block.
+   *
+   * UnitedHealth Group is why (measured 2026-09-30): one 100-row page is 8.8 MB
+   * with the filters module named — 8.27 MB of it the facet tree, which nothing
+   * here reads — and 82 KB without; 56 such pages would be ~490 MB of JSON to
+   * parse. Its data-total-results is 5,594 either way.
+   *
+   * Opt-in, NOT a default, because the module is not inert everywhere: on
+   * AstraZeneca the same request answers 860 with it named and 797 without
+   * (the site's own page says 863), so dropping it silently shrank that board.
+   * Set this only after checking the total is identical both ways.
+   */
+  radancyNoFilters?: boolean;
+  /**
+   * Oracle only: extra finder parameters, comma-separated, placed INSIDE the
+   * finder next to the site number (the service ignores search parameters
+   * anywhere else — see oracleLocationFacet).
+   *
+   * For a board over the finder's 10,000-offset ceiling (OR_OFFSET_CAP), which
+   * must be read in parts. Kroger's is split by the board's own posting-date
+   * facet (measured 2026-09-30): `selectedPostingDatesFacet=30` ("Less than 30
+   * days", 7,101) and `=31` ("Greater than 30 days", 3,833) sum to its 10,935.
+   */
+  oracleFinder?: string;
 }
 
 // Google's own board places by METRO, not by city name — the county rule
@@ -3430,6 +3457,13 @@ export const SITES: SiteDef[] = [
     // are open (Chevron Australia's own careers page links to a /job/perth/...
     // URL on this board, now expired), so this is a real zero rather than a
     // parser that found nothing. See fetchRadancy.
+    //
+    // NOT WIRED A SECOND TIME AS `houston-cvx` (batch 13 K, 2026-09-30). The
+    // Houston roster's CVX entry is the same employer and this is its only
+    // board, already read here: the archive holds 404 portal-radancy rows under
+    // `chevron` (plus Adzuna/Jora/JobStreet ones) and none under houston-cvx.
+    // A second feed would archive every role twice under two ids; which id
+    // should carry the US roles is a roster decision, not a scraper one.
     homeHub: "perth",
     pageSize: 100,
     // 155 at 100 a page is 2; 6 leaves room to triple before the bound bites,
@@ -23912,6 +23946,364 @@ export const SITES: SiteDef[] = [
       ["norwell, ma", "boston"],
     ],
   })),
+  // ── batch 13: K ──
+  // Sixteen large US employers that read as zero on the map. Placement for all of
+  // them goes through b13kUsHints() (see its note: Washington state, namesakes,
+  // and metro suburbs by CBSA). Measured 2026-09-30 with the real fetchPortal.
+  //
+  // NOT WIRED, and why:
+  //  - Walmart (bentonville-wmt). careers.walmart.com has no ATS board; its
+  //    search is an AI assistant (POST /api/graphql, queryId b0467c1f…, a
+  //    `chatRequest` with a `job_search_context`) over 50,574 jobs, 10 a page.
+  //    `direct_search: true` skips the model and lat/lon/radius is an exact
+  //    filter (974 within 30 mi of Bentonville, matching its store
+  //    aggregation), but the pager merges two indexes (4 campus + 6 field rows
+  //    a page) and overlaps once one runs short: two full walks of the 98
+  //    pages read 840 and 958 unique of 974. No partition was found that it
+  //    honours alongside the radius (`filters` is dropped when lat/lon is set).
+  //  - Costco (seattle-cost). careers.costco.com is Jibe (fetchJibe reads it)
+  //    with 20,125 postings, but every one sampled — 600 of 600 across six
+  //    pages and all categories, Issaquah head office included — carries
+  //    "The listing does not mean that any positions are currently open or
+  //    available at Costco": a standing applicant pool, not vacancies.
+  //  - Delta Air Lines (atlanta-dal). delta.avature.net answers a plain fetch
+  //    with 202 and an empty body (the Avature bot interstitial getText already
+  //    treats as a failure); only a real browser gets the 156-role list.
+  //  - Chevron (houston-cvx) — already read as `chevron`; see the note there.
+  {
+    // McKesson — Workday mckesson.wd3 External_Careers, 597 advertised, under the 2,000 cap:
+    // one walk, 592-596 read (live churn; 592 of 593 on the last), ~29-35 s, ~1.3 s CPU. Global (US 387, Canada 171,
+    // Ireland 29, UK 4, India 4). Locations are "USA, TX, Irving" — the head office, with the
+    // "Irving, TX, USA - 6555 …" form — and "CAN, ON, Mississauga" (Toronto CMA).
+    id: "dallas-mck",
+    name: "McKesson",
+    sector: "Healthcare & Life Sciences",
+    platform: "workday",
+    endpoint: "https://mckesson.wd3.myworkdayjobs.com/wday/cxs/mckesson/External_Careers/jobs",
+    origin: "https://mckesson.wd3.myworkdayjobs.com/External_Careers",
+    homeHub: null,
+    maxPages: 60,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // AT&T — Workday att.wd1 ATTGeneral, 1,125 advertised (US 1,097, India 20, Slovakia 6),
+    // one walk: four reads 1,122, 1,124, 1,123, 1,113 (the last against 1,127 advertised —
+    // fetchWorkday logs the gap), ~54-62 s, ~2-2.5 s CPU. Most are CWA, retail and direct
+    // sales roles; the corporate and retail boards are this one site.
+    id: "dallas-t",
+    name: "AT&T",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    endpoint: "https://att.wd1.myworkdayjobs.com/wday/cxs/att/ATTGeneral/jobs",
+    origin: "https://att.wd1.myworkdayjobs.com/ATTGeneral",
+    homeHub: null,
+    maxPages: 100,
+    // Store rows read "USA:<ST>:<City>:<street>:RET/RET", and the street is
+    // full of hub names: "USA:CT:Orange:91 Boston Post Rd" went to Boston and
+    // "USA:TN:Nashville:6702 Charlotte Pike" to Charlotte. The table places
+    // the "USA:<ST>:<City>:" prefix; a USA row it does not know stays unplaced
+    // rather than falling through to HUB_MATCH's reading of the street.
+    hubHints: [...b13kUsHints(), ["usa:", null]],
+  },
+  // T-Mobile US — Workday tmobile.wd1 External. The unfiltered board reports `total` 2,000
+  // and wraps (offset 2,000 serves page 0 again) while its facets sum to 2,203, so it is read
+  // as two timeType partitions, each checked against its own filtered total: Part time 1,642,
+  // Full time 561 (single-valued: they sum to 2,203). Read 1,642 + 560-561, ~61 s + ~22 s.
+  // Part time is ~360 under the cap; if a walk ever reads ~1,900, re-partition (e.g. by
+  // locationRegionStateProvince), because at 2,000 Workday caps silently.
+  // "Bellevue, Washington" is the head office — HUB_MATCH alone read it as DC.
+  ...(
+    [
+      ["pt", "00e635b327af1034ee747b132575005b"],
+      ["ft", "00e635b327af1034ee747b165ed6005c"],
+    ] as [string, string][]
+  ).map(([k, id]): SiteDef => ({
+    id: "seattle-tmus",
+    key: `seattle-tmus-${k}`,
+    name: "T-Mobile US",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    endpoint: "https://tmobile.wd1.myworkdayjobs.com/wday/cxs/tmobile/External/jobs",
+    origin: "https://tmobile.wd1.myworkdayjobs.com/External",
+    homeHub: null,
+    appliedFacets: { timeType: [id] },
+    maxPages: 100,
+    hubHints: b13kUsHints(),
+  })),
+  // Sysco — Workday sysco.wd5 syscocareers. Capped and wrapping like T-Mobile (total 2,000;
+  // workerSubType/timeType facets sum to 2,172). timeType and workerSubType each have one value
+  // over 2,000, so it is split by jobFamilyGroup (31 values, single-valued, sum 2,168): g1 =
+  // "USA Supply Chain and Logistics" 803 + "USA Sales Group" 529 = 1,332 (filtered total read
+  // back: 1,332); g2 = the other 29 families, 836. Read 1,332-1,333 + 836 = 2,168-2,169 of
+  // 2,172 — the ~4 postings with no family fall outside every partition. A NEW family would
+  // too, so if g1+g2 drifts well below the facet total, re-read the facet list.
+  // ~58 s + ~35 s. Locations are opco names ("Sysco Boston", "Sysco Seattle - Kent"); see
+  // the hints for what that means for placement.
+  ...(
+    [
+      ["g1", ["b014cc62fe66012f9cdbcd7cc928be27", "b014cc62fe66014a3935b77cc928bc27"]],
+      [
+        "g2",
+        [
+          "ff9b973fe5191022b20f1a4237210000",
+          "ff9b973fe5191022b20f1f171cdc0000",
+          "ff9b973fe5191022b20f1e7c801a0000",
+          "b014cc62fe66014dddc16a7cc928aa27",
+          "b014cc62fe6601e773d7027cc9289027",
+          "b014cc62fe66019a776de67bc9288a27",
+          "b014cc62fe66014c40e2507cc928a027",
+          "b014cc62fe660117247fd57cc928c027",
+          "b014cc62fe66014bee64397cc9289c27",
+          "ff9b973fe5191022b20f1fb21b210000",
+          "b014cc62fe6601f87cd8a37cc928b827",
+          "ff9b973fe5191022b20f1add172d0000",
+          "b014cc62fe660159730c9e7cc928b627",
+          "ff9b973fe5191022b20f20e783bb0000",
+          "b014cc62fe66017574ad8f7cc928b227",
+          "b014cc62fe66019d138a617cc928a627",
+          "b014cc62fe6601ae29f9967cc928b427",
+          "b014cc62fe66019f8dbb7b7cc928ac27",
+          "ff9b973fe5191022b20f2182197d0000",
+          "b014cc62fe6601f56e45857cc928ae27",
+          "ff9b973fe5191022b20f1d47038f0000",
+          "ff9b973fe5191022b20f1de1b0de0000",
+          "ff9b973fe5191022b20f1cac58a60000",
+          "b014cc62fe66015d04d5227cc9289a27",
+          "b014cc62fe66017bab291d7cc9289827",
+          "ff9b973fe5191022b20f1b76d1af0001",
+          "b014cc62fe660144aa0ce17cc928c227",
+          "b014cc62fe6601a060475c7cc928a427",
+          "b014cc62fe660185e3dd0f7cc9289427",
+        ],
+      ],
+    ] as [string, string[]][]
+  ).map(([k, ids]): SiteDef => ({
+    id: "houston-syy",
+    key: `houston-syy-${k}`,
+    name: "Sysco",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: "https://sysco.wd5.myworkdayjobs.com/wday/cxs/sysco/syscocareers/jobs",
+    origin: "https://sysco.wd5.myworkdayjobs.com/syscocareers",
+    homeHub: null,
+    appliedFacets: { jobFamilyGroup: ids },
+    maxPages: 100,
+    hubHints: [
+      // Sysco names an OPERATING COMPANY, not a town: "Sysco Atlanta" (College
+      // Park), "Sysco Chicago" (Des Plaines), "Sysco Seattle - Kent". HUB_MATCH
+      // reads the metro in the name, which is right for the opco itself; its
+      // outlying shuttle yards and depots are named "<opco> - <town>" and are
+      // not in that metro, so they are nulled here (measured 2026-09-30).
+      ["sysco corporate", "houston"], // 1390 Enclave Pkwy, Houston — the head office
+      ["sysco north texas", "dallas"], // Lewisville, DFW
+      ["sygma dallas", "dallas"],
+      ["gainesville shuttle", null],
+      ["birmingham", null],
+      ["circleville", null],
+      ["troy shuttle", null],
+      ["piketon", null],
+      ["south point", null],
+      ["fort collins", null],
+      ["colorado springs", null],
+      ["silt", null],
+      ["avon domicile", null],
+      ["platteville", null],
+      ["portland  -  bend", null],
+      ["portland - bend", null],
+      ["portland - redmond", null], // Redmond, OREGON
+      ["greenville", null],
+      ["terre haute", null],
+      ["tri-cities", null],
+      ["pasco", null],
+      ["fitchburg", null],
+      ["epping", null],
+      ["sygma pennsylvania", null],
+      ["stockton", null],
+      ["gilroy", "sanjose"], // Santa Clara County
+      ...b13kUsHints(),
+    ],
+  })),
+  // Lowe's — Workday lowes.wd5 LWS_External_CS, the WHOLE board: 12,738 advertised, 96% of it
+  // Store Operations. Like TJX, not Citigroup: `total` is 12,738 on every page, offsets 2,000,
+  // 5,000 and 12,720 serve distinct rows and 12,740 is empty — so no facet partition, just
+  // SEVEN 92-page windows (~1,840 roles, ~60-70 s, ~4-5 s CPU each; the last open-ended for
+  // growth). SCHEDULE ALL SEVEN IN ONE TICK, as for TJX: a window read hours after its
+  // neighbour sees the list shifted by the day's postings. Locations are store labels,
+  // "Mooresville, NC (SSC) 1999" (the head office, Charlotte CBSA), "Kent, WA 2456" — whose
+  // four-digit store number hubFor's postcode rule turns into " wa," and so Perth, which the
+  // hints catch. Three whole-board reads (all seven windows back to back): 12,735, 12,724 and
+  // 12,736 unique of 12,738-12,742; the last two share 12,720.
+  ...(
+    [
+      ["w1", 0, 92],
+      ["w2", 92, 92],
+      ["w3", 184, 92],
+      ["w4", 276, 92],
+      ["w5", 368, 92],
+      ["w6", 460, 92],
+      ["w7", 552, 140],
+    ] as [string, number, number][]
+  ).map(([k, from, pages]): SiteDef => ({
+    id: "charlotte-low",
+    key: `charlotte-low-${k}`,
+    name: "Lowe's",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: "https://lowes.wd5.myworkdayjobs.com/wday/cxs/lowes/LWS_External_CS/jobs",
+    origin: "https://lowes.wd5.myworkdayjobs.com/LWS_External_CS",
+    homeHub: null,
+    pageFrom: from,
+    maxPages: pages,
+    hubHints: b13kUsHints(),
+  })),
+  {
+    // UnitedHealth Group (and Optum) — Radancy careers.unitedhealthgroup.com, 5,594 advertised,
+    // 56 pages of 100: 5,594 of 5,594 on three reads, 22-71 s, 7-8 s CPU. radancyNoFilters:
+    // with the filters module named each page is 8.8 MB (see the field). The location span is numbered
+    // (`class="job-location 1"`), which fetchRadancy now accepts. Global (India, Ireland, UK,
+    // Philippines…), homeHub null.
+    id: "minneapolis-unh",
+    name: "UnitedHealth Group",
+    sector: "Healthcare & Life Sciences",
+    platform: "radancy",
+    endpoint: "https://careers.unitedhealthgroup.com/search-jobs/results",
+    origin: "https://careers.unitedhealthgroup.com",
+    homeHub: null,
+    radancyNoFilters: true,
+    maxPages: 80,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // UPS — Phenom www.jobs-ups.com/us/en, the US site (748 advertised by the widget; the
+    // island says 1 — see fetchPhenom's walkTotal). pageSize 500 (honoured), so two
+    // requests; a plain script read 748 of 748 three times (sizes 100 and 500), the reader
+    // 744, 740 and 748 unique with no duplicates (~3 s, ~1 s CPU).
+    // No facet partitions it: `category` and `type` are single-valued but have a value over
+    // the widget's 500 (Operations 560, Full time 519), and `state` is multi-valued.
+    id: "atlanta-ups",
+    name: "United Parcel Service",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    endpoint: "https://www.jobs-ups.com/us/en/search-results",
+    origin: "https://www.jobs-ups.com/us/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 4,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // United Airlines — Phenom careers.united.com/us/en, 135 advertised, global (US 93, India
+    // 27, Mexico 3 …). pageSize 500 so it is ONE request: at 100 a page the second page
+    // overlapped the first on one read in three (124 unique of 135), in the reader and in a
+    // plain script alike.
+    id: "chicago-ual",
+    name: "United Airlines Holdings",
+    sector: "Consumer & Retail",
+    platform: "phenom",
+    endpoint: "https://careers.united.com/us/en/search-results",
+    origin: "https://careers.united.com/us/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 2,
+    hubHints: b13kUsHints(),
+  },
+  // Kroger — Oracle eluq.fa.us2 CX_2001 (krogerfamilycareers.com), the WHOLE board: 10,935
+  // advertised, all US, 94% "Store Operations". Over the finder's 10,000-offset ceiling (see
+  // OR_OFFSET_CAP — one unpartitioned walk read exactly 10,000), so it is read as the board's
+  // own two posting-date buckets, which are exact and disjoint: "Less than 30 days" 7,101 and
+  // "Greater than 30 days" 3,833 (sum 10,934-10,935). Read twice: new 7,104 / 7,105 (~70 s,
+  // ~8 s CPU), old 3,808 / 3,808 (~36 s, ~4 s CPU) — 10,912 / 10,913 unique, 10,911 in both.
+  // The old bucket's 25-row shortfall is the SERVICE's: a plain script walking it serves
+  // 3,808 distinct Ids against TotalJobsCount 3,833 (24-row pages at offsets 3,050, 3,150 and
+  // 3,375, and the list ends at 3,808), the Honeywell short-page behaviour oracleByTotal
+  // already describes. A role crossing the 30-day line between the two reads can be missed
+  // or read twice, so SCHEDULE BOTH IN ONE TICK. maxPages 400 is the finder's own ceiling;
+  // the recent bucket is the one that grows, so re-partition (selectedPostingDatesFacet=7 is
+  // "Less than 7 days") before it nears 10,000.
+  ...(
+    [
+      ["new", "selectedPostingDatesFacet=30", 400],
+      ["old", "selectedPostingDatesFacet=31", 400],
+    ] as [string, string, number][]
+  ).map(([k, finder, pages]): SiteDef => ({
+    id: "cincinnati-kr",
+    key: `cincinnati-kr-${k}`,
+    name: "Kroger",
+    sector: "Consumer & Retail",
+    platform: "oracle",
+    endpoint: "https://eluq.fa.us2.oraclecloud.com",
+    origin: "https://www.krogerfamilycareers.com/en/sites/CX_2001",
+    siteNumber: "CX_2001",
+    oracleFinder: finder,
+    homeHub: null,
+    maxPages: pages,
+    hubHints: b13kUsHints(),
+  })),
+  {
+    // JPMorgan Chase — Oracle jpmc.fa CX_1001, 7,313 advertised, global (US 5,319, UK 686,
+    // India 311, Singapore 156 …): 7,318 then 7,331 read (the board growing; 7,314 in both),
+    // 82-90 s, 14-15 s CPU (mostly the skills matcher over 7,300 titles).
+    id: "newyork-jpm",
+    name: "JPMorgan Chase",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://jpmc.fa.oraclecloud.com",
+    origin: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
+    siteNumber: "CX_1001",
+    homeHub: null,
+    maxPages: 360,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // American Airlines — jobs.aa.com is SuccessFactors RMK behind Akamai (403, sensor_data
+    // challenge); the classic portal's XML for the same tenant (americairP, career4) answers a
+    // plain fetch: 102 roles, the count jobs.aa.com's own rendered search shows. The only place
+    // filter is "Posting Country" (United States 93, Mexico 4 …) — the XML's [[location]] is
+    // an unrendered template token and the per-job page redirects to the blocked RMK host — so
+    // rows carry a country and stay unplaced. No Posted-Date in this tenant's XML: dated today.
+    id: "dallas-aal",
+    name: "American Airlines Group",
+    sector: "Consumer & Retail",
+    platform: "sfclassicxml",
+    endpoint:
+      "https://career4.successfactors.com/career?company=americairP&career_ns=job_listing_summary&resultType=XML",
+    origin: "https://career4.successfactors.com",
+    homeHub: null,
+  },
+  // The Home Depot — careers.homedepot.com's CWS index (fetchMcloud), Organization 1814:
+  // 25,343 postings, 23,980 of them store hourly roles from Kenexa BrassRing (ats_portalid
+  // KBR-5032). Too big to read whole (254 pages of ~0.95 MB), so it is split by the board's
+  // own facets:
+  //  - corp: every NON-store portal — Workday (the corporate/DC board, 987), Paycom (242,
+  //    subsidiaries) and seven THD-GH-* Greenhouse subsidiaries — nationwide: 1,363-1,364
+  //    of 1,363, ~5 s. A portal id added later falls outside this list until added here.
+  //  - atl-stores: KBR-5032 within 50 miles of Atlanta by the board's own radius filter
+  //    (latitude/longitude/LocationRadius, what its own location search sends): 727 of 727,
+  //    ~2 s. A radius, not the CBSA: Gainesville and Flowery Branch are inside it and stay
+  //    unplaced, which is honest.
+  ...(
+    [
+      [
+        "corp",
+        "facet%5B%5D=ats_portalid%3AWorkday~Paycom~THD-GH-Construction~THD-GH-Umi~THD-GH-Bell~THD-GH-Cancostile~THD-GH-Jarrell~THD-GH-Victoria~THD-GH-MVP",
+      ],
+      [
+        "atl-stores",
+        "facet%5B%5D=ats_portalid%3AKBR-5032&latitude=33.7489954&longitude=-84.3879824&LocationRadius=50",
+      ],
+    ] as [string, string][]
+  ).map(([k, q]): SiteDef => ({
+    id: "atlanta-hd",
+    key: `atlanta-hd-${k}`,
+    name: "The Home Depot",
+    sector: "Consumer & Retail",
+    platform: "mcloud",
+    endpoint: `https://jobsapi-internal.m-cloud.io/api/job?Organization=1814&${q}`,
+    origin: "https://careers.homedepot.com",
+    homeHub: null,
+    maxPages: 30,
+    hubHints: b13kUsHints(),
+  })),
 ];
 
 /**
@@ -26008,6 +26400,22 @@ async function oracleByTotal(
   return out;
 }
 
+/**
+ * THE FINDER SERVES NOTHING AT AN OFFSET OF 10,000 OR MORE. Measured 2026-09-30
+ * on Kroger (CX_2001, TotalJobsCount 10,930): offset 9,975 serves 25 rows,
+ * offset 10,000 and 10,900 answer `TotalJobsCount: 0` with no rows — so a walk
+ * of a bigger board ends at exactly 10,000 on an "empty page" that is not the
+ * end of the board, and oracleByTotal takes it for one.
+ *
+ * Reading the rest from the other end does not work: POSTING_DATES_DESC is the
+ * only sortBy this finder honours — POSTING_DATES_ASC, TITLES_ASC/DESC and
+ * RELEVANCY all return the same default order, whose first 10,000 were all
+ * already in the descending walk. Such a board has to be PARTITIONED with
+ * `oracleFinder` (Kroger: by posting-date facet) so each part is under the cap;
+ * a walk that reaches it anyway is logged here rather than passed off as whole.
+ */
+const OR_OFFSET_CAP = 10_000;
+
 async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   const readPage = async (i: number): Promise<{ rows: OracleReq[]; total: number } | null> => {
@@ -26022,7 +26430,9 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
     const loc = site.oracleLocationFacet
       ? `,selectedLocationsFacet=${site.oracleLocationFacet}`
       : "";
-    const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"}${loc},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
+    // Same rule for any other finder parameter (see SiteDef.oracleFinder).
+    const extra = site.oracleFinder ? `,${site.oracleFinder}` : "";
+    const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"}${loc}${extra},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
     const url =
       `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
       `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
@@ -26045,6 +26455,12 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
   const list =
     (await oracleByTotal(readPage, max, site.key ?? site.id)) ??
     (await pagedParallel<OracleReq>(async (i) => (await readPage(i))?.rows ?? null, OR_PAGE, max));
+  if (list.length >= OR_OFFSET_CAP) {
+    console.log(
+      `oracle ${site.key ?? site.id}: walk reached the finder's ${OR_OFFSET_CAP}-offset ceiling ` +
+        `— the board is bigger than one walk can read; partition it (oracleFinder)`,
+    );
+  }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   for (const r of list) {
@@ -26783,12 +27199,21 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
   // whole, and a partial board is not returned.
   const byFacet = site.phenomFacet ? await phenomByFacet(site, site.phenomFacet, total) : null;
   if (site.phenomFacet && !byFacet) return [];
-  const probe = byFacet ? null : await phenomWidget(site, 0, size);
+  const probeRes = byFacet ? null : await phenomRefine(site, 0, size);
+  const probe = probeRes?.data?.jobs ?? null;
+  // THE ISLAND'S TOTAL CAN BE WRONG, and low. UPS is the case (measured
+  // 2026-09-30): jobs-ups.com serves an island of `hits: 1, totalHits: 1`
+  // with or without ?keywords=, while the widget reports 748 and pages them
+  // all. The walk takes the larger of the two. On every tenant read before
+  // this they agree; under phenomSelected the widget's figure is the
+  // partition's and the island's the board's, so the island's still wins
+  // there and nothing changes.
+  const walkTotal = Math.max(total, Number(probeRes?.totalHits) || 0);
   if (byFacet) {
     rows.push(...byFacet);
   } else if (probe?.length) {
     rows.push(...probe);
-    const pages = Math.min(Math.ceil(total / size), max);
+    const pages = Math.min(Math.ceil(walkTotal / size), max);
     if (pages > 1) {
       rows.push(
         ...(await pagedParallel<PhenomJob>(
@@ -30459,7 +30884,9 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
       FacetTerm: "",
       FacetType: "0",
       SearchResultsModuleName: "Search Results",
-      SearchFiltersModuleName: "Search Filters",
+      // See SiteDef.radancyNoFilters: left named for every tenant but the ones
+      // that opt out, because on some tenants naming it CHANGES the result set.
+      SearchFiltersModuleName: site.radancyNoFilters ? "" : "Search Filters",
       SortCriteria: "0",
       SortDirection: "0",
       SearchType: "5",
@@ -30488,6 +30915,9 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
     // close and stored "" for all 2,900 roles; one empty inner span is skipped.
     // Takeda (2026-09-30) names the span plain `class="location"`, which the
     // two names above missed — "" for all 868 roles — so it is the third name.
+    // UnitedHealth Group (2026-09-30) numbers the span, `class="job-location 1"`
+    // ("Overland Park, Kansas"), which the exact-class match read as "" for
+    // 5,583 of 5,594 roles; a trailing number after the name is accepted.
     for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
@@ -30503,7 +30933,7 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
           title,
           clean(
             li.match(
-              /class="(?:job-location|search-results-job-location|location)"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
+              /class="(?:job-location|search-results-job-location|location)(?:\s+\d+)?"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
             )?.[1] ?? "",
           ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
@@ -33676,6 +34106,10 @@ const SF_CLASSIC_PLACE: RegExp[] = [
   /^(?:job\s+search\s+)?location$/i,
   /^(?:job\s+search\s+)?state$/i,
   /^(?:job\s+search\s+)?country$/i,
+  // American Airlines (americairP) labels its only place filter "Posting
+  // Country" (measured 2026-09-30, "United States" on all 102 roles). Last, so
+  // it is read only by a tenant that labels nothing more specific.
+  /^posting\s+country$/i,
 ];
 
 async function fetchSfClassicXml(site: SiteDef): Promise<PortalJob[]> {
@@ -36008,6 +36442,471 @@ async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
   });
 }
 
+// ── batch 13: K — readers ────────────────────────────────────────────────────
+
+// ── m-cloud (Symphony Talent CWS job API) — The Home Depot ──────────────────
+/**
+ * careers.homedepot.com is a WordPress site whose search page reads Symphony
+ * Talent's CWS index directly from the browser:
+ *
+ *   GET https://jobsapi-internal.m-cloud.io/api/job?Organization=1814
+ *       &facet[]=ats_portalid:<a>~<b>   (tilde = OR within one facet)
+ *       &latitude=&longitude=&LocationRadius=<miles>
+ *       &sortfield=id&sortorder=ascending&Limit=100&offset=<1-based>
+ *   → {totalHits, queryResult:[{id, title, primary_city, primary_state,
+ *       primary_country, url, open_date, primary_category, ats_portalid, …}]}
+ *
+ * A different API from the one fetchSymphony reads (jobsapi-google…/api/job/
+ * search, 10 a page, 0-based) — same vendor, different index and paging.
+ *
+ * Measured 2026-09-30 on Organization 1814 (The Home Depot):
+ * - `Limit=100` is honoured (a page of 100 is ~0.95 MB, descriptions included —
+ *   there is no field selector, so the CPU cost is in the JSON parse).
+ * - `offset` is ONE-BASED. offset=0 and offset=1 return the same first row, and
+ *   offset=5 starts at the fifth. A 0-based walk (offset = i*100) repeats one
+ *   row per page boundary and never reads the last one.
+ * - The default order is not a stable pager; `sortfield=id&sortorder=ascending`
+ *   is (the id is unique), so the walk is sorted by it.
+ * - `totalHits` is the filtered count and bounds the walk. A page that cannot
+ *   be read after one retry abandons the pull (allPages), so a transient
+ *   failure never archives a truncated board.
+ * - The location is `primary_city` + `primary_state` ("Atlanta", "GA"); a
+ *   role's other sites are in addtnl_locations and are not read.
+ */
+interface McloudJob {
+  id?: number | string;
+  title?: string;
+  primary_city?: string;
+  primary_state?: string;
+  primary_country?: string;
+  url?: string;
+  open_date?: string;
+  primary_category?: string;
+}
+
+const MC_PAGE = 100;
+
+async function fetchMcloud(site: SiteDef): Promise<PortalJob[]> {
+  const label = `mcloud ${site.key ?? site.id}`;
+  const url = (i: number) =>
+    `${site.endpoint}&sortfield=id&sortorder=ascending&Limit=${MC_PAGE}&offset=${1 + i * MC_PAGE}`;
+  const read = async (i: number) =>
+    await getJson<{ totalHits?: number; queryResult?: McloudJob[] }>(url(i), {
+      headers: { Referer: site.origin + "/" },
+    });
+  const first = (await read(0)) ?? (await read(0));
+  const total = Number(first?.totalHits) || 0;
+  if (!first || !total) return [];
+  const pages = Math.min(Math.ceil(total / MC_PAGE), site.maxPages ?? DEFAULT_MAX_PAGES);
+  const rest = await allPages<McloudJob>(
+    pages - 1,
+    async (i) => (await read(i + 1))?.queryResult ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...(first.queryResult ?? []), ...rest]) {
+    const title = clean(j.title ?? "");
+    const id = String(j.id ?? "");
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const country = (j.primary_country ?? "").trim();
+    const loc = [j.primary_city, j.primary_state, country && country !== "US" ? country : ""]
+      .map((x) => (x ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        j.url || `${site.origin}/job/${id}/`,
+        isoDay(j.open_date ?? "") || today(),
+        clean(j.primary_category ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+/**
+ * Placement hints for the US boards wired in batch 13 K, built from one table
+ * so every board spells a place the way it spells it:
+ *
+ *   "Irving, Texas" (AT&T, T-Mobile)      → "<city>, <state name>"
+ *   "USA, TX, Irving" (McKesson)          → "<st>, <city>"
+ *   "Irving, TX" / "Kent, WA 2456" (Lowe's, Home Depot, Oracle) → "<city>, <st>"
+ *   "USA:TX:Hurst:980 …" (AT&T stores)    → "<st>:<city>:"
+ *
+ * THE METROS are Census CBSAs, the county rule cityRosters.ts states for US
+ * hubs, listed only for the hubs these employers' rosters sit on (and New York,
+ * whose boroughs every national board names). A suburb outside the table is
+ * left to HUB_MATCH and usually stays unplaced, which is honest.
+ *
+ * THE TRAPS, all measured on these boards 2026-09-30 before the table existed:
+ *   - Washington STATE. "Kent, WA 2456" (Lowe's store number) has its " wa 2456"
+ *     rewritten to " wa," by hubFor's postcode rule and lands on PERTH; "USA, WA,
+ *     Kent" does the same without the rule (McKesson 7 rows). "Bellevue,
+ *     Washington" — T-Mobile's head office — matches HUB_MATCH "washington",
+ *     i.e. DC. So the Seattle/Portland metro needles come first and every other
+ *     Washington-state spelling is then nulled.
+ *   - Namesakes of hub cities: Melbourne FL, Paris TX/TN/KY, London KY/OH/ON,
+ *     Sydney NS, Wellington FL/KS, Portland ME/TX, Atlanta TX, Dallas GA (which
+ *     IS Atlanta's metro — Paulding County), Newman GA ("newman" is a Pilbara
+ *     needle), Gladstone OR/MO, Brisbane CA (San Francisco's metro), Charlotte
+ *     Hall / Port Charlotte / Charlottesville, Washington PA/MO/NC/…
+ */
+function b13kUsHints(): [string, string | null][] {
+  const METROS: [hub: string, st: string, state: string, cities: string][] = [
+    [
+      "dallas",
+      "tx",
+      "texas",
+      "dallas|fort worth|ft worth|arlington|irving|las colinas|plano|frisco|garland|mckinney|grand prairie|mesquite|carrollton|denton|richardson|lewisville|allen|flower mound|grapevine|coppell|addison|farmers branch|mansfield|euless|bedford|hurst|north richland hills|keller|southlake|rowlett|rockwall|wylie|little elm|the colony|prosper|cedar hill|desoto|duncanville|lancaster|haltom city|weatherford|burleson|waxahachie|forney|sachse|murphy|roanoke|westlake|midlothian|haslet|saginaw|balch springs|red oak|celina|anna|princeton|terrell|seagoville|colleyville|benbrook|crowley|azle|granbury|cleburne|justin|argyle|trophy flower",
+    ],
+    [
+      "houston",
+      "tx",
+      "texas",
+      "houston|the woodlands|sugar land|katy|pasadena|pearland|league city|baytown|conroe|spring|humble|cypress|missouri city|stafford|friendswood|tomball|kingwood|richmond|rosenberg|webster|la porte|deer park|channelview|galveston|texas city|bellaire|seabrook|kemah|magnolia|fulshear|atascocita|clear lake|manvel|alvin|dickinson|la marque|cleveland|dayton|jersey village|shenandoah|porter|new caney|sealy|angleton|lake jackson|freeport|clute|brookshire|waller|hockley",
+    ],
+    [
+      "atlanta",
+      "ga",
+      "georgia",
+      "atlanta|sandy springs|alpharetta|roswell|marietta|smyrna|kennesaw|duluth|norcross|lawrenceville|decatur|dunwoody|johns creek|peachtree corners|peachtree city|stockbridge|mcdonough|conyers|douglasville|buford|suwanee|cumming|woodstock|canton|tucker|chamblee|doraville|brookhaven|east point|college park|hapeville|union city|fayetteville|newnan|snellville|lilburn|lithonia|stone mountain|austell|mableton|powder springs|acworth|cartersville|covington|locust grove|forest park|morrow|jonesboro|riverdale|ellenwood|loganville|dallas|hiram|villa rica|carrollton|fairburn|palmetto|tyrone|dacula|grayson|sugar hill|winder|monroe|hampton|griffin|milton|holly springs|ball ground|braselton|redan|scottdale|south fulton|chattahoochee hills|pennant park|vinings|lithia springs|dawsonville|lovejoy|jasper|stonecrest",
+    ],
+    [
+      "seattle",
+      "wa",
+      "washington",
+      "seattle|bellevue|redmond|kirkland|renton|kent|tacoma|everett|bothell|issaquah|federal way|auburn|tukwila|lynnwood|puyallup|lakewood|sammamish|woodinville|burien|seatac|des moines|shoreline|edmonds|mukilteo|marysville|lake stevens|gig harbor|bonney lake|snoqualmie|mill creek|mountlake terrace|covington|maple valley|kenmore|mercer island|university place|fife|sumner|spanaway|arlington|monroe|dupont|graham|north bend|enumclaw|snohomish",
+    ],
+    ["portland", "wa", "washington", "vancouver|camas|battle ground|ridgefield|washougal"],
+    [
+      "charlotte",
+      "nc",
+      "north carolina",
+      "charlotte|mooresville|concord|gastonia|huntersville|matthews|mint hill|cornelius|davidson|kannapolis|monroe|pineville|belmont|statesville|salisbury|indian trail|waxhaw|harrisburg|mount holly|lincolnton|denver|stallings|albemarle|shelby|troutman|china grove",
+    ],
+    [
+      "charlotte",
+      "sc",
+      "south carolina",
+      "rock hill|fort mill|indian land|lake wylie|tega cay|lancaster|york|clover",
+    ],
+    [
+      "cincinnati",
+      "oh",
+      "ohio",
+      "cincinnati|mason|west chester|fairfield|hamilton|middletown|blue ash|sharonville|loveland|milford|lebanon|springdale|forest park|harrison|monroe|batavia|norwood|cheviot|reading|montgomery|anderson township|kings mills|franklin|trenton|oxford|amelia|mount orab|georgetown|springboro",
+    ],
+    [
+      "cincinnati",
+      "ky",
+      "kentucky",
+      "florence|covington|newport|erlanger|hebron|union|independence|burlington|fort thomas|fort mitchell|highland heights|alexandria|walton|crestview hills|cold spring|dayton|bellevue|wilder",
+    ],
+    ["cincinnati", "in", "indiana", "lawrenceburg|aurora|greendale"],
+    [
+      "chicago",
+      "il",
+      "illinois",
+      "chicago|schaumburg|naperville|aurora|joliet|elgin|evanston|oak brook|des plaines|arlington heights|rosemont|itasca|downers grove|lombard|oak lawn|skokie|northbrook|deerfield|lake forest|waukegan|elk grove village|bolingbrook|romeoville|hoffman estates|palatine|wheeling|glenview|lisle|wheaton|mount prospect|bensenville|franklin park|cicero|orland park|tinley park|lake zurich|bedford park|elmhurst|oak park|addison|bartlett|st. charles|st charles|saint charles|batavia|plainfield|lockport|minooka|channahon|mundelein|vernon hills|libertyville|buffalo grove|woodridge|westmont|burr ridge|hodgkins|mccook|university park|monee|crest hill|crystal lake|algonquin|huntley|mchenry|west chicago|carol stream|glendale heights|hanover park|streamwood|melrose park|northlake|niles|morton grove|park ridge|harvey|calumet city|chicago heights|matteson|frankfort|mokena|new lenox|homer glen|lemont|darien|oswego|montgomery|yorkville|north aurora|gurnee|round lake|antioch|zion|highland park|wilmette|winnetka|lincolnshire|riverwoods|bannockburn|lake bluff|north chicago|forest park|berwyn|summit|bridgeview|alsip|oak forest|countryside|la grange|hinsdale|oakbrook terrace|villa park|roselle|bloomingdale|wood dale|elwood|manhattan|shorewood|dekalb|sycamore",
+    ],
+    [
+      "chicago",
+      "in",
+      "indiana",
+      "hammond|gary|merrillville|east chicago|schererville|crown point|portage|valparaiso|highland|munster|hobart|whiting|griffith|dyer|st. john|chesterton",
+    ],
+    ["chicago", "wi", "wisconsin", "kenosha|pleasant prairie"],
+    [
+      "minneapolis",
+      "mn",
+      "minnesota",
+      "minneapolis|saint paul|st. paul|st paul|bloomington|brooklyn park|plymouth|maple grove|woodbury|eagan|eden prairie|minnetonka|burnsville|apple valley|lakeville|edina|st. louis park|st louis park|roseville|coon rapids|blaine|shakopee|fridley|richfield|golden valley|chaska|chanhassen|maplewood|inver grove heights|cottage grove|oakdale|shoreview|andover|ramsey|elk river|savage|prior lake|stillwater|hopkins|new brighton|white bear lake|arden hills|mendota heights|brooklyn center|crystal|new hope|champlin|rogers|otsego|monticello|buffalo|hastings|forest lake|lino lakes|vadnais heights|anoka|northfield|mounds view|little canada|wayzata|medina|waconia|belle plaine|cambridge|rosemount|farmington|south st. paul|west st. paul|st. michael|albertville|hugo|columbia heights|spring lake park|ham lake|isanti|north branch",
+    ],
+    ["minneapolis", "wi", "wisconsin", "hudson|river falls|new richmond"],
+    [
+      "newyork",
+      "ny",
+      "new york",
+      "new york|manhattan|brooklyn|bronx|queens|staten island|long island city|jamaica|flushing|astoria|elmhurst|college point|yonkers|white plains|new rochelle|mount vernon|garden city|hicksville|melville|uniondale|mineola|hempstead|valley stream|lake success|westbury|jericho|syosset|bethpage|farmingdale|plainview|port washington|great neck|huntington|bay shore|hauppauge|islandia|ronkonkoma|patchogue|riverhead|freeport|levittown|massapequa|east meadow|elmont|rye|harrison|purchase|tarrytown|valhalla|armonk|scarsdale|peekskill|nanuet|nyack|west nyack|suffern|spring valley",
+    ],
+    [
+      "newyork",
+      "nj",
+      "new jersey",
+      "jersey city|newark|hoboken|secaucus|edison|woodbridge|perth amboy|elizabeth|paterson|parsippany|morristown|iselin|piscataway|new brunswick|somerset|whippany|florham park|hackensack|paramus|teterboro|kearny|harrison|bayonne|carteret|rahway|linden|union|mahwah|englewood cliffs|fort lee|clifton|passaic|wayne|totowa|fairfield|east rutherford|rutherford|lyndhurst|north bergen|weehawken|west new york|union city|bridgewater|basking ridge|berkeley heights|summit|short hills|livingston|east hanover|montvale|ramsey|allendale|rochelle park|saddle brook|little falls|cranford|kenilworth|south plainfield|sayreville|old bridge|east brunswick|north brunswick|south brunswick|monroe township|dayton|cranbury|freehold|red bank|holmdel|middletown|matawan|toms river|lakewood|jackson|brick|neptune|wall|eatontown|long branch|asbury park|dover|rockaway|denville|mount olive|flanders|budd lake|hillsborough|branchburg|raritan|clark|westfield|scotch plains|springfield|millburn|west orange|east orange|orange|bloomfield|belleville|nutley|montclair|verona|caldwell|roseland|west caldwell",
+    ],
+    ["newyork", "pa", "pennsylvania", "milford|matamoras"],
+    [
+      "bentonville",
+      "ar",
+      "arkansas",
+      "bentonville|rogers|springdale|fayetteville|bella vista|lowell|centerton|siloam springs|pea ridge|cave springs|gentry|gravette|farmington|prairie grove|elkins|lincoln|tontitown|johnson|elm springs|huntsville|goshen",
+    ],
+    ["bentonville", "mo", "missouri", "pineville|noel|anderson|southwest city"],
+    // The other US hubs, core cities only — enough that a board which states
+    // "<city>, <state>" or "USA:<ST>:<city>:" places there without leaning on
+    // HUB_MATCH's bare city names (which read street names and namesakes).
+    [
+      "boston",
+      "ma",
+      "massachusetts",
+      "boston|east boston|cambridge|somerville|quincy|newton|waltham|burlington|woburn|framingham|braintree|lynn|malden|medford|everett|chelsea|revere|brookline|needham|natick|lexington|wellesley|dedham|norwood|marlborough|lowell|andover|peabody|salem|danvers",
+    ],
+    [
+      "denver",
+      "co",
+      "colorado",
+      "denver|aurora|lakewood|englewood|littleton|centennial|arvada|westminster|thornton|broomfield|highlands ranch|parker|castle rock|greenwood village|commerce city|golden|lone tree|brighton|northglenn",
+    ],
+    [
+      "austin",
+      "tx",
+      "texas",
+      "austin|round rock|cedar park|pflugerville|georgetown|leander|kyle|san marcos|buda|hutto|lakeway",
+    ],
+    [
+      "losangeles",
+      "ca",
+      "california",
+      "los angeles|long beach|anaheim|santa ana|irvine|glendale|burbank|pasadena|torrance|el segundo|santa monica|culver city|carson|compton|downey|costa mesa|huntington beach|fullerton|orange|newport beach|garden grove|norwalk|whittier|west covina|el monte|inglewood|hawthorne|gardena|cerritos|city of industry|van nuys|north hollywood|sherman oaks|woodland hills|chatsworth|northridge|santa clarita|valencia|lancaster|palmdale",
+    ],
+    [
+      "sanfrancisco",
+      "ca",
+      "california",
+      "san francisco|oakland|berkeley|fremont|hayward|san mateo|redwood city|south san francisco|daly city|emeryville|walnut creek|concord|san ramon|pleasanton|richmond|san leandro|brisbane|burlingame|foster city|san bruno|menlo park|dublin|livermore|union city|newark|alameda|antioch|pittsburg",
+    ],
+    [
+      "sanjose",
+      "ca",
+      "california",
+      "san jose|santa clara|sunnyvale|mountain view|palo alto|milpitas|cupertino|campbell|los gatos|gilroy|morgan hill",
+    ],
+    [
+      "sandiego",
+      "ca",
+      "california",
+      "san diego|chula vista|carlsbad|oceanside|escondido|el cajon|la jolla|vista|poway|national city|santee|la mesa",
+    ],
+    [
+      "portland",
+      "or",
+      "oregon",
+      "portland|beaverton|hillsboro|gresham|tigard|lake oswego|wilsonville|tualatin|clackamas|happy valley|oregon city",
+    ],
+    [
+      "philadelphia",
+      "pa",
+      "pennsylvania",
+      "philadelphia|king of prussia|conshohocken|norristown|wayne|malvern|bensalem|media|horsham|fort washington|blue bell|plymouth meeting",
+    ],
+    ["philadelphia", "nj", "new jersey", "cherry hill|camden|mount laurel|westampton|voorhees"],
+    ["philadelphia", "de", "delaware", "wilmington|newark"],
+    ["washington", "dc", "district of columbia", "washington"],
+    [
+      "washington",
+      "va",
+      "virginia",
+      "arlington|alexandria|reston|herndon|mclean|tysons|fairfax|chantilly|falls church|vienna|sterling|ashburn|leesburg|manassas|springfield|woodbridge",
+    ],
+    [
+      "washington",
+      "md",
+      "maryland",
+      "bethesda|rockville|silver spring|gaithersburg|germantown|college park|hyattsville|landover|largo|bowie|laurel|frederick|waldorf",
+    ],
+    [
+      "indianapolis",
+      "in",
+      "indiana",
+      "indianapolis|fishers|carmel|noblesville|greenwood|avon|plainfield|lawrence|zionsville|brownsburg|westfield|beech grove",
+    ],
+    ["omaha", "ne", "nebraska", "omaha|bellevue|papillion|la vista|elkhorn"],
+    ["omaha", "ia", "iowa", "council bluffs"],
+  ];
+  // Toronto's CMA, for the boards that also carry Canada.
+  const CANADA: [string, string | null][] = [
+    ["mississauga", "toronto"],
+    ["brampton", "toronto"],
+    ["markham", "toronto"],
+    ["vaughan", "toronto"],
+    ["richmond hill, on", "toronto"], // not "South Richmond Hill, NY" or "Richmond Hill, GA"
+    ["richmond hill, ontario", "toronto"],
+  ];
+  const out: [string, string | null][] = [];
+  for (const [hub, st, state, cities] of METROS) {
+    for (const c of cities.split("|")) {
+      // A LEADING SPACE on the "<city>, …" forms: hubFor prepends one, so it is
+      // a word boundary. Without it "allen, tx," matched "Mcallen, TX" and filed
+      // the Rio Grande Valley on Dallas (Home Depot, measured 2026-09-30).
+      out.push([` ${c}, ${st},`, hub], [` ${c}, ${st} `, hub], [` ${c}, ${state}`, hub]);
+      out.push([`, ${st}, ${c},`, hub], [`:${st}:${c}:`, hub]);
+    }
+  }
+  // Namesakes, AFTER the metros (so "Dallas, GA" has already gone to Atlanta and
+  // "Vancouver, WA" to Portland) and BEFORE HUB_MATCH gets a chance.
+  const NAMESAKES: [string, string | null][] = [
+    ["brisbane, ca", "sanfrancisco"],
+    ["brisbane, california", "sanfrancisco"],
+    ["melbourne, fl", null],
+    ["melbourne, florida", null],
+    ["fl, melbourne", null],
+    ["melbourne beach", null],
+    ["west melbourne", null],
+    ["melbourne:", null], // AT&T store names: "USA:TX:Hurst:980 Melbourne:RET/RET"
+    ["paris, tx", null],
+    ["paris, texas", null],
+    ["paris, tn", null],
+    ["paris, tennessee", null],
+    ["paris, ky", null],
+    ["paris, kentucky", null],
+    ["paris, il", null],
+    ["paris, illinois", null],
+    ["tx, paris", null],
+    ["london, ky", null],
+    ["london, kentucky", null],
+    ["london, oh", null],
+    ["london, ohio", null],
+    ["london, on", null],
+    ["london, ontario", null],
+    ["on, london", null],
+    ["ky, london", null],
+    ["oh, london", null],
+    ["new london", null],
+    ["londonderry", null],
+    ["sydney, ns", null],
+    ["sydney, nova scotia", null],
+    ["wellington, fl", null],
+    ["wellington, florida", null],
+    ["wellington, ks", null],
+    ["wellington, kansas", null],
+    ["wellington, co", null],
+    ["wellington, colorado", null],
+    ["wellington, oh", null],
+    ["wellington, ohio", null],
+    ["south portland", null],
+    ["portland, me", null],
+    ["portland, maine", null],
+    ["portland, tx", null],
+    ["portland, texas", null],
+    ["me, portland", null],
+    ["atlanta, tx", null],
+    ["atlanta, texas", null],
+    ["dallas, or", null],
+    ["dallas, oregon", null],
+    ["dallas, pa", null],
+    ["dallastown", null],
+    ["charlottesville", null],
+    ["port charlotte", null],
+    ["charlotte hall", null],
+    ["charlotte, mi", null],
+    ["charlotte, michigan", null],
+    ["charlotte, tn", null],
+    ["newman, ga", null],
+    ["newman, ca", null],
+    ["newman, il", null],
+    ["newman, georgia", null],
+    ["newman, california", null],
+    ["newman, illinois", null],
+    ["gladstone, or", null],
+    ["gladstone, mo", null],
+    ["gladstone, mi", null],
+    ["gladstone, oregon", null],
+    ["gladstone, missouri", null],
+    ["gladstone, michigan", null],
+    ["houston, ms", null],
+    ["houston, mo", null],
+    ["houston, pa", null],
+    ["houston, mississippi", null],
+    ["houston, missouri", null],
+    ["austin, mn", null],
+    ["austin, minnesota", null],
+    ["denver, pa", null],
+    ["denver, pennsylvania", null],
+    ["boston, va", null],
+    ["boston heights", null],
+    ["new philadelphia", null],
+    ["philadelphia, ms", null],
+    ["philadelphia, mississippi", null],
+    ["toronto, oh", null],
+    ["ottawa, il", null],
+    ["ottawa, illinois", null],
+    ["ottawa, ks", null],
+    ["ottawa, kansas", null],
+    ["ottawa, oh", null],
+    ["ottawa, ohio", null],
+    ["hobart, ok", null],
+    ["hobart, ny", null],
+    ["darwin, mn", null],
+    ["manila, ar", null],
+    ["omaha, tx", null],
+    ["omaha, ar", null],
+    ["cincinnatus", null],
+    // Lowe's store labels put a neighbourhood in brackets: "Kansas City, MO
+    // (Gladstone) 2767" went to Brisbane through "gladstone".
+    ["(gladstone)", null],
+    ["austintown", null], // Ohio, was austin
+    ["fishersville", null], // Virginia, was indianapolis ("fishers")
+    ["portland, tn", null],
+    ["portland, tennessee", null],
+    ["washington, mi", null],
+    ["washington, michigan", null],
+    ["mount washington", null],
+    // Washington is a hub (DC) and a state; anything still naming the state
+    // or a namesake town after the Seattle/Portland needles above is neither.
+    ["washington, pa", null],
+    ["washington, pennsylvania", null],
+    ["washington, mo", null],
+    ["washington, missouri", null],
+    ["washington, nc", null],
+    ["washington, north carolina", null],
+    ["washington, in", null],
+    ["washington, indiana", null],
+    ["washington, ut", null],
+    ["washington, utah", null],
+    ["washington, il", null],
+    ["washington, illinois", null],
+    ["washington, ia", null],
+    ["washington, iowa", null],
+    ["washington, nj", null],
+    ["washington, new jersey", null],
+    ["washington, ga", null],
+    ["washington court house", null],
+    ["washington township", null],
+    ["port washington", null],
+    ["washington, wa", null],
+    [", washington,", null],
+    ["usa, wa,", null],
+    [":wa:", null],
+    [", wa,", null],
+    [", wa ", null],
+    ["-wa-", null],
+  ];
+  // A two-letter state is closed off before it is matched, as the metro needles
+  // are: bare, "sydney, ns" nulled "Sydney, NSW, Australia" (JPMorgan, 17 roles),
+  // "on, london" nulled "LONDON, LONDON, United Kingdom" (294), and "paris, il"
+  // would null "Paris, Ile-de-France". "melbourne, fl" becomes "melbourne, fl,"
+  // and "melbourne, fl "; "fl, melbourne" becomes ", fl, melbourne,".
+  const closed = NAMESAKES.flatMap(([n, hub]): [string, string | null][] =>
+    /, [a-z]{2}$/.test(n)
+      ? [
+          [`${n},`, hub],
+          [`${n} `, hub],
+        ]
+      : /^[a-z]{2}, /.test(n)
+        ? [[`, ${n},`, hub]]
+        : [[n, hub]],
+  );
+  return [...out, ...CANADA, ...closed];
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sonar: fetchSonar,
   axol: fetchAxol,
@@ -36024,6 +36923,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   // reader; the platform is separate only so their rows get their own tag.
   atsx: fetchBytedance,
   workdaystores: fetchWorkdayStores,
+  mcloud: fetchMcloud,
   clinchfacets: fetchClinchFacets,
   danoneaem: fetchDanoneAem,
   sikaaem: fetchSikaAem,
@@ -36143,6 +37043,7 @@ export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
 export const SOURCE_TAG: Record<Platform, string> = {
   // Workday rows; only the placement differs (see fetchWorkdayStores).
   workdaystores: "wd",
+  mcloud: "mcloud",
   clinchfacets: "clfc",
   danoneaem: "dnaem",
   sikaaem: "sikaem",
