@@ -364,12 +364,6 @@ export function NotificationBell() {
                 <p className="nbnotice">Nothing to report on this tab.</p>
               )}
             </div>
-
-            <div className="nbfoot">
-              <span className="nbfootnote">
-                {data?.days ? `Archive holds ${data.days} days of collection` : ""}
-              </span>
-            </div>
           </div>
         </>
       )}

@@ -15421,6 +15421,12 @@ body {
 .nbrow:hover {
   background: var(--surface-subtle);
 }
+/* The list is the panel's last child now that the footer is gone, so the final
+   row's divider would draw a line across the rounded bottom edge with nothing
+   under it. */
+.nbrow:last-child {
+  border-bottom: 0;
+}
 /* The alert row's company badge. ROUND, not the 9px-rounded square it was:
    this is an employer's logo now rather than its initials, and the round crop
    is the shape the map pin and the follow list already give a company. The
@@ -15607,22 +15613,16 @@ body {
   color: var(--text-secondary);
   text-wrap: pretty;
 }
-.nbfoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 18px;
-  background: var(--surface-subtle);
-  border-top: 1px solid var(--border-subtle);
-}
-.nbfootnote {
-  font-family: var(--font-label);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
+/* .nbfoot / .nbfootnote removed with the "Archive holds N days of collection"
+   caption (2026-09-30). The archive's depth still reaches the reader where it
+   explains something — the notice inside an empty panel says how many days
+   there are and why that is not yet enough to compare against — rather than as
+   a permanent strip under every list.
+
+   The list is now the panel's last child. .nbpanel carries the 18px radius and
+   overflow:hidden, so the corner is fine; what is not is the last row's own
+   divider, which the footer used to sit under and which would otherwise render
+   as a stray rule hugging the rounded bottom edge. See .nbrow:last-child. */
 
 /* Phone: the panel becomes a bottom sheet like the dock's other panels. */
 @media (max-width: 680px) {
