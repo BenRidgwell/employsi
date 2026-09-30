@@ -168,7 +168,13 @@ type Platform =
   | "googlecareers"
   | "data3"
   | "glencore"
-  | "moka";
+  | "moka"
+  | "connx"
+  | "datakiosk"
+  | "taleobe"
+  | "silkroad"
+  | "readyemploy"
+  | "jobvite";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -4405,7 +4411,9 @@ export const SITES: SiteDef[] = [
   //
   // THE EIGHT MISSES: Harris Farm, DroneShield, Sydney Tools, ARB, Data#3, SEEK,
   // Vault Minerals and Melbourne Airport. SEEK, Vault Minerals and Data#3 each
-  // had 10-14 links followed with no marker on any of them.
+  // had 10-14 links followed with no marker on any of them. (ARB and Vault
+  // Minerals were found and wired 2026-09-30 — ConnX and Datakiosk; see batch
+  // 11: A at the end of SITES.)
   {
     id: "sydney-bga",
     name: "Bega Cheese",
@@ -4554,8 +4562,8 @@ export const SITES: SiteDef[] = [
   //     the one platform measured to answer headless Chromium with the same bot
   //     check it gives curl (see the ECU step in browser-portals.yml), so an
   //     Action would not fix it either.
-  //   Notre Dame (100) — every path 403s and this sweep was plain. Needs --render
-  //     before anything can be said about it.
+  //   Notre Dame (100) — every path 403s and this sweep was plain. Its board
+  //     turned out to be Jobvite, wired 2026-09-30 (batch 11: A).
   //   UTS (85) and Bond (74) — 14 of 14 followed links READ, no marker on any.
   //     Trustworthy negatives rather than starved ones, which is new: the render
   //     budget split landed the same day.
@@ -4657,8 +4665,8 @@ export const SITES: SiteDef[] = [
   //
   // FOUND BUT NOT BUILT, each for a measured reason:
   //   Teys Australia (108 ads) — teysgroupau.currentjobs.co. A platform with no
-  //     reader in this file; now at least NAMED by the sweep rather than
-  //     reported as "no ATS marker".
+  //     reader in this file then; the Ready Employ RSS reader wired it
+  //     2026-09-30 (batch 11: A).
   //   Patterson Cheney — WIRED NOW, see below. It was held back one batch
   //     because fetchElmo took page one and stopped, and the paging gap was in
   //     the SHARED fetcher rather than in this board.
@@ -4752,6 +4760,10 @@ export const SITES: SiteDef[] = [
     homeHub: "melbourne",
   },
   // ── FUNNELBACK — WHY THERE IS NO READER, AND WHY THERE WILL NOT BE ──────────
+  //
+  // (Notre Dame no longer needs this route: as of 2026-09-29 it advertises on
+  // Jobvite, jobs.jobvite.com/notredame, wired in batch 11: A. The Funnelback
+  // finding below still stands for UNE.)
   //
   // UNE (74 archived ads) and Notre Dame (103) both keep their vacancies in a
   // Funnelback search collection rather than in an ATS. That looks like one
@@ -4938,6 +4950,8 @@ export const SITES: SiteDef[] = [
   //   Defence Health (152), Canberra Airport (109), Richard Crookes (135) —
   //     swept, no marker, every followed link read. Trustworthy negatives, and
   //     Richard Crookes' own /current-vacancies/ was among the pages read.
+  //     (Defence Health's board was later found as a Taleo Business Edition
+  //     iframe on /About/Work-With-Us and wired 2026-09-30, batch 11: A.)
   {
     id: "priv-employers-mutual",
     name: "Employers Mutual",
@@ -5745,9 +5759,9 @@ export const SITES: SiteDef[] = [
   // (eightfoldpcs 429 after ~300 of 531 pages), Thiess (Clinch serves a
   // different slice per identical request; sitemap.xml lists all 135), and new
   // readers still to write for HDFC Bank (RippleHire, 399), Larsen & Toubro
-  // (PeopleStrong behind Incapsula), Talent International (WordPress, 279),
-  // ARB (ConnX, 43), Vault Minerals (Datakiosk, 67) and Defence Health (Taleo
-  // Business Edition, 10). No board of their own: Sydney Tools, Alto, Loan
+  // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279).
+  // ARB (ConnX), Vault Minerals (Datakiosk) and Defence Health (Taleo Business
+  // Edition) have readers since 2026-09-30, batch 11: A. No board of their own: Sydney Tools, Alto, Loan
   // Market, SEEK (lists only on SEEK itself).
   // SGS — 2026-09-29: CORRECTS the standing note in careerSites.ts (~line 5163 and ~3386) that
   // SGS is an unreadable Coveo index. sgs.com/en/our-company/careers-at-sgs/job-opportunities
@@ -8126,8 +8140,9 @@ export const SITES: SiteDef[] = [
   // 2-4 walks; the board is 21,719 roles), Swinburne (NGA.NET CAPTCHA). New
   // readers needed: ByteDance (csrf + 10,000-row cap), Hengrui (MokaHR,
   // AES-encrypted), UTS (Oracle iRecruitment session forms), Amazon (10,000
-  // cap), IBM (www-api.ibm.com search, sort by dcdate), Teys and RAA (RSS
-  // <item>, which fetchXmlFeed does not read), Notre Dame (Jobvite). No board
+  // cap), IBM (www-api.ibm.com search, sort by dcdate). Teys and RAA (RSS
+  // <item>) and Notre Dame (Jobvite) are wired since 2026-09-30, batch 11: A.
+  // No board
   // of their own: ARA, Canberra Airport, Swift Holdings, CSCEC, Thomas Foods
   // (its WordPress vacancies are all 2023 or older), Wilmar (points to
   // JobStreet and subsidiaries).
@@ -21832,6 +21847,126 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     hubHints: MOKA_CN_HINTS,
   },
+  // ── batch 11: A ──
+  //
+  // Six new readers, each measured 2026-09-30 (see the reader header comments
+  // above FETCHERS for the shapes and traps). homeHub is null wherever every
+  // row states a place, so nothing unrecognised defaults to the roster city.
+  //
+  // ARB — ConnX, 43 roles, bare suburbs over every state. hubHints name only the
+  // suburbs MEASURED on the board and only where they sit inside a hub metro.
+  // St Peters and Seven Hills exist in more than one state: ARB's are the NSW
+  // branches (the board files St Peters under "NSW Sales Operations"). Regional
+  // branches (Albury, Newcastle, Rockhampton, Cairns, Bundaberg) stay unplaced;
+  // Launceston, Geelong, Dandenong, Welshpool, Darwin and Canberra resolve
+  // through HUB_MATCH.
+  {
+    id: "melbourne-arb",
+    name: "ARB Corporation",
+    sector: "Consumer and Retail",
+    platform: "connx",
+    endpoint: "https://arb.connxcareers.com/api/vacancies",
+    origin: "https://arb.connxcareers.com",
+    homeHub: null,
+    hubHints: [
+      ["kilsyth", "melbourne"],
+      ["pakenham", "melbourne"],
+      ["kirrawee", "sydney"],
+      ["st peters", "sydney"],
+      ["auburn", "sydney"],
+      ["seven hills", "sydney"],
+      ["prestons", "sydney"],
+      ["nundah", "brisbane"],
+      ["brendale", "brisbane"],
+      ["osborne park", "perth"],
+      ["mandurah", "perth"],
+      ["edwardstown", "adelaide"],
+      ["regency park", "adelaide"],
+    ],
+  },
+  // Vault Minerals — Datakiosk Cirrus, 67 roles. Locations are Vault's own site
+  // names (KOTH 26, Deflector 21, Darlot 15, Perth Office 2, Mount Monger 2,
+  // Pastoral Leases 1). Every named mine is in WA's Goldfields/Mid West, and
+  // this file places WA mine sites on Perth (HUB_MATCH: kalgoorlie, newman,
+  // tom price -> perth), so the named sites are hinted to Perth. NOT
+  // assumeHomeHub: Vault also holds Sugar Zone in Ontario, which must not land
+  // on Perth if it ever advertises. "Pastoral Leases" names no place and stays
+  // unplaced.
+  {
+    id: "perth-vau",
+    name: "Vault Minerals",
+    sector: "Energy & Natural Resources",
+    platform: "datakiosk",
+    endpoint:
+      "https://www.datakiosk.com.au/cirrus/usercontrols/journey/careers_joblist.aspx?kiosk=C25CA6A30330B391781ECAD548E51B32&GUID=99DA8D94-27D5-4F82-BDD1-5745BC293AF4&MD5=2EFB5BA6D139BC3E83574D0FA426B7F5",
+    origin: "https://www.datakiosk.com.au/cirrus/usercontrols/journey/",
+    homeHub: null,
+    hubHints: [
+      ["king of the hills", "perth"],
+      ["koth", "perth"],
+      ["deflector", "perth"],
+      ["darlot", "perth"],
+      ["mount monger", "perth"],
+    ],
+  },
+  // Defence Health — Taleo Business Edition, 10 roles, every location "Victoria"
+  // (the state; HQ is St Kilda Road). HUB_MATCH wants "victoria, austral", so
+  // the bare state is hinted here, scoped to this employer.
+  {
+    id: "priv-defence-health",
+    name: "Defence Health",
+    sector: "Private health insurance",
+    platform: "taleobe",
+    endpoint: "https://syf.tbe.taleo.net/syf01/ats/careers/v2/searchResults?org=DEFEHEAL&cws=37",
+    origin: "https://lde.tbe.taleo.net",
+    homeHub: null,
+    hubHints: [["victoria", "melbourne"]],
+  },
+  // Teys Australia — Ready Employ RSS, 27 roles. Beenleigh and Eight Mile Plains
+  // are Brisbane suburbs; the rest are regional plants and feedlots (Wagga
+  // Wagga, Rockhampton, Tamworth, Biloela, Naracoorte) and stay unplaced, except
+  // where the board adds a state HUB_MATCH reads ("Condamine Feedlot, Qld").
+  // NOT a "jindalee" hint: "Jindalee Feedlot, NSW" is not the Brisbane suburb.
+  {
+    id: "priv-teys-australia",
+    name: "Teys Australia",
+    sector: "Meat processing",
+    platform: "readyemploy",
+    endpoint: "https://teysgroupau.currentjobs.co/Job/Rss",
+    origin: "https://teysgroupau.currentjobs.co",
+    homeHub: null,
+    hubHints: [
+      ["beenleigh", "brisbane"],
+      ["eight mile plains", "brisbane"],
+    ],
+  },
+  // RAA — SilkRoad CX RSS, 11 roles; every item names "South Australia".
+  {
+    id: "priv-raa",
+    name: "RAA",
+    sector: "Insurance & motoring club",
+    platform: "silkroad",
+    endpoint: "https://jobs.silkroad.com/RAA/RAACareers/rss",
+    origin: "https://jobs.silkroad.com",
+    homeHub: "adelaide",
+  },
+  // Notre Dame Australia — Jobvite, 20 postings, of which 5 are "EOI - Academic
+  // Sessional" posts. Those are STANDING POOLS, read off the posts themselves
+  // 2026-09-30: "This is an Expression of Interest only and you will be
+  // contacted when the need arises" (Medicine), "clinical facilitators for an
+  // ongoing basis" (Health Sciences). skipTitles drops them; the "EOI - Digital
+  // Learning and Design Intern" post is a single internship and is kept.
+  // homeHub null: "Australia, Australia" and "N Locations" name no campus.
+  {
+    id: "uni-university-of-notre-dame-australia",
+    name: "University of Notre Dame Australia",
+    sector: "Education",
+    platform: "jobvite",
+    endpoint: "https://jobs.jobvite.com/notredame/jobs",
+    origin: "https://jobs.jobvite.com",
+    homeHub: null,
+    skipTitles: /^EOI\s*-\s*Academic Sessional/i,
+  },
 ];
 
 /**
@@ -29105,12 +29240,383 @@ async function fetchGlencore(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 11 A: ConnX, Datakiosk Cirrus, Taleo Business Edition, RSS <item>, Jobvite ──
+
+// ── ConnX ────────────────────────────────────────────────────────────────────
+/**
+ * ConnX (connxcareers.com) — a Vue SPA over a small JSON API. `site.origin` is
+ * the tenant host, e.g. https://arb.connxcareers.com; `site.endpoint` is
+ * `<origin>/api/vacancies`.
+ *
+ * Measured 2026-09-30 on ARB: GET /api/vacancies answers 401 without a token.
+ * The SPA's own bundle (/assets/js/index-*.js, `loginAsGuest`) takes the FIRST
+ * LABEL OF THE HOST as the client code and POSTs
+ * /api/auth/authenticateGuest {"clientCode":"arb"} -> {accessToken, expiry:
+ * 14400}; with that bearer the list is ONE JSON array of the whole board — 43
+ * rows, no paging and no total field (the array is the board). Each row
+ * carries name (title), location, department, dateAdvertised,
+ * isExpressionOfInterest and guid; the SPA's route for a role is
+ * /job/details/<guid>. The guest token is minted per run and never stored.
+ *
+ * TRAP — `location` is a BARE SUBURB with no state ("Kilsyth South",
+ * "St Peters", "Welshpool", "Regency Park DC"), spread over every state, so
+ * placement is the SiteDef's hubHints. Nothing here guesses a state.
+ *
+ * `isExpressionOfInterest` rows are standing "send us your CV" posts, not
+ * vacancies, and are dropped (0 of 43 on ARB the day it was measured).
+ */
+interface ConnXVacancy {
+  guid?: string;
+  name?: string;
+  location?: string;
+  department?: string;
+  dateAdvertised?: string;
+  isExpressionOfInterest?: boolean;
+}
+
+async function fetchConnX(site: SiteDef): Promise<PortalJob[]> {
+  const origin = site.origin.replace(/\/+$/, "");
+  const clientCode = new URL(origin).host.split(".")[0];
+  const auth = await getJson<{ accessToken?: string }>(`${origin}/api/auth/authenticateGuest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientCode }),
+  });
+  if (!auth?.accessToken) {
+    console.log(`connx ${site.key ?? site.id}: guest token refused`);
+    return [];
+  }
+  const rows = await getJson<ConnXVacancy[]>(site.endpoint, {
+    headers: { Authorization: `Bearer ${auth.accessToken}` },
+  });
+  if (!Array.isArray(rows)) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const title = clean(r.name ?? "");
+    const guid = (r.guid ?? "").trim();
+    if (!title || !guid || seen.has(guid) || r.isExpressionOfInterest) continue;
+    seen.add(guid);
+    const posted = (r.dateAdvertised ?? "").slice(0, 10);
+    out.push(
+      job(
+        site,
+        title,
+        clean(r.location ?? ""),
+        `${origin}/job/details/${guid}`,
+        /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : "",
+        clean(r.department ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Datakiosk Cirrus ─────────────────────────────────────────────────────────
+/**
+ * Datakiosk "Cirrus" careers list. `site.endpoint` is the tenant's
+ * careers_joblist.aspx?kiosk=…&GUID=…&MD5=… url exactly as the employer's page
+ * embeds it — that triple IS the tenant.
+ *
+ * Measured 2026-09-30 on Vault Minerals: one plain GET, 358 KB, the WHOLE board
+ * server-rendered with no pager — "67 Live Results" and 67 distinct
+ * careers_job.aspx?…&guid=<job guid> links. Each role is one
+ * <li class="list-group-item job-list"> holding a list-view AND a grid-view
+ * anchor to the same url; the grid card labels its fields —
+ * <h6>title</h6>, "Location : </span>KOTH", "Post Date : </span>2026-09-25".
+ *
+ * TRAPS: the page also carries its unfilled TEMPLATE card
+ * ("[LOCATION_NAME]"), which has no job guid and is skipped on that. The
+ * "N Live Results" figure is the board's own total and bounds the read: fewer
+ * distinct roles than it states means the markup moved, and the pull is
+ * refused (an empty pull is never written) rather than archived short.
+ */
+async function fetchDatakiosk(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const total = Number(/(\d+)\s+Live Results/i.exec(html)?.[1] ?? NaN);
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<li class="list-group-item job-list">/i).slice(1)) {
+    const a = /<a href="(careers_job\.aspx\?[^"]*?[?&]guid=([0-9A-F-]{36})[^"]*)"/i.exec(card);
+    const title = clean(/<h6>([\s\S]*?)<\/h6>/i.exec(card)?.[1] ?? "");
+    if (!a || !title || seen.has(a[2].toUpperCase())) continue;
+    seen.add(a[2].toUpperCase());
+    const loc = clean(/Location : <\/span>([^<]*)</i.exec(card)?.[1] ?? "");
+    const posted = clean(/Post Date : <\/span>([^<]*)</i.exec(card)?.[1] ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        new URL(clean(a[1]), site.endpoint).toString(),
+        /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : "",
+        "Career portal",
+      ),
+    );
+  }
+  if (!(out.length >= total)) {
+    console.log(`datakiosk ${site.key ?? site.id}: ${out.length} read of ${total} — refused`);
+    return [];
+  }
+  return out;
+}
+
+// ── Oracle Taleo Business Edition ────────────────────────────────────────────
+/**
+ * Taleo BUSINESS Edition (tbe.taleo.net) career-website v2 — a different
+ * product from the Taleo Enterprise REST board `fetchTaleo` reads. `endpoint`
+ * is the tenant's …/ats/careers/v2/searchResults?org=<ORG>&cws=<n>.
+ *
+ * Measured 2026-09-30 on Defence Health (org DEFEHEAL, cws 37): the syf host
+ * 302s twice to lde.tbe.taleo.net/lde01/…, which serves the list as HTML —
+ * "Positions Matched" 10, one accordion per role with
+ * <a href="…viewRequisition?org=…&cws=…&rid=<n>" class="viewJobLink">title</a>
+ * followed by UNLABELLED <div tabindex="0"> cells. There is no posted date.
+ *
+ * TRAPS, measured the same day on three larger US tenants of the product:
+ *   - IT PAGES BY TEN. Mediacom 149, Recology 80, Olin 184 each rendered 10
+ *     rows and a <a class="jscroll-next"
+ *     href="/<pod>/ats/careers/v2/searchResults?next&rowFrom=10&…">. That url
+ *     carries no org: the search lives in the JSESSIONID the first response
+ *     sets, and without the cookie it answers 500. With it, rowFrom=70 on
+ *     Recology returned rows 71-80 directly and rowFrom=80 returned none, so
+ *     pages are fetched by offset. Defence Health's 10 of 10 is exactly the
+ *     page size, so the walk is bounded by the stated total, not by a short
+ *     page.
+ *   - THE CELLS ARE PER-TENANT COLUMNS. Defence Health shows [department,
+ *     location], Recology [department, city, state], Mediacom [category,
+ *     location, duration]. The "Sort by" <select> names them in the same
+ *     order (Title|Department|Location), so the location is read as the cells
+ *     whose column label says Location/City/State/Country, not by position.
+ *
+ * The offset walk was run through this reader on those three tenants
+ * (2026-09-30): Recology 80 of 80, Mediacom 149 of 149, Olin 184 of 184 unique,
+ * 2.4-4.4 s each, pages fetched in parallel on the one session.
+ */
+async function fetchTaleoBe(site: SiteDef): Promise<PortalJob[]> {
+  let first: Response;
+  try {
+    first = await fetch(site.endpoint, { headers: { "User-Agent": UA, Accept: "text/html" } });
+  } catch {
+    return [];
+  }
+  if (!first.ok) return [];
+  const html = await first.text();
+  const base = new URL(first.url || site.endpoint);
+  const cookie = (first.headers.get("set-cookie") ?? "").match(/JSESSIONID=[^;]+/)?.[0] ?? "";
+  const total = Number(/oracletaleocwsv2-panel-number"[^>]*>\s*(\d+)/.exec(html)?.[1] ?? NaN);
+  const labels = [...html.matchAll(/<option value="[^"]*sortColumn=\d+"[^>]*>([^<]*)</g)].map((m) =>
+    clean(m[1]),
+  );
+  // Column labels AFTER "Title", in cell order.
+  const cols = labels.slice(1);
+  const locCols = cols
+    .map((l, i) => (/location|city|state|country|province/i.test(l) ? i : -1))
+    .filter((i) => i >= 0);
+
+  interface TbeRow {
+    rid: string;
+    url: string;
+    title: string;
+    cells: string[];
+  }
+  const parse = (page: string): TbeRow[] =>
+    page
+      .split(/<div class="oracletaleocwsv2-accordion-head-info">/)
+      .slice(1)
+      .flatMap((block) => {
+        const a = /<a href="([^"]*viewRequisition\?[^"]*rid=(\d+))"[^>]*>([\s\S]*?)<\/a>/.exec(
+          block,
+        );
+        if (!a) return [];
+        const head = block.split(/<!--\/\.accordion-head-info/)[0];
+        const cells = [...head.matchAll(/<div tabindex="0"\s*>([\s\S]*?)<\/div>/g)].map((m) =>
+          clean(m[1]),
+        );
+        return [{ rid: a[2], url: clean(a[1]), title: clean(a[3]), cells }];
+      });
+
+  const firstRows = parse(html);
+  const pageSize = firstRows.length;
+  const next =
+    /<a href="([^"]*searchResults\?next&(?:amp;)?rowFrom=)\d+([^"]*)" class="jscroll-next"/.exec(
+      html,
+    );
+  let rest: TbeRow[] = [];
+  if (pageSize && total > pageSize) {
+    if (!next || !cookie) {
+      console.log(
+        `taleobe ${site.key ?? site.id}: ${total} stated, no next link or session — refused`,
+      );
+      return [];
+    }
+    const pre = clean(next[1]);
+    const post = clean(next[2]).replace(/&currentTime=\d+/, "");
+    const pages = Math.min(Math.ceil(total / pageSize) - 1, site.maxPages ?? DEFAULT_MAX_PAGES);
+    rest = await pagedParallel<TbeRow>(
+      async (i) => {
+        const body = await getText(new URL(`${pre}${(i + 1) * pageSize}${post}`, base).toString(), {
+          headers: { Cookie: cookie },
+        });
+        return body === null ? null : parse(body);
+      },
+      pageSize,
+      pages,
+      `taleobe ${site.key ?? site.id}`,
+    );
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...firstRows, ...rest]) {
+    if (!r.title || seen.has(r.rid)) continue;
+    seen.add(r.rid);
+    const loc = locCols
+      .map((i) => r.cells[i] ?? "")
+      .filter(Boolean)
+      .join(", ");
+    const catIdx = cols.findIndex((l) => /department|category|division/i.test(l));
+    out.push(
+      job(
+        site,
+        r.title,
+        loc,
+        new URL(r.url, base).toString(),
+        "",
+        (catIdx >= 0 ? r.cells[catIdx] : "") || "Career portal",
+      ),
+    );
+  }
+  // A posting that lands or closes mid-walk shifts the title-sorted offsets by
+  // one, so a long walk may legitimately come up a role short; a larger gap is
+  // a walk that did not read the board and is not archived.
+  if (!(out.length >= total * 0.98)) {
+    console.log(`taleobe ${site.key ?? site.id}: ${out.length} read of ${total} — refused`);
+    return [];
+  }
+  if (out.length < total) {
+    console.log(`taleobe ${site.key ?? site.id}: ${out.length} read of ${total}`);
+  }
+  return out;
+}
+
+// ── RSS <item> job feeds (SilkRoad CX, Ready Employ) ─────────────────────────
+/**
+ * A board's own RSS feed, one <item> per role: <title>, <link> (else <guid>),
+ * <location>, optional <pubDate>. Values may be CDATA-wrapped. `fetchXmlFeed`
+ * cannot read these — it matches <job> elements with city/state/country.
+ * `endpoint` is the feed url. Two ATSs publish this shape, each with its own
+ * platform (and source tag) but this one reader:
+ *
+ *   SilkRoad CX  — jobs.silkroad.com/<Customer>/<Portal>/rss. Measured
+ *     2026-09-30: RAA 11 items = the HTML board's 10 + 1 over ?page=1..2 (the
+ *     HTML pages by ten; the RSS does not page). Checked on two larger
+ *     tenants the same day: PHEAA 9 = 9 and Core4ce 37 = 37, so the feed is
+ *     not capped at a page. <location> is a full address ("150 Grenfell St,
+ *     Adelaide, South Australia, Australia"); <category> is the board's
+ *     "Current Vacancies" bucket, not a job family, so it is not used. No
+ *     posted date in the item.
+ *   Ready Employ — <tenant>.currentjobs.co/Job/Rss. Measured 2026-09-30:
+ *     Teys 27 items, the same 27 job ids as the HTML list's ?page=1..3
+ *     (10+10+7; ?page=4 RE-SERVES page one, so that pager must never be walked
+ *     to an empty page). <location> is a bare site ("Wagga Wagga",
+ *     "Jindalee Feedlot, NSW"); <closingDate> is a CLOSING date and is not
+ *     used as the posted date.
+ *
+ * Neither feed states a total, so the read is bounded by what the feed is: one
+ * document, measured equal to the paged HTML board it mirrors.
+ */
+function rssTag(item: string, tag: string): string {
+  const m = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, "i").exec(item);
+  if (!m) return "";
+  return clean(m[1].replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, "$1"));
+}
+
+async function fetchRssItems(site: SiteDef): Promise<PortalJob[]> {
+  const xml = await getText(site.endpoint, {
+    headers: { Accept: "application/rss+xml, application/xml, text/xml" },
+  });
+  if (!xml || !/<rss[\s>]/i.test(xml)) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
+    const title = rssTag(m[1], "title");
+    const url = rssTag(m[1], "link") || rssTag(m[1], "guid");
+    if (!title || !/^https?:\/\//.test(url) || seen.has(url)) continue;
+    seen.add(url);
+    const pub = rssTag(m[1], "pubDate");
+    out.push(
+      job(site, title, rssTag(m[1], "location"), url, pub ? isoDay(pub) : "", "Career portal"),
+    );
+  }
+  return out;
+}
+
+// ── Jobvite ──────────────────────────────────────────────────────────────────
+/**
+ * Jobvite's hosted careers page, jobs.jobvite.com/<tenant>/jobs — `endpoint`
+ * is that url, `origin` https://jobs.jobvite.com.
+ *
+ * Measured 2026-09-30 on Notre Dame Australia: one server-rendered page, 20
+ * roles, grouped under <h3 class="h2">category</h3> headings, each a <tr> of
+ * <td class="jv-job-list-name"><a href="/notredame/job/<id>">title</a> and
+ * <td class="jv-job-list-location"> ("Sydney, NSW", "Broome, WA",
+ * "Fremantle, Western Australia", "Australia, Australia"). Egnyte's page, read
+ * the same day as a second tenant, is the same shape with 30 rows and no pager.
+ *
+ * TRAPS: a role at several sites prints "2 Locations" / "3 Locations" and not
+ * the sites, so it is recorded with that text and places nowhere — which is
+ * what the board says. No posted date on the list. There is no total on the
+ * page; a tenant large enough to be paginated (a `jv-pagination` block) is
+ * refused rather than read as its first page, since that walk is unmeasured.
+ */
+async function fetchJobvite(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  if (/jv-pagination/i.test(html)) {
+    console.log(`jobvite ${site.key ?? site.id}: paginated board — pager unmeasured, refused`);
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const sections = html.split(/<h3 class="h2">/i);
+  for (let s = 0; s < sections.length; s++) {
+    const sec = sections[s];
+    const cat = s === 0 ? "" : clean(sec.split(/<\/h3>/i)[0]);
+    for (const m of sec.matchAll(
+      /<td class="jv-job-list-name">\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<td class="jv-job-list-location">([\s\S]*?)<\/td>/gi,
+    )) {
+      const href = clean(m[1]);
+      const title = clean(m[2]);
+      if (!title || seen.has(href)) continue;
+      seen.add(href);
+      out.push(
+        job(
+          site,
+          title,
+          clean(m[3]),
+          new URL(href, site.origin).toString(),
+          "",
+          cat || "Career portal",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jibe: fetchJibe,
   googlecareers: fetchGoogleCareers,
   data3: fetchData3,
   glencore: fetchGlencore,
   moka: fetchMoka,
+  connx: fetchConnX,
+  datakiosk: fetchDatakiosk,
+  taleobe: fetchTaleoBe,
+  silkroad: fetchRssItems,
+  readyemploy: fetchRssItems,
+  jobvite: fetchJobvite,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -29283,6 +29789,15 @@ export const SOURCE_TAG: Record<Platform, string> = {
   glencore: "glen",
   // MokaHR, the Chinese ATS behind ZTE, DJI, CATL, East Money and Hengrui.
   moka: "moka",
+  connx: "connx",
+  datakiosk: "datakiosk",
+  // Taleo BUSINESS Edition is a different product from the Enterprise board
+  // behind "tl", with different requisition ids, so it does not share the tag.
+  taleobe: "tbe",
+  // One reader, two ATSs: the tag names the ATS the feed came from.
+  silkroad: "silkroad",
+  readyemploy: "readyemploy",
+  jobvite: "jobvite",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
