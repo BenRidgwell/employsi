@@ -190,7 +190,13 @@ type Platform =
   | "cajobs"
   | "hrmos"
   | "ripplehire"
-  | "sfclassicxml";
+  | "sfclassicxml"
+  | "hansenyuncken"
+  | "jetengine"
+  | "ritchies"
+  | "cianywhere"
+  | "borgcareers"
+  | "irecruitment";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -5818,7 +5824,9 @@ export const SITES: SiteDef[] = [
   // (eightfoldpcs 429 after ~300 of 531 pages), Thiess (Clinch serves a
   // different slice per identical request; sitemap.xml lists all 135), and new
   // readers still to write for Larsen & Toubro
-  // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279).
+  // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279 —
+  // since found to be all CLIENTS' ads and deliberately not wired; see the
+  // batch 12: I note at the end of SITES).
   // ARB (ConnX), Vault Minerals (Datakiosk) and Defence Health (Taleo Business
   // Edition) have readers since 2026-09-30, batch 11: A. No board of their own: Sydney Tools, Alto, Loan
   // Market, SEEK (lists only on SEEK itself).
@@ -8199,7 +8207,8 @@ export const SITES: SiteDef[] = [
   // 2-4 walks; the board is 21,719 roles), Swinburne (NGA.NET CAPTCHA). New
   // readers needed: ByteDance (csrf + 10,000-row cap — since read, Beijing
   // partition only, by fetchBytedance in batch 11 D), Hengrui (MokaHR,
-  // AES-encrypted), UTS (Oracle iRecruitment session forms), Amazon (10,000
+  // AES-encrypted), UTS (Oracle iRecruitment session forms; since read by
+  // fetchIRecruitment, batch 12: I), Amazon (10,000
   // cap; since wired for the Seattle MSA only, see fetchAmazonJobs), IBM
   // (www-api.ibm.com search; since wired, see fetchIbmSearch). Teys and RAA
   // (RSS <item>) and Notre Dame (Jobvite) are wired since 2026-09-30, batch
@@ -22643,6 +22652,174 @@ export const SITES: SiteDef[] = [
     origin: "https://jobs.jobvite.com",
     homeHub: null,
     skipTitles: /^EOI\s*-\s*Academic Sessional/i,
+  }, // ── batch 12: I ──
+  //
+  // Measured 2026-09-30. Wired: Hansen Yuncken, Leader Computers, Ritchies,
+  // BAC Holdings, Australian Panels (as Porta), UTS. NOT wired, each for a
+  // measured reason:
+  //   Pallion — pallion.com/wp-json/wp/v2/job reads fine with fetchWpRest
+  //     (X-WP-Total 2; title.rendered is the real title; no location field,
+  //     so rows would fall to homeHub sydney, which is right — Marrickville).
+  //     But both posts are DEAD: re-checked today, each acf.apply_button_link
+  //     (apply.jobadder.com/18047/877379/…, /878199/…) still 302s to
+  //     apply.jobadder.com/closed/…. The WP list is not maintained, and REST
+  //     cannot tell a live post from a closed one (the Perseus lesson), so
+  //     reading it would archive two ended vacancies as live indefinitely.
+  //   Newcastle Greater Mutual Group — www.ngmgroup.com.au/careers,
+  //     greater.com.au/careers and newcastlepermanent.com.au all answer 403
+  //     behind a Cloudflare managed challenge, to curl, WebFetch and headless
+  //     Chromium alike ("Just a moment…" after 20 s). The ATS still cannot be
+  //     named: no LiveHire segment (ngmgroup/greaterbank/newcastlepermanent
+  //     token 404), no Lever board, ELMO/Expr3ss subdomains bounce to the
+  //     vendor, applynow.net.au answers the same page for any subdomain.
+  //     Roster domain ngm.com.au is an unrelated site; the group is
+  //     Newcastle-based (roster home sydney is questionable).
+  //   Talent International — a recruitment agency. All 273 posts in its
+  //     wp-json `job` type are CLIENTS' vacancies ("Talent International is
+  //     currently recruiting … to work for the NSW Government", "our client,
+  //     a leading national logistics organisation"); read 2026-09-30, the
+  //     recruiter-shaped titles (Recruitment Business Partner, Talent
+  //     Acquisition Administrator, Recruitment Officer) are client placements
+  //     too. No post is Talent's own role, so nothing can be filed under its
+  //     id without describing someone else's demand as Talent's.
+  //   ADCO Constructions — adcoconstruct.com.au reset every connection from
+  //     here today (curl: connection reset, both hosts) and WebFetch got 503,
+  //     so the page could not be re-measured. Yesterday it listed ONE role
+  //     (a summer intern programme) and wp-json/wp/v2/cpt_job is 401
+  //     (iThemes Security). Not wired on an unmeasured page.
+  //
+  // Hansen Yuncken — own positions page, 4 roles after the standing EOI block
+  // is skipped. Every role names its city ("Melbourne, VIC", "Sydney, NSW",
+  // "Brisbane or Cairns, QLD" -> brisbane), so homeHub is null: HY is
+  // national, and a blank location must not default to Melbourne.
+  {
+    id: "priv-hansen-yuncken",
+    name: "Hansen Yuncken",
+    sector: "Commercial construction",
+    platform: "hansenyuncken",
+    endpoint: "https://www.hansenyuncken.com.au/people-culture/positions/",
+    origin: "https://www.hansenyuncken.com.au",
+    homeHub: null,
+    skipTitles: /^(General )?Expression of Interest$/i,
+  },
+  // Leader Computers — the company is Leader (leadersystems.com.au, HQ
+  // Franklin St Adelaide); the roster's leadercomputers.com.au has no DNS.
+  // JetEngine grid, 11 roles: Adelaide CBD 5, Melbourne (Clayton South) 2,
+  // Sydney (Lidcombe) 2, Brisbane (Archerfield) 3 — each placed by its own
+  // city name.
+  {
+    id: "priv-leader-computers",
+    name: "Leader Computers",
+    sector: "IT distribution",
+    platform: "jetengine",
+    endpoint: "https://leadersystems.com.au/careers/",
+    origin: "https://leadersystems.com.au",
+    homeHub: "adelaide",
+  },
+  // Ritchies Supa IGA — per-store accordions; 4 real vacancies among 84
+  // panels of standing "General Positions" posts. Stores are mostly regional
+  // Victoria and NSW, so ONLY metro stores are hinted (the Melbourne ones by
+  // name — Mornington Peninsula, Cardinia and Yarra Ranges stores included,
+  // being inside Greater Melbourne; Sydney's North Ryde, Spit Junction, Taren
+  // Point and the Central Coast stores, which are in Greater Sydney; Daisy
+  // Hill in Logan for Brisbane), and each state is then hinted to NULL, so
+  // Kurri Kurri or Mildura cannot fall to a capital through "new south wales"
+  // or a state token. Wallan (Mitchell Shire) and Woodend are left unplaced.
+  {
+    id: "priv-ritchies-supa-iga",
+    name: "Ritchies Supa IGA",
+    sector: "Supermarkets",
+    platform: "ritchies",
+    endpoint: "https://www.ritchies.com.au/careers/Current-Vacancies",
+    origin: "https://www.ritchies.com.au",
+    homeHub: null,
+    skipTitles: /^General (Positions?|Roles?)( Available)?$/i,
+    hubHints: [
+      ["amberly park", "melbourne"],
+      ["aspendale gardens", "melbourne"],
+      ["balnarring", "melbourne"],
+      ["bentleigh east", "melbourne"],
+      ["carrum downs", "melbourne"],
+      ["diamond creek", "melbourne"],
+      ["dromana", "melbourne"],
+      ["emerald", "melbourne"],
+      ["frankston", "melbourne"],
+      ["glenferrie road", "melbourne"],
+      ["hawthorn square", "melbourne"],
+      ["heathmont", "melbourne"],
+      ["mt eliza", "melbourne"],
+      ["mt martha", "melbourne"],
+      ["mt waverley", "melbourne"],
+      ["narre warren", "melbourne"],
+      ["pentridge", "melbourne"],
+      ["ringwood east", "melbourne"],
+      ["ringwood north", "melbourne"],
+      ["rowville", "melbourne"],
+      ["seaford", "melbourne"],
+      ["sorrento", "melbourne"],
+      ["wantirna", "melbourne"],
+      ["yarra glen", "melbourne"],
+      ["north ryde", "sydney"],
+      ["spit junction", "sydney"],
+      ["taren point", "sydney"],
+      ["bateau bay", "sydney"],
+      ["erina", "sydney"],
+      ["daisy hill", "brisbane"],
+      ["victoria", null],
+      ["new south wales", null],
+      ["queensland", null],
+    ],
+  },
+  // BAC Holdings — Brisbane Airport Corporation, TechnologyOne CiAnywhere
+  // public board, 2 roles today. Locations are airport sites ("12-14 The
+  // Circuit", "Head Office"), so assumeHomeHub: every place BAC can advertise
+  // is at Brisbane Airport.
+  {
+    id: "priv-bac-holdings",
+    name: "BAC Holdings",
+    sector: "Airport operations",
+    platform: "cianywhere",
+    endpoint:
+      "https://bacair.t1cloud.com/T1Default/CiAnywhere/Web/BACAIR/Public/Function/$ORG.REC.EXJOBB.ENQ/RECRUIT_EXT?suite=CES",
+    origin: "https://bacair.t1cloud.com",
+    homeHub: "brisbane",
+    assumeHomeHub: true,
+  },
+  // Australian Panels — australianpanels.com.au now redirects to
+  // porta.com.au/careers: Porta is the Borg group brand that "unifies
+  // Australian Panels, Porta Mouldings, Dongwha Australia, easycraft", and its
+  // careers page links to Borg's board. The board still has an "Australian
+  // Panels" brand facet, at 0; the roles are filed under Porta. So this feed
+  // is the PORTA brand only (13 today) — the successor of this employer — and
+  // NOT the whole Borg group (30), whose polytec, Crossmuller, Group
+  // Logistics and Techplas roles are other businesses. Places arrive as
+  // "Suburb, New South Wales": Charmhaven / Somersby / West Gosford (Central
+  // Coast) and Oberon (Central Tablelands) all resolve to sydney through
+  // HUB_MATCH's state needle — the file's regional-to-capital convention, as
+  // for Kalgoorlie -> perth. Oberon is 8 of the 13.
+  {
+    id: "priv-australian-panels",
+    name: "Australian Panels",
+    sector: "Timber panel manufacturing",
+    platform: "borgcareers",
+    endpoint: "https://careers.borgs.com.au/jobs/?brands=porta.png",
+    origin: "https://careers.borgs.com.au",
+    homeHub: "sydney",
+  },
+  // UTS — Jobs@UTS, Oracle EBS iRecruitment visitor search, 26 roles. One
+  // is a standing "Indigenous Employment Opportunities – Expression of
+  // Interest" pool (closing 29-Jan-2027), dropped by skipTitles. No location
+  // column; every role is UTS Broadway, hence homeHub sydney.
+  {
+    id: "uni-university-of-technology-sydney",
+    name: "University of Technology Sydney",
+    sector: "Higher education",
+    platform: "irecruitment",
+    endpoint:
+      "https://recruitment.uts.edu.au/OA_HTML/RF.jsp?function_id=14296&resp_id=23350&resp_appl_id=800&security_group_id=0&lang_code=US&params=1MRbeqL8d4H-45F7eWg8tcMZi9yxQo7E2xB8NXRsSOlGRIRQXIcwO8OMC-ZaHNY2&oas=BGBPtyycAC0jP53NIJF7Bw..",
+    origin: "https://recruitment.uts.edu.au",
+    homeHub: "sydney",
+    skipTitles: /Expression of Interest/i,
   },
 ];
 
@@ -32342,6 +32519,633 @@ async function fetchSfClassicXml(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 12: I — readers ────────────────────────────────────────────────────
+
+/** Decode the handful of entities that appear inside HTML attribute values.
+ *  Not `clean`: that also strips tags and collapses whitespace, which would
+ *  corrupt a form token or a JSON blob carried in an attribute. */
+function attrDecode(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, d: string) => String.fromCodePoint(parseInt(d, 16)))
+    .replace(/&amp;/g, "&");
+}
+
+/** Lower-case, hyphenated fragment for a synthetic `#anchor` url. */
+function anchorSlug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * A cookie-carrying fetch for the two session-bound boards below (CiAnywhere,
+ * Oracle iRecruitment). Workers' fetch keeps no cookie jar, and both boards
+ * issue their guest session on a REDIRECT, so `redirect: "follow"` would drop
+ * the cookie that the next hop checks. Redirects are followed by hand, up to
+ * eight, collecting Set-Cookie at every hop (a later value replaces an earlier
+ * one of the same name). Returns null on a network error or a non-2xx end.
+ */
+class SessionJar {
+  private jar = new Map<string, string>();
+
+  private take(res: Response) {
+    for (const c of res.headers.getSetCookie?.() ?? []) {
+      const kv = c.split(";")[0];
+      const i = kv.indexOf("=");
+      if (i > 0) this.jar.set(kv.slice(0, i).trim(), kv.slice(i + 1));
+    }
+  }
+
+  get header(): string {
+    return [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
+  async fetch(url: string, init?: RequestInit): Promise<{ url: string; body: string } | null> {
+    let u = url;
+    let req: RequestInit = init ?? {};
+    for (let hop = 0; hop < 8; hop++) {
+      let res: Response;
+      try {
+        res = await fetch(u, {
+          ...req,
+          redirect: "manual",
+          headers: { "User-Agent": UA, Cookie: this.header, ...req.headers },
+        });
+      } catch {
+        return null;
+      }
+      this.take(res);
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (!loc) return null;
+        u = new URL(loc, u).toString();
+        // A redirect after a POST is a GET, as a browser does it (303 and, in
+        // practice, 302).
+        req = { headers: req.headers };
+        continue;
+      }
+      return res.ok ? { url: u, body: await res.text() } : null;
+    }
+    return null;
+  }
+}
+
+// ── Hansen Yuncken (inline WordPress accordion) ─────────────────────────────
+/**
+ * hansenyuncken.com.au/people-culture/positions/ — a WordPress page template
+ * with every position INLINE as an accordion; no ATS, no job post type in
+ * wp-json, and no per-role page (every Apply button goes to the one
+ * /people-culture/apply/ form). So wprest/wploop cannot read it.
+ *
+ * Measured 2026-09-30: 5 blocks `<div class="details positions-details …">`,
+ * each an `<h2>` title then `<span class="location …">`. One is the standing
+ * "Expression of Interest" / "General Expression of Interest" block, which is
+ * not a vacancy — the SiteDef's skipTitles drops it — leaving 4: BIM / VDC
+ * Manager (Melbourne, VIC), Contract Administrator (Brisbane or Cairns, QLD),
+ * Senior Contract Administrator (Sydney, NSW), Site Supervisor (Sydney, NSW).
+ *
+ * THE URL IS SYNTHETIC — the page url plus `#<title>-<location>` — because the
+ * board has none per role. The archive key is title|location, so identity is
+ * exactly what the page shows; the anchor only keeps urls distinct. One page,
+ * no pagination: the template renders every position.
+ */
+async function fetchHansenYuncken(site: SiteDef): Promise<PortalJob[]> {
+  // TRAP — A 200 THAT IS NOT THE PAGE. Measured 2026-09-30: five requests in
+  // quick succession from bun each got a ~12 KB 200 whose only script is
+  // `setTimeout(() => window.location.reload(), 5000)` (the Plesk host's bot
+  // pause), with no positions in it; a few minutes later eight requests 4 s
+  // apart all got the real 75 KB page. Read as-is it would be "no vacancies".
+  // So the stub is recognised and waited out as a browser would, twice at
+  // most; if it persists the pull is [] and yesterday's rows stand.
+  let html: string | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 6000));
+    html = await getText(site.endpoint);
+    if (!html || html.includes("positions-details")) break;
+    if (!/window\.location\.reload\(\)/.test(html)) return [];
+  }
+  if (!html?.includes("positions-details")) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/class="details positions-details\b/).slice(1)) {
+    const b = block.slice(0, 3000);
+    const t = b.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i);
+    const l = b.match(/<span class="location\b[^"]*">([\s\S]*?)<\/span>/i);
+    if (!t) continue;
+    const title = clean(t[1]);
+    const loc = l ? clean(l[1]) : "";
+    const url = `${site.endpoint}#${anchorSlug(`${title} ${loc}`)}`;
+    if (!title || seen.has(url)) continue;
+    seen.add(url);
+    out.push(job(site, title, loc, url, today(), "Career portal"));
+  }
+  return out;
+}
+
+// ── JetEngine listing grid + JetSmartFilters pager (Leader Computers) ───────
+/**
+ * A WordPress + Elementor + JetEngine listing grid whose items come from a
+ * JetEngine Custom Content Type — which is why wp-json has no job type and
+ * fetchWpRest/fetchWpLoop cannot read it. `endpoint` is the listing page.
+ *
+ * Leader (leadersystems.com.au/careers/), measured 2026-09-30: "Available
+ * Roles: 11" (`jet-engine-query-count … count-type-total`), `data-pages="3"`,
+ * 5 items a page. Each item is `jet-listing-grid__item … data-post-id="N"`
+ * holding two Elementor headings — the title, then "Location: Adelaide, CBD".
+ * Pages 2+ are JetSmartFilters' URL pager, `?jsf=jet-engine&pagenum=N`.
+ *
+ * TRAP — THE PAGE CACHE. The bare /careers/ answered with `age: 810295` (nine
+ * days old) and said "10" / 2 pages while the live query said 11 / 3; every
+ * variant is served `cache-control: max-age=15552000`, so ANY fixed URL goes
+ * stale the same way. Every request therefore carries a `nocache=<time>`
+ * buster — JetEngine's own ajaxlisting url uses the same parameter — and the
+ * measured responses came back `x-cache: MISS` with no `age`.
+ *
+ * Bounded by the advertised total: every page up to data-pages is read, a
+ * page that fails abandons the pull, and a walk whose distinct post ids fall
+ * short of the total returns [] (yesterday's rows stand) rather than a subset.
+ *
+ * Links: 8 of 11 go to a `?page_id=` role page on the site, 3 straight to the
+ * SEEK ad. An off-site link keeps only its path (SEEK's tracking query and
+ * `#sol=` hash vary per render); an item with no link gets `#post-<id>`.
+ */
+async function fetchJetEngine(site: SiteDef): Promise<PortalJob[]> {
+  const page = (n: number) =>
+    getText(`${site.endpoint}?jsf=jet-engine&pagenum=${n}&nocache=${Date.now()}${n}`);
+  const first = await page(1);
+  if (!first) return [];
+  const total = Number(first.match(/count-type-total[^>]*>\s*(\d+)/)?.[1] ?? NaN);
+  const pages = Number(first.match(/data-pages="(\d+)"/)?.[1] ?? NaN);
+  if (!Number.isFinite(total) || !Number.isFinite(pages)) return [];
+  const host = new URL(site.endpoint).host;
+  const rows = new Map<string, PortalJob>();
+  const parse = (html: string) => {
+    const grid = html.split("jet-listing-grid__items").slice(1).join("");
+    for (const item of grid.split(/<div class="jet-listing-grid__item\b/).slice(1)) {
+      const id = item.match(/data-post-id="(\d+)"/)?.[1];
+      if (!id || rows.has(id)) continue;
+      const heads = [
+        ...item.matchAll(/<h2 class="elementor-heading-title[^"]*">([\s\S]*?)<\/h2>/g),
+      ].map((m) => clean(m[1]));
+      const title = heads.find((h) => h && !/^Location:/i.test(h));
+      const loc = (heads.find((h) => /^Location:/i.test(h)) ?? "").replace(/^Location:\s*/i, "");
+      if (!title) continue;
+      let url = `${site.endpoint}#post-${id}`;
+      for (const m of item.matchAll(/href="(https?:\/\/[^"]+)"/g)) {
+        const href = attrDecode(m[1]);
+        if (/\/wp-content\/|\/contact-us\/?$/.test(href)) continue;
+        try {
+          const u = new URL(href);
+          url = u.host === host ? u.toString() : `${u.origin}${u.pathname}`;
+        } catch {
+          continue;
+        }
+        break;
+      }
+      rows.set(id, job(site, title, loc, url, today(), "Career portal"));
+    }
+  };
+  parse(first);
+  for (let n = 2; n <= Math.min(pages, 20); n++) {
+    const html = (await page(n)) ?? (await page(n));
+    if (!html) {
+      console.log(`jetengine ${site.id}: page ${n} of ${pages} could not be read — pull abandoned`);
+      return [];
+    }
+    parse(html);
+  }
+  if (rows.size < total) {
+    console.log(`jetengine ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
+// ── Ritchies Supa IGA (Concrete CMS store accordions) ───────────────────────
+/**
+ * ritchies.com.au/careers/Current-Vacancies — no ATS. A Bootstrap accordion
+ * per store under state `<h3>` headings (Victoria, New South Wales,
+ * Queensland, then a Head Office panel); inside each store's
+ * `<div class="accordion-body">`, one `<h3>` per advertised role, followed by
+ * prose ("email your CV to …").
+ *
+ * Measured 2026-09-30: 84 panels. The great majority are STANDING posts —
+ * "General Positions Available", "General Positions", "General Roles
+ * Available", "General Position" — or an empty `<h3>&nbsp;</h3>` over "we
+ * don't have any open positions"; the SiteDef's skipTitles drops the first
+ * kind and blank headings are skipped here. Four real vacancies remained:
+ * Supermarket Manager (Aspendale Gardens, closes 2 Oct 2026), Service
+ * Supervisor (Hawthorn Square), Service Supervisor (Mt Eliza), Liquor Manager
+ * / Licensee (Kurri Kurri Bottle-O).
+ *
+ * The body is cut at its FIRST `</div>`: the bodies measured hold only
+ * `<h3>`/`<p>`, and without the cut the last store's body ran on into the next
+ * state heading and the footer ("Ritchies Apps", "Our stores"…).
+ *
+ * Location is "<Store>, <State>" — the store name is the only place given, so
+ * the state heading is appended for the reader to see. Placement is by the
+ * SiteDef's hubHints only (metro stores), with the three states hinted to
+ * null so a regional store does not fall to a capital via "new south wales".
+ *
+ * URL is synthetic — page url + `#<panel id>-<role>` (Concrete CMS's
+ * `collapseNNNNN` block id, stable across loads) — since applications are by
+ * email and no role has a page.
+ */
+async function fetchRitchies(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  // Walk state headings and store panels in document order.
+  let state = "";
+  const parts = html.split(/(<div class="accordion-item">)/);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === '<div class="accordion-item">') continue;
+    const prev = parts[i - 1] === '<div class="accordion-item">';
+    if (prev) {
+      const store = clean(part.match(/accordion-button[^>]*>([\s\S]*?)<\/button>/)?.[1] ?? "");
+      const panel = part.match(/id="(collapse\d+)"/)?.[1] ?? anchorSlug(store);
+      const body = part.split('<div class="accordion-body">')[1]?.split("</div>")[0] ?? "";
+      for (const m of body.matchAll(/<h3\b[^>]*>([\s\S]*?)<\/h3>/g)) {
+        const title = clean(m[1]);
+        if (!title || !store) continue;
+        const url = `${site.endpoint}#${panel}-${anchorSlug(title)}`;
+        if (seen.has(url)) continue;
+        seen.add(url);
+        const loc = state ? `${titleCase(store)}, ${state}` : titleCase(store);
+        out.push(job(site, title, loc, url, today(), "Career portal"));
+      }
+    }
+    // A state heading sits between accordions, outside any store's body.
+    const tail = prev ? part.slice(part.indexOf("</div>") + 1) : part;
+    for (const h of tail.matchAll(/<h3>\s*(Victoria|New South Wales|Queensland)\s*<\/h3>/g)) {
+      state = h[1];
+    }
+  }
+  return out;
+}
+
+// ── TechnologyOne CiAnywhere — public job board (BAC / Brisbane Airport) ────
+/**
+ * A CiAnywhere tenant's PUBLIC "Available Jobs" function, the guest listing
+ * TechnologyOne serves to anyone. `endpoint` is the portal's public function
+ * link, e.g. …/Web/BACAIR/Public/Function/$ORG.REC.EXJOBB.ENQ/RECRUIT_EXT?suite=CES.
+ *
+ * Measured 2026-09-30 (bacair.t1cloud.com), with a plain client — no browser:
+ *   1. GET endpoint → 302 ×4 through …/SystemSecurity/Guest/LogOn, which sets
+ *      the guest `CiAnywhere.Auth` cookie, ending on
+ *      …/OrganisationManagement/JobBoardEnquiry/Index?f=…&suite=CES&G=<guid>.
+ *      The cookie arrives on a redirect, hence SessionJar.
+ *   2. That page carries its controls' config in `data-t1-control` attributes:
+ *      `DefaultParameters` (4 params, each with a server-signed `Hash`) and,
+ *      on the thumbnail view whose LayoutName is SIMPLE, `RequiredFields`
+ *      (62 signed field names).
+ *   3. POST <controller>/ReadFormSettings {FormSettingsName:"DEFAULT",
+ *      Parameters} → the parameters with values filled in and re-signed
+ *      (RecruitmentSystemCode BAC, RoleMode EXTERNAL).
+ *   4. POST <controller>/ReadMoreThumbnailData {…, DisplayFields:
+ *      RequiredFields, Parameters, PageNumber, PageSize} →
+ *      {Items:[{AllFields:[{FieldName, Value}]}], TotalRecordCount}.
+ * Every step is what the browser sends (captured in headless Chromium, then
+ * replayed from Python and from here). BAC: TotalRecordCount 2 — "Design
+ * Strategy Manager (1557)" at "12-14 The Circuit", "Environment Advisor -
+ * Commercial Property (1622)" at "Head Office". Paging checked with
+ * PageSize 1: PageNumber 1 and 2 returned one role each.
+ *
+ * Titles end in the requisition number in brackets — "(1557)" — which is not
+ * part of the job title, so it is dropped (the reference also rides in the
+ * apply url's token). URL is `ResolvedApplyUrl`, the ad's own public apply
+ * link (a per-ad token). The walk is bounded by TotalRecordCount and returns
+ * [] if it collects fewer distinct ads.
+ *
+ * The signed hashes are timestamped per session, so every run starts from
+ * step 1; nothing is cached between runs.
+ */
+const CI_PAGE = 40;
+
+async function fetchCiAnywhere(site: SiteDef): Promise<PortalJob[]> {
+  const s = new SessionJar();
+  const home = await s.fetch(site.endpoint, { headers: { Accept: "text/html" } });
+  if (!home) return [];
+  const g = home.url.match(/[?&]G=([0-9a-f-]+)/i)?.[1];
+  const ctl = home.url.match(/^(.*\/)Index\?/)?.[1];
+  const fn = decodeURIComponent(home.url.match(/[?&]f=([^&]+)/)?.[1] ?? "");
+  const suite = home.url.match(/[?&]suite=([^&]+)/)?.[1] ?? "CES";
+  if (!g || !ctl || !fn) return [];
+  type Ctl = {
+    DefaultParameters?: unknown[];
+    LayoutName?: string;
+    RequiredFields?: unknown[];
+  };
+  const ctls: Ctl[] = [];
+  for (const m of home.body.matchAll(/data-t1-control=(?:'([^']*)'|"([^"]*)")/g)) {
+    try {
+      ctls.push(JSON.parse(attrDecode(m[1] ?? m[2])) as Ctl);
+    } catch {
+      // Not every control's config is JSON we need.
+    }
+  }
+  const defaults = ctls.find((c) => Array.isArray(c.DefaultParameters))?.DefaultParameters;
+  const fields = (
+    ctls.find((c) => c.LayoutName === "SIMPLE" && Array.isArray(c.RequiredFields)) ??
+    ctls.find((c) => Array.isArray(c.RequiredFields))
+  )?.RequiredFields;
+  if (!defaults || !fields) return [];
+  const requestData = { f: fn, suite, G: g };
+  const post = async (action: string, body: unknown) => {
+    const q = new URLSearchParams({ f: fn, suite, uuid: crypto.randomUUID() });
+    const r = await s.fetch(`${new URL(ctl, home.url).toString()}${action}?${q}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: home.url,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r) return null;
+    try {
+      return JSON.parse(r.body) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+  const settings = await post("ReadFormSettings", {
+    FormSettingsName: "DEFAULT",
+    Parameters: defaults,
+    StateFieldMap: [],
+    ColumnSize: "GreaterOfDataLengthAndLabelWidth",
+    RequestData: requestData,
+  });
+  const params = settings?.Parameters;
+  if (!Array.isArray(params)) return [];
+  const read = (n: number) =>
+    post("ReadMoreThumbnailData", {
+      NewSearch: n === 1,
+      IsFirstLoad: n === 1,
+      PickListData: { PickListMode: false, IsExtendedPicklistField: false },
+      RequestData: requestData,
+      TabName: "",
+      DisplayFields: fields,
+      Parameters: params,
+      FormData: {
+        Tables: [],
+        Fields: [
+          {
+            FieldName: "EnquiryRelatedDataPortlet_SearchValue",
+            DataType: "String",
+            Value: "",
+            NaturalLanguageSearchFieldReferenceType: "Label",
+          },
+          { FieldName: "RestrictEntitiesCheckbox", Value: "False" },
+        ],
+        Maps: [],
+      },
+      SelectedFilters: [],
+      CustomFiltersData: [],
+      MultiSortFields: [
+        {
+          SortDirection: "A",
+          FieldName: "JOBREQTitle",
+          Width: 0,
+          SequenceNumber: 0,
+          FrozenColumn: false,
+        },
+      ],
+      AnalyserItemNavigatorData: { NavigatorMode: false },
+      ReadToRecord: false,
+      SearchValue: "",
+      ActiveView: 1,
+      ShowBooleanAsCheckbox: true,
+      LayoutName: "SIMPLE",
+      dbPageNumber: 1,
+      PageNumber: n,
+      PageSize: CI_PAGE,
+    });
+  const rows = new Map<string, PortalJob>();
+  let total = Infinity;
+  for (let n = 1; n <= 25 && rows.size < total; n++) {
+    const page = (await read(n)) ?? (await read(n));
+    if (!page || page.Success === false || !Array.isArray(page.Items)) {
+      console.log(`cianywhere ${site.id}: page ${n} could not be read — pull abandoned`);
+      return [];
+    }
+    total = Number(page.TotalRecordCount ?? 0);
+    if (!page.Items.length) break;
+    for (const it of page.Items as { AllFields?: { FieldName?: string; Value?: unknown }[] }[]) {
+      const f = new Map(
+        (it.AllFields ?? []).map((x) => [x.FieldName ?? "", String(x.Value ?? "")]),
+      );
+      const title = clean(f.get("JOBREQTitle") ?? "").replace(/\s*\(\d+\)$/, "");
+      const url = f.get("ResolvedApplyUrl") ?? "";
+      const key = f.get("JOBREQJobId") || url;
+      if (!title || !url || rows.has(key)) continue;
+      const posted = (f.get("PublishDate") ?? "").split(" ")[0];
+      rows.set(
+        key,
+        job(
+          site,
+          title,
+          clean(f.get("LocationDescriptionsSummary") ?? ""),
+          url,
+          posted ? isoDay(posted) : today(),
+          "Career portal",
+        ),
+      );
+    }
+  }
+  if (rows.size < total) {
+    console.log(`cianywhere ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
+// ── Borg group careers, one brand (Australian Panels → Porta) ───────────────
+/**
+ * careers.borgs.com.au — Borg's own PHP board (no ATS) for all its brands.
+ * `endpoint` is the brand-filtered page, …/jobs/?brands=<logo>.png; the brand
+ * is the file name of the logo the board shows on each card, and it is also
+ * the board's own facet value.
+ *
+ * Listing: POST /jobs.php, form `action=ajax-get-jobs&search[brands][]=<logo>`
+ * → HTML `<section class='job-card'>` cards: `<h3><a href='/job/NNNNN/'>title`,
+ * `<img src='/img/jobs-logos/<logo>'>`, and one or more
+ * `<div class='locations'>Suburb, State-in-full</div>`. All matching cards
+ * come back in one response — there is no pager.
+ *
+ * Bound: the unfiltered /jobs/ page prints each brand facet's count
+ * (`<li data-jobs='13'><a href='/jobs/?brands=porta.png'>`). Measured
+ * 2026-09-30: 30 cards in all (porta 13, crossmuller 7, borg 4,
+ * group-logistics 3, polytec 2, techplas 1; 17 porta on 2026-09-29), and the
+ * filtered POST returned exactly the 13. A pull that returns fewer distinct
+ * jobs than the facet says is returned as [] rather than as a subset. Cards
+ * are also checked against the logo, so a filter the server ever ignores
+ * cannot let another brand's roles through.
+ *
+ * A role listed at several sites ("Production Opportunities": Somersby,
+ * Charmhaven, West Gosford) is ONE vacancy and takes its FIRST location, as
+ * technologyone-to-d1.py does for its state lists.
+ */
+async function fetchBorgCareers(site: SiteDef): Promise<PortalJob[]> {
+  const brand = new URL(site.endpoint).searchParams.get("brands");
+  if (!brand) return [];
+  const origin = new URL(site.endpoint).origin;
+  const facetPage = await getText(`${origin}/jobs/`);
+  const esc = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const want = Number(
+    facetPage?.match(new RegExp(`data-jobs='(\\d+)'><a href='/jobs/\\?brands=${esc}'`))?.[1] ?? NaN,
+  );
+  if (!Number.isFinite(want)) return [];
+  const body = new URLSearchParams({ action: "ajax-get-jobs" });
+  body.append("search[brands][]", brand);
+  const html = await getText(`${origin}/jobs.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" },
+    body: body.toString(),
+  });
+  if (html === null) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<section class='job-card/).slice(1)) {
+    const a = card.match(/<h3><a href='([^']+)'>([\s\S]*?)<\/a>/);
+    if (!a || !card.includes(`/img/jobs-logos/${brand}`)) continue;
+    const url = new URL(a[1], origin).toString();
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const loc = clean(card.match(/<div class='locations'>([\s\S]*?)<\/div>/)?.[1] ?? "");
+    out.push(job(site, clean(a[2]), loc, url, today(), "Career portal"));
+  }
+  if (out.length < want) {
+    console.log(`borgcareers ${site.id}: ${out.length} of ${want} — pull incomplete, not written`);
+    return [];
+  }
+  return out;
+}
+
+// ── Oracle E-Business Suite iRecruitment, visitor search (UTS) ──────────────
+/**
+ * Oracle EBS iRecruitment's EXTERNAL VISITOR flow — the guest job search, no
+ * login. Not the `oracle` reader, which is Oracle Recruiting Cloud (HCM);
+ * this is the older OA Framework product, driven entirely by form posts that
+ * carry per-session MAC'd tokens. `endpoint` is the tenant's visitor RF.jsp
+ * link (the one its "Jobs at …" page links to).
+ *
+ * Measured 2026-09-30 on recruitment.uts.edu.au, plain client:
+ *   1. GET endpoint → 200, the VisHomePG form `DefaultFormName` (sets the
+ *      session cookie).
+ *   2. POST the form's action with EVERY hidden input resubmitted verbatim
+ *      (_AM_TX_ID_FIELD, _FORM, FORM_MAC_LIST, _fwkActBtnName_* … — their
+ *      values end in per-session MACs) plus DatePosted2 = the <option> whose
+ *      label is "All Current" (its value is MAC'd too, e.g. "36519NByGPGB"),
+ *      IrcAction=Go, event=update, source=Search → "Available Jobs", 10 rows.
+ *   3. Next page: the new page's hidden inputs + event=goto,
+ *      source=JobSearchTable, value/size = the two MAC'd arguments of the
+ *      `_navBarSubmit('DefaultFormName', 'goto','JobSearchTable',1,'<value>',
+ *      '<size>',…)` call on the "Next 10" link.
+ * Rows are read by id: `JobSearchTable:JobName:<i>` is the IRCnnnnnn
+ * reference, `JobSearchTable:JobTitle:<i>` the title. The pager's options
+ * print the total ("21-26 of 26") and the walk is bounded by it: 3 pages,
+ * 10+10+6 = 26 distinct references in ~4 s. Pages are posted SERIALLY — each
+ * one's tokens come from the page before.
+ *
+ * Traps: the page's help text quotes a sample reference, "IRC123456", which
+ * is not a row (the id-anchored match skips it). The RSS link on the results
+ * page needs an authenticated session (it redirects to the Okta sign-in), so
+ * it is not an alternative. There is no location column — UTS is one campus
+ * (Broadway) — so rows carry "" and fall to the SiteDef's homeHub. No role
+ * has a public url outside the session, so the url is the entry link plus
+ * `#<IRC reference>`.
+ */
+async function fetchIRecruitment(site: SiteDef): Promise<PortalJob[]> {
+  const s = new SessionJar();
+  const base = new URL(site.endpoint).origin;
+  const hidden = (html: string) => {
+    const f = new URLSearchParams();
+    for (const m of html.matchAll(/<input\b[^>]*>/g)) {
+      const tag = m[0];
+      if (!/type="hidden"/.test(tag)) continue;
+      const name = tag.match(/name="([^"]*)"/)?.[1];
+      if (name) f.set(attrDecode(name), attrDecode(tag.match(/value="([^"]*)"/)?.[1] ?? ""));
+    }
+    return f;
+  };
+  const action = (html: string) => {
+    const a = html.match(/<form id="DefaultFormName"[^>]*action="([^"]*)"/)?.[1];
+    return a ? new URL(attrDecode(a), base).toString() : null;
+  };
+  const submit = async (html: string, extra: Record<string, string>) => {
+    const to = action(html);
+    if (!to) return null;
+    const f = hidden(html);
+    for (const [k, v] of Object.entries(extra)) f.set(k, v);
+    const r = await s.fetch(to, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" },
+      body: f.toString(),
+    });
+    return r?.body ?? null;
+  };
+  const home = await s.fetch(site.endpoint, { headers: { Accept: "text/html" } });
+  const allCurrent = home?.body.match(/<option value="([^"]*)">All Current/)?.[1];
+  if (!home || !allCurrent) return [];
+  let html = await submit(home.body, {
+    DatePosted2: attrDecode(allCurrent),
+    IrcAction: "Go",
+    event: "update",
+    source: "Search",
+    evtSrcRowIdx: "",
+    evtSrcRowId: "",
+  });
+  if (!html) return [];
+  // The pager prints "1-10 of 26". A board of ten or fewer may print no pager
+  // at all; then there is no Next link either, and the one page is the board.
+  const total = Number(html.match(/\d+-\d+ of (\d+)/)?.[1] ?? 0);
+  const rows = new Map<string, PortalJob>();
+  for (let page = 1; page <= 30; page++) {
+    for (const m of html.matchAll(/id="JobSearchTable:JobName:(\d+)"[^>]*>(IRC\d+)</g)) {
+      const ref = m[2];
+      if (rows.has(ref)) continue;
+      const t = html.match(new RegExp(`id="JobSearchTable:JobTitle:${m[1]}"[^>]*>([^<]*)`));
+      const title = clean(t?.[1] ?? "");
+      if (title)
+        rows.set(ref, job(site, title, "", `${site.endpoint}#${ref}`, today(), "Career portal"));
+    }
+    if (total && rows.size >= total) break;
+    const nav = html.match(
+      /_navBarSubmit\('DefaultFormName',\s*'goto',\s*'JobSearchTable',\s*1,\s*'([^']*)',\s*'([^']*)'[^)]*\)[^>]*>(?:<[^>]*>)*\s*Next/,
+    );
+    if (!nav) break;
+    const next = await submit(html, {
+      event: "goto",
+      source: "JobSearchTable",
+      value: nav[1],
+      size: nav[2],
+      evtSrcRowIdx: "",
+      evtSrcRowId: "",
+    });
+    if (!next) {
+      console.log(`irecruitment ${site.id}: page ${page + 1} could not be read — pull abandoned`);
+      return [];
+    }
+    html = next;
+  }
+  if (rows.size < total) {
+    console.log(`irecruitment ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sfclassicxml: fetchSfClassicXml,
   tencent: fetchTencent,
@@ -32435,6 +33239,13 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   ibmsearch: fetchIbmSearch,
   applyflow: fetchApplyFlow,
   foxcareers: fetchFoxCareers,
+  // batch 12: I
+  hansenyuncken: fetchHansenYuncken,
+  jetengine: fetchJetEngine,
+  ritchies: fetchRitchies,
+  cianywhere: fetchCiAnywhere,
+  borgcareers: fetchBorgCareers,
+  irecruitment: fetchIRecruitment,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -32577,6 +33388,16 @@ export const SOURCE_TAG: Record<Platform, string> = {
   silkroad: "silkroad",
   readyemploy: "readyemploy",
   jobvite: "jobvite",
+  // batch 12: I. Hansen Yuncken, Ritchies and Borg are the employers' own
+  // pages, named for the employer; the other three are vendor platforms.
+  // CiAnywhere is NOT "t1": scripts/technologyone-to-d1.py already writes
+  // `portal-t1` for TechnologyOne's own board.
+  hansenyuncken: "hy",
+  jetengine: "jetengine",
+  ritchies: "ritchies",
+  cianywhere: "t1ci",
+  borgcareers: "borg",
+  irecruitment: "irec",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
