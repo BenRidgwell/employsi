@@ -29,10 +29,21 @@ export function Avatar({
   name,
   image,
   className,
+  decorative = false,
 }: {
   name: string;
   image?: string;
   className: string;
+  /**
+   * Hide the whole thing from assistive tech.
+   *
+   * Default false, because the account avatars this was written for sit beside
+   * the person's name and reading the initials adds nothing. The feedback
+   * board's compose box is the exception: there is no name next to it, so the
+   * initials would be announced as a bare "BR" ahead of the title field. That
+   * span carried aria-hidden before it became an avatar, and this keeps it.
+   */
+  decorative?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   // A different person (or a refreshed URL for the same one) deserves a fresh
@@ -42,7 +53,7 @@ export function Avatar({
 
   const showImage = !!image && !failed;
   return (
-    <span className={`${className}${showImage ? " hasimg" : ""}`}>
+    <span className={`${className}${showImage ? " hasimg" : ""}`} aria-hidden={decorative}>
       {showImage ? (
         <img
           src={image}
