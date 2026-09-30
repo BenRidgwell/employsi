@@ -3,6 +3,74 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
 import { getAlerts, type AlertRow } from "../lib/alertsFn";
 import { IconClose } from "./ActionIcons";
+import { COMPANIES, type Company } from "../data/companies";
+import { SKILL_PARENT } from "../data/skillsTaxonomy";
+import { logoFor } from "../lib/companyLogo";
+import { SKILL_ICONS, skillIcon } from "../lib/skillCard";
+
+/** Module-level, as in PerthMapbox and TalentFlowPane: COMPANIES is static and
+ *  a .find() per row per render is 1,500 comparisons forty times over. */
+const COMPANY_BY_ID: Record<string, Company> = Object.fromEntries(COMPANIES.map((c) => [c.id, c]));
+
+/**
+ * The company a row is about, as its round logo.
+ *
+ * Same badge ladder as the map pin and the company card (lib/companyLogo.ts),
+ * so an employer is recognised the same way wherever it appears rather than by
+ * whatever this panel could look up on its own.
+ *
+ * THE FALLBACK IS NOT OPTIONAL — same reasoning as SearchAuth's FollowedCompany
+ * and CompanyPanel's CompanyLogo. A logo verified months ago can stop
+ * resolving, and a broken image here is an empty circle against a headline that
+ * never repeats the company name in full. The initials the row already carries
+ * are exactly what stood here before, so the failure mode is the old design
+ * rather than a hole.
+ *
+ * `alt` is empty and the name is not announced: the row's first line already
+ * says the company, and a screen reader should not hear it twice.
+ */
+function AlertBadge({ company, initials }: { company: Company | undefined; initials: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!company || failed) return <span className="nbinitials">{initials}</span>;
+  return (
+    <span className="nbinitials nbbadgeimgwrap">
+      <img
+        className="nbbadgeimg"
+        src={logoFor(company.id, company.domain, 64)}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  );
+}
+
+/**
+ * The skill a row is about, as its glyph in a small circle.
+ *
+ * Every alert is a company AND a skill — alertsFn raises them from followed
+ * COMPANIES and names the skill that moved — so the row has two subjects and
+ * the badge can only carry one. The company takes the badge (it is the row's
+ * title line); the skill takes this, inline with the headline that names it.
+ *
+ * Same glyph the skill's own search card shows (skillIcon / SKILL_ICONS in
+ * lib/skillCard.ts), resolved through SKILL_PARENT so a speciality with no
+ * glyph of its own inherits its parent's rather than falling all the way back
+ * to the generic briefcase.
+ */
+function SkillGlyph({ skill }: { skill: string }) {
+  const paths = SKILL_ICONS[skillIcon(skill, SKILL_PARENT[skill] ?? null)] ?? [];
+  if (!paths.length) return null;
+  return (
+    <span className="nbskillglyph" title={skill}>
+      <svg viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" aria-hidden>
+        {paths.map((d) => (
+          <path key={d} d={d} />
+        ))}
+      </svg>
+    </span>
+  );
+}
 
 /**
  * The notification bell, from `Notification_Bell`.
@@ -248,7 +316,7 @@ export function NotificationBell() {
                     className="nbrow"
                     onClick={() => persist({ ...read, [r.id]: true })}
                   >
-                    <span className="nbinitials">{r.initials}</span>
+                    <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
                     <span className="nbbody">
                       <span className="nbtop">
                         <span className="nbco">{r.company}</span>
@@ -256,7 +324,10 @@ export function NotificationBell() {
                         <span className="nbwhen">{r.week} ads</span>
                         {!read[r.id] && <span className="nbdot" />}
                       </span>
-                      <span className="nbheadline">{r.headline}</span>
+                      <span className="nbheadlinerow">
+                        <SkillGlyph skill={r.skill} />
+                        <span className="nbheadline">{r.headline}</span>
+                      </span>
                       <span className="nbbars">
                         <span className="nbbar">
                           <span className="nbbarlbl">This wk</span>

@@ -15421,6 +15421,11 @@ body {
 .nbrow:hover {
   background: var(--surface-subtle);
 }
+/* The alert row's company badge. ROUND, not the 9px-rounded square it was:
+   this is an employer's logo now rather than its initials, and the round crop
+   is the shape the map pin and the follow list already give a company. The
+   initials remain as the fallback inside the same circle, so a logo that stops
+   resolving degrades to the old badge rather than to a hole. */
 .nbinitials {
   display: flex;
   align-items: center;
@@ -15428,12 +15433,27 @@ body {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: 50%;
   background: var(--surface-sunken);
   color: var(--neutral-700);
   font-family: var(--font-label);
   font-size: 10px;
   font-weight: 600;
+}
+/* overflow-hidden only on the image variant: the text one must not clip a
+   three-letter set of initials against the circle's edge. */
+.nbbadgeimgwrap {
+  overflow: hidden;
+  background: var(--surface-card);
+}
+.nbbadgeimg {
+  width: 100%;
+  height: 100%;
+  /* `contain`, not `cover`: a logo is artwork with its own margins and cropping
+     one to fill a circle cuts the mark. The padding keeps it off the ring. */
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
 }
 .nbbody {
   display: flex;
@@ -15491,6 +15511,36 @@ body {
   background: var(--neutral-900);
   flex: 0 0 auto;
 }
+/* The skill glyph sits beside the headline that names the skill, not above it.
+   `align-items: start` so it stays on the headline's FIRST line when the text
+   wraps to two or three — centred, it would drift to the middle of the block
+   and stop reading as a mark on the sentence. */
+.nbheadlinerow {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+.nbskillglyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  /* 1px of optical nudge so the 20px circle centres on a 14px/1.35 first line
+     rather than sitting proud of it. */
+  margin-top: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--neutral-700);
+}
+.nbskillglyph svg {
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .nbheadline {
   font-size: 14px;
   font-weight: 500;
@@ -15498,6 +15548,7 @@ body {
   letter-spacing: -0.01em;
   color: var(--neutral-900);
   text-wrap: pretty;
+  min-width: 0;
 }
 .nbbars {
   display: flex;
