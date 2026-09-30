@@ -4,7 +4,9 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Curriculum and Assessment Authority: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Office of the Information Commissioner: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Energy and Water Ombudsman: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -313,6 +315,8 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-parliamentary-service": { now: 623, prev: 523, yoy: 19.1, asof: "Jun 2025", span: 1, unit: "fte" },
   "qld-gov-primary-industries": { now: 2614, prev: 2462, yoy: 6.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-public-trust-office": { now: 608, prev: 624, yoy: -2.6, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-qleave": { now: 181, prev: 156, yoy: 16.0, asof: "Jun 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-academy-of-sport": { now: 122, yoy: null, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-building-and-construction-commission": { now: 688, prev: 673, yoy: 2.2, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-corrective-services": { now: 8614, prev: 8104, yoy: 6.3, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-curriculum-and-assessment-authority": { now: 303, prev: 303, yoy: 0.0, asof: "Jun 2026", span: 1, unit: "fte" },

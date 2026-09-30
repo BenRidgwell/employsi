@@ -325,20 +325,30 @@ WANTED = [
     ('Queensland Audit Office',     r'(?i)^Queensland Audit Office', 0),
     ('Office of Industrial Relations',
                                     r'(?i)Office of Industrial Relations', 6),
-    # QLeave administers THREE schemes and tables a report for each, which is
-    # three statutory authorities and one staff body. Summing them would file
-    # the same people up to three times, so read all three before filing any.
-    ('QLeave',                      r'(?i)Portable Long Service Leave', 1),
-    # NOT CARDS THEMSELVES — each settles a double-count question a card is
-    # waiting on. The Academy of Sport reports 122.3 FTE of its own and spent
-    # 2025-26 "transitioning to a statutory body", so whether it is still inside
-    # the Department of Sport's 370 is what its department's note decides; the
-    # Public Guardian's 372 may sit inside the Department of Justice's 4,629.
-    ('Dept of Sport (for the Academy of Sport)',
-                                    r'(?i)^Department of Sport, Racing', 0),
+    ('Cross River Rail Delivery Authority',
+                                    r'(?i)^Cross River Rail', 0),
+    # NOT A CARD ITSELF — it settles the PUBLIC GUARDIAN's double count, and as
+    # of 2026-09-30 it does not: 5826T1887 lists the OPG under "Department of
+    # Justice statutory authorities" but its workforce table names no exclusions,
+    # where DCCEEW's Table 7 note names its own. Kept so the next edition gets
+    # re-read rather than the question being forgotten.
     ('Dept of Justice (for the Public Guardian)',
-                                    r'(?i)^Department of Justice', 0),
+                                    r'(?i)^Department of Justice—', 0),
 ]
+
+# CLOSED BY THIS ROUTE, kept so the next reader does not re-derive them:
+#   QLEAVE TABLES THREE REPORTS AND ONLY ONE HAS EMPLOYEES. 5826T1709 (Building
+#   and Construction) gives 181.0 FTE; 5826T1710 (Contract Cleaning) and
+#   5826T1711 (Community Services) carry NOT ONE workforce line and say the
+#   scheme is "under the administration of QLeave". Summing the three — the
+#   obvious move — would have filed the same people three times.
+#
+#   THE ACADEMY OF SPORT WAS NOT INSIDE ITS DEPARTMENT AFTER ALL. The
+#   department's own report (5826T1866) says the Act took effect 1 JULY 2025 —
+#   the first day of the year, not part way through — that the QAS then operated
+#   as "an independent reporting entity", and that the department pays it
+#   $44.067m in grants. Its 376.33 FTE against the workbook's 370 is one
+#   population, not one holding 122.3 more.
 
 
 def tabled_probe(pages=10):

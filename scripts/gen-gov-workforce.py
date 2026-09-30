@@ -1397,26 +1397,6 @@ NOT_IN_SOURCE = {
         'recruitment brand, and its people are inside that department\'s 79,353. '
         'The largest single ad count in the whole gap, and there is no figure '
         'to file for it',
-    'qld:Queensland Academy of Sport':
-        'THE REASON WAS "a unit inside the Department of Sport, Racing and '
-        'Olympic and Paralympic Games (370)" AND THE ACADEMY STOPPED BEING ONE '
-        'DURING THE YEAR. Its own annual report — tabled paper 5826T1867, read '
-        '2026-09-30 — describes 2025-26 as "the QAS\'s transition to a statutory '
-        'body" and gives its own workforce: p28, "Total FTE 122.3" against a '
-        'head count of 132, on MOHRI data at 30 June 2026. So the card has a '
-        'figure of its own and the old reason is stale.\n\n'
-        'IT IS STILL REFUSED, FOR THE DOUBLE COUNT RATHER THAN FOR THE SOURCE. A '
-        'body that became a statutory body PART WAY THROUGH the year is exactly '
-        "the case where its people sit inside its former department's figure as "
-        "well as its own, and the department's 370 is the workbook's, at Mar "
-        '2026, which is BEFORE 30 June. Filing 122.3 now would put the same '
-        'staff on two cards for whatever part of the year they were '
-        "departmental. What would settle it is the department's own report "
-        '(tabled paper 5826T1866) saying what its workforce figure covers, the '
-        "way DCCEEW's Table 7 note does.\n\n"
-        'And read 132 as the head count, not as a prior year: the column it '
-        'sits in is headed "Number (headcount)". Taken as last year it would '
-        'publish a false -7.3%',
     'qld:Queensland Ambulance Service':
         'no row names it. Its staff sit inside Queensland Health (119,625) — '
         'that part is inference, since the source separates neither the '
@@ -1500,9 +1480,6 @@ NOT_IN_SOURCE = {
         'also that 337.9 is an ESTABLISHMENT of funded positions rather than an '
         'actual FTE, so 372 head count would be the figure — and the only '
         'Queensland card not in FTE',
-    'qld:QLeave':
-        'no row names it; the portable long service leave authority is a '
-        'statutory body, outside the collection',
     'qld:Office of Industrial Relations':
         'no row names it; an office inside a department rather than an agency '
         'reported in its own right. Which department is not established here — '
@@ -3337,6 +3314,82 @@ AGENCY_REPORTS = {
         # Same page-scoped `proof` as QCAA above, and p56 names the year in the
         # audit-fee sentence rather than in a heading.
         proof=r'relating to the 2025-26 financial statements',
+        unit='fte', asof='Jun 2026'),
+
+    # QLEAVE TABLES THREE ANNUAL REPORTS AND ONLY ONE OF THEM HAS EMPLOYEES,
+    # which is what turned a three-way double-count worry into a filing. QLeave
+    # is the trading name of the Building and Construction Industry (Portable
+    # Long Service Leave) Authority and it administers two more schemes, each a
+    # statutory authority tabling its own report:
+    #
+    #   5826T1709  Building and Construction Industry  — 181.0 FTE, this spec
+    #   5826T1710  Contract Cleaning Industry          — NOT ONE workforce line
+    #   5826T1711  Community Services Industry         — NOT ONE workforce line
+    #
+    # Both of the others say the scheme is "under the administration of QLeave"
+    # and report no employees at all. So there is nothing to sum and nothing to
+    # net out: the staff are in one report and this is it. Summing the three, the
+    # obvious move, would have filed the same people up to three times.
+    #
+    # THE DOCUMENT RECONCILES ITS OWN CHANGE, exactly, and it is checked by hand
+    # because the two halves are eighteen pages apart and `stated` only sees the
+    # needle's page. p40's note gives "Full-time equivalent (FTE) employees 181.0
+    # 156.1"; p22 says QLeave "reported 181.00 full-time equivalent (FTE)
+    # employees ... an increase of 24.90 FTE employees since 30 June 2025". 181.0
+    # - 156.1 = 24.9. So the +16.0% this card shows is the document's own
+    # arithmetic and not a column read the wrong way round.
+    'qld-qleave': dict(
+        label='QLD: QLeave',
+        agency='QLeave',
+        agency_id='qld-gov-qleave',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/'
+            'Tabled-Papers/docs/5826T1709/5826t1709.pdf',
+        needle='Full-time equivalent (FTE) employees',
+        total=r'^Full-time equivalent \(FTE\) employees',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2026 2025',
+        proof=r'for the year ended 30 June 2026',
+        unit='fte', asof='Jun 2026'),
+
+    # THE ACADEMY OF SPORT, WHOSE DOUBLE COUNT WAS SETTLED BY ITS FORMER
+    # DEPARTMENT'S OWN REPORT. Its reason said "a unit inside the Department of
+    # Sport, Racing and Olympic and Paralympic Games (370)", which was true and
+    # stopped being true: the department's report (tabled paper 5826T1866) says
+    # the QAS "transitioned from a business unit", that the Act took effect
+    # 1 July 2025 — the FIRST DAY of 2025-26, not part way through it — and that
+    # from then "QAS will operate as an independent reporting entity". The
+    # department now pays it $44.067m in GRANTS AND SUBSIDIES, which is what
+    # funding a separate employer looks like rather than staffing a unit.
+    #
+    # AND THE TWO FIGURES CORROBORATE IT: the department reports 376.33 FTE at
+    # 26 June 2026 against the workbook's 370 at Mar 2026 — one population, not
+    # a population that also holds 122.3 more. That is the arithmetic that
+    # matters, because the workbook's 370 is what the department's card is filed
+    # from and this report cannot speak for the workbook's scope.
+    #
+    # WHAT DOES NOT RECONCILE, recorded rather than smoothed over: the
+    # department fell 456 -> 376, a drop of 80, where the QAS leaving should cost
+    # it 122. So it gained about 42 elsewhere, and p59 says the transition was
+    # done "using the MoG" — machinery-of-government changes move functions both
+    # ways and there is no note breaking this one down. It does not touch the
+    # question above, which turns on the CURRENT year's scope.
+    #
+    # `header` IS THE GUARD AND IT IS GUARDING AGAINST A HEAD COUNT, NOT A
+    # COLUMN ORDER. The row is "Total FTE 122.3 132" and 132 is the head count,
+    # not last year — so there is NO `prev_i` here, and asserting the table's own
+    # column headings ("Total Staffing FTE Number (headcount)") is what proves
+    # that. Filed as a prior year it would publish a false -7.3%.
+    'qld-qas': dict(
+        label='QLD: Academy of Sport',
+        agency='Queensland Academy of Sport',
+        agency_id='qld-gov-queensland-academy-of-sport',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/'
+            'Tabled-Papers/docs/5826T1867/5826t1867.pdf',
+        needle='Total Staffing FTE Number (headcount)',
+        total=r'^Total FTE',
+        ncols=2, now_i=0,
+        header=r'Total Staffing FTE Number \(headcount\)',
+        proof=r'snapshot of the QAS workforce profile as at 30 June 2026',
         unit='fte', asof='Jun 2026'),
 
     # THE FIRST `prose` SPEC, and the reason the option exists. The NIISQ
