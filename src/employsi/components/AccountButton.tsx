@@ -6,6 +6,7 @@ import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 import { CareerGoalBlock } from "./CareerGoalBlock";
+import { PersonaSwitch } from "./PersonaSwitch";
 
 /**
  * The account popout, built from `Account_Popouts.html`.
@@ -272,6 +273,8 @@ export function AccountButton() {
                 <span className="accmenulbl">Settings</span>
               </button>
             </div>
+
+            <PersonaSwitch />
 
             <div className="accfoot">
               <button

@@ -17995,3 +17995,56 @@ body {
   font: 500 11.5px/1.35 "Inter", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── "Viewing as" — the admin persona switch ───────────────────────────────
+   Renders only on a preview host, only for a real admin (components/
+   PersonaSwitch.tsx, lib/persona.ts), inside both account panels. Sized to sit
+   between the follows and Sign out without competing with either: this is a
+   reviewing tool, not a feature of the product being reviewed. */
+.psona {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+}
+.psonalbl {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.psonaseg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+}
+.psonabtn {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12px/1 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+.psonabtn:hover {
+  color: var(--text-primary);
+}
+.psonabtn.on {
+  background: #1c1c1e;
+  color: #fff;
+}
+.psonanote {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}

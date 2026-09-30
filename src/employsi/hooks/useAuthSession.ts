@@ -21,6 +21,7 @@ export function useAuthSession(): void {
   const setSession = useAppStore((s) => s.setSession);
   const markSessionKnown = useAppStore((s) => s.markSessionKnown);
   const setAuthProviders = useAppStore((s) => s.setAuthProviders);
+  const setPersona = useAppStore((s) => s.setPersona);
   const setFollows = useAppStore((s) => s.setFollows);
   const setRole = useAppStore((s) => s.setRole);
   const setCareerGoalLocal = useAppStore((s) => s.setCareerGoalLocal);
@@ -55,8 +56,11 @@ export function useAuthSession(): void {
   useEffect(() => {
     if (!data) return;
     setAuthProviders(data.providers);
+    setPersona(data.persona);
     setSession(data.user);
-    // After setSession, which resets the role on sign-out.
+    // After setSession, which resets the role on sign-out. `data.role` is the
+    // EFFECTIVE role: an admin viewing as a user is reported as "user" here, so
+    // the whole client behaves as one (lib/persona.ts).
     setRole(data.role);
     if (!data.user) return;
 
@@ -99,6 +103,7 @@ export function useAuthSession(): void {
     data,
     setSession,
     setAuthProviders,
+    setPersona,
     setFollows,
     setRole,
     setCareerGoalLocal,

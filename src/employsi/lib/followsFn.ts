@@ -4,6 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, authAvailable, authProviders, type AuthEnv } from "./auth";
 import { canonicalCompanyId } from "../data/mergedCompanies";
+import { effectiveRole, personaCookieSet, personaHostAllowed, type PersonaState } from "./persona";
 
 /**
  * Followed companies and skills, and the one-time claim of what was already in
@@ -36,6 +37,27 @@ function requestHeaders(): Headers {
   } catch {
     return new Headers();
   }
+}
+
+/**
+ * Is the "view as user" switch offered here, and is it on?
+ *
+ * `available` is about the DEPLOYMENT and the caller's TRUE role — an admin on
+ * a preview host. `viewingAsUser` is whether they have asked for it. Both are
+ * false everywhere else, so the control never renders on production.
+ */
+function personaFor(trueRole: Role): PersonaState {
+  let host: string | null = null;
+  try {
+    host = new URL(getRequest().url).host;
+  } catch {
+    host = null;
+  }
+  const allowed = personaHostAllowed(host) && trueRole === "admin";
+  return {
+    available: allowed,
+    viewingAsUser: allowed && personaCookieSet(requestHeaders().get("cookie")),
+  };
 }
 
 async function env(): Promise<AuthEnv | null> {
@@ -84,6 +106,16 @@ export interface SessionInfo {
    * use, but every privileged call re-checks server-side (see lib/roles.ts).
    */
   role: Role;
+  /**
+   * The admin "view as user" switch (lib/persona.ts), for previews only.
+   *
+   * `role` above is the EFFECTIVE role and already has the switch applied, so
+   * every existing consumer keeps working untouched. This block is what the
+   * account panel needs to draw the control at all — without it the client
+   * could not tell an admin viewing as a user from an actual user, and so
+   * could not offer the way back.
+   */
+  persona: PersonaState;
   /** Which sign-in buttons this deployment can actually offer. */
   providers: ("google" | "linkedin")[];
   followedIds: string[];
@@ -111,10 +143,16 @@ export const getSession = createServerFn({ method: "GET" }).handler(
     const providers = authAvailable(e ?? undefined) ? authProviders(e ?? undefined) : [];
     const user = await currentUser(requestHeaders());
     const none = { followedIds: [], followedSkills: [], careerGoal: null };
-    if (!user) return { user: null, role: "user", providers, ...none };
-    const role = roleForEmail(e ?? undefined, user.email);
+    const noPersona: PersonaState = { available: false, viewingAsUser: false };
+    if (!user) return { user: null, role: "user", persona: noPersona, providers, ...none };
+    // The TRUE role decides whether the switch is offered; the EFFECTIVE one is
+    // what the rest of the app is told, so every existing reader of `role`
+    // behaves as though this admin really were an end user.
+    const trueRole = roleForEmail(e ?? undefined, user.email);
+    const persona = personaFor(trueRole);
+    const role = effectiveRole(trueRole, persona.viewingAsUser, true);
     const d = db(e);
-    if (!d) return { user, role, providers, ...none };
+    if (!d) return { user, role, persona, providers, ...none };
     try {
       const res = await d
         .prepare(`SELECT kind, ref FROM user_follow WHERE user_id = ?1`)
@@ -134,9 +172,17 @@ export const getSession = createServerFn({ method: "GET" }).handler(
         } else if (kind === "skill") skills.push(ref);
         else if (kind === "goal") careerGoal = goalFromRef(ref);
       }
-      return { user, role, providers, followedIds: ids, followedSkills: skills, careerGoal };
+      return {
+        user,
+        role,
+        persona,
+        providers,
+        followedIds: ids,
+        followedSkills: skills,
+        careerGoal,
+      };
     } catch {
-      return { user, role, providers, ...none };
+      return { user, role, persona, providers, ...none };
     }
   },
 );

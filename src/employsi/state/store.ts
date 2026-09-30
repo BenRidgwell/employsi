@@ -249,6 +249,17 @@ export interface AppState {
   /** Sign-in buttons this deployment can offer; empty = not configured. */
   authProviders: ("google" | "linkedin")[];
   setAuthProviders: (p: ("google" | "linkedin")[]) => void;
+  /**
+   * The admin "view as user" switch, as the server reported it (lib/persona.ts).
+   *
+   * `available` is false on every non-preview deployment and for everyone who
+   * is not really an admin, so the control simply does not exist there. NOTE
+   * that `role` above is the EFFECTIVE role: while `viewingAsUser` is true it
+   * reads "user", which is exactly the point — every consumer of `role` then
+   * behaves as an end user's would, with no second code path.
+   */
+  persona: { available: boolean; viewingAsUser: boolean };
+  setPersona: (p: { available: boolean; viewingAsUser: boolean }) => void;
   /** Replace follows wholesale with the account's server-side set. */
   setFollows: (ids: string[], skills: string[]) => void;
   signOut: () => void;
@@ -562,6 +573,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessionKnown: false,
   role: "user" as Role,
   authProviders: [],
+  persona: { available: false, viewingAsUser: false },
   authOpen: false,
   pendingFollowId: null,
   pendingFollowSkill: null,
@@ -787,6 +799,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
   setAuthProviders: (p) => set({ authProviders: p }),
+  setPersona: (p) => set({ persona: p }),
   setFollows: (ids, skills) => set({ followedIds: ids, followedSkills: skills }),
   /**
    * Clears the local view of the session, then reloads the page.

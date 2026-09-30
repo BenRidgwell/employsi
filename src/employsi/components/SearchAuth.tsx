@@ -7,6 +7,7 @@ import { searchCityFor } from "../data/mapboxGeo";
 import { logoFor } from "../lib/companyLogo";
 import { signOut as authSignOut } from "../lib/authClient";
 import { CareerGoalBlock } from "./CareerGoalBlock";
+import { PersonaSwitch } from "./PersonaSwitch";
 
 /**
  * The account control inside the search pill, from `Employsi Skill Search.html`.
@@ -197,6 +198,7 @@ export function SearchAuth() {
                     Follow a skill or a company and it will be saved here.
                   </p>
                 )}
+                <PersonaSwitch />
                 <button
                   className="gsauthcta gsauthout"
                   onClick={() => {
