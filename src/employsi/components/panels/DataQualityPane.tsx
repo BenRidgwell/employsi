@@ -5,6 +5,7 @@ import {
   type FeedRow,
   type IngestBucket,
   type MatchRate,
+  type OverlapRow,
 } from "../../lib/dataQualityFn";
 import { CRAWL_FAMILIES, nextForFamily, untilLabel } from "../../lib/crawlSchedule";
 import { crawlTriggerAvailable, runCrawl } from "../../lib/runCrawlFn";
@@ -588,6 +589,11 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   value={data.attribution.length.toLocaleString()}
                   note="Two fault shapes only."
                 />
+                <Kpi
+                  label="Duplicated across boards"
+                  value={`${data.overlapTotals.pct.toFixed(1)}%`}
+                  note={`${data.overlapTotals.duplicated.toLocaleString()} of ${data.overlapTotals.rows.toLocaleString()} live rows, at least`}
+                />
               </div>
 
               <div className="dqpair dqpairwide">
@@ -757,6 +763,48 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   )}
                 </section>
               </div>
+
+              <section className="dqcard">
+                <div className="dqcardhd">
+                  <div className="dqcardtext">
+                    <span className="dqcardtitle">Cross-board overlap · live</span>
+                    <span className="dqcardsub">
+                      The archive keys a row on the board it came from, so one role advertised on
+                      two boards is two rows and every vacancy count is a count of ADS, not jobs.
+                      This is how much of each feed something else already holds, over the roles
+                      live right now — the same cut the company cards count. Ordered by how many
+                      duplicated rows each feed contributes, so the feeds the archive already covers
+                      lead. A role is matched on employer plus title with the location dropped and
+                      the employer&rsquo;s name stripped out of the title, because boards word both
+                      differently. <strong>Read it as a floor.</strong> Two boards wording one
+                      vacancy differently still count as two roles, so real duplication is at least
+                      this and never less. A feed showing no rows is silent, not redundant — check
+                      the freshness table before judging it.
+                    </span>
+                  </div>
+                </div>
+                {data.overlap.length ? (
+                  <ul className="dqlist">
+                    {data.overlap.map((o) => (
+                      <li key={o.source}>
+                        <span className="dqcount">{o.pct.toFixed(0)}%</span>
+                        <span className="dqtitle">
+                          <strong>{o.source}</strong> unique
+                          <span className="dqwhy">
+                            {(o.total - o.onlyHere).toLocaleString()} of {o.total.toLocaleString()}{" "}
+                            live rows are a role another board also carries
+                          </span>
+                        </span>
+                        <span className="dqsrctag">{o.total.toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="dqmsg">
+                    Nothing is live right now, so there is no overlap to read.
+                  </p>
+                )}
+              </section>
 
               <section className="dqcard">
                 <div className="dqcardtext">
