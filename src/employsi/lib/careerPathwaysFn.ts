@@ -52,10 +52,15 @@ async function pathways(): Promise<{ p: CareerPathways; source: "kv" | "bundled"
     // Nor, until the tick has run with the builder that records them, does
     // it carry each market's roster `companies` — which the map's role
     // highlight reads — so a value without them loses to the bundled file too.
+    // The same for `cityCompanies` (2026-09-30): the local layer's per-city
+    // role counts. A Worker not yet redeployed with that builder writes a
+    // value without it, and the bundled file — which has it — wins.
     if (
       parsed?.nodes?.length &&
       parsed.nodes.every(
-        (n) => n.markets && Object.values(n.markets).every((m) => Array.isArray(m.companies)),
+        (n) =>
+          n.markets &&
+          Object.values(n.markets).every((m) => Array.isArray(m.companies) && !!m.cityCompanies),
       )
     )
       next = { at: Date.now(), p: parsed, source: "kv" };

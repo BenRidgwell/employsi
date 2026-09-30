@@ -2252,9 +2252,25 @@ export interface SkillCompanyMonths {
   months: string[];
   /** month → company id → ads naming the skill that were live in that month. */
   byMonth: Record<string, Record<string, number>>;
+  /**
+   * The same, split by the city (hub) each ad was advertised in: month → hub
+   * → company id → ads. What the LOCAL layer shows, because a company's pin
+   * in one city must count that city's ads — BHP's Brisbane pin is not BHP's
+   * Perth, Santiago and Brisbane roles together. An ad with no hub is in
+   * `byMonth` and in no city here.
+   */
+  byMonthCity: Record<string, Record<string, Record<string, number>>>;
+  /** hub → company id → ads naming the skill still live at the archive's
+   *  newest day (last_seen within a day of it) — the local layer's "now". */
+  liveByCity: Record<string, Record<string, number>>;
 }
 
-const NO_SKILL_MONTHS: SkillCompanyMonths = { months: [], byMonth: {} };
+const NO_SKILL_MONTHS: SkillCompanyMonths = {
+  months: [],
+  byMonth: {},
+  byMonthCity: {},
+  liveByCity: {},
+};
 
 /** "2026-07-16" → "2026-07". */
 const monthOf = (iso: string) => iso.slice(0, 7);
@@ -2325,7 +2341,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
         first_seen: string | null;
         last_seen: string | null;
       }[];
-      if (!rows.length) return { months, byMonth: {} };
+      if (!rows.length) return { months, byMonth: {}, byMonthCity: {}, liveByCity: {} };
 
       // The same release gate every other per-company reader here applies.
       if ((await callerRole()) !== "admin") {
@@ -2333,6 +2349,11 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       }
 
       const byMonth: Record<string, Record<string, number>> = {};
+      const byMonthCity: Record<string, Record<string, Record<string, number>>> = {};
+      const liveByCity: Record<string, Record<string, number>> = {};
+      // "Live" as the app defines it everywhere: seen within a day of the
+      // archive's newest day (to), not of today — the span actually read.
+      const liveFrom = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
       const known = new Set(months);
       for (const r of rows) {
         const id = (r.company_id || "").trim();
@@ -2342,12 +2363,21 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
         // An ad counts in EVERY month it was up, not only the one it appeared
         // in — the question is who was advertising then, and a role posted in
         // July and still open in September was being advertised in August.
+        const hub = (r.hub || "").trim();
         for (const m of monthsBetween(monthOf(fs), monthOf(ls))) {
           if (!known.has(m)) continue;
           (byMonth[m] ||= {})[id] = (byMonth[m][id] || 0) + 1;
+          if (hub) {
+            const c = ((byMonthCity[m] ||= {})[hub] ||= {});
+            c[id] = (c[id] || 0) + 1;
+          }
+        }
+        if (hub && ls >= liveFrom) {
+          const c = (liveByCity[hub] ||= {});
+          c[id] = (c[id] || 0) + 1;
         }
       }
-      return { months, byMonth };
+      return { months, byMonth, byMonthCity, liveByCity };
     } catch {
       return NO_SKILL_MONTHS;
     }

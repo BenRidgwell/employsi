@@ -446,10 +446,24 @@ export function demandByCompanyAt(
   months: SkillCompanyMonths | null,
   skill: string | null,
   monthIso: string,
+  /** The city the local layer is showing. With it, each company's figure is
+   *  its ads IN THAT CITY (the archive's hub), not everywhere it hires — a
+   *  multinational's Brisbane pin must not carry its Perth and Santiago roles.
+   *  Without per-city archive figures (no D1, or a month before the archive)
+   *  the company-wide index is all there is, and is returned as before. */
+  city?: string,
 ): { demand: Record<string, number>; dated: boolean } {
   const live = demandByCompany(idx, skill);
   if (!skill || !months || !monthIso) return { demand: live, dated: false };
   const covered = months.months.includes(monthIso);
+  if (city && months.months.length) {
+    // The live index has no per-city split, so in a city "now" is the
+    // archive's live rows there, and a covered month is that month there.
+    // A company with nothing here is absent: a real zero in this city.
+    return covered
+      ? { demand: months.byMonthCity?.[monthIso]?.[city] ?? {}, dated: true }
+      : { demand: months.liveByCity?.[city] ?? {}, dated: false };
+  }
   if (!covered) return { demand: live, dated: false };
   // A covered month with no rows for this skill is a real zero — nobody was
   // advertising it then — so the empty map is returned rather than the live

@@ -63,6 +63,9 @@ export interface AppState {
     title: string;
     companies: Record<string, number>;
     cities: Record<string, number>;
+    /** city (hub) → company id → roles advertised there: what the local
+     *  layer shows, so a company's pin counts that city's roles only. */
+    byCity?: Record<string, Record<string, number>>;
   } | null;
   /** A pathway node the career card should open on (the profile's "View
    *  pathway"); consumed by the card when it mounts. */

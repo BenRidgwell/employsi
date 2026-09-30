@@ -467,8 +467,12 @@ function skillDemandOf(s: {
   skillIndex: SkillIndex | null;
   skillMonths: SkillCompanyMonths | null;
   heatMonth: number;
-  roleFocus: { companies: Record<string, number> } | null;
+  roleFocus: {
+    companies: Record<string, number>;
+    byCity?: Record<string, Record<string, number>>;
+  } | null;
   marketMode: "supply" | "demand";
+  localCity: string;
 }): Record<string, number> | null {
   // SUPPLY MODE HAS NO PER-COMPANY SKILL FIGURE, so the whole skill channel is
   // off here — not recoloured, off. Everything downstream keys off this being
@@ -481,14 +485,20 @@ function skillDemandOf(s: {
   // role — answered in ads and labelled as ads, on every layer (the card only
   // opens from the supply side, so gating it on demand mode would switch it
   // off exactly where it is asked). Headcount pins return when it clears.
-  if (s.roleFocus) return s.roleFocus.companies;
+  //
+  // BOTH ARE THIS CITY'S. The local layer is one city, so a company's figure
+  // is what it advertised HERE — a role's roles in this city (the pathways'
+  // cityCompanies), a skill's ads in this city (the archive's hub). The
+  // company-wide figures counted a multinational's every office on each of
+  // its pins. A role from data without the split (an older KV value) keeps
+  // the company-wide figure rather than lighting nothing.
+  if (s.roleFocus) return s.roleFocus.byCity?.[s.localCity] ?? s.roleFocus.companies;
   if (s.marketMode === "supply") return null;
   const sk = activeSkill(s.searchQuery);
   // AT the scrubbed month, so the pins follow the timeline the card scrubs.
-  // Before the archive reaches, this is the live index unchanged — see
-  // demandByCompanyAt for why that is the fallback rather than an empty map.
   return sk
-    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, IVI_MONTHS[s.heatMonth] ?? "").demand
+    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, IVI_MONTHS[s.heatMonth] ?? "", s.localCity)
+        .demand
     : null;
 }
 
@@ -563,13 +573,16 @@ export function PerthMapbox() {
     // See skillDemandOf: supply mode turns the skill channel off rather than
     // recolouring it. Kept in step with that function by keying off the same
     // store field, so the two cannot disagree about which mode is on.
-    if (roleFocus) return roleFocus.companies;
-    if (marketMode === "supply") return null;
-    const sk = activeSkill(searchQuery);
-    return sk
-      ? demandByCompanyAt(skillIndex, skillMonths, sk, IVI_MONTHS[heatMonth] ?? "").demand
-      : null;
-  }, [marketMode, roleFocus, searchQuery, skillIndex, skillMonths, heatMonth]);
+    return skillDemandOf({
+      searchQuery,
+      skillIndex,
+      skillMonths,
+      heatMonth,
+      roleFocus,
+      marketMode,
+      localCity,
+    });
+  }, [marketMode, roleFocus, searchQuery, skillIndex, skillMonths, heatMonth, localCity]);
 
   useEffect(() => {
     if (!containerRef.current) return;
