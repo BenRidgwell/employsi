@@ -84,7 +84,27 @@ export const LIVE_FEEDS_ONLY_SQL = `COALESCE(source,'') NOT IN (${[...HISTORICAL
   .map((s) => `'${s}'`)
   .join(",")})`;
 
+// Han, kana and Hangul. A string containing any of them is normalised keeping
+// every letter and digit, because the ASCII rule below deletes them all.
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
 function norm(s: string): string {
+  // CJK TEXT WAS ERASED BY THE ASCII RULE, and every title in it keyed as "".
+  // Measured 2026-09-30 on the first run of the Chinese own-board feeds:
+  // NetEase fetched 2,654 roles and wrote 172 rows — one per city, since
+  // title and company both normalised to nothing and only the (Chinese) place
+  // told rows apart, and a Chinese place collapsed too. Ping An: 2,770 -> 27.
+  // Only strings WITH CJK take the Unicode path, so every existing Latin key
+  // (accents included — "Crédit" still keys as "cr dit") is byte-for-byte what
+  // it was; changing those would split every such role into two rows until the
+  // old one aged out.
+  if (CJK.test(s || "")) {
+    return (s || "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim()
+      .slice(0, 120);
+  }
   return (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
@@ -93,7 +113,7 @@ function norm(s: string): string {
 }
 
 // A stable key so the same ad from the same source dedupes across runs.
-function jobKey(r: ArchiveRow): string {
+export function jobKey(r: ArchiveRow): string {
   return [
     r.source,
     norm(r.title),
