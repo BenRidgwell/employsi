@@ -779,7 +779,11 @@ over the O*NET text database — download link in the script). Three rules:
   cross-ladder moves (`careerMoves` in `careerCard.ts`) are rungs whose
   occupations O*NET lists as related (its Primary tiers). The archive holds ads,
   not careers, so the card shows skill overlap and shared employers beside each
-  and never says anyone made the move.
+  and never says anyone made the move. O*NET's link is necessary, not
+  sufficient: a move also needs a shared FIELD skill or `MOVE_MIN_SHARED` (2)
+  companies hiring both, which is what keeps Director of Social Work off the
+  HR executives' lists. Skills on over 30% of rungs ("Leadership &
+  Coordination") mark seniority, not a field, and do not count as shared.
 
 ### Subscriptions (Stripe Managed Payments)
 

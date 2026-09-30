@@ -225,8 +225,33 @@ export interface CareerCardModel {
   skills: string[];
 }
 
+/**
+ * Skills listed on more than this share of all rungs say how SENIOR a role is,
+ * not what field it is in, and are left out of a move's overlap. Measured
+ * 2026-09-30: "Leadership & Coordination" is on 166 of 510 rungs (33%) — every
+ * head-of and director — and it alone gave Director of HR an 11% overlap with
+ * Director of Social Work. The next commonest, Risk & Compliance, is on 24%
+ * and names a real field.
+ */
+const GENERIC_SKILL_SHARE = 0.3;
+const genericCache = new WeakMap<CareerPathways, Set<string>>();
+function genericSkills(p: CareerPathways): Set<string> {
+  let g = genericCache.get(p);
+  if (!g) {
+    const count = new Map<string, number>();
+    for (const n of p.nodes) for (const [k] of n.skills) count.set(k, (count.get(k) ?? 0) + 1);
+    g = new Set(
+      [...count].filter(([, c]) => c / p.nodes.length > GENERIC_SKILL_SHARE).map(([k]) => k),
+    );
+    genericCache.set(p, g);
+  }
+  return g;
+}
+
 /** Moves shown per role. */
 const MAX_MOVES = 5;
+/** Shared employers that vouch for a move whose skills do not overlap. */
+export const MOVE_MIN_SHARED = 2;
 
 /**
  * Where a role can lead OFF its own ladder — "a head of payroll could become a
@@ -243,13 +268,28 @@ const MAX_MOVES = 5;
  * can open them), and at most one rung below the role: a step down to reach
  * a different field is real, a drop of several rungs is not a direction.
  * A rung with no O*NET occupation has no moves.
+ *
+ * AND OUR ADS MUST SHOW SOMETHING IN COMMON: at least one shared FIELD skill
+ * (genericSkills — seniority markers do not count), or at
+ * least MOVE_MIN_SHARED roster companies advertising both. O*NET relates whole
+ * US occupations, so its links reach further than a card should — Human
+ * Resources Managers relates to Social and Community Service Managers, which
+ * put Director of Social Work under Chief People Officer with no skill in
+ * common and one employer between them. An overlap floor alone would be too
+ * blunt: rungs list few, broad skills, so legal counsel -> employee relations
+ * advisor and resident medical officer -> registered nurse are 0% too, and
+ * their evidence is the employers that hire both (8 and 34). Measured
+ * 2026-09-30, with generic skills excluded: 1,466 AU links remain of 1,575,
+ * and 346 of 354 rungs keep at least one move.
  */
 export function careerMoves(p: CareerPathways, from: PathwayNode, country: string): CardMove[] {
   const soc = ONET_ROLES[`${from.family}|${from.track}|${from.rung}`];
   const related = soc ? ONET_RELATED[soc] : undefined;
   if (!related?.length) return [];
   const want = new Set(related);
-  const mine = new Map(from.skills);
+  const generic = genericSkills(p);
+  const field = (skills: [string, number][]) => new Map(skills.filter(([k]) => !generic.has(k)));
+  const mine = field(from.skills);
   const myCos = new Set((from.markets[country]?.companies ?? []).map(([id]) => id));
   const out: CardMove[] = [];
   for (const n of p.nodes) {
@@ -262,21 +302,24 @@ export function careerMoves(p: CareerPathways, from: PathwayNode, country: strin
     if (!nsoc || !want.has(nsoc)) continue;
     let lo = 0;
     let hi = 0;
-    const theirs = new Map(n.skills);
+    const theirs = field(n.skills);
     for (const k of new Set([...mine.keys(), ...theirs.keys()])) {
       const a = mine.get(k) ?? 0;
       const b = theirs.get(k) ?? 0;
       lo += Math.min(a, b);
       hi += Math.max(a, b);
     }
+    const overlap = hi ? Math.round((lo / hi) * 100) / 100 : 0;
+    const sharedEmployers = (m.companies ?? []).filter(([c]) => myCos.has(c)).length;
+    if (overlap === 0 && sharedEmployers < MOVE_MIN_SHARED) continue;
     const fam = p.families.find((f) => f.id === n.family);
     out.push({
       id,
       title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[n.rung]),
       where: `${fam?.label ?? n.family} · ${trackLabel(p, n.family, n.track)}`,
       stage: RUNG_LABEL[n.rung],
-      overlap: hi ? Math.round((lo / hi) * 100) / 100 : 0,
-      sharedEmployers: (m.companies ?? []).filter(([c]) => myCos.has(c)).length,
+      overlap,
+      sharedEmployers,
       payLabel: payLabel(n.pay[country]?.median ?? null, country),
       skill: distinctSkill(n, mine),
     });
