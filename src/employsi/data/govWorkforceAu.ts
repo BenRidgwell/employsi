@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   VIC: Triple Zero Victoria: 1 agencies published as at Jun 2025 — refreshed 2026-09-30
+//   NSW: Law Enforcement Conduct Commission: 1 agencies published as at Jun 2024 — refreshed 2026-09-30
+//   VIC: Triple Zero Victoria: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -150,6 +151,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "nsw-gov-independent-commission-against-corruption": { now: 151, yoy: null, asof: "Jun 2024", span: 1 },
   "nsw-gov-independent-pricing-and-regulatory-tribunal": { now: 158, prev: 143, yoy: 10.5, asof: "Jun 2023", span: 1 },
   "nsw-gov-landcom": { now: 199, yoy: null, asof: "Jun 2025", span: 1 },
+  "nsw-gov-law-enforcement-conduct-commission": { now: 125, prev: 112, yoy: 11.6, asof: "Jun 2024", span: 1 },
   "nsw-gov-local-land-services": { now: 995, prev: 937, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "fte" },
   "nsw-gov-multicultural-nsw": { now: 118, prev: 105, yoy: 12.4, asof: "Jun 2024", span: 1 },
   "nsw-gov-museum-of-applied-arts-and-sciences": { now: 303, prev: 313, yoy: -3.2, asof: "Jun 2025", span: 1, unit: "fte" },

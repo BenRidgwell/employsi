@@ -939,24 +939,41 @@ NOT_IN_SOURCE = {
         'transparency.gov.au publication, which renders the same appendix as '
         'HTML rather than as a PDF, and the report-reading path only reads PDFs',
     'nsw:Crown Solicitor\'s Office':
-        'THE TABLE IS THERE AND HAS NO TOTAL, WHICH THIS PATH REFUSES TO SUPPLY. '
-        'p15 of its 2024-25 report prints Table 5 "Employee headcount" by ANZSCO '
-        'classification — Managers 9/9, Professionals 347/362, Technicians and '
-        'Trades Workers 1/1, Clerical and Administrative Workers 165/194 — with no '
-        'Total row, and no sentence anywhere in the 68 pages states one: 566 and '
-        '522 appear nowhere in the document. The `from_components` path adds rows '
-        'up only against an independent quantity the document itself states, '
-        'because the risk it guards is a table that omits a group rather than one '
-        'that adds up wrong, and nothing here can rule that out — ANZSCO has eight '
-        'major groups and four are listed. So the sum (566 for 2024-25 against 522) '
-        'is written down here rather than filed. THE CHECK THAT WOULD UNLOCK IT '
-        'EXISTS IN THE DOCUMENT: Table 4 beside it is the same four rows as FTE '
-        '(503.6 against 457.0), so a spec that summed both and required each head '
-        'count to be at least its own FTE would catch a read that grabbed the wrong '
-        'table. That is new machinery, not a spec, and it would serve every NSW '
-        'agency that publishes both tables and no total. Its own caveat is worth '
-        'carrying too: "The figures are estimates compiled from the Annual '
-        'Workforce Profile, and do not include agency staff"',
+        'THE SUMS ARE RIGHT, THE EXTRACTION IS FINE, AND THE BLOCKER IS NEITHER. '
+        'Re-read 2026-09-30 from cso.nsw.gov.au (unchallenged; its annual-reports '
+        'page links '
+        'content/dam/dcj/crown-solicitor-office/annual-reports/nsw-cso-annual-report-2024-25.pdf). '
+        'Printed p15 = PDF p20 carries both tables and extract_tables() pairs '
+        'every row with both year columns cleanly: FTE 9 / 333.1 / 1 / 160.5 '
+        'summing to 503.6 for 2024-25 against 457.0, and head count 9 / 362 / 1 / '
+        '194 summing to 566 against 522. Columns run 2023-24 THEN 2024-25, oldest '
+        'first. (A LINE-BASED read of the same page is misleading and was nearly '
+        'written down here as a defect: extract_text puts 347 and 165 on their '
+        'own lines above their labels. The table extractor has no such trouble, '
+        'and the document is not at fault.)'
+        '\n\n'
+        'SO THE "NEW MACHINERY" THIS ENTRY USED TO ASK FOR IS BUILDABLE AND WOULD '
+        'NOT ANSWER THE RISK IT WAS MEANT TO ANSWER. The proposal was to sum both '
+        'tables and require each head count to be at least its own FTE. That '
+        'catches a read that grabbed the wrong table; it cannot catch the stated '
+        'risk, which is a table that OMITS an ANZSCO group — a missing fifth '
+        'group lowers both sums together and leaves head count above FTE '
+        'throughout. Worth knowing before anyone builds it.'
+        '\n\n'
+        'AND THE REAL BLOCKER WAS NEVER ASKED HERE: WHETHER THESE PEOPLE ARE '
+        'ALREADY ON THE DCJ CARD. p6 says "The NSW Crown Solicitor\'s Office (CSO) '
+        'sits within the Communities and Justice portfolio and is related to the '
+        'Department of Communities and Justice", and the tables\' own caveat says '
+        'the figures "are estimates compiled from the Annual Workforce Profile" — '
+        'the SAME source that produces the 55,041 filed against Communities and '
+        "Justice. So CSO's staff are in that profile; what is unknown is whether "
+        "the 55,041 row already counts them, and the CSO's own report cannot say. "
+        'Corrective Services NSW and Youth Justice NSW are refused on exactly '
+        'that 55,041, and SIRA shows that being a separate ENTITY rather than a '
+        'division does not settle it either.'
+        '\n\n'
+        'One more reason the sum would understate even if scope were settled: '
+        'that caveat ends "and do not include agency staff".',
     'nsw:Department of Parliamentary Services':
         'THE ONE NSW REPORT THE FILE API DOES NOT REACH, and the boundary is worth '
         'recording precisely because everything else on that institution now does. '
@@ -969,26 +986,6 @@ NOT_IN_SOURCE = {
         '(403, 6,333 bytes), the same path on files.parliament.nsw.gov.au (404, '
         'empty), and GetArtifact with serverRelativeUrl pointed at /_media/ (404, '
         'an 81-byte "File" body). The API serves tabled papers and this is not one',
-    'nsw:Law Enforcement Conduct Commission':
-        'A .pdf URL THAT SERVES A REACT PAGE, which is a new shape here and is '
-        'why this is recorded rather than retried. lecc.nsw.gov.au lists '
-        '/publications/annual-reports/law-enforcement-conduct-commission-annual-'
-        'report-2023-24.pdf and that exact URL answers 200 with 297,563 bytes of '
-        'HTML — <html data-reactroot> titled "Law Enforcement Conduct Commission '
-        'Annual Report 2023-2024", a landing page for the file rather than the '
-        'file. Retried with the listing page as referer and Accept: '
-        'application/pdf, same HTML; the page carries no separate asset path to '
-        'follow, only the .pdf URL that returns itself. Note also that 2024-25 is '
-        'NOT published — the listing stops at 2023-24 — so even a readable file '
-        'would be a year behind, which is fine here (DCJ already is) but is worth '
-        'knowing before hunting for a current one',
-    # ── Four NSW cards that are a filed department's own divisions ────────────
-    # ALL FOUR WERE SETTLED FROM TWO DOCUMENTS ALREADY IN THIS TABLE, without a
-    # single new fetch, and that is the point worth carrying forward: the reports
-    # filed for the departments name their divisions and their personnel-services
-    # clients, so several blank cards in a portfolio are answered by re-reading
-    # the one report the portfolio's head already supplies. It is the Destination
-    # NSW move, applied deliberately rather than stumbled on.
     'nsw:Revenue NSW':
         "INSIDE the Department of Customer Service figure, which is filed, and the "
         "very table that figure comes from prints its own row: p71, \"Division "
@@ -3254,6 +3251,69 @@ AGENCY_REPORTS = {
         proof=r'For the Year Ended 30 June 2025',
         unit='fte', asof='Jun 2025'),
     # ═════════════════════════════════════════════════════════════════════════
+    # THE .pdf THAT SERVED A REACT PAGE, AND THE SUFFIX THAT WAS ONE RENDER AWAY.
+    # The reason this replaces recorded the problem exactly: lecc.nsw.gov.au lists
+    # /publications/annual-reports/law-enforcement-conduct-commission-annual-
+    # report-2023-24.pdf and that URL answers 200 with 297,563 bytes of
+    # `<html data-reactroot>` — a landing page for the file rather than the file.
+    # It had been retried with the listing page as referer and with
+    # Accept: application/pdf, same HTML, and concluded "the page carries no
+    # separate asset path to follow".
+    #
+    # THAT WAS TRUE OF THE HTML A PLAIN FETCH RETURNS AND FALSE OF THE PAGE. The
+    # site is Plone, and the RENDERED DOM carries the download path Plone always
+    # uses — the same URL with `/@@download/file` appended. Rendered 2026-09-30:
+    # 312,025 bytes, and that suffixed URL then serves 5,243,821 bytes of %PDF to a
+    # PLAIN urllib fetch, no browser needed once the path is known.
+    #
+    # So the fix was to RENDER the page, not to re-request the file. A landing page
+    # whose asset path is written by JavaScript cannot be ruled out by fetching the
+    # same URL again with different headers, which is what the three earlier
+    # attempts did.
+    #
+    # A YEAR BEHIND ON PURPOSE: 2024-25 is not published — the listing stops at
+    # 2023-24 — so this card says Jun 2024 where most NSW cards say Jun 2025. Same
+    # shape as DCJ sitting a year behind the cluster.
+    #
+    # TABLE 30 IS A FOUR-YEAR SERIES, NEWEST LAST, which is the opposite of the
+    # Powerhouse table and the reason `now_i` is 3 rather than 0. All FOUR columns
+    # reconcile against their own components (2+5+1+82+35 = 125, 2+5+1+68+36 = 112,
+    # 2+4+1+68+32 = 107, 2+5+1+57+44 = 109), so `sums` on the two columns actually
+    # read is the strongest check available here and the header pins which they are.
+    'nsw-lecc': dict(
+        label='NSW: Law Enforcement Conduct Commission',
+        agency='Law Enforcement Conduct Commission',
+        agency_id='nsw-gov-law-enforcement-conduct-commission',
+        url='https://www.lecc.nsw.gov.au/publications/annual-reports/'
+            'law-enforcement-conduct-commission-annual-report-2023-24.pdf'
+            '/@@download/file',
+        needle='Table 30: Number of officers and employees by category',
+        total=r'^Total\b',
+        comp=r'^(?:Statutory appointments|Male executive appointments|'
+             r'Female executive appointments|Operational staff|Support staff)\b',
+        ncols=4, now_i=3, prev_i=2, sums=[(2,), (3,)],
+        # CONTROLS, 2026-09-30:
+        #   as written                    -> (125, 112)
+        #   header wrong                  -> REJECTED
+        #   proof -> 'during 2024[–-]25'  -> REJECTED
+        #   `sums` dropped                -> still (125, 112)
+        #   now_i=0, prev_i=1             -> (109, 107) ACCEPTED — three years stale
+        #
+        # `sums` DOES NOT GUARD THE COLUMN CHOICE, and on a four-year table that is
+        # worth stating plainly: every column reconciles against the same component
+        # rows, so reading 2021 instead of 2024 is arithmetically perfect and three
+        # years wrong. `header` is what stops it, exactly as on the Triple Zero
+        # spec. What `sums` does guard is the ROWS — a `total` regex that caught a
+        # different line.
+        #
+        # `proof` DOES date this page, unlike Triple Zero's: "Staff movements
+        # during 2023-24" names the reporting year once and the 2024-25 variant
+        # rejects. So here the two guards are independent rather than one doing
+        # both jobs.
+        header=r'2021 2022 2023 2024',
+        proof=r'Staff movements during 2023[–-]24',
+        unit='headcount', asof='Jun 2024'),
+
     # ═════════════════════════════════════════════════════════════════════════
     # THE FIRST VICTORIAN SPEC, AND THE REASON IT EXISTS IS THE QUEENSLAND ONE.
     # All nineteen Victorian gap cards carried a reason phrased against the VPSC
