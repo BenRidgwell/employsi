@@ -83,6 +83,23 @@ const DENY: Record<string, string[]> = {
   "sydney-ald": ["wood group", "wood"],
 };
 
+/**
+ * Companies whose OWN name is too generic to search permissively, so the
+ * advertiser must actually be them (the rule a subsidiary search already
+ * applies, below). The value lists the other names they genuinely advertise
+ * under.
+ *
+ * CCI is the case that forced it. The roster holds Catholic Church Insurance
+ * as "CCI", a three-letter string that turns up in other employers' ads, and
+ * the company has been in orderly run-off since May 2023 — it advertises
+ * nothing. Measured 2026-09-30: all 40 archive rows on its card (23 live)
+ * were other employers' — Brickworks 19, Avanade 11, ASC, Westpac and others.
+ * A company in run-off should show a real zero, not someone else's hiring.
+ */
+const STRICT_NAME: Record<string, string[]> = {
+  "priv-cci": ["Catholic Church Insurance"],
+};
+
 /** Roster names, normalised, mapped to the company id that owns them. */
 let ROSTER: Map<string, string> | null = null;
 function rosterIndex(targets: JobsTarget[]): Map<string, string> {
@@ -153,6 +170,20 @@ export function checkAdvertiser(
       if (sameCompanyName(adv, rosterName)) {
         return { keep: false, reason: `${JSON.stringify(adv)} is roster company ${id}` };
       }
+    }
+  }
+
+  // Rule 3b. A generic own name (STRICT_NAME) is held to the same standard as
+  // a subsidiary search: the advertiser has to be the company.
+  const strict = STRICT_NAME[target.id];
+  if (strict) {
+    const isThem =
+      sameCompanyName(adv, target.name) || strict.some((alt) => sameCompanyName(adv, alt));
+    if (!isThem) {
+      return {
+        keep: false,
+        reason: `${JSON.stringify(adv)} is not ${target.name} (strict name for ${target.id})`,
+      };
     }
   }
 

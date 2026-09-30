@@ -116,7 +116,11 @@ const RAW: Raw[] = [
   ["Harris Farm", "sydney", 923819, 9.35],
   ["ColCap", "sydney", 918822, 88.8],
   ["CJD Equipment", "perth", 910000, 12.71],
-  ["Perfection Fresh", "brisbane", 909700, 3.02],
+  // Head office Level 4, Building F, 1 Homebush Bay Drive, Rhodes NSW (the
+  // address already geocoded in au-addresses.csv), distribution centre at
+  // Sydney Markets, Homebush West; phone (02). Was plotted on Brisbane until
+  // 2026-09-30.
+  ["Perfection Fresh", "sydney", 909700, 3.02],
   ["Mort & Co", "brisbane", 904984, -1.7],
   ["Nepean Consolidated", "sydney", 902764, 7.54],
   ["Turosi", "melbourne", 899087, 10.65],
@@ -130,7 +134,11 @@ const RAW: Raw[] = [
   ["NRMA Motoring & Services", "sydney", 857395, 5.08],
   ["Life Without Barriers", "sydney", 851586, 5.46],
   ["Northwestern Roads", "sydney", 846178, 8.91],
-  ["Grand Motors", "melbourne", 828765, -3.72],
+  // Grand Motors Toyota, 265 Ferry Road, Southport QLD (Gold Coast) — the
+  // address already geocoded in au-addresses.csv. Queensland, so it sits on
+  // Brisbane the way Bond and UniSC do; it was plotted on Melbourne until
+  // 2026-09-30.
+  ["Grand Motors", "brisbane", 828765, -3.72],
   ["MinterEllison", "sydney", 824461, 3.37],
   ["CCI", "melbourne", 795087, 12.89],
   ["Great Southern Bank", "brisbane", 789520, 6.33],
@@ -330,6 +338,10 @@ const SECTOR_OVERRIDE: Record<string, () => Sec> = {
   // WA/VIC residential builder. Nothing in "ABN Group" says construction, so it
   // was landing in Consumer & Retail.
   "abn group": () => CONSTRUCTION,
+  // ATI Global is the parent of LEAP Legal Software — ati-global.com titles
+  // itself "A Global LegalTech Leader". Nothing in the name says software, so
+  // it fell through to the Consumer & Retail catch-all. Checked 2026-09-30.
+  "ati global": () => TECH,
 };
 
 function classify(name: string): Sec {

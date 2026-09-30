@@ -1202,7 +1202,7 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
   },
   {
     id: "perth-pdi",
-    name: "Predictive Discovery",
+    name: "PDI Gold",
     sector: "Energy & Natural Resources",
     group: "Energy & Natural Resources",
     cities: ["perth"],
