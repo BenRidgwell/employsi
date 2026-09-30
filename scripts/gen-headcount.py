@@ -764,7 +764,14 @@ NO_FIGURE_PUBLISHED = {
         'renders its table client-side with no anchors to walk. Infratil has a '
         'MARCH balance date, so its announcement is months back in that listing '
         'rather than on its first page. Finding the id is the open step, and the '
-        'SafeLine 403 on its own site is no longer the reason to stop',
+        'SafeLine 403 on its own site is no longer the reason to stop.\n\n'
+        'AND api.nzx.com HAS NO REACHABLE LIST ENDPOINT — five candidates probed '
+        '2026-09-30 and all five answer 403, INCLUDING '
+        '/public/announcement/478352, the metadata for the one announcement whose '
+        'attachment downloads fine. So the attachment path with its trailing '
+        'filename is the only thing that host serves, and an id cannot be looked '
+        'up there; it has to come from a rendered www.nzx.com announcement page. '
+        'Recorded so the next attempt does not repeat the five probes',
     'nz-todd-corporation':
         'private, and its own site publishes no workforce figure. The one document '
         'it links — the 2025 Report on Sustainable Development, 46 pages — was '
