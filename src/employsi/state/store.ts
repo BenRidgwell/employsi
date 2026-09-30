@@ -8,6 +8,7 @@ import {
   type Company,
   type ListingType,
 } from "../data/companies";
+import { canonicalCompanyId } from "../data/mergedCompanies";
 import { CITY_CONTINENT } from "../data/geo";
 import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
 import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
@@ -373,7 +374,11 @@ function loadPersisted(): Persisted {
     if (!raw) return PERSIST_DEFAULTS;
     const p = JSON.parse(raw) as Partial<Persisted>;
     return {
-      followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
+      // A browser may still hold a follow under a retired company id
+      // (data/mergedCompanies.ts); it now follows the company it was folded into.
+      followedIds: Array.isArray(p.followedIds)
+        ? [...new Set(p.followedIds.map((id) => canonicalCompanyId(String(id))))]
+        : [],
       followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,

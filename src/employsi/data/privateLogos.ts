@@ -336,12 +336,11 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "sydney-vnt": "ventia.com",
   "sydney-lnw": "lnw.com",
   "sydney-cip": "centuria.com.au",
-  // The two Charter Hall REITs and the two WAM funds are separately listed
-  // vehicles managed by one house, and each pair shares its manager's site and
-  // so its badge. Correct rather than a collision, the same case as China
-  // Unicom appearing on both the Hong Kong and Shanghai rosters.
-  "sydney-clw": "charterhall.com.au",
-  "sydney-cqr": "charterhall.com.au",
+  // The two WAM funds are separately listed vehicles managed by one house,
+  // and share its site and so its badge. Correct rather than a collision, the
+  // same case as China Unicom appearing on both the Hong Kong and Shanghai
+  // rosters. (The two Charter Hall REITs were the other such pair; they left
+  // the roster on 2026-09-30 — externally managed, no staff of their own.)
   "sydney-wam": "wilsonassetmanagement.com.au",
   "sydney-wle": "wilsonassetmanagement.com.au",
   // CHANGES NO PIXEL TODAY, and is recorded anyway. soulpatts.com does not

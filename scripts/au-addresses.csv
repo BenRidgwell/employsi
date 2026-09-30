@@ -7,8 +7,6 @@ sydney,Listed company,sydney-bga,Bega Cheese,Consumer & Retail,"23-45 Ridge Stre
 sydney,Listed company,sydney-brg,Breville Group,Consumer & Retail,"Ground Floor, Suite 2, 170-180 Bourke Road, Alexandria NSW 2015",medium
 sydney,Listed company,sydney-bsl,BlueScope,Energy & Natural Resources,"Level 24, 181 William Street, Melbourne VIC 3000",medium
 sydney,Listed company,sydney-cip,Centuria Industrial REIT,Financial Services,"Level 41, Chifley Tower, 2 Chifley Square, Sydney NSW 2000",medium
-sydney,Listed company,sydney-clw,Charter Hall Long WALE REIT,Financial Services,"Level 20, No.1 Martin Place, Sydney NSW 2000",high
-sydney,Listed company,sydney-cqr,Charter Hall Retail REIT,Financial Services,"Level 20, No.1 Martin Place, Sydney NSW 2000",high
 sydney,Listed company,sydney-dro,Droneshield,Industrial Manufacturing,"126 Phillip Street, Sydney NSW 2000",google_maps
 sydney,Listed company,sydney-edv,Endeavour Group,Consumer & Retail,"26 Waterloo Street, Surry Hills NSW 2010",high
 sydney,Listed company,sydney-eos,Electro Optic Systems Holdings,Industrial Manufacturing,"18 Wormald Street, Symonston ACT 2609",medium
@@ -339,7 +337,6 @@ brisbane,Listed company,brisbane-boq,Bank of Queensland,Financial Services,"Leve
 brisbane,Listed company,brisbane-ctd,Corporate Travel Management,Consumer & Retail,"Level 24, 307 Queen Street, Brisbane QLD 4000",medium
 brisbane,Listed company,brisbane-sul,Super Retail Group,Consumer & Retail,"751 Gympie Road, Lawnton QLD 4501",high
 brisbane,Listed company,brisbane-alq,ALS Limited,Industrial Manufacturing,"Level 2, 299 Coronation Drive, Milton QLD 4064",medium
-brisbane,Listed company,brisbane-smr,Stanmore Resources,Energy & Natural Resources,"Level 32, 12 Creek Street, Brisbane QLD 4000",google_maps
 brisbane,Listed company,brisbane-crn,Coronado Global Resources,Energy & Natural Resources,"Level 33, Central Plaza One, 345 Queen Street, Brisbane QLD 4000",medium
 brisbane,Listed company,brisbane-elv,Elevra Lithium,Energy & Natural Resources,"Level 28, 10 Eagle Street, Brisbane QLD 4000",google_maps
 brisbane,Listed company,brisbane-dtl,Data#3,"Technology, Media & Telecom","555 Coronation Drive, Toowong QLD 4066",high

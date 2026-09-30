@@ -156,8 +156,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["CGF", "Challenger", FIN],
       ["CHC", "Charter Hall", FIN],
       ["CIP", "Centuria Industrial REIT", FIN],
-      ["CLW", "Charter Hall Long WALE REIT", FIN],
-      ["CQR", "Charter Hall Retail REIT", FIN],
+      // Charter Hall Long WALE REIT (CLW) and Charter Hall Retail REIT (CQR)
+      // were removed on 2026-09-30. Both are listed trusts externally managed
+      // by Charter Hall Group (CHC, above), with no staff of their own — so a
+      // card for either could only ever show the manager's hiring. It did: all
+      // four ads the archive held under them (LinkedIn, Jul-Aug 2026) name
+      // "Charter Hall" as the advertiser. sydney-clw and sydney-cqr resolve to
+      // sydney-chc through data/mergedCompanies.ts.
       ["DOW", "Downer Group", IND],
       ["DRO", "Droneshield", IND],
       ["EDV", "Endeavour Group", CON],
@@ -212,7 +217,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["SUL", "Super Retail Group", CON],
       ["DMP", "Domino's Pizza Enterprises", CON],
       ["ALQ", "ALS Limited", IND],
-      ["SMR", "Stanmore Resources", ENR],
+      // Stanmore Resources (SMR) was removed from this list on 2026-09-30: it
+      // was on the map twice, here as brisbane-smr and as the hand-placed `smr`
+      // (companies.ts), which is the one its career-portal feed writes to and
+      // which is already plotted at its Brisbane office, 12 Creek Street. Both
+      // carried the same WGEA register entry and SEEK advertiser, so every
+      // board ad could land on either card. brisbane-smr resolves to smr
+      // through data/mergedCompanies.ts.
       ["CRN", "Coronado Global Resources", ENR],
       // Renamed 2026: Sayona Mining merged with Piedmont Lithium and became
       // Elevra Lithium Limited, ASX:SYA -> ASX:ELV. Confirmed from the
@@ -318,9 +329,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["00823", "Link REIT", FIN],
       ["00941", "China Mobile", TMT],
       ["00992", "Lenovo Group", TMT],
+      // Xiaomi (01810), Tencent (00700) and China Life (02628) are on the
+      // Beijing and Shenzhen rosters, where they are headquartered, and were
+      // removed from this one on 2026-09-30 — a second pin for one employer,
+      // each with its own slice of the same company's ads. The retired
+      // hongkong-* ids resolve through data/mergedCompanies.ts.
       ["01038", "CK Infrastructure Holdings", INF],
       ["01299", "AIA Group", FIN],
-      ["01810", "Xiaomi Corporation", TMT],
       ["01928", "Sands China", CON],
       ["01929", "Chow Tai Fook Jewellery", CON],
       ["02388", "BOC Hong Kong (Holdings)", FIN],
@@ -337,7 +352,6 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["00288", "WH Group", CON],
       ["00388", "Hong Kong Exchanges and Clearing", FIN],
       ["00669", "Techtronic Industries", IND],
-      ["00700", "Tencent Holdings", TMT],
       ["00001", "CK Hutchison Holdings", INF],
       ["00002", "CLP Holdings", INF],
       ["00003", "Hong Kong and China Gas", INF],
@@ -347,7 +361,6 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["02318", "Ping An Insurance", FIN],
       ["00883", "CNOOC", ENR],
       ["03988", "Bank of China", FIN],
-      ["02628", "China Life Insurance", FIN],
       ["06862", "Haidilao International", CON],
       ["02020", "Anta Sports Products", CON],
       ["00688", "China Overseas Land & Investment", INF],
@@ -1131,7 +1144,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // Major Beijing private / tech employers (prime Zhaopin hirers).
       ["BYTEDANCE", "ByteDance", TMT, "Private", "ByteDance"],
       ["01024", "Kuaishou", TMT, "HKEX", "Kuaishou"],
-      ["00992", "Lenovo", TMT, "HKEX", "Lenovo"],
+      // Lenovo (00992) was removed from this list on 2026-09-30. It is on the
+      // Hong Kong roster, the listing its career-portal feeds are wired to, and
+      // a second pin here split one employer's ads across two cards — seven
+      // SimplyHired ads were archived under BOTH ids. beijing-00992 resolves to
+      // hongkong-00992 through data/mergedCompanies.ts.
       ["DIDI", "DiDi", TMT, "Private", "DiDi"],
     ],
   },
