@@ -393,7 +393,16 @@ if REFRESH and not TOKEN:
              'the URLs to re-scrape are read from D1.')
 
 
+# Han, kana, Hangul. Mirrors jobArchive.ts: a string containing any of them
+# keeps every letter and digit (the ASCII rule below erased CJK titles to "",
+# collapsing a Chinese board to one row per city); every other string keys
+# exactly as before, so no existing Latin key moves.
+_CJK = re.compile(r'[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]')
+
+
 def norm(s: str) -> str:
+    if _CJK.search(s or ''):
+        return re.sub(r'[\W_]+', ' ', (s or '').lower()).strip()[:120]
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
 
 
