@@ -190,7 +190,13 @@ type Platform =
   | "cajobs"
   | "hrmos"
   | "ripplehire"
-  | "sfclassicxml";
+  | "sfclassicxml"
+  | "meituan"
+  | "jdzhaopin"
+  | "cmbchina"
+  | "saicrecruit"
+  | "hotjob"
+  | "atsx";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -22644,6 +22650,164 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     skipTitles: /^EOI\s*-\s*Academic Sessional/i,
   },
+  // ── batch 12: F ──
+  // Trip.com Group (shanghai-tcom) — NOT WIRED: the API reads completely from
+  // curl but a real fetch is bot-challenged. Two boards, one shape:
+  //   POST https://careers.ctrip.com/api/hrrecruit/getJobAd        (China)
+  //   POST https://careers.trip.com/api/oversea/getOverseaJobAd    (overseas)
+  //   {"condition":{}, "pager":{"index":"<1..>","size":"<n>"}}
+  //   -> {retCode:"201", retValue:{total, recruitJobAdList:[{fromId:"MJ037248",
+  //       jobTitle, publishDate, cityName (English), category "1"|"2"}]}}
+  // The pager is a TOP-LEVEL `pager` object with string values (read off the
+  // site's bundle, chunk 84) — which is why the 2026-09-29 note, trying names
+  // inside `condition`, could not page it. Measured 2026-09-30 with curl: size
+  // up to 1000 honoured, China 552 (496 experienced + 56 graduate), overseas
+  // 206, no shared ids, stable order. Links: /experienced/job-detail/<fromId>
+  // (/campus/… for category 2); overseas /m/#/job-detail?fromId=<fromId>.
+  // THE BLOCKER: the same request from Bun's fetch (the path fetchPortal takes)
+  // is answered 302 -> verify.ctrip.com/static/ctripVerify.html on both hosts,
+  // with any User-Agent, Accept or Referer, while curl with each of Bun's
+  // headers added gets 200 — a TLS-fingerprint challenge. A Worker's fetch is a
+  // third fingerprint that cannot be tested from here, and a reader that cannot
+  // be run end to end is not wired. A runner (curl/python) could read it.
+  // Meituan — zhaopin.meituan.com experienced board, 2,496-2,500. Wired ONCE, here:
+  // the roster also carries hongkong-03690 "Meituan", the same company's HKEX
+  // line, and a second feed would file every role twice. Beijing is its head
+  // office and 60% of its roles; homeHub null because a blank must not default.
+  {
+    id: "beijing-03690",
+    name: "Meituan",
+    sector: "Technology, Media and Telecommunications",
+    platform: "meituan",
+    endpoint: "https://zhaopin.meituan.com/api/official/job/getJobList",
+    origin: "https://zhaopin.meituan.com",
+    homeHub: null,
+    hubHints: [...CN_CITY_HINTS, ["迪拜", "dubai"]],
+  },
+  // BOE Technology — Beisen portal career.boe.com, 1,064 across every audience
+  // (社会招聘 and 校园招聘). The 2026-09-29 note that the list carries no location
+  // was a request without DisplayFields; fetchBeisen sends them, and LocNames
+  // comes back filled ("北京市", "广东省·珠海市", "四川省·成都市"). The tenant's
+  // own router maps /social/detail to its custom detail page (getRouterRuleMap
+  // in the portal HTML), so the reader's link resolves here too. homeHub null:
+  // fabs in Chengdu, Hefei, Chongqing, Ordos…
+  {
+    id: "beijing-000725",
+    name: "BOE Technology",
+    sector: "Technology, Media and Telecommunications",
+    platform: "beisen",
+    endpoint: "https://career.boe.com/api/Jobad/GetJobAdPageList",
+    origin: "https://career.boe.com",
+    homeHub: null,
+    hubHints: [...CN_CITY_HINTS, ["全国", null]],
+  },
+  // Sinotrans — Beisen portal sinotrans.zhiye.com, 521-524 (社会招聘, 校园招聘 and
+  // an intern post). LocNames is filled once DisplayFields is sent, as for BOE.
+  // Campus intakes list several cities ("广东省·深圳市/广州市", "北京市", …, "全国")
+  // and are placed at the first, as everywhere in this file.
+  {
+    id: "beijing-601598",
+    name: "Sinotrans Limited",
+    sector: "Industrial Manufacturing",
+    platform: "beisen",
+    endpoint: "https://sinotrans.zhiye.com/api/Jobad/GetJobAdPageList",
+    origin: "https://sinotrans.zhiye.com",
+    homeHub: null,
+    hubHints: [...CN_CITY_HINTS, ["全国", null]],
+  },
+  // China Life Insurance Company (beijing-601628; hongkong-02628 is its H share,
+  // retired into this id by data/mergedCompanies.ts) — NOT WIRED. Its Beisen
+  // portal chinalife.zhiye.com reads cleanly (Count 3,001 on 2026-09-30, a real
+  // total now: its Category partitions sum to it — 校园 1,898, 社会 793, 实习 173,
+  // 退役军人 136, 内部 1), but it is the China Life GROUP's board: 801 OrgIds,
+  // including the P&C company (车险查勘…), Guangfa Bank (分行营销英才, 广银理财…)
+  // and the asset manager (基金经理…). The listed life company is one branch of
+  // that tree, and neither the list, the detail call (GetJobAdInfo returns
+  // OrgId only) nor any search-condition endpoint names an org — so there is
+  // no way to keep the life company's roles and drop the bank's. Filed whole,
+  // it would put a bank's and an insurer's vacancies on this card.
+  //
+  // BYD (shenzhen-002594) — NOT WIRED. job.byd.com's queryList reads (pageNum is
+  // a row OFFSET; pageSize 1000 honoured) but on 2026-09-30 it advertised 15,595
+  // "open" positions of which 10,973 carry planYear 2024 and a createTime in
+  // 2024-06 (one bulk load), 4,699 a headcount of 0, and only 6,567 distinct
+  // title+org+city — a standing position catalogue, not a list of vacancies
+  // the archive could count. The walk also failed: 16 requests at ~5-7 s took
+  // 108 s at four in flight and one page failed three attempts, and plain
+  // requests intermittently returned an empty body. Neither half is fixable
+  // from here.
+  //
+  // JD.com — zhaopin.jd.com experienced board, 1,909 distinct requisitions of a
+  // 1,919 count (the board lists 10 of them twice). No per-role page exists; see fetchJdZhaopin.
+  {
+    id: "beijing-jd",
+    name: "JD.com",
+    sector: "Consumer and Retail",
+    platform: "jdzhaopin",
+    endpoint: "https://zhaopin.jd.com/web/job/job_list",
+    origin: "https://zhaopin.jd.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // China Merchants Bank — career.cmbchina.com social board, 140. Headquartered
+  // in Shenzhen, not the roster's Shanghai, and no single city dominates, so
+  // homeHub null.
+  {
+    id: "shanghai-600036",
+    name: "China Merchants Bank",
+    sector: "Financial Services",
+    platform: "cmbchina",
+    endpoint: "https://career.cmbchina.com/api/socialRecruitmentWebsite/job/getList",
+    origin: "https://career.cmbchina.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // SAIC Motor — the group platform saic-recruit.saicmotor.com, 201 (campus 174,
+  // experienced 23, intern 4). See fetchSaicRecruit.
+  {
+    id: "shanghai-600104",
+    name: "SAIC Motor",
+    sector: "Industrial Manufacturing",
+    platform: "saicrecruit",
+    endpoint: "https://saic-recruit.saicmotor.com/recruit/api/recruit/position/deliver/list",
+    origin: "https://saic-recruit.saicmotor.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Foshan Haitian Flavouring — Wecruit/Hotjob tenant, experienced board, 68-92
+  // across 2026-09-30 (roles were being withdrawn during the day; each walk
+  // matched the total it was served).
+  // The company is in FOSHAN, Guangdong (Shanghai is its listing venue), which
+  // is not a hub, so most rows are honestly unplaced; homeHub null.
+  {
+    id: "shanghai-603288",
+    name: "Foshan Haitian Flavouring",
+    sector: "Consumer and Retail",
+    platform: "hotjob",
+    endpoint:
+      "https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/SU6322dfb70dcad46a862da4c5?iSaJAx=isAjax&request_locale=zh_CN",
+    origin: "https://wecruit.hotjob.cn",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Xiaomi — Feishu/Lark Hire (ATSX) tenant xiaomi.jobs.f.mioffice.cn, the board
+  // hr.xiaomi.com links; 1,930 on 2026-09-30, one walk with no location
+  // partition (the count is a real total, far under the 10,000 search window).
+  // Wired under beijing-01810: hongkong-01810 was retired into it on 2026-09-30
+  // (data/mergedCompanies.ts — head office Beijing). The 2026-09-29 "blocked"
+  // note on career.mi.com is about a different front end; this tenant is the
+  // one Xiaomi's own HR site sends applicants to and it reads completely.
+  // Links /index/position/<id>/detail: the server renders the role's title for
+  // a real id and an empty one for a made-up id (checked 2026-09-30).
+  {
+    id: "beijing-01810",
+    name: "Xiaomi",
+    sector: "Technology, Media and Telecommunications",
+    platform: "atsx",
+    endpoint: "https://xiaomi.jobs.f.mioffice.cn/api/v1/search/job/posts?site=index&portal_type=6",
+    origin: "https://xiaomi.jobs.f.mioffice.cn",
+    homeHub: null,
+  },
 ];
 
 /**
@@ -31624,6 +31788,7 @@ interface BytedancePost {
   id?: string;
   title?: string;
   city_info?: { name?: string; en_name?: string } | null;
+  city_list?: { name?: string; en_name?: string }[] | null;
   job_category?: { name?: string; en_name?: string } | null;
   publish_time?: number;
 }
@@ -31634,32 +31799,53 @@ const BYTEDANCE_CAP = 10000;
 
 async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
   const u = new URL(site.endpoint);
+  // Batch 12 generalised this reader over OTHER Feishu/Lark Hire (ATSX)
+  // tenants, which run the same API under their own host with three per-tenant
+  // settings, all read off the endpoint's query so ByteDance's feed is
+  // unchanged when they are absent:
+  //   `site`        the portal's website-path, which is also the route prefix
+  //                 of its links. ByteDance: "society" for the API, but its
+  //                 links live under /experienced — so absent = that pair.
+  //                 Xiaomi: "index" for both (see its SiteDef).
+  //   `portal_type` ByteDance 2; Xiaomi's own page sends 6.
+  //   `location`    a location_code_list partition. REQUIRED for ByteDance,
+  //                 whose unfiltered board is a 10,000 search window; a tenant
+  //                 whose whole board has a real count below the cap omits it
+  //                 and is walked whole (the cap check below still applies).
   const location = u.searchParams.get("location");
-  if (!location) return [];
+  const sitePath = u.searchParams.get("site");
+  const portalType = Number(u.searchParams.get("portal_type") ?? 2);
+  if (!location && !sitePath) return [];
+  const linkPath = sitePath ?? "experienced";
+  const label = `bytedance ${site.key ?? site.id}${location ? ` ${location}` : ""}`;
   const base = {
     "Content-Type": "application/json",
-    "website-path": "society",
+    "website-path": sitePath ?? "society",
     "portal-channel": "office",
     "portal-platform": "pc",
-    Referer: `${site.origin}/experienced/position`,
+    Referer: `${site.origin}/${linkPath}/position`,
   };
   let token = "";
   let cookie = "";
-  try {
-    const res = await fetch(`${u.origin}/api/v1/csrf/token`, {
-      method: "POST",
-      headers: { "User-Agent": UA, Accept: "application/json", ...base },
-      body: JSON.stringify({ portal_entrance: 1 }),
-    });
-    cookie = (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
-    token = res.ok
-      ? String(((await res.json()) as { data?: { token?: string } }).data?.token ?? "")
-      : "";
-  } catch {
-    token = "";
+  // One retry: a dropped token request fails the whole pull, and Xiaomi's
+  // first run from here lost exactly that request (2026-09-30).
+  for (let attempt = 0; attempt < 2 && !token; attempt++) {
+    try {
+      const res = await fetch(`${u.origin}/api/v1/csrf/token`, {
+        method: "POST",
+        headers: { "User-Agent": UA, Accept: "application/json", ...base },
+        body: JSON.stringify({ portal_entrance: 1 }),
+      });
+      cookie = (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+      token = res.ok
+        ? String(((await res.json()) as { data?: { token?: string } }).data?.token ?? "")
+        : "";
+    } catch {
+      token = "";
+    }
   }
   if (!token) {
-    console.log(`bytedance ${location}: no csrf token`);
+    console.log(`${label}: no csrf token`);
     return [];
   }
   const read = async (i: number) => {
@@ -31674,10 +31860,10 @@ async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
         limit: BYTEDANCE_PAGE,
         offset: i * BYTEDANCE_PAGE,
         job_category_id_list: [],
-        location_code_list: [location],
+        location_code_list: location ? [location] : [],
         subject_id_list: [],
         recruitment_id_list: [],
-        portal_type: 2,
+        portal_type: portalType,
         job_function_id_list: [],
         portal_entrance: 1,
       }),
@@ -31687,7 +31873,16 @@ async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
     const posts = (r.data.job_post_list ?? []).map((p) => ({
       id: p.id,
       title: p.title,
-      city: p.city_info?.en_name || p.city_info?.name || "",
+      // city_info is the role's primary city. Xiaomi leaves it null on 1,055
+      // of 1,930 roles (measured 2026-09-30) and names the city only in
+      // city_list, so the first city_list entry stands in; ByteDance fills
+      // city_info, so its rows are unchanged.
+      city:
+        p.city_info?.en_name ||
+        p.city_info?.name ||
+        p.city_list?.[0]?.en_name ||
+        p.city_list?.[0]?.name ||
+        "",
       cat: p.job_category?.en_name || p.job_category?.name || "",
       at: p.publish_time,
     }));
@@ -31697,13 +31892,13 @@ async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
   const first = (await read(0)) ?? (await read(0));
   if (!first?.total) return [];
   if (first.total >= BYTEDANCE_CAP) {
-    console.log(`bytedance ${location}: count ${first.total} is the search cap — not walked`);
+    console.log(`${label}: count ${first.total} is the search cap — not walked`);
     return [];
   }
   const rest = await allPages(
     Math.ceil(first.total / BYTEDANCE_PAGE) - 1,
     async (i) => (await read(i + 1))?.posts ?? null,
-    `bytedance ${location}`,
+    label,
   );
   if (!rest) return [];
   const out: PortalJob[] = [];
@@ -31718,13 +31913,13 @@ async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
         site,
         title,
         clean(p.city),
-        `${site.origin}/experienced/position/${id}/detail`,
+        `${site.origin}/${linkPath}/position/${id}/detail`,
         cnDate(p.at),
         clean(p.cat) || "Career portal",
       ),
     );
   }
-  reportGap(`bytedance ${location}`, out.length, first.total);
+  reportGap(label, out.length, first.total);
   return out;
 }
 
@@ -32342,7 +32537,473 @@ async function fetchSfClassicXml(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 12 F: Meituan, JD.com, China Merchants Bank, SAIC, Hotjob ──────────
+
+// ── Meituan ──────────────────────────────────────────────────────────────────
+/**
+ * zhaopin.meituan.com, Meituan's own board — experienced (社招) hires only.
+ *
+ *   POST /api/official/job/getJobList   (JSON)
+ *        {page:{pageNo:<1..>, pageSize:500}, jobShareType:"1",
+ *         jobType:[{code:"3", subCode:[]}], keywords:"", cityList:[], ...}
+ *   → {status:1, data:{page:{pageNo, pageSize, totalPage, totalCount},
+ *       list:[{jobUnionId, name, jobFamily, cityList:[{name:"北京市"}, …],
+ *       refreshTime (epoch ms), firstPostTime (null)}]}}
+ *
+ * Measured 2026-09-30: totalCount 2,496 with jobType code 3; pageSize 100, 200
+ * and 500 all honoured (500 → 5 pages, ~1.7 s each). jobType [] would add the
+ * campus and intern boards (3,067 in all); like Baidu, only the experienced
+ * board is read.
+ *
+ * Cities are CHINESE and a role may list several; the row is placed at the
+ * FIRST, as everywhere in this file. Beyond the CN_CITY_HINTS hubs the board
+ * names Middle-East and Latin-American cities in Chinese (利雅得 Riyadh, 圣保罗
+ * São Paulo, 迪拜 Dubai) — Dubai is a hub and gets its own hint on the SiteDef;
+ * the others are not hubs and stay unplaced.
+ *
+ * The link is the board's own route, read off its bundle (the list's click
+ * handler opens `/web/position/detail?jobUnionId=…&highlightType=…`).
+ */
+interface MeituanJob {
+  jobUnionId?: string;
+  name?: string;
+  jobFamily?: string;
+  cityList?: { name?: string }[] | null;
+  refreshTime?: number;
+}
+
+const MEITUAN_PAGE = 500;
+
+async function fetchMeituan(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const r = await getJson<{
+      status?: number;
+      data?: { page?: { totalCount?: number }; list?: MeituanJob[] | null };
+    }>(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Referer: `${site.origin}/web/social` },
+      body: JSON.stringify({
+        page: { pageNo: i + 1, pageSize: MEITUAN_PAGE },
+        jobShareType: "1",
+        keywords: "",
+        cityList: [],
+        department: [],
+        jfJgList: [],
+        jobType: [{ code: "3", subCode: [] }],
+        typeCode: [],
+        specialCode: [],
+      }),
+    });
+    return r?.status === 1 && r.data
+      ? { total: Number(r.data.page?.totalCount) || 0, jobs: r.data.list ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / MEITUAN_PAGE) - 1,
+    async (i) => (await read(i + 1))?.jobs ?? null,
+    "meituan",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...first.jobs, ...rest]) {
+    const id = j.jobUnionId ?? "";
+    const title = clean(j.name ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(j.cityList?.[0]?.name ?? ""),
+        `${site.origin}/web/position/detail?jobUnionId=${id}&highlightType=social`,
+        cnDate(j.refreshTime),
+        clean(j.jobFamily ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("meituan", out.length, first.total);
+  return out;
+}
+
+// ── JD.com ───────────────────────────────────────────────────────────────────
+/**
+ * zhaopin.jd.com, JD's own experienced-hire board (campus is campus.jd.com, a
+ * separate app, not read). Two form-encoded POSTs, no cookie or token:
+ *
+ *   /web/job/job_count  → a bare integer (the board's total)
+ *   /web/job/job_list   pageIndex=<1..>&pageSize=100&workCityJson=[]&
+ *                       jobTypeJson=[]&jobSearch=&depTypeJson=[]
+ *                       → a JSON array of {id, requirementId, positionNameOpen,
+ *                         positionName, jobType, workCity, publishTime (ms)}
+ *
+ * Measured 2026-09-30: count 1,919; pageSize is CAPPED AT 100 (500 and 2,000
+ * both return 100), so 20 pages, ~3 s each, ~10 s at six in flight. The count
+ * includes 9 rows the board lists TWICE — the same id, title, city and
+ * requirement on the same page (pages 1, 6, 9, 10, 16, 17) — and one
+ * requisition listed under two ids, so a complete walk is 1,909 distinct
+ * requisitions (1,910 ids), identical across two walks.
+ *
+ * workCity is PROVINCE-level Chinese text ("北京市" 1,032, "广东省" 200, "上海市"
+ * 115, "北京" 22, "香港" 1). Only the municipalities and Hong Kong name a hub;
+ * "广东省" is Shenzhen OR Guangzhou OR elsewhere and stays unplaced. Every row
+ * carries workCity, so homeHub is null.
+ *
+ * NO PER-ROLE PAGE EXISTS. The board's own script (job-info-index.js) renders
+ * each role's description inline under its row and the only per-row action is
+ * "apply", keyed on requirementId — there is no detail route to link to. The
+ * url is therefore the board page itself with the requirementId as a fragment,
+ * so each row still carries its own identifier without inventing a route.
+ */
+interface JdJob {
+  id?: number;
+  requirementId?: number;
+  positionNameOpen?: string | null;
+  positionName?: string | null;
+  jobType?: string | null;
+  workCity?: string | null;
+  publishTime?: number | null;
+}
+
+const JD_PAGE = 100;
+
+async function fetchJdZhaopin(site: SiteDef): Promise<PortalJob[]> {
+  const filters = "workCityJson=%5B%5D&jobTypeJson=%5B%5D&jobSearch=&depTypeJson=%5B%5D";
+  const post = (path: string, body: string) =>
+    getText(`${site.origin}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        // getText's default Accept (text/html…) is answered 302 -> the JD
+        // login page; */* is answered with the data (measured 2026-09-30).
+        Accept: "*/*",
+        Referer: `${site.origin}/web/job/job_info_list/3`,
+      },
+      body,
+    });
+  const countText = (await post("/web/job/job_count", filters)) ?? "";
+  const total = /^\s*\d+\s*$/.test(countText) ? Number(countText) : 0;
+  if (!total) return [];
+  const rows = await allPages(
+    Math.ceil(total / JD_PAGE),
+    async (i) => {
+      const text = await post(
+        "/web/job/job_list",
+        `pageIndex=${i + 1}&pageSize=${JD_PAGE}&${filters}`,
+      );
+      try {
+        const v: unknown = text ? JSON.parse(text) : null;
+        return Array.isArray(v) ? (v as JdJob[]) : null;
+      } catch {
+        return null;
+      }
+    },
+    "jd",
+  );
+  if (!rows) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<number>();
+  for (const r of rows) {
+    // Deduped on the REQUISITION, not the row id: measured 2026-09-30, ids
+    // 167372 and 167373 are one requisition (221691, JDZP00000000263015, same
+    // title, city and date) — one vacancy listed under two ids.
+    const id = r.requirementId ?? r.id ?? 0;
+    const title = clean(r.positionNameOpen || r.positionName || "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(r.workCity ?? ""),
+        `${site.origin}/web/job/job_info_list/3#${id}`,
+        cnDate(r.publishTime ?? undefined),
+        clean(r.jobType ?? "") || "Career portal",
+      ),
+    );
+  }
+  // The board's count includes its own duplicate listings (10 on 2026-09-30).
+  reportGap("jd", out.length, total);
+  return out;
+}
+
+// ── China Merchants Bank ─────────────────────────────────────────────────────
+/**
+ * career.cmbchina.com, CMB's own board — social (experienced) hires.
+ *
+ *   POST /api/socialRecruitmentWebsite/job/getList   (JSON)
+ *        {jobTypeIdList:[], orgIdList:[], pageIndex:<1..>, pageSize:100}
+ *   → {returnCode:"SUC0000", body:{total, data:[{publishGID, jobDisplay,
+ *       branchCodeName:"厦门分行", locationName:"漳州市" | "宁波市、台州市",
+ *       jobTypeName, expiredOn}]}}
+ *
+ * Measured 2026-09-30: total 140; pageSize 50, 100 and 200 honoured, so it is
+ * two requests. The campus board (same body at /api/campusRecruitmentWebsite/
+ * job/getList) is total 0 today and is not read. Rows include CMB's own
+ * subsidiaries' roles (招银金融租赁 — CMB Financial Leasing, 6).
+ *
+ * No posted date on the list (expiredOn only), so `created` is left empty.
+ *
+ * locationName is Chinese; a multi-city role joins them with "、" and is placed
+ * at the first. The link is the board's own route, read off its list chunk:
+ * `window.open("/positionDetail/"+type+"?publishId="+publishGID)`.
+ */
+interface CmbJob {
+  publishGID?: string;
+  jobDisplay?: string;
+  locationName?: string | null;
+  jobTypeName?: string | null;
+}
+
+const CMB_PAGE = 100;
+
+async function fetchCmbChina(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const r = await getJson<{
+      returnCode?: string;
+      body?: { total?: number; data?: CmbJob[] | null };
+    }>(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Referer: `${site.origin}/` },
+      body: JSON.stringify({
+        jobTypeIdList: [],
+        orgIdList: [],
+        pageIndex: i + 1,
+        pageSize: CMB_PAGE,
+      }),
+    });
+    return r?.returnCode === "SUC0000" && r.body
+      ? { total: Number(r.body.total) || 0, jobs: r.body.data ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / CMB_PAGE) - 1,
+    async (i) => (await read(i + 1))?.jobs ?? null,
+    "cmbchina",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...first.jobs, ...rest]) {
+    const id = j.publishGID ?? "";
+    const title = clean(j.jobDisplay ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean((j.locationName ?? "").split("、")[0]),
+        `${site.origin}/positionDetail/social?publishId=${id}`,
+        "",
+        clean(j.jobTypeName ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("cmbchina", out.length, first.total);
+  return out;
+}
+
+// ── SAIC Motor ───────────────────────────────────────────────────────────────
+/**
+ * saic-recruit.saicmotor.com, the SAIC group recruitment platform (the
+ * 社会招聘 page on saicmotor.com lists three 2019 roles and is not it).
+ *
+ *   POST /recruit/api/recruit/position/deliver/list   (JSON)
+ *        {posCity:[], posType:[], posTypeIds:[], companyId:[], size:200, page:<1..>}
+ *   → {code:200, data:{total, pages, records:[{posId, posName, posType,
+ *       posCompanyId, posCompanyName, posCity:"上海/杨浦区", peopleNumber}]}}
+ *
+ * Measured 2026-09-30: total 201 with posType [] — 校园招聘 (campus) 174, 社会招聘
+ * (experienced) 23, 实习计划 (intern) 4; `size` up to 500 honoured. Every group
+ * company posts here (上汽大乘用车, 上汽通用五菱, 华域 units, 上汽大通 …) and all are
+ * SAIC Motor group. A campus post's headcount is often "若干" or a number; it is
+ * one row either way, which under-counts rather than invents.
+ *
+ * No posted date in the record, so `created` is left empty.
+ *
+ * posCity is 'province/district' in Chinese, several joined by ","; the row is
+ * placed at the first. "上海/…" and "上海市/…" both read as Shanghai via the
+ * CN_CITY_HINTS needle.
+ *
+ * NO PER-ROLE PAGE EXISTS. The platform's own list (chunks 5f7c951f/edb57fea)
+ * renders each role as an expanding PositionCard and routes only to the
+ * COMPANY's list — `#/collegeRecruit/<companyId>` for campus and intern types,
+ * `#/socialRecruit/<companyId>` for experienced — so that is the link, with the
+ * posId as a query the page ignores, so each row keeps its own identifier.
+ */
+interface SaicPos {
+  posId?: string;
+  posName?: string;
+  posType?: string;
+  posCompanyId?: string;
+  posCompanyName?: string;
+  posCity?: string | null;
+}
+
+const SAIC_PAGE = 200;
+
+async function fetchSaicRecruit(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const r = await getJson<{
+      code?: number;
+      data?: { total?: number | string; records?: SaicPos[] | null };
+    }>(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Referer: `${site.origin}/recruit/pc/` },
+      body: JSON.stringify({
+        posCity: [],
+        posType: [],
+        posTypeIds: [],
+        companyId: [],
+        size: SAIC_PAGE,
+        page: i + 1,
+      }),
+    });
+    return r?.code === 200 && r.data
+      ? { total: Number(r.data.total) || 0, recs: r.data.records ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / SAIC_PAGE) - 1,
+    async (i) => (await read(i + 1))?.recs ?? null,
+    "saicrecruit",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.recs, ...rest]) {
+    const id = p.posId ?? "";
+    const title = clean(p.posName ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    const board = p.posType === "社会招聘" ? "socialRecruit" : "collegeRecruit";
+    out.push(
+      job(
+        site,
+        title,
+        clean((p.posCity ?? "").split(",")[0]),
+        `${site.origin}/recruit/pc/#/${board}/${p.posCompanyId ?? ""}?posId=${id}`,
+        "",
+        clean(p.posType ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("saicrecruit", out.length, first.total);
+  return out;
+}
+
+// ── Wecruit / Hotjob ─────────────────────────────────────────────────────────
+/**
+ * wecruit.hotjob.cn, a hosted recruitment portal with one tenant per suite key
+ * (`SU<24 hex>`). `site.endpoint` is the tenant's list API with the tenant key:
+ *
+ *   POST https://wecruit.hotjob.cn/wecruit/positionInfo/listPosition/<SUkey>
+ *        ?iSaJAx=isAjax&request_locale=zh_CN      (form-encoded)
+ *        isFrompb=true&recruitType=2&pageSize=15&currentPage=<1..>
+ *   → {data:{positonNum (sic), pageForm:{totalPage, pageSize, pageData:[{postId,
+ *       postName, workPlaceStr:"佛山市-南海区", publishDate:"YYYY-MM-DD hh:mm:ss",
+ *       postTypeName, recruitType}]}}}
+ *
+ * recruitType 2 is 社会招聘 (experienced); 1 is campus and is not read. pageSize
+ * is FORCED to 15 whatever is sent (100 → 15, measured 2026-09-30), so the walk
+ * is totalPage requests. The research note needed a browser User-Agent and the
+ * tenant's social.html as Referer to get past an Aliyun WAF 405; both are sent.
+ *
+ * The link is the portal's own detail page, read off its bundle:
+ * `/<SUkey>/pb/posDetail.html?postId=…&postType=society` (recruitType 2 →
+ * "society" in the bundle's own map {1:"campus",2:"society",12:"intern"}).
+ */
+interface HotjobPost {
+  postId?: string;
+  postName?: string;
+  workPlaceStr?: string | null;
+  publishDate?: string | null;
+  postTypeName?: string | null;
+}
+
+async function fetchHotjob(site: SiteDef): Promise<PortalJob[]> {
+  const u = new URL(site.endpoint);
+  const tenant = u.pathname.split("/").pop() ?? "";
+  if (!/^SU[0-9a-f]{24}$/.test(tenant)) return [];
+  const read = async (i: number) => {
+    const text = await getText(site.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+        Referer: `${u.origin}/${tenant}/pb/social.html`,
+      },
+      body: `isFrompb=true&recruitType=2&pageSize=15&currentPage=${i + 1}`,
+    });
+    try {
+      const r = (text ? JSON.parse(text) : null) as {
+        data?: {
+          positonNum?: number;
+          pageForm?: { totalPage?: number; pageData?: HotjobPost[] | null };
+        };
+      } | null;
+      const pf = r?.data?.pageForm;
+      return pf
+        ? {
+            total: Number(r?.data?.positonNum) || 0,
+            pages: Number(pf.totalPage) || 0,
+            posts: pf.pageData ?? [],
+          }
+        : null;
+    } catch {
+      return null;
+    }
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total || !first.pages) return [];
+  const rest = await allPages(
+    first.pages - 1,
+    async (i) => (await read(i + 1))?.posts ?? null,
+    `hotjob ${site.key ?? site.id}`,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.posts, ...rest]) {
+    const id = p.postId ?? "";
+    const title = clean(p.postName ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(p.workPlaceStr ?? ""),
+        `${u.origin}/${tenant}/pb/posDetail.html?postId=${id}&postType=society`,
+        cnDate(p.publishDate),
+        clean(p.postTypeName ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(`hotjob ${site.key ?? site.id}`, out.length, first.total);
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  meituan: fetchMeituan,
+  jdzhaopin: fetchJdZhaopin,
+  cmbchina: fetchCmbChina,
+  saicrecruit: fetchSaicRecruit,
+  hotjob: fetchHotjob,
+  // Feishu/Lark Hire tenants other than ByteDance's own board run the same
+  // reader; the platform is separate only so their rows get their own tag.
+  atsx: fetchBytedance,
   sfclassicxml: fetchSfClassicXml,
   tencent: fetchTencent,
   baidu: fetchBaidu,
@@ -32577,6 +33238,16 @@ export const SOURCE_TAG: Record<Platform, string> = {
   silkroad: "silkroad",
   readyemploy: "readyemploy",
   jobvite: "jobvite",
+  // Batch 12 F. The employer's own board, named for the employer as batch 11
+  // D's were; Hotjob (Wecruit) is a vendor platform, named for the platform,
+  // as is Feishu/Lark Hire ("atsx", its own product name in its API paths) for
+  // tenants other than ByteDance.
+  meituan: "meituan",
+  jdzhaopin: "jd",
+  cmbchina: "cmb",
+  saicrecruit: "saic",
+  hotjob: "hotjob",
+  atsx: "atsx",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
