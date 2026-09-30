@@ -25,7 +25,7 @@ import {
   ONET_RELATED,
   ONET_ROLES,
 } from "../src/employsi/data/onetRoles";
-import { careerMoves } from "../src/employsi/lib/careerCard";
+import { MOVE_MIN_SHARED, careerMoves } from "../src/employsi/lib/careerCard";
 
 let failed = 0;
 function check(name: string, ok: boolean, detail?: unknown) {
@@ -116,6 +116,10 @@ for (const n of CAREER_PATHWAYS.nodes) {
       (ONET_RELATED[ONET_ROLES[id]] ?? []).includes(ONET_ROLES[m.id]),
     );
     check(`${id} -> ${m.id}: overlap is a share`, m.overlap >= 0 && m.overlap <= 1);
+    check(
+      `${id} -> ${m.id}: our ads show something in common (a skill, or ${MOVE_MIN_SHARED}+ employers)`,
+      m.overlap > 0 || m.sharedEmployers >= MOVE_MIN_SHARED,
+    );
   }
   check(
     `${id}: moves ordered by skill overlap`,
@@ -130,6 +134,17 @@ check(
   "head of payroll can lead to chief people officer",
   !!headPayroll &&
     careerMoves(CAREER_PATHWAYS, headPayroll, "au").some((m) => m.id === "hr|generalist|6"),
+);
+
+// The move this rule was written for: O*NET relates HR Managers to Social and
+// Community Service Managers, and our ads share no skill between them.
+const cpo = CAREER_PATHWAYS.nodes.find(
+  (x) => x.family === "hr" && x.track === "generalist" && x.rung === 6,
+);
+check(
+  "chief people officer does not lead to director of social work",
+  !!cpo &&
+    !careerMoves(CAREER_PATHWAYS, cpo, "au").some((m) => m.id.startsWith("care|social-work")),
 );
 
 const pane = readFileSync(
