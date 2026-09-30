@@ -17776,14 +17776,32 @@ body {
   color: var(--text-primary, #1c1c1e);
   text-decoration: underline;
 }
+/* The core tasks, as an actual bulleted list.
+
+   IT WAS ALREADY <ul><li> AND STILL HAD NO BULLETS, because `display: flex`
+   was on the list: a flex container makes its children flex items, and a flex
+   item does not generate a list marker. So the markup was right, the markers
+   were silently dropped, and the `padding-left: 18px` was indenting for
+   bullets that never rendered — which is why the section read as ragged
+   paragraphs. Laying it out as a list (block items + list-style) is what puts
+   them back; the row gap moves from `gap` to a margin for the same reason. */
 .cponettasks {
   margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding-left: 20px;
+  list-style: disc outside;
   font: 400 13px/1.45 "Inter", system-ui, sans-serif;
   color: var(--text-primary, #1c1c1e);
+}
+.cponettasks li {
+  /* `display: list-item` is the default, and is stated because the rule above
+     is exactly what was lost last time. */
+  display: list-item;
+}
+.cponettasks li + li {
+  margin-top: 6px;
+}
+.cponettasks li::marker {
+  color: var(--text-tertiary, #8e8e93);
 }
 .cponetmore {
   align-self: flex-start;

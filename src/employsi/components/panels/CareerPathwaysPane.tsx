@@ -23,7 +23,7 @@ import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
 import { useClickAway } from "../../hooks/useClickAway";
-import { ONET_ZONE, onetForRole, onetUrl } from "../../lib/onet";
+import { onetForRole, onetUrl } from "../../lib/onet";
 import { SKILL_ICONS, skillIcon } from "../../lib/skillCard";
 
 /**
@@ -1654,10 +1654,21 @@ function OnetSection({ id }: { id: string }) {
   useEffect(() => setAllTasks(false), [id]);
   if (isPending) return null;
 
+  // THE CREDIT IS A LICENCE CONDITION, NOT DECORATION (see lib/onet.ts): O*NET
+  // is CC BY 4.0, which requires naming the creator and the licence wherever
+  // the content travels. So the card's O*NET wording was cut down rather than
+  // removed — the job-zone sentence and the "describes the US occupation this
+  // role maps to" explanation are gone, and this one line stays.
+  //
+  // It absorbs the occupation link the header used to carry: "O*NET 31.0" now
+  // points at the specific occupation, which keeps CC BY's link-to-the-material
+  // while removing a second visible element from the card.
   const credit = (
     <span className="cponetcredit">
-      {"O*NET "}
-      {data?.version ?? ""}
+      <a href={onetUrl(data?.soc ?? "")} target="_blank" rel="noreferrer">
+        {"O*NET "}
+        {data?.version ?? ""}
+      </a>
       {" · U.S. Dept. of Labor/ETA · "}
       <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
         CC BY 4.0
@@ -1681,11 +1692,12 @@ function OnetSection({ id }: { id: string }) {
   const tasks = allTasks ? o.tasks : o.tasks.slice(0, 3);
   return (
     <section className="cponet" aria-label="Tasks and tools">
+      {/* The occupation's name used to sit here as "O*NET: Human Resources
+          Specialists". Removed — it repeated in the credit line's link, and on
+          a card of measured figures a second proper noun read as another
+          heading rather than as a source. */}
       <div className="cponethead">
         <span style={EYEBROW}>TASKS &amp; TOOLS</span>
-        <a className="cponetocc" href={onetUrl(data.soc)} target="_blank" rel="noreferrer">
-          {`O*NET: ${o.title}`}
-        </a>
       </div>
       <ul className="cponettasks">
         {tasks.map(([t]) => (
@@ -1709,11 +1721,7 @@ function OnetSection({ id }: { id: string }) {
           </div>
         </div>
       )}
-      <p className="cponetnote">
-        {o.zone != null && ONET_ZONE[o.zone] ? `Job zone ${o.zone}: ${ONET_ZONE[o.zone]}. ` : ""}
-        Describes the US occupation this role maps to, not measured from employsi&apos;s ads.{" "}
-        {credit}
-      </p>
+      <p className="cponetnote">{credit}</p>
     </section>
   );
 }

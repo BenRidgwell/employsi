@@ -30,6 +30,15 @@ export interface OnetForRole {
   version: string;
 }
 
+/**
+ * Job-zone labels, 1-5.
+ *
+ * NOTHING RENDERS THESE TODAY. The career card's "Job zone 4: Considerable
+ * preparation." sentence was removed on 2026-09-30 as clutter. Kept because
+ * `zone` is still carried on every occupation by the generator, so the labels
+ * are what any future surface for it would need — and because deriving them
+ * again from O*NET's documentation is the kind of thing that gets guessed.
+ */
 export const ONET_ZONE: Record<number, string> = {
   1: "Little or no preparation",
   2: "Some preparation",
