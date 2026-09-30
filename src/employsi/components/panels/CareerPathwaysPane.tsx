@@ -1229,6 +1229,20 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                       top: `${(sr.ys[k] / 72) * 100}%`,
                     }}
                   />
+                  {/* The Trending card's tooltip (.tsktip), so every chart in
+                      the app labels a point the same way. The series is the
+                      ROLE's ads per day, even with a skill searched — the
+                      archive has no per-skill daily series for a rung — so
+                      the label says "ads", never "with skill". */}
+                  <span
+                    className={`tsktip${k / Math.max(1, N - 1) > 0.8 ? " end" : k / Math.max(1, N - 1) < 0.2 ? " start" : ""}`}
+                    style={{
+                      left: `${(k / Math.max(1, N - 1)) * 96}%`,
+                      top: `${(sr.ys[k] / 72) * 100}%`,
+                    }}
+                  >
+                    {`${num(n.series!.counts[k])} ads · ${dayAt ? dayLabel(dayAt) : ""}`}
+                  </span>
                 </>
               )}
             </div>
@@ -1390,7 +1404,12 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                     pointerEvents: "none",
                     left: hv.left,
                     top: hv.top,
-                    transform: "translate(-50%, 10px)",
+                    // Kept inside the map, which clips (overflow hidden): a
+                    // city near the left edge anchors the callout's left side
+                    // to its dot, one near the right its right side, and one
+                    // in the bottom quarter opens upwards. Centred-below cut
+                    // Perth's in half.
+                    transform: `translate(${hv.x < 75 ? "-14px" : hv.x > 225 ? "calc(-100% + 14px)" : "-50%"}, ${hv.y > 150 ? "calc(-100% - 10px)" : "10px"})`,
                     background: "var(--neutral-900,#1c1c1e)",
                     color: "#fff",
                     borderRadius: 8,
@@ -1551,9 +1570,11 @@ function CareerCard({ onClose }: { onClose: () => void }) {
  * (careerCard.careerMoves). It sits on the edge the "Set as goal?" button does
  * not use — the top on the core lane, the bottom below it.
  *
- * The figures and the caveat live in the hover card, not on the map: the
- * link is O*NET's, the overlap and shared-employer counts are ours, and it
- * never says people make the move — the archive holds ads, not careers.
+ * The figures live in the hover card, not on the map. The link is O*NET's and
+ * the overlap and shared-employer counts are ours; nothing on it says people
+ * make the move — the archive holds ads, not careers. The visible caveat line
+ * was removed at the user's request 2026-09-30; each icon's accessible label
+ * still carries it.
  */
 function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => void }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -1604,10 +1625,6 @@ function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => vo
               ? `${m.sharedEmployers} employer${m.sharedEmployers === 1 ? "" : "s"} hire both`
               : "no shared employers on the map"}
             {m.payLabel === "—" ? "" : ` · ${m.payLabel} median`}
-          </span>
-          <span className="cpbranchnote">
-            Related occupation per O*NET, not a tracked career move. Skills and employers are from
-            employsi&apos;s ads.
           </span>
         </div>
       )}
