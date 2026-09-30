@@ -219,7 +219,9 @@ type Platform =
   | "x0pa"
   | "workdaystores"
   | "applynow"
-  | "hutchies";
+  | "hutchies"
+  | "inploi"
+  | "brassring";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -533,6 +535,21 @@ interface SiteDef {
    * ("Customer Enquiries Officer").
    */
   skipTitles?: RegExp;
+  /**
+   * Postings dropped by their stored LOCATION, for a board shared with another
+   * roster company that is already read from it by location.
+   *
+   * Vodafone Group is the case (measured 2026-09-30): jobs.vodafone.com is the
+   * group's Eightfold board, and Vodacom Group (`johannesburg-vod`) is read from
+   * the SAME board narrowed by PCSX `location` to South Africa, Tanzania and
+   * Lesotho. Unfiltered, Vodafone's feed would file those roles a second time
+   * under a second company. Dropping every row whose location names one of the
+   * three countries is exactly the complement of Vodacom's three feeds, so each
+   * role is archived once. Tested against `loc` as stored (all sites joined),
+   * so a role that ALSO names a Vodacom country goes to Vodacom, as it does
+   * there. Unset on every other site, where it changes nothing.
+   */
+  skipLocations?: RegExp;
   /**
    * Eightfold PCSX only: store and place a multi-site role by its FIRST listed
    * site, as "<first> (+N other locations)", instead of every site joined.
@@ -20068,8 +20085,9 @@ export const SITES: SiteDef[] = [
   // recognisably Vodacom (VodaPay, VB Connected Products, M-PESA Tanzania, Vodacom Lesotho
   // regulatory). Mozambique, DRC and Kenya: 0 on the board. Egypt (35) deliberately EXCLUDED
   // although Vodafone Egypt is Vodacom-owned: its rows are mostly _VOIS (Vodafone Group shared
-  // services) and cannot be told apart from Vodacom Egypt. If Vodafone itself is ever wired
-  // from this board, exclude these three countries there or these rows double. Vodacom's early-
+  // services) and cannot be told apart from Vodacom Egypt. Vodafone itself (`london-vod`, batch
+  // 13) reads this board whole and drops these three countries (skipLocations), so these rows
+  // are not filed twice — keep the two lists in step. Vodacom's early-
   // careers board (vodacom.com/early-careers.php) is behind the same WAF and is not covered.
   // homeHub johannesburg; the TZ/LS rows state their country so they stay unplaced, correctly.
   {
@@ -23914,6 +23932,415 @@ export const SITES: SiteDef[] = [
       ["norwell, ma", "boston"],
     ],
   })),
+  // ── batch 13: L ──
+  //
+  // Eighteen FTSE/SMI employers the gap report showed at zero. Measured
+  // 2026-09-30. Wired below: Shell (global line), Lloyds, NatWest, Rolls-Royce,
+  // Aviva, Legal & General, Vodafone, Compass Group UK & Ireland, Julius Baer,
+  // Swisscom, Lonza, Richemont, Kühne + Nagel, UBS.
+  //
+  // NOT WIRED, and why:
+  //   HSBC (`hongkong-00005`) — deliberately. HSBC's global Eightfold board is
+  //     already archived once under the LSE line `london-hsba` (4,365 rows), and
+  //     COMPANY_ID_ALIAS in lib/openRolesFn.ts points `hongkong-00005` at it so
+  //     both cards show the same roles. A second feed under the HKEX id would
+  //     file every role twice in market-wide totals. The gap report reads zero
+  //     because it counts rows by company_id; the card does not.
+  //   Rio Tinto (`london-rio`) — the same shape without the alias. The global
+  //     Symphony board jobs.riotinto.com is archived under `rio` (Perth; 707
+  //     portal-sy rows) and places its Pilbara/Perth/Brisbane sites through
+  //     HUB_MATCH (" wa,", "pilbara", "queensland"…). `london-rio` is the LSE
+  //     listing of the same company; it wants a COMPANY_ID_ALIAS entry
+  //     (london-rio -> rio), not a second walk of the same board.
+  //   Tesco — careers.tesco.com is Avature, ~2,000-2,200 store roles (jobOffset
+  //     2000 full, 2200 empty) at a fixed 10 a page with no exact total ("of
+  //     999+"), and the location cell is a bare store name ("Solihull",
+  //     "Caterham Superstore") that places nowhere. Over 200 serial pages with
+  //     nothing to bound them by and nothing to put on the map.
+  //   National Grid — jobs.nationalgrid.com (UK and US boards) and
+  //     careers.nationalgrid.com answer 403 to every request from here; the ATS
+  //     behind them could not be identified, so nothing was measured.
+  //     careers.nationalgrid.co.uk is National Grid Electricity Distribution's
+  //     own site and loads its list client-side from careershub.* — not read.
+  {
+    id: "london-shel",
+    name: "Shell",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    // Shell's global Workday board, MINUS AUSTRALIA. The roster carries Shell
+    // twice: `shell` (Perth, the Australian business) already reads this board
+    // filtered to Australia's locationCountry facet, and this is the LSE line.
+    // Measured 2026-09-30: total 125 across 22 countries, Australia 2; these
+    // are the other 21 country facet ids, read off the board, and the filtered
+    // total is 123 = 125 - 2, so nothing is lost and nothing is filed twice.
+    //
+    // A COUNTRY THE BOARD ADDS LATER IS NOT READ until its id is added here —
+    // Workday cannot negate a facet. The facet sum equalled the board total
+    // (125), so today no role is outside the list. A role listed in Australia
+    // AND another country ("2 Locations") would match both feeds; none did.
+    endpoint: "https://shell.wd3.myworkdayjobs.com/wday/cxs/shell/ShellCareers/jobs",
+    origin: "https://shell.wd3.myworkdayjobs.com/ShellCareers",
+    appliedFacets: {
+      locationCountry: [
+        "1a29bb1357b240ab99a2fa755cc87c0e", // Brazil
+        "a30a87ed25634629aa6c3958aa2b91ea", // Canada
+        "6cb77610a8a543aea2d6bc10457e35d4", // China
+        "49ab063f422741e2aef271de00efeac8", // Denmark
+        "d865e83093ad42319653b08e61f7db49", // Egypt
+        "54c5b6971ffb4bf0b116fe7651ec789a", // France
+        "dcc5b7608d8644b3a93716604e78e995", // Germany
+        "d4afdeb461d446e4babd204bd102dba8", // Hong Kong
+        "c4f78be1a8f14da0ab49ce1162348a5e", // India
+        "972dc4ba8d454bc0b893ff84b1529077", // Malaysia
+        "9696868b09c64d52a62ee13b052383cc", // Netherlands
+        "e56f1daf83e04bacae794ba5c5593560", // Philippines
+        "131d5ac7e3ee4d7b962bdc96e498e412", // Poland
+        "f5ff182c7fab406bbb110cc1f7e99064", // Qatar
+        "80938777cac5440fab50d729f9634969", // Singapore
+        "873d0f604e3b458c990cb4d83a5c0f14", // Thailand
+        "db69e418446c11de98360015c5e6daf6", // Trinidad and Tobago
+        "c2e3bac5bbbb47b29dfc6e8b56a1586e", // Türkiye
+        "29247e57dbaf46fb855b224e03170bc7", // United Kingdom
+        "bc33aa3152ec42d4995f4791a106ed09", // United States of America
+        "635d2e106177441f9100b9d8688fbb39", // Venezuela
+      ],
+    },
+    // Locations are site names ("London - Shell Centre", "Bangalore RMZ-ECO
+    // WORLD", "Texas - Houston - One Thousand Main"); HUB_MATCH places the
+    // cities it knows and "Rotterdam - Weena", "Scotford - Refinery" stay
+    // unplaced. homeHub is only the blank-location fallback.
+    homeHub: "london",
+  },
+  {
+    id: "london-lloy",
+    name: "Lloyds Banking Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // lbg/wd3/lbg_Careers, linked from every lloydsbankinggroup.com careers
+    // page. Measured 2026-09-30: total 85, all UK and Crown dependencies
+    // (Edinburgh, Bristol, Halifax, Chester, St Helier…). Branch/contact-centre
+    // volume hiring is not on this site today; this is what it advertises.
+    endpoint: "https://lbg.wd3.myworkdayjobs.com/wday/cxs/lbg/lbg_Careers/jobs",
+    origin: "https://lbg.wd3.myworkdayjobs.com/lbg_Careers",
+    homeHub: "london",
+    // "Leeds Wellington Place" (4) is an office in Leeds — HUB_MATCH's
+    // "wellington" filed it on Wellington NZ.
+    hubHints: [["wellington place", null]],
+  },
+  {
+    id: "london-nwg",
+    name: "NatWest Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // jobs.natwestgroup.com is a TalentBrew front end that 403s this sandbox;
+    // its apply button goes to Workday, tenant rbs/wd3, site RBS. Measured
+    // 2026-09-30: total 141 — UK 65, India 45 (Bengaluru, Gurugram, Chennai),
+    // Jersey 9, Luxembourg 5, US 7. Locations are bare cities ("London",
+    // "Edinburgh", "Gurugram"); only the hub cities place.
+    endpoint: "https://rbs.wd3.myworkdayjobs.com/wday/cxs/rbs/RBS/jobs",
+    origin: "https://rbs.wd3.myworkdayjobs.com/RBS",
+    homeHub: "london",
+  },
+  // Rolls-Royce — careers.rolls-royce.com is a Vue page over its own API
+  // (rollsroyceats-prod-api.connectid.cloud, anonymous JWT), which reports
+  // totalCount 587 by seniority: professional 479, Intern_Graduate 101,
+  // Apprentice 7. Every row's applyUrl is on Workday tenant rollsroyce/wd3,
+  // one SITE per seniority with exactly those names — so the three Workday
+  // sites are read directly, and their totals (479 / 101 / 7, measured
+  // 2026-09-30) sum to the API's 587. Global: Friedrichshafen (Power Systems)
+  // 114, Indianapolis 63, Singapore 53, Dahlewitz, Aiken, Bristol, Derby…
+  //
+  // Hints: the UK sites are written "Bristol Filton (UK-B)", "Ansty (UK-AA)",
+  // and HOME_COUNTRY london reads that "uk" as London. And "Washington" alone is
+  // Washington, Tyne and Wear ("Washington (UK-BR)", United Kingdom, in the
+  // API), while the US office is "Washington D.C. RRNA Headquarters".
+  {
+    id: "london-rr",
+    key: "london-rr",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/professional/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/professional",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  {
+    id: "london-rr",
+    key: "london-rr-grad",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/Intern_Graduate/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/Intern_Graduate",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  {
+    id: "london-rr",
+    key: "london-rr-appr",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/Apprentice/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/Apprentice",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  // Aviva — Workday tenant aviva/wd1. Site External: measured 2026-09-30,
+  // total 132 — Canada 96, Poland 15, UK 14, US 4 — and Aviva_Investors_External
+  // 4. THIS IS NOT AVIVA'S WHOLE UK HIRING: careers.aviva.co.uk lists ~116 UK
+  // roles on its own search (per the page), but it is Akamai-blocked (403) from
+  // here and the Workday site behind it was not found (a dozen site names
+  // probed). So the card is the group/Canada/Investors board, not UK retail.
+  //
+  // Hints: "UK - Leeds - The Wharf" reads as London through HOME_COUNTRY's
+  // "uk"; Aviva Canada could list London, Ontario.
+  {
+    id: "london-av",
+    name: "Aviva",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://aviva.wd1.myworkdayjobs.com/wday/cxs/aviva/External/jobs",
+    origin: "https://aviva.wd1.myworkdayjobs.com/External",
+    homeHub: "london",
+    hubHints: [
+      ["london, on", null],
+      ["london on", null],
+      ["london", "london"],
+      ["uk - ", null],
+    ],
+  },
+  {
+    id: "london-av",
+    key: "london-av-investors",
+    name: "Aviva",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://aviva.wd1.myworkdayjobs.com/wday/cxs/aviva/Aviva_Investors_External/jobs",
+    origin: "https://aviva.wd1.myworkdayjobs.com/Aviva_Investors_External",
+    homeHub: "london",
+    hubHints: [
+      ["london, on", null],
+      ["london on", null],
+      ["london", "london"],
+      ["uk - ", null],
+    ],
+  },
+  {
+    id: "london-lgen",
+    name: "Legal & General",
+    sector: "Financial Services",
+    platform: "smartrecruiters",
+    // SmartRecruiters company `LegalAndGeneral`. Measured 2026-09-30: 75
+    // postings; careers.legalandgeneral.com (its own front end) said "73
+    // results" the same hour. London 40, Chicago 14 (L&G Asset Management
+    // America), Cardiff 12, Brighton 9.
+    endpoint: "LegalAndGeneral",
+    origin: "https://careers.legalandgeneral.com",
+    homeHub: "london",
+    // Locations read "Brighton and Hove, England, gb" — HOME_COUNTRY london
+    // matches "england" and filed Brighton on London. Only London is London.
+    hubHints: [
+      ["london", "london"],
+      [", england", null],
+      [", scotland", null],
+      [", wales", null],
+      ["united kingdom", null],
+    ],
+  },
+  {
+    id: "london-vod",
+    name: "Vodafone Group",
+    sector: "Technology, Media & Telecom",
+    platform: "eightfoldpcs",
+    // jobs.vodafone.com, Eightfold PCSX — the board johannesburg-vod already
+    // reads, narrowed to Vodacom's three countries. Measured 2026-09-30: count
+    // 1,293 (Pune 291, Düsseldorf 206, Bucharest, Istanbul, Budapest, London
+    // 44, Newbury 28 …). Read whole and every row naming South Africa, Tanzania
+    // or Lesotho dropped (skipLocations), so those stay Vodacom's alone.
+    // Egypt stays here: it is _VOIS (Vodafone Group shared services), which is
+    // why the Vodacom note excludes it there.
+    endpoint: "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=",
+    origin: "https://jobs.vodafone.com",
+    homeHub: "london",
+    skipLocations: /south africa|tanzania|lesotho/i,
+    // "Newbury, United Kingdom" (Vodafone UK's head office), "N/A, United
+    // Kingdom" and "Home Based, United Kingdom" all read as London through
+    // HOME_COUNTRY; only a location that names London is London.
+    hubHints: [
+      ["london", "london"],
+      ["united kingdom", null],
+      [", uk,", null],
+    ],
+  },
+  {
+    id: "london-cpg",
+    key: "london-cpg-uk",
+    name: "Compass Group",
+    sector: "Consumer & Retail",
+    platform: "inploi",
+    // Compass Group UK & IRELAND — jobs.compass-group.co.uk, an inploi site
+    // (see fetchInploi). NOT the board `london-cpg` already archives:
+    // scripts/compass-to-d1.py reads Compass Group AUSTRALIA's PageUp board
+    // (portal-pu); this is a different board in a different country with no
+    // overlap. Measured 2026-09-30: 2,733 roles — Defence 366, Chartwells 334,
+    // Medirest 268 … Compass Group Ireland 59 — read in 28 pages of 100, 6 s.
+    //
+    // The endpoint is the site's PUBLISHABLE key (window.__reactRouterContext
+    // `apiKey`), shipped to every browser, not a secret.
+    endpoint: "pk_edce29b92c2773898c482851",
+    origin: "https://jobs.compass-group.co.uk",
+    homeHub: "london",
+    // Rows are "<town>, <city>, United Kingdom" across every UK region;
+    // HOME_COUNTRY would put all 2,300 non-London rows on London. Only a row
+    // that names London is London; Perth (Scotland), Wellington (Somerset) and
+    // Boston (Lincolnshire) are kept off the AU/NZ/US hubs by the same rule.
+    hubHints: [
+      ["london", "london"],
+      ["united kingdom", null],
+    ],
+  },
+  {
+    id: "zurich-baer",
+    name: "Julius Baer Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // juliusbaer/wd3/External, the portal juliusbaer.com/careers links.
+    // Measured 2026-09-30: total 192 — Zurich 75, Singapore 56, Madrid 26,
+    // Hong Kong 12, Luxembourg, Guernsey, Dubai.
+    endpoint: "https://juliusbaer.wd3.myworkdayjobs.com/wday/cxs/juliusbaer/External/jobs",
+    origin: "https://juliusbaer.wd3.myworkdayjobs.com/External",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-scmn",
+    name: "Swisscom",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    // swisscom/wd103/SwisscomExternalCareers. Measured 2026-09-30: total 47,
+    // all Switzerland (Bern 24, Lausanne 10, Zurich, Geneva…); 29 are
+    // "N Locations", which name no place and stay unplaced.
+    endpoint:
+      "https://swisscom.wd103.myworkdayjobs.com/wday/cxs/swisscom/SwisscomExternalCareers/jobs",
+    origin: "https://swisscom.wd103.myworkdayjobs.com/SwisscomExternalCareers",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-lonn",
+    name: "Lonza Group",
+    sector: "Healthcare & Life Sciences",
+    platform: "workday",
+    // lonza/wd3/Lonza_Careers. Measured 2026-09-30: total 613 — US 201
+    // (Portsmouth NH, Bend OR, Houston TX, Walkersville MD), Switzerland 199
+    // (Visp 158, Stein, Basel), India 54, Singapore 35, China 31, UK 31.
+    // Locations are "CC - Site" ("CH - Visp", "US - Houston, TX"); Visp and
+    // Basel are not hubs and stay unplaced.
+    endpoint: "https://lonza.wd3.myworkdayjobs.com/wday/cxs/lonza/Lonza_Careers/jobs",
+    origin: "https://lonza.wd3.myworkdayjobs.com/Lonza_Careers",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-cfr",
+    name: "Compagnie Financière Richemont",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    // richemont/wd3/Richemont (careers.richemont.com). Measured 2026-09-30:
+    // total 1,385 across 25+ countries — France 268, Switzerland 177, Korea 93,
+    // Japan 79, Hong Kong 48, Singapore 49, Australia 43 — one walk of 70
+    // pages in ~73 s, under the tick budget and under Workday's 2,000-row
+    // offset cap. maxPages 90 leaves room for ~1,800 before it bites.
+    //
+    // Locations are upper-case cities ("PARIS", "MEYRIN", "SYDNEY"); the 42
+    // on Australian hubs (Sydney 31, Perth 5, Melbourne 5, Brisbane 1) match the
+    // board's own Australia facet (43), i.e. they are Richemont's Australian
+    // boutiques, not a foreign Perth.
+    endpoint: "https://richemont.wd3.myworkdayjobs.com/wday/cxs/richemont/Richemont/jobs",
+    origin: "https://richemont.wd3.myworkdayjobs.com/Richemont",
+    homeHub: "zurich",
+    maxPages: 90,
+  },
+  {
+    id: "zurich-knin",
+    name: "Kühne + Nagel International",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    // jobs.kuehne-nagel.com is Phenom (totalHits 1,115) and CANNOT be read
+    // whole: its widget pages in no fixed order — two "Most recent" walks held
+    // 1,041 and 1,009 unique of 1,115 — and the one exact partition
+    // (category, 14 values summing to 1,115) has "Freight Forwarding &
+    // Operations" at 559, over the 500 a single request returns.
+    //
+    // Behind it is SuccessFactors (careers.kuehne-nagel.com, NES theme, RMK
+    // service), which PARTITIONS BY LOCALE. Measured 2026-09-30, sort "date":
+    // en_US 679, de_DE 269, fr_FR 56, en_GB 40, es_ES 31, nl_NL 27, pl_PL 7,
+    // pt_PT 4, hu_HU 4, it_IT 3, fr_CA 1 = 1,121, against Phenom's 1,115; the
+    // other three locales the site offers (zh_CN, tr_TR, ja_JP) are 0 today and
+    // listed so a role posted in them is read. 1,117 unique ids collected.
+    //
+    // Multi-site roles are joined "; " and placed by the first HUB_MATCH needle
+    // anywhere in the string, as every sfRmkLocales board is.
+    endpoint: "https://careers.kuehne-nagel.com",
+    origin: "https://careers.kuehne-nagel.com",
+    homeHub: "zurich",
+    // "Brisbane, CA, USA" (K+N's San Francisco-area office) and "Renton, WA,
+    // USA" were filed on Brisbane and Perth.
+    hubHints: [
+      ["brisbane, ca, usa", null],
+      [", wa, usa", null],
+    ],
+    sfRmkSort: "date",
+    sfRmkLocales: [
+      "en_US",
+      "de_DE",
+      "fr_FR",
+      "en_GB",
+      "es_ES",
+      "nl_NL",
+      "pl_PL",
+      "pt_PT",
+      "hu_HU",
+      "it_IT",
+      "fr_CA",
+      "zh_CN",
+      "tr_TR",
+      "ja_JP",
+    ],
+  },
+  {
+    id: "zurich-ubsg",
+    name: "UBS Group",
+    sector: "Financial Services",
+    platform: "brassring",
+    // jobs.ubs.com, BrassRing partner 25008 site 5012 — the English search
+    // jobs.ubs.com's own home page links (see fetchBrassRing). Measured
+    // 2026-09-30: JobsCount 521 — New York 61, Singapore 42, Zürich 32, Poland
+    // 28, India 23, Hong Kong 23. Sister site 5155 lists 527, 508 of them the
+    // same requisitions; it is not read, so its ~19 others are not covered.
+    // Locations read "United States - New York", "Schweiz - Zürich".
+    endpoint:
+      "https://jobs.ubs.com/TgNewUI/Search/Ajax/ProcessSortAndShowMoreJobs?partnerid=25008&siteid=5012&loc=formtext23",
+    origin: "https://jobs.ubs.com",
+    homeHub: "zurich",
+    // "United States - Washington" is the STATE (Wealth Management offices
+    // in Bellevue/Seattle), not DC.
+    hubHints: [["united states - washington", null]],
+  },
   // ── batch 13: J ──
   //
   // Measured 2026-09-30. Wired below: Domino's, Regis Healthcare, Alliance
@@ -36204,6 +36631,209 @@ async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
   });
 }
 
+// ── batch 13 L: readers ──────────────────────────────────────────────────────
+
+// ── inploi (Compass Group UK & Ireland) ──────────────────────────────────────
+/**
+ * jobs.compass-group.co.uk is an inploi career site (React Router SSR; the
+ * listing is NOT in the served HTML). Its bundle calls inploi's search API:
+ *
+ *   GET https://api.inploi.com/search/results?page=N&per_page=100
+ *     headers: x-publishable-key: <pk_…>, Authorization: Bearer <pk_…>
+ *   -> {data: [{id, title, category, town, city, country, created_at,
+ *               company_name, …}], pagination: {total, current_page,
+ *               per_page, last_page}}
+ *
+ * The key is the site's PUBLISHABLE key, shipped in the page's own
+ * `window.__reactRouterContext` (`apiKey: "pk_…"`, `companySlug:
+ * "compass-group-uk"`) — a client key by design, not a secret. It is carried as
+ * the site's `endpoint`, the way SmartRecruiters carries a tenant name. The key
+ * alone scopes the search to the tenant; no company filter is sent.
+ *
+ * Measured 2026-09-30: total 2,733, `per_page` honoured up to 100 (28 pages)
+ * and refused above it (200 -> 422). BOTH headers are needed: without
+ * x-publishable-key the API answers {"error":"Publishable key not provided."};
+ * a request with no browser-like User-Agent is 403 at Cloudflare (the Worker
+ * sends UA). Walks returned 2,733 of 2,733 and, later that day, 2,737 of
+ * 2,737 twice with the same id set (~6 s, 28 requests, 6 at a time).
+ *
+ * Bounded by `pagination.total`/`last_page` from page 1, and read with
+ * allPages, so a page that cannot be read fails the pull rather than
+ * archiving the board minus it.
+ *
+ * Job permalink: <origin>/job/<id> (checked: 200, page names the role).
+ */
+interface InploiJob {
+  id?: number | string;
+  title?: string;
+  category?: string;
+  town?: string;
+  city?: string;
+  country?: string;
+  created_at?: string;
+}
+
+interface InploiPage {
+  data?: InploiJob[];
+  pagination?: { total?: number; last_page?: number };
+}
+
+const INPLOI_PAGE = 100;
+
+async function fetchInploi(site: SiteDef): Promise<PortalJob[]> {
+  const label = `inploi ${site.key ?? site.id}`;
+  const key = site.endpoint;
+  const read = (page: number) =>
+    getJson<InploiPage>(
+      `https://api.inploi.com/search/results?page=${page}&per_page=${INPLOI_PAGE}`,
+      { headers: { "x-publishable-key": key, Authorization: `Bearer ${key}` } },
+    );
+  const first = (await read(1)) ?? (await read(1));
+  const total = first?.pagination?.total ?? 0;
+  const last = Math.min(first?.pagination?.last_page ?? 0, site.maxPages ?? 60);
+  if (!first?.data?.length || !total) return [];
+  const rest = await allPages<InploiJob>(
+    Math.max(0, last - 1),
+    async (i) => (await read(i + 2))?.data ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...first.data, ...rest]) {
+    const title = clean(r.title ?? "");
+    const id = String(r.id ?? "");
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const town = clean(r.town ?? "");
+    const city = clean(r.city ?? "");
+    const loc = [town, city !== town ? city : "", clean(r.country ?? "")]
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/job/${id}`,
+        isoDay(r.created_at ?? ""),
+        clean(r.category ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── BrassRing / Kenexa TalentGateway (UBS) ───────────────────────────────────
+/**
+ * The TGnewUI search's own JSON call — the one scripts/infosys-to-d1.py reads
+ * for Infosys, here in-Worker because UBS's board is a third of the size:
+ *
+ *   POST <host>/TgNewUI/Search/Ajax/ProcessSortAndShowMoreJobs
+ *   {"partnerId","siteId","keyword":"","location":"","Latitude":0,
+ *    "Longitude":0,"facetfilterfields":{"Facet":[]},
+ *    "powersearchoptions":{"PowerSearchOption":[]},"SortType","pageNumber":N}
+ *   -> {"JobsCount": N, "Jobs": {"Job": [{Link, Questions: [{QuestionName, Value}]}]}}
+ *
+ * `endpoint` is that URL with the tenant in its query string —
+ * `?partnerid=&siteid=&loc=<question holding the location>` — because the
+ * location question is per tenant (Infosys `formtext2`, UBS `formtext23`).
+ *
+ * Measured 2026-09-30 on UBS (partner 25008, site 5012): JobsCount 521, 50 a
+ * page whatever is asked (11 pages), `pageNumber` one-based and disjoint,
+ * ~330 KB a page because every row carries its full description — ~3.6 MB for
+ * the board, read PAGE_CONCURRENCY pages at a time.
+ *
+ * THE SORT DECIDES WHETHER THE WALK READS THE BOARD. SortType "LastUpdated"
+ * (Infosys' choice) ties every role updated the same day and the tie-break
+ * moves between requests: two walks held 513 and 516 unique of 521. "reqid"
+ * (a field name in the board's own search.min.js) orders by requisition
+ * number — page 1 comes back ascending — and three walks each held 521 of 521.
+ *
+ * Bounded by JobsCount; read with allPages, so a page that cannot be read
+ * fails the pull rather than archiving the board minus 50 roles.
+ *
+ * Fields are a label/value list, read by NAME: jobtitle, lastupdated
+ * ("30-Sep-2026"), reqid, department, and the tenant's location question.
+ */
+interface BrassRingJob {
+  Link?: string;
+  Questions?: { QuestionName?: string; Value?: unknown }[];
+}
+
+interface BrassRingPage {
+  JobsCount?: number;
+  Jobs?: { Job?: BrassRingJob[] };
+}
+
+const BR_PAGE = 50;
+
+async function fetchBrassRing(site: SiteDef): Promise<PortalJob[]> {
+  const label = `brassring ${site.key ?? site.id}`;
+  const u = new URL(site.endpoint);
+  const partnerId = u.searchParams.get("partnerid") ?? "";
+  const siteId = u.searchParams.get("siteid") ?? "";
+  const locQ = u.searchParams.get("loc") ?? "formtext2";
+  const search = `${u.origin}${u.pathname}`;
+  const read = (pageNumber: number) =>
+    getJson<BrassRingPage>(search, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        partnerId,
+        siteId,
+        keyword: "",
+        location: "",
+        Latitude: 0,
+        Longitude: 0,
+        facetfilterfields: { Facet: [] },
+        powersearchoptions: { PowerSearchOption: [] },
+        SortType: "reqid",
+        pageNumber,
+      }),
+    });
+  const first = (await read(1)) ?? (await read(1));
+  const total = Number(first?.JobsCount) || 0;
+  const head = first?.Jobs?.Job ?? [];
+  if (!total || !head.length) return [];
+  const pages = Math.min(Math.ceil(total / BR_PAGE), site.maxPages ?? 40);
+  const rest = await allPages<BrassRingJob>(
+    Math.max(0, pages - 1),
+    async (i) => (await read(i + 2))?.Jobs?.Job ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...head, ...rest]) {
+    const q = new Map<string, string>();
+    for (const x of j.Questions ?? []) {
+      if (x.QuestionName) q.set(x.QuestionName, clean(String(x.Value ?? "")));
+    }
+    const title = q.get("jobtitle") ?? "";
+    const id = q.get("reqid") ?? "";
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const link = (j.Link ?? "").trim();
+    out.push(
+      job(
+        site,
+        title,
+        q.get(locQ) ?? "",
+        link.startsWith("http")
+          ? link
+          : `${u.origin}/TGnewUI/Search/home/HomeWithPreLoad?partnerid=${partnerId}` +
+              `&siteid=${siteId}&PageType=JobDetails&jobid=${id}`,
+        isoDay(q.get("lastupdated") ?? ""),
+        q.get("department") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
 // ── batch 13 J: applynow.net.au job blocks (Domino's), Hutchies' own page ────
 
 /**
@@ -36375,6 +37005,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   // reader; the platform is separate only so their rows get their own tag.
   atsx: fetchBytedance,
   workdaystores: fetchWorkdayStores,
+  inploi: fetchInploi,
+  brassring: fetchBrassRing,
   clinchfacets: fetchClinchFacets,
   danoneaem: fetchDanoneAem,
   sikaaem: fetchSikaAem,
@@ -36489,13 +37121,18 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
   const jobs = await FETCHERS[site.platform](site);
   const skip = site.skipTitles;
-  return skip ? jobs.filter((j) => !skip.test(j.t)) : jobs;
+  const skipLoc = site.skipLocations;
+  if (!skip && !skipLoc) return jobs;
+  return jobs.filter((j) => !skip?.test(j.t) && !skipLoc?.test(j.loc));
 }
 
 /** Short source tag per platform, so an archive row says where it came from. */
 export const SOURCE_TAG: Record<Platform, string> = {
   // Workday rows; only the placement differs (see fetchWorkdayStores).
   workdaystores: "wd",
+  inploi: "inp",
+  // The tag scripts/infosys-to-d1.py already writes (`portal-brassring`).
+  brassring: "brassring",
   clinchfacets: "clfc",
   danoneaem: "dnaem",
   sikaaem: "sikaem",
