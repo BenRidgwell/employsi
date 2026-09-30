@@ -248,12 +248,22 @@ export function NotificationBell() {
             <div className="nbhd">
               <span className="nbtitle">Alerts</span>
               <div className="nbhdbtns">
+                {/* Marking everything read CLOSES the panel. `rows` is every
+                    alert across all three tabs, not just the visible one, so
+                    after this there is nothing left to read — staying open
+                    leaves the person looking at a list they have just told us
+                    they are done with, and dismissing it by hand afterwards.
+
+                    Clicking a SINGLE row deliberately does not close: that is
+                    reading them one at a time, and closing after each would
+                    make the panel unusable for its main job. */}
                 <button
                   type="button"
                   className="nbsmall"
-                  onClick={() =>
-                    persist(Object.fromEntries(rows.map((r) => [r.id, true as const])))
-                  }
+                  onClick={() => {
+                    persist(Object.fromEntries(rows.map((r) => [r.id, true as const])));
+                    closeAlerts();
+                  }}
                 >
                   Mark all read
                 </button>
