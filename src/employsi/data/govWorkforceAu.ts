@@ -5,6 +5,12 @@
 //
 // Sources, as at the run that produced this file:
 //   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: Curriculum and Assessment Authority: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Office of the Information Commissioner: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Energy and Water Ombudsman: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Racing Integrity Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Pharmacy Business Ownership Council: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
+//   QLD: Stadiums Queensland: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Parliamentary Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   QLD: Mental Health Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Building and Construction Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -290,10 +296,12 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-economic-development-queensland": { now: 181, prev: 172, yoy: 5.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-education": { now: 79353, prev: 77340, yoy: 2.6, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-electoral-commission": { now: 84, prev: 77, yoy: 9.1, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-energy-and-water-ombudsman-queensland": { now: 44, prev: 44, yoy: 0.0, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-environment-tourism-science-and-innovation": { now: 3048, prev: 3042, yoy: 0.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-families-seniors-disability-services-and-child-safety": { now: 5774, prev: 5510, yoy: 4.8, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-health-and-wellbeing-queensland": { now: 71, prev: 67, yoy: 5.3, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-housing-and-public-works": { now: 4443, prev: 4104, yoy: 8.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-information-commissioner": { now: 50, prev: 51, yoy: -3.2, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-inspector-general-emergency-management": { now: 21, prev: 17, yoy: 23.5, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-justice": { now: 4629, prev: 4532, yoy: 2.1, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-legal-aid": { now: 816, prev: 761, yoy: 7.2, asof: "Mar 2026", span: 1, unit: "fte" },
@@ -307,15 +315,19 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-public-trust-office": { now: 608, prev: 624, yoy: -2.6, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-building-and-construction-commission": { now: 688, prev: 673, yoy: 2.2, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-corrective-services": { now: 8614, prev: 8104, yoy: 6.3, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-curriculum-and-assessment-authority": { now: 303, prev: 303, yoy: 0.0, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-family-and-child-commission": { now: 84, prev: 67, yoy: 25.4, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-fire-department": { now: 4243, prev: 4151, yoy: 2.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-health": { now: 119625, prev: 114757, yoy: 4.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-mental-health-commission": { now: 52, yoy: null, asof: "Jun 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-pharmacy-business-ownership-council": { now: 15, yoy: null, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-police-service": { now: 19132, prev: 18584, yoy: 2.9, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-queensland-racing-integrity-commission": { now: 161, yoy: null, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-rural-and-industry-development-authority": { now: 191, prev: 190, yoy: 0.6, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-queensland-treasury": { now: 1877, prev: 1853, yoy: 1.3, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-resources-safety-and-health-queensland": { now: 387, prev: 360, yoy: 7.5, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-sport-racing-and-olympic-and-paralympic-games": { now: 370, prev: 439, yoy: -15.7, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-stadiums-queensland": { now: 227, prev: 189, yoy: 20.2, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-state-development-infrastructure-and-planning": { now: 1903, prev: 1805, yoy: 5.4, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-state-library": { now: 294, prev: 305, yoy: -3.6, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-tafe-queensland": { now: 4220, prev: 4363, yoy: -3.3, asof: "Mar 2026", span: 1, unit: "fte" },

@@ -1398,8 +1398,25 @@ NOT_IN_SOURCE = {
         'The largest single ad count in the whole gap, and there is no figure '
         'to file for it',
     'qld:Queensland Academy of Sport':
-        'no row names it; it is a unit inside the Department of Sport, Racing '
-        'and Olympic and Paralympic Games (370)',
+        'THE REASON WAS "a unit inside the Department of Sport, Racing and '
+        'Olympic and Paralympic Games (370)" AND THE ACADEMY STOPPED BEING ONE '
+        'DURING THE YEAR. Its own annual report — tabled paper 5826T1867, read '
+        '2026-09-30 — describes 2025-26 as "the QAS\'s transition to a statutory '
+        'body" and gives its own workforce: p28, "Total FTE 122.3" against a '
+        'head count of 132, on MOHRI data at 30 June 2026. So the card has a '
+        'figure of its own and the old reason is stale.\n\n'
+        'IT IS STILL REFUSED, FOR THE DOUBLE COUNT RATHER THAN FOR THE SOURCE. A '
+        'body that became a statutory body PART WAY THROUGH the year is exactly '
+        "the case where its people sit inside its former department's figure as "
+        "well as its own, and the department's 370 is the workbook's, at Mar "
+        '2026, which is BEFORE 30 June. Filing 122.3 now would put the same '
+        'staff on two cards for whatever part of the year they were '
+        "departmental. What would settle it is the department's own report "
+        '(tabled paper 5826T1866) saying what its workforce figure covers, the '
+        "way DCCEEW's Table 7 note does.\n\n"
+        'And read 132 as the head count, not as a prior year: the column it '
+        'sits in is headed "Number (headcount)". Taken as last year it would '
+        'publish a false -7.3%',
     'qld:Queensland Ambulance Service':
         'no row names it. Its staff sit inside Queensland Health (119,625) — '
         'that part is inference, since the source separates neither the '
@@ -1407,34 +1424,6 @@ NOT_IN_SOURCE = {
 
     # Independent statutory authorities. None of the 38 rows is one of these,
     # so the absence is the collection's scope rather than a naming mismatch.
-    'qld:Queensland Curriculum and Assessment Authority':
-        'no row names it; statutory authority, outside the collection',
-    # ── CROSS RIVER RAIL: THE REPORT OPENS AND GIVES TWO DIFFERENT TOTALS ───
-    # Reachable and read (crossriverrail.qld.gov.au links the 2025-26 report from
-    # its own root, 6,963,181 bytes), so "outside the collection" is answered and
-    # what replaces it is about the document. It states the same quantity twice,
-    # in almost the same words, and the two disagree:
-    #
-    #   p20   "The number of employees (including full-time and part-time
-    #          employees) measured on a full-time equivalent (FTE) basis was
-    #          238 as at 30 June 2026"
-    #   p35   Note 4, under "The number of employees including both full-time
-    #          employees and part-time employees measured on a full-time
-    #          equivalent basis is:" — Total 283 (2025: 309)
-    #
-    # 238 AND 283 ARE THE SAME DIGITS TRANSPOSED, and the note is the one that
-    # adds up: 210 funded by the Delivery Authority plus 73 funded by DTMR and
-    # QR is 283, and 236 + 73 is 309. So the prose is very probably the typo —
-    # but "very probably" is an inference about which number a proofreader
-    # missed, not a measurement, and this file does not file those.
-    #
-    # AND EVEN THE NOTE WOULD NEED A DECISION. Its own split says 73 of the 283
-    # are "Employees funded by DTMR and QR", and p20 says the Authority "may
-    # also engage officers on secondment and interchange from other Queensland
-    # Government entities" — so filing 283 puts 73 people on this card who are
-    # most likely inside Transport and Main Roads' 6,573, while filing 210 takes
-    # a component and calls it the total. Two separate reasons not to file, and
-    # only the first goes away if the next edition agrees with itself.
     'qld:Cross River Rail Delivery Authority':
         'ITS REPORT OPENS AND GIVES TWO DIFFERENT TOTALS FOR THE SAME THING. '
         'crossriverrail.qld.gov.au links the 2025-26 annual report from its own '
@@ -1486,24 +1475,34 @@ NOT_IN_SOURCE = {
         "inside the Department of Justice's 4,629. OPG is in the Justice "
         'portfolio and its report says its staff "are employed under the Public '
         'Sector Act 2022" — which names the employing ACT, not the employing '
-        'agency, and Taronga turned on exactly that distinction. The document '
-        "that would settle it is the Department of Justice's own annual report, "
-        'at publications.qld.gov.au/dataset/2025-26-doj-annual-report, which '
-        'answers 202 and zero bytes to a plain fetch and needs the browser. Note '
+        'agency, and Taronga turned on exactly that distinction.\n\n'
+        "THE DEPARTMENT OF JUSTICE'S OWN REPORT HAS NOW BEEN READ — tabled paper "
+        '5826T1887, off Parliament, which is the route that opened on 2026-09-30 '
+        '— AND IT DOES NOT SETTLE IT EITHER. Two things in it point opposite '
+        'ways. Its p23 organisational chart lists the Office of the Public '
+        'Guardian under "Department of Justice statutory authorities", in a '
+        'column separate from every departmental division, which is what an '
+        "entity OUTSIDE the department's own workforce looks like; but its "
+        'Table 3 workforce profile — 4,559.54 FTE, 4,914 head count at 30 June '
+        '2026 — carries one footnote, "MOHRI FTE data for fortnight ending 30 '
+        'June 2026", and names no exclusions at all, where DCCEEW\'s Table 7 '
+        'note (the model for filing Taronga and the EPA) says in words which '
+        'entities its figure leaves out. AN ABSENT EXCLUSION NOTE IS NOT AN '
+        'INCLUSION NOTE.\n\n'
+        'Two further things. The card is filed from the State of the Sector '
+        "workbook's 4,629, not from this report, so strictly the question is "
+        "about the WORKBOOK's scope and a departmental annual report cannot "
+        'answer it. And p12 is the one thing that tilts it toward inclusion: the '
+        'department reports "Public Guardianship" as one of its own SERVICES, '
+        'with a cost-per-hour service standard, which is how a department '
+        'describes work it delivers rather than work a separate employer '
+        'delivers. Note '
         'also that 337.9 is an ESTABLISHMENT of funded positions rather than an '
         'actual FTE, so 372 head count would be the figure — and the only '
         'Queensland card not in FTE',
     'qld:QLeave':
         'no row names it; the portable long service leave authority is a '
         'statutory body, outside the collection',
-    'qld:Queensland Racing Integrity Commission':
-        'no row names it; statutory body, outside the collection',
-    'qld:Energy and Water Ombudsman Queensland':
-        'no row names it; statutory scheme, outside the collection',
-    'qld:Stadiums Queensland':
-        'no row names it; statutory authority, outside the collection',
-    'qld:Queensland Pharmacy Business Ownership Council':
-        'no row names it; statutory council, outside the collection',
     'qld:Office of Industrial Relations':
         'no row names it; an office inside a department rather than an agency '
         'reported in its own right. Which department is not established here — '
@@ -1516,11 +1515,6 @@ NOT_IN_SOURCE = {
         'no row names it; an officer of the Parliament, outside the collection. '
         "The source's 'Office of the Health Ombudsman' (163) is a DIFFERENT "
         'body and must not be taken for it',
-    'qld:Information Commissioner':
-        'no row names it; an officer of the Parliament, outside the collection',
-
-    # ── Victoria: inside a parent's row, and not separable ─────────────────
-    # The source says so itself, in the parent row's own brackets.
     'vic:State Revenue Office':
         "inside 'Department of Treasury and Finance (includes State Revenue "
         "Office and Commission for Better Regulation)' — 1,612 covers both, and "
@@ -3132,6 +3126,219 @@ AGENCY_REPORTS = {
         header=r'2025 2024',
         proof=r'For the Year Ended 30 June 2025',
         unit='fte', asof='Jun 2025'),
+    # ═════════════════════════════════════════════════════════════════════════
+    # THE QUEENSLAND TABLED-PAPERS ROUTE. Every spec below reads its document
+    # from www.parliament.qld.gov.au, not from the agency's own site, and that
+    # is the whole reason these six cards could be filed from the authoring
+    # sandbox at all.
+    #
+    # THE AGENCY HOSTS ARE BEHIND AN AWS WAF JAVASCRIPT CHALLENGE and
+    # publications.qld.gov.au answers its search with `202` and zero bytes, which
+    # is why scripts/qld-agency-probe.py exists and why it drives a browser.
+    # Parliament is not: a Queensland statutory body's annual report must be
+    # TABLED IN THE LEGISLATIVE ASSEMBLY, and the tabled copy is served from
+    #
+    #   .../Work-of-the-Assembly/Tabled-Papers/docs/<ID>/<id lowercase>.pdf
+    #
+    # measured 2026-09-30. The same shape as the NSW tabled-papers file API, and
+    # it was sitting there through every round of "this host is blocked".
+    #
+    # TWO MEASUREMENTS THAT LOOK LIKE BLOCKS AND ARE NOT, both made here:
+    #   · the LISTING pages 403 a plain urllib fetch and render fine through the
+    #     browser (135,567 bytes) — so `via_browser=True` for the search,
+    #   · the DOCUMENT path serves 2MB of PDF to plain urllib, while `curl -I`
+    #     and even `curl` GET on the same URL answer 403. A HEAD request is not a
+    #     measurement of whether a GET works, and reading it as one would have
+    #     closed this route before it opened. `fetch(binary=True)` is enough here
+    #     and no spec below needs `warm` or `render`.
+    #
+    # HOW TO FIND AN ID: the search page ignores `SearchText` and the date range
+    # but honours `page`, 25 papers to a page, newest first —
+    #   .../Tabled-Papers/search?page=N   (via_browser=True, render=True)
+    # Walking 10 pages on 2026-09-30 cached 246 papers, which covered every
+    # Queensland annual report tabled since late August. The id is stable, so a
+    # spec pins one document forever: NEXT YEAR'S REPORT IS A DIFFERENT ID and
+    # `proof` is what makes that visible instead of silent.
+    #
+    # STILL NOT TABLED as of 2026-09-30, so still unfiled: the Queensland
+    # Ombudsman, the Queensland Audit Office and the Office of Industrial
+    # Relations. Their reasons are unchanged and they are not blocked — they are
+    # not published yet.
+    # ═════════════════════════════════════════════════════════════════════════
+    #
+    # QCAA IS THE LARGEST REMAINING QUEENSLAND CARD and reads like QBCC: p57's
+    # employee-expenses note gives "Full-Time Equivalent employees 303 303" under
+    # a "2026 2025" header. BOTH YEARS ARE 303, so this card's change is 0.0% —
+    # a real zero, not a parse that lost a column, and p38's five-year series
+    # says the same thing from the other side: "Employees at 30 June, FTE 303 303
+    # 298 300 309". Head count is 319 on the same page and is not what is filed.
+    'qld-qcaa': dict(
+        label='QLD: Curriculum and Assessment Authority',
+        agency='Queensland Curriculum and Assessment Authority',
+        agency_id='qld-gov-queensland-curriculum-and-assessment-authority',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1901/5826t1901.pdf',
+        needle='Full-Time Equivalent employees',
+        total=r'^Full-Time Equivalent employees',
+        ncols=2, now_i=0, prev_i=1,
+        # A SWAPPED `now_i` CANNOT BE CAUGHT HERE and that is a property of the
+        # document: both columns are 303, so the control files the same pair
+        # either way round. `header` still rejects when it is wrong, and EWOQ
+        # below is the same case at 44/44. Stadiums and the OIC are where a swap
+        # WOULD change the answer, and there `header` is the only thing stopping
+        # it — recorded on each.
+        header=r'2026 2025',
+        # `proof` IS ASSERTED ON THE NEEDLE'S OWN PAGE, not on the document — this
+        # spec first named the auditor's "for the year ended 30 June 2026", which
+        # is on p80, and failed. p57's own footer carries the year instead.
+        proof=r'Annual Report 2025.26 \| Queensland Curriculum',
+        unit='fte', asof='Jun 2026'),
+
+    # THE INFORMATION COMMISSIONER'S PDF HAS A CORRUPT TEXT LAYER, and the spec
+    # is shaped around that rather than pretending otherwise. p57 extracts as
+    #
+    #   Full-Time Equivalent Emplo)'ees 50.16 51.81
+    #
+    # with "Employer" as "Empk,)'er", "year" as "yea," and the whole of p67 as
+    # mojibake. THE DIGITS EXTRACT CLEANLY; only the letters are damaged. So
+    # `total` is written as `Emplo\S*ees`, which matches the mangled form and the
+    # correct one, and when the next edition is typeset properly this still reads.
+    #
+    # CHECKED BY HAND AGAINST A PAGE THAT EXTRACTS CLEANLY, because a corrupt
+    # text layer is exactly the circumstance where one number could be another:
+    # p35 says in plain prose "the OIC had 50.16 paid full-time equivalent (FTE)
+    # employees ... with a total headcount of 53". 50.16 twice, ten pages apart,
+    # one of them undamaged. That reconciliation has no expression here — `stated`
+    # only sees pages carrying the needle — so it is recorded rather than coded.
+    'qld-oic': dict(
+        label='QLD: Office of the Information Commissioner',
+        agency='Information Commissioner',
+        agency_id='qld-gov-information-commissioner',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1912/5826t1912.pdf',
+        needle='Full-Time Equivalent Emplo',
+        total=r'^Full-Time Equivalent Emplo\S*ees',
+        ncols=2, now_i=0, prev_i=1,
+        # `header` IS THE ONLY GUARD ON THE COLUMN ORDER, and here that matters:
+        # control 2026-09-30, swapping now_i/prev_i files (51.81, 50.16) without
+        # complaint, which would show +3.3% instead of -3.2%. A wrong `header`
+        # rejects.
+        header=r'2026 2025',
+        proof=r'2026 2025',
+        unit='fte', asof='Jun 2026'),
+
+    # EWOQ: p59 note 4, "Number of employees 44 44" under "2026 2025", and the
+    # sentence directly beneath it is what makes this an FTE figure rather than a
+    # head count — "The number of employees as at 30 June ... is measured on a
+    # full-time equivalent basis". UNCHANGED YEAR ON YEAR, and p21 gives the head
+    # count separately at 45, so 44 FTE / 45 people is the document agreeing with
+    # itself rather than two readings of one number.
+    'qld-ewoq': dict(
+        label='QLD: Energy and Water Ombudsman',
+        agency='Energy and Water Ombudsman Queensland',
+        agency_id='qld-gov-energy-and-water-ombudsman-queensland',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1803/5826t1803.pdf',
+        needle='Number of employees',
+        total=r'^Number of employees',
+        ncols=2, now_i=0, prev_i=1,
+        header=r'2026 2025',
+        proof=r'For the Year Ended 30 June 2026',
+        unit='fte', asof='Jun 2026'),
+
+    # QRIC HAS NO PRIOR YEAR AND ITS ONE-COLUMN TABLE SITS BESIDE THE SENTENCE
+    # THAT CONFIRMS IT, which is the whole reason this spec is safe. p33 carries
+    # both: the table row "Total FTE for QRIC 161.66" and, in the body column
+    # beside it, "As at 30 June 2026, QRIC had a total of 161.66 full-time FTEs,
+    # which equates to a headcount of 287."
+    #
+    # With one column there is no `header` to asssert and no components to
+    # reconcile, so `stated` IS the guard — and unlike the Public Guardian's or
+    # the Pharmacy Council's, the sentence is on the same page as the row, which
+    # is the only way `stated` can see it. 287 is the head count and 131 of those
+    # are casuals, so the FTE figure is the one comparable with the rest of
+    # Queensland.
+    'qld-qric': dict(
+        label='QLD: Racing Integrity Commission',
+        agency='Queensland Racing Integrity Commission',
+        agency_id='qld-gov-queensland-racing-integrity-commission',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1872/5826t1872.pdf',
+        # WRITTEN AS A TABLE FIRST AND IT COULD NOT BE READ: p33's workforce
+        # panel has no ruling lines, so pdfplumber finds no table there and the
+        # spec failed with "no Total row of 1 numbers". `prose` reads the page's
+        # text, which carries both.
+        #
+        # THE TWO HALVES DO DIFFERENT WORK AND NEITHER IS DECORATION. `find`
+        # carries the date, so the sentence itself is what dates the figure;
+        # `proof` asserts the TABLE ROW beside it, number and all, so the panel
+        # and the prose have to agree before anything is filed. That is the
+        # reconciliation `stated` would have done had the table been readable.
+        # Controls, 2026-09-30: as written -> 161.66; `proof` moved to 161.67
+        # -> REJECTED; the date dropped out of `find` -> still 161.66, because
+        # the sentence appears once either way. So the date in `find` is
+        # documentation of what was read rather than a live guard, and `proof` is
+        # the half that fires.
+        prose=True,
+        find=r'As at 30 June 2026, QRIC had a total of\s+([\d.]+)',
+        now_g=1,
+        proof=r'Total FTE for QRIC 161\.66',
+        unit='fte', asof='Jun 2026'),
+
+    # THE PHARMACY COUNCIL WAS CREATED MID-2025 AND ITS PRIOR YEAR IS 1, which
+    # is why this card is filed with no comparison at all rather than with a
+    # +1500% change. p51's note reads "2026 2025 / Number of employees: 16 1"
+    # against employee expenses of $1,781,815 and $15,609 — a body that existed
+    # for days in the comparison year. A ratio over that is arithmetic, not a
+    # labour-market fact, and it is the same defect as a series that climbs
+    # because the archive was filling out.
+    #
+    # AND THE TWO FIGURES DISAGREE, so this one is NOT taken from the financial
+    # note as most of Queensland is. The note says 16 on an FTE basis; p18's
+    # workforce profile says "Headcount 17 / Paid FTE 15.30". 15.30 does not
+    # round to 16, so they are two different counts, and 15.30 is taken because
+    # paid FTE is the measure QRIC, the Academy of Sport and the NIISQ Agency are
+    # filed on, and because p17's prose states it in words — which is what `find`
+    # reads, the table being the hand-check rather than the source.
+    'qld-pharmacy': dict(
+        label='QLD: Pharmacy Business Ownership Council',
+        agency='Queensland Pharmacy Business Ownership Council',
+        agency_id='qld-gov-queensland-pharmacy-business-ownership-council',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1886/5826t1886.pdf',
+        # Controls, 2026-09-30: as written -> 15.30; `proof` moved to
+        # "headcount of 18" -> REJECTED; `find` cut back to "equated to (number)"
+        # -> still 15.30, so the "paid full-time equivalent" tail is not doing
+        # work today. `proof` is the guard, and it is the sentence that carries
+        # both the date and the head count the FTE figure has to sit under.
+        prose=True,
+        find=r'equated to\s+([\d.]+)\s*paid full-time equivalent',
+        now_g=1,
+        proof=r'As of 30 June 2026, the Council had a headcount of 17',
+        unit='fte', asof='Jun 2026'),
+
+    # STADIUMS QUEENSLAND IS UP A FIFTH AND TWO TABLES RUNNING OPPOSITE WAYS SAY
+    # SO INDEPENDENTLY, which is the only reason a +20.2% is filed without a
+    # sentence explaining it. p56's note gives "Full-time equivalent employees at
+    # 30 June 227.8 189.5" under "2026 2025"; p24's workforce table gives "FTE
+    # 189.5 227.8" under "2024-25 2025-26" — OLDEST FIRST, the QRIDA trap. Read
+    # each with its own header and both say 227.8 now against 189.5 before.
+    #
+    # So the pair is the check, and `header` is what holds it: the figures alone
+    # are equally plausible either way round, and a spec that ignored the header
+    # would file 189.5 here and never look wrong.
+    'qld-stadiums': dict(
+        label='QLD: Stadiums Queensland',
+        agency='Stadiums Queensland',
+        agency_id='qld-gov-stadiums-queensland',
+        url='https://www.parliament.qld.gov.au/Work-of-the-Assembly/Tabled-Papers/docs/5826T1864/5826t1864.pdf',
+        needle='Full-time equivalent employees at 30 June',
+        total=r'^Full-time equivalent employees at 30 June',
+        ncols=2, now_i=0, prev_i=1,
+        # As on the OIC: control 2026-09-30, a swapped now_i/prev_i files
+        # (189.5, 227.8) and reports -16.8% for a card that grew a fifth. A wrong
+        # `header` rejects.
+        header=r'2026 2025',
+        # Same page-scoped `proof` as QCAA above, and p56 names the year in the
+        # audit-fee sentence rather than in a heading.
+        proof=r'relating to the 2025-26 financial statements',
+        unit='fte', asof='Jun 2026'),
+
     # THE FIRST `prose` SPEC, and the reason the option exists. The NIISQ
     # Agency's financial note reads "The number of employees as at 30 June …
     # measured on a full-time equivalent basis (reflecting Minimum Obligatory
