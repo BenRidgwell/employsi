@@ -119,8 +119,6 @@ export const LINKEDIN_LOGO: Record<string, string> = {
     "https://media.licdn.com/dms/image/v2/D4E0BAQEjssYzrMlrNA/company-logo_200_200/B4EZ2x4AtrJUAI-/0/1776805743825/megaport_logo?e=2147483647&v=beta&t=Wm2-FIxt2TarQc9T2n6QMzpOG9JYOiEJdP89_k_j5j8",
   "brisbane-nxt":
     "https://media.licdn.com/dms/image/v2/C560BAQG3iLEhQiSjAA/company-logo_200_200/company-logo_200_200/0/1630595961691/nextdc_logo?e=2147483647&v=beta&t=-2kmeRSGf3YQqTc-OIsvK_omyQvGNDmw-XV4xOKw44k",
-  "brisbane-smr":
-    "https://media.licdn.com/dms/image/v2/D560BAQFBsOx_S9MzAA/company-logo_200_200/B56Zr7qkkFHIAM-/0/1765158832881/stanmore_resources_limited_logo?e=2147483647&v=beta&t=jjm2GBUdr5zTTnYoLl51dGp7Uhe3tlLy0uAWoK-gNSg",
   "brisbane-sul":
     "https://media.licdn.com/dms/image/v2/D560BAQG7LMNuMp5v3Q/company-logo_200_200/B56Z.IdZ1_GcAE-/0/1784700837582/super_retail_group_logo?e=2147483647&v=beta&t=qoPFNi08wHqvY6FdyoxqcAouQyEYeYNkGRev_rVg_NA",
   "brisbane-sun":

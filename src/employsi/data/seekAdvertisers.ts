@@ -39,7 +39,6 @@ export const SEEK_ADVERTISERS: Record<string, SeekAdvertiser> = {
   "brisbane-dtl": { advertiserId: "20480842", name: "Data#3 Limited" },
   "brisbane-flt": { advertiserId: "35725927", name: "Flight Centre Travel Group" },
   "brisbane-nxt": { advertiserId: "26120226", name: "NEXTDC Limited" },
-  "brisbane-smr": { advertiserId: "46069973", name: "Stanmore Resources Limited" },
   "brisbane-sul": { advertiserId: "26669767", name: "Super Retail Group" },
   "brisbane-sun": { advertiserId: "63592813", name: "Suncorp" },
   "brisbane-tne": { advertiserId: "61731004", name: "Technology One Limited" },

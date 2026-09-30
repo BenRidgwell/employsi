@@ -6,6 +6,7 @@ import { callerRole } from "./sessionRole";
 import { isReleasedCompany, seesAllMarkets } from "./markets";
 import { COMPANIES } from "../data/companies";
 import { parseStoredSkills } from "../data/skillsTaxonomy";
+import { canonicalCompanyId } from "../data/mergedCompanies";
 
 /**
  * The notification bell's alerts, from `Notification_Bell`.
@@ -150,7 +151,11 @@ export const getAlerts = createServerFn({ method: "GET" }).handler(
         .prepare(`SELECT ref FROM user_follow WHERE user_id = ?1 AND kind = 'company'`)
         .bind(userId)
         .all();
-      let ids = [...new Set((fol?.results ?? []).map((r) => String(r.ref || "")))].filter(Boolean);
+      // Through canonicalCompanyId, so a follow still stored under a retired id
+      // (data/mergedCompanies.ts) alerts on the company it was folded into.
+      let ids = [
+        ...new Set((fol?.results ?? []).map((r) => canonicalCompanyId(String(r.ref || "")))),
+      ].filter(Boolean);
       // Same market gate as everywhere else: an end user is not told about a
       // company the rest of the product will not show them.
       if (!seesAllMarkets(role)) ids = ids.filter((id) => isReleasedCompany(id));

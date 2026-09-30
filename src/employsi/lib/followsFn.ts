@@ -3,6 +3,7 @@ import { roleForEmail, type Role } from "./roles";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, authAvailable, authProviders, type AuthEnv } from "./auth";
+import { canonicalCompanyId } from "../data/mergedCompanies";
 
 /**
  * Followed companies and skills, and the one-time claim of what was already in
@@ -125,8 +126,12 @@ export const getSession = createServerFn({ method: "GET" }).handler(
       for (const r of res?.results ?? []) {
         const ref = String(r.ref || "");
         const kind = String(r.kind);
-        if (kind === "company") ids.push(ref);
-        else if (kind === "skill") skills.push(ref);
+        // A follow made under an id since folded into another company
+        // (data/mergedCompanies.ts) follows the company that is still drawn.
+        if (kind === "company") {
+          const id = canonicalCompanyId(ref);
+          if (!ids.includes(id)) ids.push(id);
+        } else if (kind === "skill") skills.push(ref);
         else if (kind === "goal") careerGoal = goalFromRef(ref);
       }
       return { user, role, providers, followedIds: ids, followedSkills: skills, careerGoal };
@@ -144,7 +149,8 @@ export const setFollow = createServerFn({ method: "POST" })
     const d = db(await env());
     if (!d) return { ok: false };
     const kind = data.kind === "skill" ? "skill" : "company";
-    const ref = String(data.ref || "").trim();
+    const raw = String(data.ref || "").trim();
+    const ref = kind === "company" ? canonicalCompanyId(raw) : raw;
     if (!SAFE_REF.test(ref)) return { ok: false };
     try {
       if (data.on) {
@@ -241,7 +247,7 @@ export const claimLocalFollows = createServerFn({ method: "POST" })
     if (!d) return { ok: false, claimed: 0 };
     const pairs: [string, string][] = [];
     for (const c of (data?.companies ?? []).slice(0, 500))
-      if (SAFE_REF.test(String(c))) pairs.push(["company", String(c)]);
+      if (SAFE_REF.test(String(c))) pairs.push(["company", canonicalCompanyId(String(c))]);
     for (const s of (data?.skills ?? []).slice(0, 500))
       if (SAFE_REF.test(String(s))) pairs.push(["skill", String(s)]);
     if (!pairs.length) return { ok: true, claimed: 0 };
@@ -256,6 +262,9 @@ export const claimLocalFollows = createServerFn({ method: "POST" })
       const stmts = [];
       for (const [kind, ref] of pairs) {
         if (have.has(`${kind}|${ref}`)) continue;
+        // Two retired ids can resolve to one company (both Charter Hall REITs
+        // are Charter Hall now), so a pair is only claimed once.
+        have.add(`${kind}|${ref}`);
         claimed++;
         stmts.push(
           d
