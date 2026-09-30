@@ -745,6 +745,36 @@ NOT_IN_SOURCE_JURISDICTION = {
 # lookup, which is exactly what the WGEA list had not been. Three of those four
 # would have been filed by a careless sweep, and each would have put one body's
 # staff on another body's card.
+# ONE FINDING, FIVE CARDS. The four courts and VCAT are all employed by Court
+# Services Victoria, so the same document answers all five and the reason is
+# written once rather than copied — a copied reason is one that gets corrected
+# in four places and missed in the fifth.
+_VIC_COURTS = (
+    "THE EMPLOYER'S OWN ANNUAL REPORT WAS READ ON 2026-09-30 AND IT HAS NO "
+    'PER-COURT BREAKDOWN EITHER, which turns this from an open question into a '
+    'closed one. The old reason — "employed by Court Services Victoria (3,078); '
+    'no row per court" — was a statement about the VPSC workbook, and the '
+    "obvious next move was CSV's own report. courts.vic.gov.au links it and it "
+    'reads fine: 152 pages, and its FRD 29 workforce section (pp38-41) breaks '
+    'the workforce down by CLASSIFICATION — Qualified Registrar, Deputy '
+    'Registrar, Registrar Grades 3 to 5 and so on — with a single statewide '
+    'total and not one figure attributed to a court. p38 says so in its own '
+    'words: "The People Services division monitors CSV statewide workforce '
+    'data."'
+    '\n\n'
+    'AND CSV IS ITSELF A FILED CARD, at 3,072 as at Jun 2024, so this card is '
+    'blocked twice over: there is no per-court figure to file, and any figure '
+    'that did exist would still have to be netted against a card that already '
+    'carries these people.'
+    '\n\n'
+    'Read the CSV table\'s header before using it for anything else: it runs "30 '
+    'June 2024" THEN "30 June 2025", oldest first, like QRIDA\'s. Its totals are '
+    '2,990 head count / 2,835.5 FTE at Jun 2024 and 2,758 / 2,605.9 at Jun 2025 '
+    "— so CSV's own card could be brought a year forward from its own report, a "
+    '-7.8% move. That is a change to an already FILED card rather than gap '
+    'work, so it is noted here rather than done.'
+)
+
 NOT_IN_SOURCE = {
     # ── APS: read off the sheet itself, 2026-09-27 ────────────────────────────
     # WHY ALL FIVE AT ONCE. These are every gov-aps card left in the gap, and
@@ -1535,9 +1565,25 @@ NOT_IN_SOURCE = {
         "Office and Commission for Better Regulation)' — 1,612 covers both, and "
         "filing it here too would be the same people on two cards",
     'vic:Victorian Institute of Forensic Medicine':
-        "split in two and only half is reachable: 47 executive and forensic "
-        "employees have their own row, the rest are inside DJCS's 9,852 by that "
-        "row's own wording. 47 would understate it, 9,852 is the department",
+        'ITS OWN REPORT WAS READ ON 2026-09-30 AND THE WHOLE FIGURE IS REACHABLE '
+        'AFTER ALL, so the old reason — "split in two and only half is reachable" '
+        '— was wrong about the reachability and right about the risk. '
+        'vifm.org/annual-reports-policies-and-registers/ links the 2024/25 annual '
+        'report, unchallenged; p101 says "At 30 June 2025, the VIFM employed a '
+        'total of 285 staff compared to 292 staff", and p102 tabulates it: '
+        'ongoing 219 + fixed-term and casual 66 = 285 head count for 2024/25, '
+        '213 + 79 = 292 for 2023/24, with FTE totals of 238.83 and 237.41.\n\n'
+        'IT IS STILL REFUSED, AND NOW FOR THE DOUBLE COUNT ALONE. The VPSC row '
+        'for the Department of Justice and Community Safety says in its own '
+        'wording that it includes VIFM staff beyond the 47 executive and forensic '
+        'employees given their own row, and DJCS IS FILED, at 9,852 as at Jun '
+        '2024. So 285 here would put the same people on two cards. This is the '
+        'mirror image of Taronga, which was filed precisely because DCCEEW\'s '
+        'Table 7 note EXCLUDED it by name; an including note blocks what an '
+        'excluding note licenses.\n\n'
+        'What would settle it: a VPSC edition that gives VIFM its own complete '
+        'row, or a DJCS row whose wording stops covering it. Both are workbook '
+        'facts, so re-reading the Institute\'s own report will not help',
     'vic:Homes Victoria':
         'inside the Department of Families, Fairness and Housing (7,172); no row '
         'names Homes Victoria',
@@ -1553,12 +1599,11 @@ NOT_IN_SOURCE = {
     # holds five courts as five cards, so filing 3,078 would put one number on
     # five different cards. That is the double count already declined for NSW
     # Health's portfolios.
-    'vic:Supreme Court': 'employed by Court Services Victoria (3,078); no row per court',
-    'vic:County Court': 'employed by Court Services Victoria (3,078); no row per court',
-    'vic:Magistrates Court': 'employed by Court Services Victoria (3,078); no row per court',
-    "vic:Children's Court": 'employed by Court Services Victoria (3,078); no row per court',
-    'vic:Victorian Civil and Administrative Tribunal (VCAT)':
-        'employed by Court Services Victoria (3,078); no row per jurisdiction',
+    'vic:Supreme Court': _VIC_COURTS,
+    'vic:County Court': _VIC_COURTS,
+    'vic:Magistrates Court': _VIC_COURTS,
+    "vic:Children's Court": _VIC_COURTS,
+    'vic:Victorian Civil and Administrative Tribunal (VCAT)': _VIC_COURTS,
 
     # ── Victoria: did not exist when the file was measured ─────────────────
     # The newest VPSC edition is Jun 2024 and these are 2024-25 creations, so
@@ -1567,8 +1612,6 @@ NOT_IN_SOURCE = {
     'vic:Social Services Regulator': 'created after Jun 2024, the newest VPSC edition',
     'vic:Building and Plumbing Commission': 'created after Jun 2024 (from the VBA)',
     'vic:Workplace Injury Commission': 'created after Jun 2024',
-    'vic:Triple Zero Victoria':
-        'created after Jun 2024; its predecessor ESTA has no row in the file either',
     'vic:Victorian Infrastructure Delivery Authority':
         'created after Jun 2024',
     'vic:Victorian Infrastructure Delivery Authority | Health':
@@ -3142,6 +3185,89 @@ AGENCY_REPORTS = {
         proof=r'For the Year Ended 30 June 2025',
         unit='fte', asof='Jun 2025'),
     # ═════════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════════
+    # THE FIRST VICTORIAN SPEC, AND THE REASON IT EXISTS IS THE QUEENSLAND ONE.
+    # All nineteen Victorian gap cards carried a reason phrased against the VPSC
+    # workbook — "created after Jun 2024, the newest VPSC edition", "no row names
+    # it", "no row per court". Every one of those is a true statement about the
+    # WORKBOOK and none of them is a statement about whether the body publishes
+    # its own annual report. That is the sentence that nineteen Queensland cards
+    # turned on, and it is the same sentence here.
+    #
+    # Triple Zero Victoria's reason was "created after Jun 2024; its predecessor
+    # ESTA has no row in the file either" — so nothing else on the roster carries
+    # these people, which is what makes this one safe to file rather than merely
+    # available. (Contrast the Institute of Forensic Medicine below, whose own
+    # report was read on the same day and which stays refused BECAUSE something
+    # else does carry them.)
+    #
+    # HEAD COUNT, NOT FTE, AND DELIBERATELY SO. load_vic reads the VPSC column
+    # whose name contains 'headcount', so every other Victorian row on the card
+    # is a head count with no `unit` tag. This report leads with FTE — p14's
+    # "TZV's 1,258 full-time equivalent (FTE) employees" — and taking that would
+    # make this the one Victorian card measured a different way, and quietly
+    # incomparable with the department rows beside it.
+    #
+    # TABLE 4 IS TAKEN OVER TABLES 14 AND 15 FOR A MECHANICAL REASON: it is the
+    # only head-count table carrying BOTH years on one row on one page. Table 14
+    # (p43, 30 June 2025) and Table 15 (p44, 30 June 2024) each give one year on
+    # its own page, so a `needle` matching both would make `total` ambiguous and
+    # a `needle` matching one would lose the prior year. They corroborate this
+    # spec by hand: Table 14's "Total employees 1,415 1,258 …" and Table 15's
+    # "1,474 1,275 …" are the same two head counts, read off a seven-column
+    # classification table whose own header says "Head count / FTE".
+    #
+    # `comp` IS THE ARITHMETIC GUARD AND THE DOCUMENT SUPPLIES IT TWICE OVER:
+    # 946 + 463 + 6 = 1,415 and 998 + 468 + 8 = 1,474, so a column read the wrong
+    # way round fails against its own gender rows rather than filing quietly.
+    'vic-tzv': dict(
+        label='VIC: Triple Zero Victoria',
+        agency='Triple Zero Victoria',
+        agency_id='vic-gov-triple-zero-victoria',
+        # READ OFF THE PUBLICATIONS PAGE, NOT GUESSED. This spec was first written
+        # with .../2025-10/TZV-Annual-Report-2024-25.pdf, which is wrong in both
+        # halves — the directory is the month of UPLOAD (2026-01) and the file is
+        # named in full. Guessing it would have been the fifth time in this
+        # campaign that an invented URL got treated as a fact about a source.
+        url='https://www.triplezero.vic.gov.au/sites/default/files/2026-01/'
+            'Triple-Zero-Victoria-2024-25-Annual-Report.pdf',
+        needle='Table 4: TZV Overall workforce (headcount) composition',
+        total=r'^Total',
+        comp=r'^(Women|Men|Self-described)',
+        ncols=2, now_i=0, prev_i=1,
+        # CONTROLS, 2026-09-30, and two of the five say a guard is not doing what
+        # its presence suggests:
+        #
+        #   as written              -> (1415, 1474)
+        #   header wrong            -> REJECTED
+        #   now_i/prev_i swapped    -> (1474, 1415) ACCEPTED — +4.2% for a card
+        #                              that fell 4.0%
+        #   `comp` dropped          -> still (1415, 1474)
+        #   `proof` -> '2023[–-]24' -> still (1415, 1474) ACCEPTED
+        #
+        # `comp` DOES NOT GUARD THE COLUMN CHOICE and it cannot: each column
+        # reconciles against its OWN gender rows (946+463+6 = 1,415 and
+        # 998+468+8 = 1,474), so both readings are internally consistent and only
+        # the header says which year is which. It guards the ROWS — a `total`
+        # regex that caught the wrong line — which is a different mistake.
+        #
+        # AND `proof` CANNOT DATE THIS PAGE. p16 names both years in prose
+        # ("increased from 45 per cent in 2023–24 to 49 per cent in 2024–25"), so
+        # substituting the older one still passes. There is no independent dating
+        # string on the page — no report-year footer, nothing but the table's own
+        # header — so `header` is the whole dating guard as well as the whole
+        # column-order guard, and it is kept rather than trusted silently. `proof`
+        # stays as a weak "still the same page" check with its limit named here,
+        # not deleted, because the URL pins one edition and a changed document is
+        # exactly what header catches.
+        header=r'2025 2024',
+        proof=r'2024[–-]25',
+        # A 17 MB PDF over this sandbox's proxy: one control run died with
+        # IncompleteRead(70820 bytes read, 17132460 more expected) and had to be
+        # retried. A network failure is not a guard firing, and it was nearly
+        # recorded as one.
+        unit='headcount', asof='Jun 2025'),
+
     # THE QUEENSLAND TABLED-PAPERS ROUTE. Every spec below reads its document
     # from www.parliament.qld.gov.au, not from the agency's own site, and that
     # is the whole reason these six cards could be filed from the authoring

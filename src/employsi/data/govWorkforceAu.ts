@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   VIC: Triple Zero Victoria: 1 agencies published as at Jun 2025 — refreshed 2026-09-30
+//   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Curriculum and Assessment Authority: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -471,6 +472,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "vic-gov-state-library-of-victoria": { now: 370, prev: 350, yoy: 5.7, asof: "Jun 2024", span: 1 },
   "vic-gov-state-trustees-limited": { now: 607, prev: 556, yoy: 9.2, asof: "Jun 2024", span: 1 },
   "vic-gov-tallangatta-health-service": { now: 171, prev: 166, yoy: 3.0, asof: "Jun 2024", span: 1 },
+  "vic-gov-triple-zero-victoria": { now: 1415, prev: 1474, yoy: -4.0, asof: "Jun 2025", span: 1 },
   "vic-gov-vicscreen": { now: 65, prev: 62, yoy: 4.8, asof: "Jun 2024", span: 1 },
   "vic-gov-victoria-legal-aid": { now: 1312, prev: 1110, yoy: 18.2, asof: "Jun 2024", span: 1 },
   "vic-gov-victoria-police": { now: 22380, prev: 22021, yoy: 1.6, asof: "Jun 2024", span: 1 },
