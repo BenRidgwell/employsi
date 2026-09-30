@@ -25971,6 +25971,8 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
     // `<span class="job-location"><span class="location-icon-red"></span>
     // Bengaluru, India</span>`, where the lazy match stopped at the icon's
     // close and stored "" for all 2,900 roles; one empty inner span is skipped.
+    // Takeda (2026-09-30) names the span plain `class="location"`, which the
+    // two names above missed — "" for all 868 roles — so it is the third name.
     for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
@@ -25986,7 +25988,7 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
           title,
           clean(
             li.match(
-              /class="(?:job-location|search-results-job-location)"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
+              /class="(?:job-location|search-results-job-location|location)"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
             )?.[1] ?? "",
           ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
