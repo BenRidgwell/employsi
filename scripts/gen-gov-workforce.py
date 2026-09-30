@@ -1498,8 +1498,6 @@ NOT_IN_SOURCE = {
         'statutory body, outside the collection',
     'qld:Queensland Racing Integrity Commission':
         'no row names it; statutory body, outside the collection',
-    'qld:National Injury Insurance Agency Queensland':
-        'no row names it; statutory agency, outside the collection',
     'qld:Energy and Water Ombudsman Queensland':
         'no row names it; statutory scheme, outside the collection',
     'qld:Stadiums Queensland':
@@ -3134,6 +3132,62 @@ AGENCY_REPORTS = {
         header=r'2025 2024',
         proof=r'For the Year Ended 30 June 2025',
         unit='fte', asof='Jun 2025'),
+    # THE FIRST `prose` SPEC, and the reason the option exists. The NIISQ
+    # Agency's financial note reads "The number of employees as at 30 June …
+    # measured on a full-time equivalent basis (reflecting Minimum Obligatory
+    # Human Resource Information) is 137.5 (2025: 126.36)" — one sentence
+    # wrapped over three lines, so no LINE carries both figures and the line
+    # that carries the numbers begins with one. Neither the table path nor the
+    # line fallback can read that.
+    #
+    # THE `\(2025:` IN THE REGEX IS LOAD-BEARING, not decoration. Controls run
+    # 2026-09-30, honestly including the one that passes when it should not:
+    #
+    #   as written                    -> (137.5, 126.36)
+    #   prior year moved on to 2026   -> REJECTED, 0 matches
+    #   proof wrong                   -> REJECTED
+    #   `basis` anchor dropped        -> (137.5, 126.36), unchanged
+    #   now_g/prev_g SWAPPED          -> (126.36, 137.5), ACCEPTED
+    #
+    # So the literal year is what makes the next edition fail loudly instead of
+    # filing a year-old pair under a new date — but the GROUP ORDER is not
+    # guarded, exactly as a column order is not on the table path. Writing
+    # now_g=2 would file the 2025 figure as this year's and nothing here would
+    # complain. `proof` plus the single-match requirement is the whole guard, and
+    # the reason it suffices is that the document's own "(2025: …)" is written
+    # beside the number in the `find` above, where a reader checking this spec
+    # can see which capture is which year. The `basis` anchor is insurance for a
+    # future edition that gains a second such sentence, not a live guard today.
+    #
+    # THREE FIGURES ON ONE PAGE AND THIS IS THE THIRD. p14's workforce profile
+    # gives all of them: a "core-funded and ongoing establishment of 156
+    # permanent FTE positions", a MOHRI total of "143FTE", and "The FTE paid that
+    # fortnight was 137.5". The establishment is funded positions rather than
+    # people; 143 and 137.5 are two real measures a fortnight apart. 137.5 is
+    # taken because it is the one the FINANCIAL NOTE publishes with a prior year,
+    # which is the same note every other Queensland spec here reads — so the
+    # jurisdiction stays measured the same way rather than this card being
+    # slightly better and incomparable.
+    #
+    # It also shares staff: p14 says the establishment "includes roles shared
+    # with the Motor Accident Insurance Commission and the Nominal Defendant
+    # under a tripartite corporate support services arrangement". Neither is a
+    # roster card, so there is nothing to double count today — worth knowing if
+    # one is ever added.
+    'qld-niisq': dict(
+        label='QLD: National Injury Insurance Agency',
+        agency='National Injury Insurance Agency Queensland',
+        agency_id='qld-gov-national-injury-insurance-agency-queensland',
+        url='https://niis.qld.gov.au/wp-content/uploads/'
+            'NIISQ-agency-annual-report-2025-26.pdf',
+        prose=True,
+        # No `needle`: the prose branch returns before any table is located, so
+        # a ruling to find one by would be a leftover reading as a live guard.
+        find=r'full-time equivalent basis[^.]*?is\s*([\d.]+)\s*'
+             r'\(2025:\s*([\d.]+)\)',
+        now_g=1, prev_g=2,
+        proof=r'FINANCIAL STATEMENTS 2025-26',
+        unit='fte', asof='Jun 2026'),
     'qld-qmhc': dict(
         label='QLD: Mental Health Commission',
         agency='Queensland Mental Health Commission',
@@ -4955,6 +5009,39 @@ def _agency_report(spec):
             if re.fullmatch(r'\d[\d,]*(?:\.\d+)?', t):
                 nums.append(_num(t))
         return label, nums
+
+    # ── `prose`: A PDF WHOSE FIGURE IS IN A SENTENCE, NOT A TABLE ───────────
+    # The `html` branch above already does this for a report published as a web
+    # page; some PDFs need it for the same reason. The NIISQ Agency's financial
+    # note reads "The number of employees as at 30 June … measured on a
+    # full-time equivalent basis (reflecting Minimum Obligatory Human Resource
+    # Information) is 137.5 (2025: 126.36)" — the figure and its prior year are
+    # one sentence, wrapped over three lines, so no line carries both and the
+    # line that carries the numbers starts with one.
+    #
+    # DELIBERATELY AS STRICT AS THE `html` PATH, for the same reason: there are
+    # no rulings to find a table by and no components to reconcile, so the regex
+    # is the only thing between a number and the card. It must match ONCE across
+    # the whole document and capture BOTH years in that one match, which is what
+    # makes a column-order mistake impossible — there are no columns, only the
+    # document's own sentence saying which figure is which year.
+    if spec.get('prose'):
+        with pdfplumber.open(_io.BytesIO(blob)) as pdf:
+            whole = '\n'.join((pg.extract_text() or '') for pg in pdf.pages)
+        if not re.search(spec['proof'], whole):
+            raise RuntimeError(f"{spec['label']}: the document no longer states "
+                               f"{spec['proof']!r}, so {spec['asof']} cannot be "
+                               f"shown to be its date")
+        hits = list(re.finditer(spec['find'], whole))
+        if len(hits) != 1:
+            raise RuntimeError(f"{spec['label']}: {spec['find']!r} matched "
+                               f"{len(hits)} times in the document, not once — "
+                               f"ambiguous, so nothing is filed")
+        now = _num(hits[0].group(spec.get('now_g', 1)))
+        prev = (_num(hits[0].group(spec['prev_g'])) if spec.get('prev_g') else None)
+        if now <= 0 or (prev is not None and prev <= 0):
+            raise RuntimeError(f"{spec['label']}: parsed {now}/{prev}")
+        return {spec['agency']: (now, prev)}, spec['asof'], spec['unit']
 
     with pdfplumber.open(_io.BytesIO(blob)) as pdf:
         for pg in pdf.pages:

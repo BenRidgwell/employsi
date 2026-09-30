@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   QLD: Parliamentary Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — refreshed 2026-09-29
+//   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: Parliamentary Service: 1 agencies published, as FTE not headcount, as at Jun 2025 — KEPT, not refreshed this run
 //   QLD: Mental Health Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Building and Construction Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Crime and Corruption Commission: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -297,6 +298,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "qld-gov-justice": { now: 4629, prev: 4532, yoy: 2.1, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-legal-aid": { now: 816, prev: 761, yoy: 7.2, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-local-government-water-and-volunteers": { now: 824, prev: 949, yoy: -13.2, asof: "Mar 2026", span: 1, unit: "fte" },
+  "qld-gov-national-injury-insurance-agency-queensland": { now: 137, prev: 126, yoy: 8.8, asof: "Jun 2026", span: 1, unit: "fte" },
   "qld-gov-natural-resources-and-mines-manufacturing-and-regional-and-rural-development": { now: 1468, prev: 1514, yoy: -3.0, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-office-of-the-health-ombudsman": { now: 163, prev: 154, yoy: 5.8, asof: "Mar 2026", span: 1, unit: "fte" },
   "qld-gov-office-of-the-queensland-integrity-commissioner": { now: 16, prev: 16, yoy: 0.0, asof: "Mar 2026", span: 1, unit: "fte" },
