@@ -389,13 +389,20 @@ jobs:
           # workers.dev hostname that did not exist yet; a minute later it
           # served 200. An existing Worker answers first time, so this only
           # ever costs time on a new one.
-          # 302 is a SUCCESSFUL answer here, so the retry stops on either — it is
-          # waiting for a hostname to exist, not for a particular status.
+          # A REDIRECT IS A SUCCESSFUL ANSWER HERE, so the retry stops on either —
+          # it is waiting for a hostname to exist, not for a particular status.
+          #
+          # 307, NOT 302. TanStack Router's redirect() in a beforeLoad answers
+          # 307 (measured on employsi-preview, 2026-09-30). This check was
+          # written against 302 from habit and would have failed the very deploy
+          # it was added for. Matched as 3xx rather than pinned to 307, because
+          # which redirect status the framework picks is its choice, not ours —
+          # what matters is where it sends an unauthenticated visitor.
           for wait in 0 5 10 20 30; do
             sleep "$wait"
             read -r code location < <(curl -s --compressed -o page.html \
               -w '%{http_code} %{redirect_url}\n' --max-time 30 "$url" || echo "000 -")
-            case "$code" in 200|302) break ;; esac
+            case "$code" in 200|3[0-9][0-9]) break ;; esac
             echo "attempt answered $code; retrying"
           done
           title=$(grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
@@ -404,10 +411,10 @@ jobs:
           case "$CHECK_PATH" in
             /app)
               case "$code" in
-                302)
+                3[0-9][0-9])
                   case "$location" in
-                    */login*) echo "serving the APP — signed out, gated to /login as expected" ;;
-                    *) echo "::error::/app redirected to $location, not /login"; exit 1 ;;
+                    */login*) echo "serving the APP — signed out, $code to /login as expected" ;;
+                    *) echo "::error::/app answered $code to $location, not /login"; exit 1 ;;
                   esac ;;
                 200)
                   case "$title" in
