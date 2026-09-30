@@ -749,6 +749,74 @@ NOT_IN_SOURCE_JURISDICTION = {
 # Services Victoria, so the same document answers all five and the reason is
 # written once rather than copied — a copied reason is one that gets corrected
 # in four places and missed in the fifth.
+# ONE BODY, FOUR CARDS — written once, like _VIC_COURTS above. The difference is
+# that the courts cannot be filed because no per-court figure exists anywhere;
+# VIDA cannot be filed because the ROSTER shape would multiply whatever figure
+# is found.
+_VIC_VIDA = (
+    '"created after Jun 2024" IS TRUE AND IS NOT THE BLOCKER. VIDA was created '
+    "in 2025 by merging Victoria's project-delivery bodies, so no VPSC edition "
+    'names it yet — but the roster carries FOUR cards for it: the Authority '
+    'plus "| Health", "| Rail" and "| Roads", which are its delivery arms and '
+    "not separate employers. So even with VIDA's own annual report in hand, "
+    'filing its figure would put the same people on four cards, and filing it '
+    'on the Authority alone would leave three cards blank beside a fourth that '
+    'silently counts their staff too.'
+    '\n\n'
+    'THAT MAKES THIS A ROSTER QUESTION BEFORE IT IS A HEADCOUNT ONE, and this '
+    'file cannot answer it: either the three arm cards are retired in favour of '
+    'the Authority, or a per-arm breakdown is found that VIDA publishes itself. '
+    'Recorded here so the next reader does not go looking for the document and '
+    'then file it four times — the document is not what is missing.'
+    '\n\n'
+    'REACHABILITY, MEASURED 2026-09-30 SO IT IS NOT RE-MEASURED: '
+    'bigbuild.vic.gov.au answers 403 to a plain fetch, and '
+    'www.parliament.vic.gov.au — whose tabled-documents database would be '
+    "Victoria's version of the Queensland route that filed nine cards — sits "
+    'behind an interstitial the browser does not clear in 30s (28,675 bytes). '
+    'bpc.vic.gov.au shows the same interstitial at 28,547 bytes, near enough '
+    'the same size to be one doorman across the vic.gov.au estate. So Victoria '
+    'has no tabled-papers route from here, and that is a fact about this '
+    'sandbox rather than about VIDA.'
+)
+
+# THREE BODIES CREATED SINCE THE NEWEST VPSC EDITION, one reason. Kept separate
+# from _VIC_VIDA because the blocker is different: these are single cards with
+# nothing double-counting them, so a reachable report would file them outright.
+_VIC_NEW_BODIES = (
+    'EVERY REASON IN THIS JURISDICTION WAS A STATEMENT ABOUT THE VPSC WORKBOOK, '
+    'and for the bodies created since its newest edition that is true and says '
+    'nothing about whether they publish their own annual reports. Triple Zero '
+    'Victoria, which carried the same reason, is now filed at 1,415 from its '
+    'own report — so the sentence is not a dead end, it is an unasked question.'
+    '\n\n'
+    'WHAT WAS MEASURED 2026-09-30, AND WHAT IT DOES AND DOES NOT PROVE. The '
+    'Victorian hosts tried either refuse this network or do not resolve through '
+    'its proxy: bpc.vic.gov.au and wic.vic.gov.au answer 403 to a plain fetch, '
+    'and bpc stays behind an interstitial the browser does not clear in 30s '
+    '(28,547 bytes). www.parliament.vic.gov.au — whose tabled-documents '
+    "database would be Victoria's version of the route that filed nine "
+    'Queensland cards — shows the same interstitial at 28,675 bytes, near '
+    'enough the same size to be one doorman across the estate. So there is no '
+    'tabled-papers route to Victoria from here.'
+    '\n\n'
+    'BUT THE HOST NAMES WERE GUESSED, SO TREAT THE FAILURES ACCORDINGLY. '
+    'socialservicesregulator.vic.gov.au and '
+    'workplaceinjurycommission.vic.gov.au both failed with "Tunnel connection '
+    'failed", which is the proxy unable to connect and is indistinguishable '
+    'here from a domain that does not exist. Those two URLs were invented from '
+    "the bodies' names, so that result is a measurement of the GUESS and not of "
+    'the body — the same mistake this campaign has recorded five times, and the '
+    'reason it is written down rather than concluded from. The next attempt '
+    "should find each body's real domain from a page that links it before "
+    'deciding anything about reachability.'
+    '\n\n'
+    'One route deliberately not taken: www.vic.gov.au opens (165,905 bytes) and '
+    'is where Victoria publishes centrally, but its robots.txt disallows '
+    '/sites/default/files/*.pdf, which is where those documents sit. Respected '
+    'rather than worked around.'
+)
+
 _VIC_COURTS = (
     "THE EMPLOYER'S OWN ANNUAL REPORT WAS READ ON 2026-09-30 AND IT HAS NO "
     'PER-COURT BREAKDOWN EITHER, which turns this from an open question into a '
@@ -1609,17 +1677,18 @@ NOT_IN_SOURCE = {
     # The newest VPSC edition is Jun 2024 and these are 2024-25 creations, so
     # their absence is a date, not a gap in coverage. They should appear of
     # their own accord in the first edition that postdates them.
-    'vic:Social Services Regulator': 'created after Jun 2024, the newest VPSC edition',
-    'vic:Building and Plumbing Commission': 'created after Jun 2024 (from the VBA)',
-    'vic:Workplace Injury Commission': 'created after Jun 2024',
-    'vic:Victorian Infrastructure Delivery Authority':
-        'created after Jun 2024',
-    'vic:Victorian Infrastructure Delivery Authority | Health':
-        'created after Jun 2024',
-    'vic:Victorian Infrastructure Delivery Authority | Rail':
-        'created after Jun 2024',
-    'vic:Victorian Infrastructure Delivery Authority | Roads':
-        'created after Jun 2024',
+    # Created 2024 under the Social Services Regulation Act 2021.
+    'vic:Social Services Regulator': _VIC_NEW_BODIES,
+    # Created 2025 from the Victorian Building Authority, which DOES have a row
+    # (490) — so if the Commission simply succeeded it, that row may be this card's
+    # figure a name behind rather than an absence. Not assumed: a successor body can
+    # also absorb staff from elsewhere, and nothing read so far says which happened.
+    'vic:Building and Plumbing Commission': _VIC_NEW_BODIES,
+    'vic:Workplace Injury Commission': _VIC_NEW_BODIES,
+    'vic:Victorian Infrastructure Delivery Authority': _VIC_VIDA,
+    'vic:Victorian Infrastructure Delivery Authority | Health': _VIC_VIDA,
+    'vic:Victorian Infrastructure Delivery Authority | Rail': _VIC_VIDA,
+    'vic:Victorian Infrastructure Delivery Authority | Roads': _VIC_VIDA,
 
     # ── Victoria: a near name that is NOT this body ────────────────────────
     'vic:Royal Melbourne Hospital':
