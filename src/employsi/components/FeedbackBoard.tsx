@@ -11,6 +11,7 @@ import {
 } from "../lib/feedbackFn";
 import { useAppStore } from "../state/store";
 import { IconClose } from "./ActionIcons";
+import { Avatar } from "./Avatar";
 
 // The feedback board: real requests from real people, stored in D1 and shared
 // across everyone who opens the app. It starts EMPTY — there are no seeded
@@ -252,7 +253,6 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   // the app is signed-in-only, so it arrives. Posting without it would write a
   // row against nobody, and the board is shared.
   const canPost = !!draft.trim() && !post.isPending && !!account;
-  const initial = (account?.name || account?.email || "?").trim().charAt(0).toUpperCase();
 
   return (
     <div className="fbboard" role="dialog" aria-label="Feedback board">
@@ -332,9 +332,17 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
           lands — see canPost — because the row is written against the account. */}
       <div className="fbcompose">
         <div className="fbcomposetop">
-          <span className="fbavatar" aria-hidden>
-            {initial}
-          </span>
+          {/* The person's real profile picture, the same Avatar the account
+              panels use — Google and LinkedIn both hand one back at sign-in and
+              Better Auth stores it. This was a plain initial on a dark disc,
+              which is what Avatar falls back to when there is no photo or the
+              provider's URL has expired. */}
+          <Avatar
+            name={account?.name || account?.email || ""}
+            image={account?.image}
+            className="fbavatar"
+            decorative
+          />
           <input
             className="fbtitleinput"
             placeholder="Idea title"

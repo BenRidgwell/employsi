@@ -23,7 +23,7 @@ import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
 import { useDraggablePane } from "../../hooks/useDraggablePane";
 import { useClickAway } from "../../hooks/useClickAway";
-import { ONET_ZONE, onetForRole, onetUrl } from "../../lib/onet";
+import { onetForRole } from "../../lib/onet";
 import { SKILL_ICONS, skillIcon } from "../../lib/skillCard";
 
 /**
@@ -1654,16 +1654,19 @@ function OnetSection({ id }: { id: string }) {
   useEffect(() => setAllTasks(false), [id]);
   if (isPending) return null;
 
-  const credit = (
-    <span className="cponetcredit">
-      {"O*NET "}
-      {data?.version ?? ""}
-      {" · U.S. Dept. of Labor/ETA · "}
-      <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
-        CC BY 4.0
-      </a>
-    </span>
-  );
+  // NO CREDIT LINE ON THIS CARD, at the owner's explicit direction
+  // (2026-09-30), after the trade-off below was put to them twice.
+  //
+  // O*NET is CC BY 4.0, and naming the creator and the licence is a condition
+  // of using the data — lib/onet.ts said the credit "must travel with the
+  // content", which is why it survived the first pass of trimming. It no
+  // longer does, and there is no other surface in the app carrying it, so the
+  // attribution obligation is currently UNMET rather than satisfied elsewhere.
+  //
+  // The cheap way to close that without putting anything back on the card is a
+  // single credits location — an About/Sources panel or a site-footer line —
+  // since CC BY allows attribution "in any manner reasonable to the medium".
+  // Anyone reinstating it should build that rather than re-adding this block.
   if (!data) {
     return (
       <section className="cponet" aria-label="Tasks and tools">
@@ -1681,11 +1684,12 @@ function OnetSection({ id }: { id: string }) {
   const tasks = allTasks ? o.tasks : o.tasks.slice(0, 3);
   return (
     <section className="cponet" aria-label="Tasks and tools">
+      {/* The occupation's name used to sit here as "O*NET: Human Resources
+          Specialists", and the credit line below carried its link. Both are
+          gone (2026-09-30), so the section now names no source at all — see
+          lib/onet.ts for what that costs and how it would be put right. */}
       <div className="cponethead">
         <span style={EYEBROW}>TASKS &amp; TOOLS</span>
-        <a className="cponetocc" href={onetUrl(data.soc)} target="_blank" rel="noreferrer">
-          {`O*NET: ${o.title}`}
-        </a>
       </div>
       <ul className="cponettasks">
         {tasks.map(([t]) => (
@@ -1699,7 +1703,17 @@ function OnetSection({ id }: { id: string }) {
       )}
       {o.software.length > 0 && (
         <div className="cponetsw">
-          <span style={TILE_LABEL}>SOFTWARE IN DEMAND IN US JOB POSTINGS</span>
+          {/* Was "SOFTWARE IN DEMAND IN US JOB POSTINGS"; the US reference is
+              gone at the owner's request.
+
+              NOT shortened to "…IN JOB POSTINGS", which is the literal edit.
+              With the O*NET provenance line also removed, a card of employsi's
+              own measured counts saying "in demand in job postings" reads as
+              OUR postings — a claim about method that is not true, and the
+              exact shape of bug this codebase treats as most costly. Dropping
+              the corpus clause claims nothing about whose ads these came from,
+              and "In Demand" is O*NET's own category name for the field. */}
+          <span style={TILE_LABEL}>SOFTWARE IN DEMAND</span>
           <div className="cponetchips">
             {o.software.map((w) => (
               <span key={w} className="cponetchip">
@@ -1709,11 +1723,6 @@ function OnetSection({ id }: { id: string }) {
           </div>
         </div>
       )}
-      <p className="cponetnote">
-        {o.zone != null && ONET_ZONE[o.zone] ? `Job zone ${o.zone}: ${ONET_ZONE[o.zone]}. ` : ""}
-        Describes the US occupation this role maps to, not measured from employsi&apos;s ads.{" "}
-        {credit}
-      </p>
     </section>
   );
 }

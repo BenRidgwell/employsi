@@ -359,6 +359,22 @@ jobs:
 
       # THE APP IS AT /app; / is the landing page on every host. Reading the
       # title is how you tell them apart — see CLAUDE.md.
+      #
+      # /app CANNOT BE READ ANONYMOUSLY ANY MORE, and this step used to require
+      # it. The app is signed-in-only as of 2026-09-30 (getAppAccess in
+      # billingFn.ts), so an unauthenticated curl gets a 302 to /login and never
+      # sees the app's <title> at all. This check demanded 200 and would have
+      # failed every app deploy from here on — the same trap CLAUDE.md flags for
+      # deploy-production.yml's gate check, so it is changed in the commit that
+      # closed the gate rather than left to fail and be puzzled over.
+      #
+      # THE REDIRECT IS NOW THE ASSERTION, and it is a stronger one than the
+      # title was: only the app route redirects to /login, so landing there
+      # proves both that this is the app and that its gate is live. A 200 with
+      # the app title is still accepted, because it is the correct answer on a
+      # Worker where Better Auth is not configured — authAvailable() false means
+      # the gate has no door and getAppAccess deliberately stays open. Both are
+      # reported, so which one a run got is on the record.
       - name: Check the preview answers
         run: |
           url="https://$WORKER.employsi.workers.dev$CHECK_PATH"
@@ -373,19 +389,49 @@ jobs:
           # workers.dev hostname that did not exist yet; a minute later it
           # served 200. An existing Worker answers first time, so this only
           # ever costs time on a new one.
+          # A REDIRECT IS A SUCCESSFUL ANSWER HERE, so the retry stops on either —
+          # it is waiting for a hostname to exist, not for a particular status.
+          #
+          # 307, NOT 302. TanStack Router's redirect() in a beforeLoad answers
+          # 307 (measured on employsi-preview, 2026-09-30). This check was
+          # written against 302 from habit and would have failed the very deploy
+          # it was added for. Matched as 3xx rather than pinned to 307, because
+          # which redirect status the framework picks is its choice, not ours —
+          # what matters is where it sends an unauthenticated visitor.
           for wait in 0 5 10 20 30; do
             sleep "$wait"
-            code=$(curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
-            [ "$code" = "200" ] && break
+            read -r code location < <(curl -s --compressed -o page.html \
+              -w '%{http_code} %{redirect_url}\n' --max-time 30 "$url" || echo "000 -")
+            case "$code" in 200|3[0-9][0-9]) break ;; esac
             echo "attempt answered $code; retrying"
           done
           title=$(grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
-          echo "$code  $title"
-          [ "$code" = "200" ] || { echo "::error::$url answered $code"; exit 1; }
-          case "$CHECK_PATH|$title" in
-            "/app|"*"labour-market globe"*) echo "serving the APP" ;;
-            "/|"*"Explore the world of work"*) echo "serving the WEBSITE" ;;
-            *) echo "::warning::$CHECK_PATH did not return the expected title — got: $title" ;;
+          echo "$code  ${location:-$title}"
+
+          case "$CHECK_PATH" in
+            /app)
+              case "$code" in
+                3[0-9][0-9])
+                  case "$location" in
+                    */login*) echo "serving the APP — signed out, $code to /login as expected" ;;
+                    *) echo "::error::/app answered $code to $location, not /login"; exit 1 ;;
+                  esac ;;
+                200)
+                  case "$title" in
+                    *"labour-market globe"*)
+                      echo "::warning::/app served the app to an ANONYMOUS request." \
+                           "Expected on a Worker without Better Auth configured" \
+                           "(authAvailable false); on one with it, the sign-in gate is not working." ;;
+                    *) echo "::error::/app answered 200 but is not the app — got: $title"; exit 1 ;;
+                  esac ;;
+                *) echo "::error::$url answered $code"; exit 1 ;;
+              esac ;;
+            /)
+              [ "$code" = 200 ] || { echo "::error::$url answered $code"; exit 1; }
+              case "$title" in
+                *"Explore the world of work"*) echo "serving the WEBSITE" ;;
+                *) echo "::warning::/ did not return the expected title — got: $title" ;;
+              esac ;;
           esac
 
       # `reason` GOES THROUGH env, NOT THROUGH ${{ }} IN THE SCRIPT BODY.

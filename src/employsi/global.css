@@ -6937,8 +6937,9 @@ body {
 }
 
 /* ── Signed-in avatar ──────────────────────────────────────────────────────
-   The three account avatars (.acctav in the header button, .accav in the
-   account card, .gsauthinitials in the search rail) render initials on a dark disc
+   The four account avatars (.acctav in the header button, .accav in the
+   account card, .gsauthinitials in the search rail, .fbavatar on the feedback
+   board's compose box) render initials on a dark disc
    by default. When the person's provider photo loads, `.hasimg` is added and
    the disc becomes the frame for it: the tinted background would otherwise
    show through a photo with transparency, and the initials' font metrics
@@ -6948,7 +6949,8 @@ body {
    does not always, and `fill` would visibly stretch a face. */
 .acctav.hasimg,
 .accav.hasimg,
-.gsauthinitials.hasimg {
+.gsauthinitials.hasimg,
+.fbavatar.hasimg {
   background: none;
   padding: 0;
   overflow: hidden;
@@ -6963,7 +6965,8 @@ body {
 }
 .acctav.hasimg img,
 .accav.hasimg img,
-.gsauthinitials.hasimg img {
+.gsauthinitials.hasimg img,
+.fbavatar.hasimg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -15421,6 +15424,17 @@ body {
 .nbrow:hover {
   background: var(--surface-subtle);
 }
+/* The list is the panel's last child now that the footer is gone, so the final
+   row's divider would draw a line across the rounded bottom edge with nothing
+   under it. */
+.nbrow:last-child {
+  border-bottom: 0;
+}
+/* The alert row's company badge. ROUND, not the 9px-rounded square it was:
+   this is an employer's logo now rather than its initials, and the round crop
+   is the shape the map pin and the follow list already give a company. The
+   initials remain as the fallback inside the same circle, so a logo that stops
+   resolving degrades to the old badge rather than to a hole. */
 .nbinitials {
   display: flex;
   align-items: center;
@@ -15428,12 +15442,27 @@ body {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: 50%;
   background: var(--surface-sunken);
   color: var(--neutral-700);
   font-family: var(--font-label);
   font-size: 10px;
   font-weight: 600;
+}
+/* overflow-hidden only on the image variant: the text one must not clip a
+   three-letter set of initials against the circle's edge. */
+.nbbadgeimgwrap {
+  overflow: hidden;
+  background: var(--surface-card);
+}
+.nbbadgeimg {
+  width: 100%;
+  height: 100%;
+  /* `contain`, not `cover`: a logo is artwork with its own margins and cropping
+     one to fill a circle cuts the mark. The padding keeps it off the ring. */
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
 }
 .nbbody {
   display: flex;
@@ -15491,6 +15520,36 @@ body {
   background: var(--neutral-900);
   flex: 0 0 auto;
 }
+/* The skill glyph sits beside the headline that names the skill, not above it.
+   `align-items: start` so it stays on the headline's FIRST line when the text
+   wraps to two or three — centred, it would drift to the middle of the block
+   and stop reading as a mark on the sentence. */
+.nbheadlinerow {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+.nbskillglyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  /* 1px of optical nudge so the 20px circle centres on a 14px/1.35 first line
+     rather than sitting proud of it. */
+  margin-top: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--neutral-700);
+}
+.nbskillglyph svg {
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .nbheadline {
   font-size: 14px;
   font-weight: 500;
@@ -15498,6 +15557,7 @@ body {
   letter-spacing: -0.01em;
   color: var(--neutral-900);
   text-wrap: pretty;
+  min-width: 0;
 }
 .nbbars {
   display: flex;
@@ -15556,22 +15616,16 @@ body {
   color: var(--text-secondary);
   text-wrap: pretty;
 }
-.nbfoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 18px;
-  background: var(--surface-subtle);
-  border-top: 1px solid var(--border-subtle);
-}
-.nbfootnote {
-  font-family: var(--font-label);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
+/* .nbfoot / .nbfootnote removed with the "Archive holds N days of collection"
+   caption (2026-09-30). The archive's depth still reaches the reader where it
+   explains something — the notice inside an empty panel says how many days
+   there are and why that is not yet enough to compare against — rather than as
+   a permanent strip under every list.
+
+   The list is now the panel's last child. .nbpanel carries the 18px radius and
+   overflow:hidden, so the corner is fine; what is not is the last row's own
+   divider, which the footer used to sit under and which would otherwise render
+   as a stray rule hugging the rounded bottom edge. See .nbrow:last-child. */
 
 /* Phone: the panel becomes a bottom sheet like the dock's other panels. */
 @media (max-width: 680px) {
@@ -17722,14 +17776,32 @@ body {
   color: var(--text-primary, #1c1c1e);
   text-decoration: underline;
 }
+/* The core tasks, as an actual bulleted list.
+
+   IT WAS ALREADY <ul><li> AND STILL HAD NO BULLETS, because `display: flex`
+   was on the list: a flex container makes its children flex items, and a flex
+   item does not generate a list marker. So the markup was right, the markers
+   were silently dropped, and the `padding-left: 18px` was indenting for
+   bullets that never rendered — which is why the section read as ragged
+   paragraphs. Laying it out as a list (block items + list-style) is what puts
+   them back; the row gap moves from `gap` to a margin for the same reason. */
 .cponettasks {
   margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding-left: 20px;
+  list-style: disc outside;
   font: 400 13px/1.45 "Inter", system-ui, sans-serif;
   color: var(--text-primary, #1c1c1e);
+}
+.cponettasks li {
+  /* `display: list-item` is the default, and is stated because the rule above
+     is exactly what was lost last time. */
+  display: list-item;
+}
+.cponettasks li + li {
+  margin-top: 6px;
+}
+.cponettasks li::marker {
+  color: var(--text-tertiary, #8e8e93);
 }
 .cponetmore {
   align-self: flex-start;
@@ -17761,18 +17833,13 @@ body {
   color: var(--text-primary, #1c1c1e);
   white-space: nowrap;
 }
-.cponetnote,
+/* .cponetnote and .cponetcredit removed with the O*NET credit line
+   (2026-09-30) — see lib/onet.ts. .cponetnone stays: it is the "no single
+   O*NET occupation matches this role" message, which is a different thing. */
 .cponetnone {
   margin: 0;
-  font: 400 11.5px/1.45 "Inter", system-ui, sans-serif;
-  color: var(--text-tertiary, #8e8e93);
-}
-.cponetnone {
-  font-size: 12.5px;
+  font: 400 12.5px/1.45 "Inter", system-ui, sans-serif;
   color: var(--text-secondary, #636366);
-}
-.cponetcredit a {
-  color: inherit;
 }
 
 /* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
@@ -17940,4 +18007,57 @@ body {
 .cpbranchfigs {
   font: 500 11.5px/1.35 "Inter", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── "Viewing as" — the admin persona switch ───────────────────────────────
+   Renders only on a preview host, only for a real admin (components/
+   PersonaSwitch.tsx, lib/persona.ts), inside both account panels. Sized to sit
+   between the follows and Sign out without competing with either: this is a
+   reviewing tool, not a feature of the product being reviewed. */
+.psona {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+}
+.psonalbl {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.psonaseg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+}
+.psonabtn {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12px/1 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+.psonabtn:hover {
+  color: var(--text-primary);
+}
+.psonabtn.on {
+  background: #1c1c1e;
+  color: #fff;
+}
+.psonanote {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
 }

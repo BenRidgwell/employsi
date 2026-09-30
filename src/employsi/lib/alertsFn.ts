@@ -72,7 +72,15 @@ export interface AlertsResult {
   rows: AlertRow[];
   /** How many followed companies were examined. */
   companies: number;
-  /** Distinct collection days the archive holds. */
+  /**
+   * Distinct collection days the archive holds.
+   *
+   * No longer rendered as a caption — the panel's "Archive holds N days of
+   * collection" footer was removed on 2026-09-30. It is still computed and
+   * returned because this handler gates on it (`days < MIN_DAYS`) and names it
+   * in the notice that explains an empty panel, which is where the number
+   * actually answers a question the reader is asking.
+   */
   days: number;
 }
 

@@ -8,8 +8,22 @@
  * from the counts, which do come from rows.
  *
  * O*NET is (c) the U.S. Department of Labor, Employment and Training
- * Administration, used under CC BY 4.0. The credit line is a licence
- * condition, not decoration: it must travel with the content.
+ * Administration, used under CC BY 4.0.
+ *
+ * THE CREDIT LINE IS GONE FROM THE CARD, AND NOTHING ELSE CARRIES IT.
+ * This comment used to say the credit "is a licence condition, not decoration:
+ * it must travel with the content" — which is still true of the licence, and
+ * no longer true of this app. It was removed from the career card on
+ * 2026-09-30 at the owner's explicit direction, after the trade-off was put to
+ * them twice. Recorded rather than quietly deleted, because the next person to
+ * read this file would otherwise have no way to tell a deliberate decision
+ * from an oversight, and would either re-add it or assume it was never needed.
+ *
+ * So the attribution obligation is currently UNMET. Closing it does not mean
+ * putting the line back on the card: CC BY allows attribution "in any manner
+ * reasonable to the medium", so one credits location — an About/Sources panel,
+ * or a line in the site footer — would satisfy it for the whole product at
+ * once. That is the change to make if this is ever revisited.
  */
 
 export interface OnetOccupation {
@@ -30,6 +44,15 @@ export interface OnetForRole {
   version: string;
 }
 
+/**
+ * Job-zone labels, 1-5.
+ *
+ * NOTHING RENDERS THESE TODAY. The career card's "Job zone 4: Considerable
+ * preparation." sentence was removed on 2026-09-30 as clutter. Kept because
+ * `zone` is still carried on every occupation by the generator, so the labels
+ * are what any future surface for it would need — and because deriving them
+ * again from O*NET's documentation is the kind of thing that gets guessed.
+ */
 export const ONET_ZONE: Record<number, string> = {
   1: "Little or no preparation",
   2: "Some preparation",
