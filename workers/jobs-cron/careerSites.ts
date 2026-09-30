@@ -22700,7 +22700,17 @@ async function fetchAttrax(site: SiteDef): Promise<PortalJob[]> {
   const MISS_BUDGET = 3;
   let misses = 0;
   for (let page = 1; page <= max;) {
-    const html = await getText(`${site.endpoint}?page=${page}&size=${size}`);
+    // `searchParams` narrows the board, and is how a board over Attrax's page
+    // cap is read at all. Measured 2026-09-29 on AbbVie: Attrax serves at
+    // most 25 pages — from page 25 every page repeats the same 48 ids — so an
+    // unfiltered walk of 1,581 stops at exactly 1,200 without a word. Split by
+    // the board's own Function filter (options=8..12, counts summing to the
+    // total, each under the cap), every role is reachable. Appended with "&",
+    // because an endpoint carrying "?options=8" produced "?options=8?page=1",
+    // which returns nothing.
+    const html = await getText(
+      `${site.endpoint}?page=${page}&size=${size}${site.searchParams ? `&${site.searchParams}` : ""}`,
+    );
     if (!html) {
       if (++misses <= MISS_BUDGET) continue;
       break;
@@ -23168,12 +23178,18 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
       if (!total) break;
     }
     let added = 0;
-    for (const li of html.split(/<li>/i).slice(1)) {
+    // TWO CARD SHAPES, measured 2026-09-29. Chevron, Capital One and
+    // AstraZeneca serve a bare `<li>` with an `<h2>` title and
+    // `class="job-location"`; BAT serves `<li class="search-results-job">`, an
+    // `<h3>` title and `class="search-results-job-location"` whose text starts
+    // "Location: ". Reading only the first shape returned 0 of BAT's 283. A
+    // `<li>` without the data-job-id anchor is not a job and is still skipped.
+    for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
       const href = clean(a[1]);
       const id = clean(a[2]) || href;
-      const title = clean(li.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? "");
+      const title = clean(li.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)?.[1] ?? "");
       if (!title || seen.has(id)) continue;
       seen.add(id);
       added++;
@@ -23181,7 +23197,11 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
         job(
           site,
           title,
-          clean(li.match(/class="job-location"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? ""),
+          clean(
+            li.match(
+              /class="(?:job-location|search-results-job-location)"[^>]*>([\s\S]*?)<\/span>/i,
+            )?.[1] ?? "",
+          ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
           // The list carries no posting date, only the job page does. Dating
           // every row "today" would be a fabricated field; the archive's
