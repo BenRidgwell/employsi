@@ -196,6 +196,9 @@ export interface CardMove {
   /** Roster companies advertising BOTH roles in this market in the window. */
   sharedEmployers: number;
   payLabel: string;
+  /** The destination's most distinct skill against this role (distinctSkill),
+   *  for its icon on the map. */
+  skill: string | null;
 }
 
 export interface CardEdge {
@@ -275,11 +278,31 @@ export function careerMoves(p: CareerPathways, from: PathwayNode, country: strin
       overlap: hi ? Math.round((lo / hi) * 100) / 100 : 0,
       sharedEmployers: (m.companies ?? []).filter(([c]) => myCos.has(c)).length,
       payLabel: payLabel(n.pay[country]?.median ?? null, country),
+      skill: distinctSkill(n, mine),
     });
   }
   return out
     .sort((a, b) => b.overlap - a.overlap || b.sharedEmployers - a.sharedEmployers)
     .slice(0, MAX_MOVES);
+}
+
+/**
+ * The destination's most DISTINCT skill against where the reader stands: the
+ * one whose share rises most from this role to that one. Its commonest skill
+ * will not do for an icon — every HR rung leads with "Human Resources", so
+ * payroll manager's four HR destinations drew four identical glyphs.
+ */
+function distinctSkill(dest: PathwayNode, mine: Map<string, number>): string | null {
+  let best: string | null = null;
+  let gain = -Infinity;
+  for (const [k, v] of dest.skills) {
+    const g = v - (mine.get(k) ?? 0);
+    if (g > gain) {
+      gain = g;
+      best = k;
+    }
+  }
+  return best;
 }
 
 const trackLabel = (p: CareerPathways, family: string, track: string) =>

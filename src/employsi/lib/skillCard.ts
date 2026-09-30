@@ -218,6 +218,14 @@ export const SKILL_ICON: Record<string, string> = {
   Strategy: "target",
   "Procurement & Supply": "cart",
   "Human Resources": "badge",
+  // HR's specialities used to inherit the badge, so a card offering several HR
+  // directions (payroll manager -> HR manager, L&D, employee relations…) drew
+  // one glyph five times. Each now names its own.
+  "Talent Acquisition": "target",
+  "Employee Relations": "chat",
+  "Learning & Development": "book",
+  "Workforce Planning": "bars",
+  "HR Systems": "chip",
   "Commercial & Legal": "scales",
   "Marketing & Comms": "megaphone",
   "Sales & Business Dev": "trend",

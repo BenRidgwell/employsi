@@ -139,7 +139,7 @@ const pane = readFileSync(
 check("the card credits O*NET under CC BY 4.0", /CC BY 4\.0/.test(pane) && /O\*NET/.test(pane));
 check(
   "other directions say they are O*NET's links, not tracked moves",
-  /Related occupations per O\*NET/.test(pane) && /Nothing here tracks people/.test(pane),
+  /Related occupation per O\*NET, not a tracked career move/.test(pane),
 );
 
 if (failed) {
