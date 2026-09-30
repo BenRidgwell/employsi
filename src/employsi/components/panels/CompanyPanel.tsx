@@ -973,8 +973,19 @@ export function CompanyPanel() {
   // card opening with the news hidden looks like a company with no coverage —
   // but the tucked panel still shows its spine, so the state stays visible and
   // one click away, and re-tucking it on every single company was worse.
-  const newsCollapsed = useAppStore((s) => s.newsCollapsed);
-  const toggleNewsCollapsed = useAppStore((s) => s.toggleNewsCollapsed);
+  const newsPref = useAppStore((s) => s.newsCollapsed);
+  const toggleNewsPref = useAppStore((s) => s.toggleNewsCollapsed);
+  // With career pathways open beside it (desktop — see store.select), the
+  // news column is tucked so the company card sits at the right edge, clear
+  // of the career card; open, the 440px card reached back under it and was
+  // hidden. Only while career is open, and the saved preference is left
+  // alone. Expanding it by hand in that state wins until career closes.
+  const careerOpen = useAppStore((s) => s.careerOpen);
+  const [newsAnyway, setNewsAnyway] = useState(false);
+  useEffect(() => setNewsAnyway(false), [careerOpen]);
+  const tuckedForCareer = careerOpen && !newsPref && !newsAnyway;
+  const newsCollapsed = newsPref || tuckedForCareer;
+  const toggleNewsCollapsed = () => (tuckedForCareer ? setNewsAnyway(true) : toggleNewsPref());
 
   return (
     <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>

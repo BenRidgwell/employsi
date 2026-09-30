@@ -13228,6 +13228,7 @@ body {
 }
 .tsktip {
   position: absolute;
+  z-index: 2;
   transform: translate(-50%, calc(-100% - 12px));
   padding: 5px 9px;
   border-radius: 9px;
@@ -13237,6 +13238,14 @@ body {
   font-size: 10.5px;
   white-space: nowrap;
   pointer-events: none;
+}
+/* Near a chart's ends the tooltip anchors its own edge to the point instead
+   of centring on it, so it is never cut by the card. */
+.tsktip.start {
+  transform: translate(-12px, calc(-100% - 12px));
+}
+.tsktip.end {
+  transform: translate(calc(-100% + 12px), calc(-100% - 12px));
 }
 
 /* hot spots */
@@ -17931,8 +17940,4 @@ body {
 .cpbranchfigs {
   font: 500 11.5px/1.35 "Inter", system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-}
-.cpbranchnote {
-  font: 400 10.5px/1.4 "Inter", system-ui, sans-serif;
-  opacity: 0.6;
 }

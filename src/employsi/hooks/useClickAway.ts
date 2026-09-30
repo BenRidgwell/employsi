@@ -12,14 +12,22 @@ import { useEffect } from "react";
  *
  * `own` is the card's selector. The rail, the mobile tab bar and the toast are
  * exempt, as they sat above the scrim: their buttons swap cards themselves.
+ * `keepOn` adds more: a card that is used WHILE exploring the map (career
+ * pathways — find where a role is advertised) passes the map and the company
+ * card, so clicking a country, city or company does not close it.
  */
 const EXEMPT = ".actionrail, .mobiletabbar, .toast";
 
-export function useClickAway(active: boolean, close: () => void, own: string): void {
+export function useClickAway(
+  active: boolean,
+  close: () => void,
+  own: string,
+  keepOn?: string,
+): void {
   useEffect(() => {
     if (!active) return;
-    const exempt = (t: EventTarget | null) =>
-      t instanceof Element && !!t.closest(`${own}, ${EXEMPT}`);
+    const sel = [own, EXEMPT, keepOn].filter(Boolean).join(", ");
+    const exempt = (t: EventTarget | null) => t instanceof Element && !!t.closest(sel);
     let down: { x: number; y: number; outside: boolean } | null = null;
     const onDown = (e: PointerEvent) => {
       down = { x: e.clientX, y: e.clientY, outside: !exempt(e.target) };
@@ -36,5 +44,5 @@ export function useClickAway(active: boolean, close: () => void, own: string): v
       document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("pointerup", onUp, true);
     };
-  }, [active, close, own]);
+  }, [active, close, own, keepOn]);
 }
