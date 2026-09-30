@@ -139,13 +139,33 @@ jobs:
           fail=0
           # WAIT FOR THE NEW VERSION TO REACH THE DOMAIN. Measured 2026-09-29 on
           # the first run: every check here ran within a second of the upload
-          # and saw the OLD waitlist (/product and /login 404), then the same
-          # URLs served the new site seconds later. A 200 on / proves nothing —
-          # the old page answered 200 too — so wait on the new TITLE.
-          for wait in 0 5 10 15 20 30 40; do
+          # and saw the OLD version, then the same URLs served the new one
+          # seconds later.
+          #
+          # WAIT ON THIS BUILD'S ASSETS, NOT ON THE TITLE. The first fix waited
+          # for the landing title, which only works when the title changes.
+          # Measured 2026-09-30: old and new versions carried the same title,
+          # the wait passed instantly, and workers.dev /app was checked against
+          # the OLD version (served the app, 200) and failed a good deploy —
+          # a minute later it answered 307 to /login as it should. The entry
+          # chunk's hash changes with any code change, so the page is the new
+          # version once every /assets/ file it references is one this run built.
+          built=$(ls .output/public/assets/ 2>/dev/null)
+          fresh() {
+            refs=$(grep -ao '/assets/[A-Za-z0-9._-]*\.js' page.html | sed 's#/assets/##' | sort -u)
+            [ -n "$refs" ] || return 1
+            for r in $refs; do printf '%s\n' "$built" | grep -qxF "$r" || return 1; done
+          }
+          for wait in 0 5 10 15 20 30 40 60; do
             sleep "$wait"; code=$(fetch "https://employsi.com.au/?deploy=$NEW_VERSION")
-            case "$(title)" in *"Explore the world of work"*) break ;; esac
-            echo "apex / still serving: $(title) — waiting"
+            fresh && break
+            echo "apex / still serving the previous build — waiting"
+          done
+          fresh || { echo "::error::apex / never served this build's assets"; fail=1; }
+          for wait in 0 5 10 20 30; do
+            sleep "$wait"; fetch "https://benridgwell-globe-gazer-hr.employsi.workers.dev/?deploy=$NEW_VERSION" >/dev/null
+            fresh && break
+            echo "workers.dev still serving the previous build — waiting"
           done
           t=$(title); echo "apex /          $code  $t"
           case "$t" in *"Explore the world of work"*) ;; *) echo "::error::apex / is not the landing page"; fail=1 ;; esac
