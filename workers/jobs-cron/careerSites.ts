@@ -18661,8 +18661,66 @@ export const SITES: SiteDef[] = [
   // Westford MA (9, Middlesex Co.) -> boston; Hillsboro OR (4) -> portland; Herndon VA (1,
   // Fairfax Co.) -> washington. homeHub null: rows always carry a location and no HOME_COUNTRY
   // exists for sanjose.
-  {"id": "sanjose-nvda", "name": "Nvidia", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs", "origin": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite", "homeHub": null, "hubHints": [["us, ca, santa clara", "sanjose"], ["us, wa, seattle", "seattle"], ["us, wa, redmond", "seattle"], ["us, wa, bellevue", "seattle"], ["us, wa,", null], ["us, ma, westford", "boston"], ["us, or, hillsboro", "portland"], ["us, va, herndon", "washington"]], "key": "sanjose-nvda-eng", "appliedFacets": {"jobFamilyGroup": ["0c40f6bd1d8f10ae43ffaefd46dc7e78"]}, "maxPages": 100},
-  {"id": "sanjose-nvda", "name": "Nvidia", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs", "origin": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite", "homeHub": null, "hubHints": [["us, ca, santa clara", "sanjose"], ["us, wa, seattle", "seattle"], ["us, wa, redmond", "seattle"], ["us, wa, bellevue", "seattle"], ["us, wa,", null], ["us, ma, westford", "boston"], ["us, or, hillsboro", "portland"], ["us, va, herndon", "washington"]], "key": "sanjose-nvda-other", "appliedFacets": {"jobFamilyGroup": ["0c40f6bd1d8f10ae43ffcac5bbec7e90", "0c40f6bd1d8f10ae43ffc3fc7d8c7e8a", "0c40f6bd1d8f10ae43ffda1e8d447e94", "0c40f6bd1d8f10ae43ffc668c6847e8c", "0c40f6bd1d8f10ae43ffc19725ec7e88", "0c40f6bd1d8f10ae43ffbd1459047e84", "0c40f6bd1d8f10ae43ffc8817cf47e8e", "e8bdc341a93101bd5f4d2b0a1c005e36", "0c40f6bd1d8f10ae43ffb5dd06f47e7e", "0c40f6bd1d8f10ae43ffbac3680c7e82", "0c40f6bd1d8f10ae43ffac5fdfac7e76", "0c40f6bd1d8f10ae43ffbf4412147e86", "0c40f6bd1d8f10ae43ffb3a6aaac7e7c"]}, "maxPages": 60},
+  {
+    id: "sanjose-nvda",
+    name: "Nvidia",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs",
+    origin: "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+    homeHub: null,
+    hubHints: [
+      ["us, ca, santa clara", "sanjose"],
+      ["us, wa, seattle", "seattle"],
+      ["us, wa, redmond", "seattle"],
+      ["us, wa, bellevue", "seattle"],
+      ["us, wa,", null],
+      ["us, ma, westford", "boston"],
+      ["us, or, hillsboro", "portland"],
+      ["us, va, herndon", "washington"],
+    ],
+    key: "sanjose-nvda-eng",
+    appliedFacets: { jobFamilyGroup: ["0c40f6bd1d8f10ae43ffaefd46dc7e78"] },
+    maxPages: 100,
+  },
+  {
+    id: "sanjose-nvda",
+    name: "Nvidia",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs",
+    origin: "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+    homeHub: null,
+    hubHints: [
+      ["us, ca, santa clara", "sanjose"],
+      ["us, wa, seattle", "seattle"],
+      ["us, wa, redmond", "seattle"],
+      ["us, wa, bellevue", "seattle"],
+      ["us, wa,", null],
+      ["us, ma, westford", "boston"],
+      ["us, or, hillsboro", "portland"],
+      ["us, va, herndon", "washington"],
+    ],
+    key: "sanjose-nvda-other",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "0c40f6bd1d8f10ae43ffcac5bbec7e90",
+        "0c40f6bd1d8f10ae43ffc3fc7d8c7e8a",
+        "0c40f6bd1d8f10ae43ffda1e8d447e94",
+        "0c40f6bd1d8f10ae43ffc668c6847e8c",
+        "0c40f6bd1d8f10ae43ffc19725ec7e88",
+        "0c40f6bd1d8f10ae43ffbd1459047e84",
+        "0c40f6bd1d8f10ae43ffc8817cf47e8e",
+        "e8bdc341a93101bd5f4d2b0a1c005e36",
+        "0c40f6bd1d8f10ae43ffb5dd06f47e7e",
+        "0c40f6bd1d8f10ae43ffbac3680c7e82",
+        "0c40f6bd1d8f10ae43ffac5fdfac7e76",
+        "0c40f6bd1d8f10ae43ffbf4412147e86",
+        "0c40f6bd1d8f10ae43ffb3a6aaac7e7c",
+      ],
+    },
+    maxPages: 60,
+  },
   // Intuit — Measured 2026-09-29: jobs.intuit.com is Radancy TalentBrew (company 27595); data-
   // total-results 564, fetchRadancy collected 564 unique in 5 pages of 100, twice (7s, 3s). 243
   // cards read 'Multiple Locations' (the url slug names a primary city, e.g. /job/mountain-
@@ -18672,7 +18730,23 @@ export const SITES: SiteDef[] = [
   // has only 'new york'); Frisco, Texas (4, Collin Co.) -> dallas; 'Remote - New York - United
   // States' (1) was matching newyork though it means the state -> null. homeHub null: every
   // card carries a location.
-  {"id": "sanjose-intu", "name": "Intuit", "sector": "Technology, Media and Telecommunications", "platform": "radancy", "endpoint": "https://jobs.intuit.com/search-jobs/results", "origin": "https://jobs.intuit.com", "homeHub": null, "hubHints": [["mountain view, california", "sanjose"], ["oakland, california", "sanfrancisco"], ["bellevue, wa", "seattle"], ["brooklyn, ny", "newyork"], ["frisco, texas", "dallas"], ["remote - new york", null]]},
+  {
+    id: "sanjose-intu",
+    name: "Intuit",
+    sector: "Technology, Media and Telecommunications",
+    platform: "radancy",
+    endpoint: "https://jobs.intuit.com/search-jobs/results",
+    origin: "https://jobs.intuit.com",
+    homeHub: null,
+    hubHints: [
+      ["mountain view, california", "sanjose"],
+      ["oakland, california", "sanfrancisco"],
+      ["bellevue, wa", "seattle"],
+      ["brooklyn, ny", "newyork"],
+      ["frisco, texas", "dallas"],
+      ["remote - new york", null],
+    ],
+  },
   // University of South Australia — DUPLICATE / MERGED EMPLOYER — decide the id before wiring.
   // Measured 2026-09-29: unisa.edu.au now redirects to adelaide.edu.au — UniSA and the
   // University of Adelaide merged into Adelaide University (operating from 2026), and the
@@ -18687,7 +18761,16 @@ export const SITES: SiteDef[] = [
   // domain). Placement: Adelaide CBD 10, 'South Australia (Other)' 1 (Whyalla, via HUB_MATCH
   // 'south australia'), Magill 1 (hint: Magill campus, Adelaide suburb); Roseworthy 4
   // (veterinary campus ~50km north, outside the metro) left unplaced deliberately.
-  {"id": "uni-university-of-adelaide", "name": "Adelaide University", "sector": "Higher education", "platform": "clinch", "endpoint": "https://jobs.adelaide.edu.au/jobs/search", "origin": "https://jobs.adelaide.edu.au", "homeHub": "adelaide", "hubHints": [["magill", "adelaide"]]},
+  {
+    id: "uni-university-of-adelaide",
+    name: "Adelaide University",
+    sector: "Higher education",
+    platform: "clinch",
+    endpoint: "https://jobs.adelaide.edu.au/jobs/search",
+    origin: "https://jobs.adelaide.edu.au",
+    homeHub: "adelaide",
+    hubHints: [["magill", "adelaide"]],
+  },
   // Hansen Technologies — Measured 2026-09-29: roster domain hansentechnologies.com is refused
   // from here; the company trades as hansencx.com (needs a browser UA — bare curl gets 404) and
   // its /careers/ page links Oracle Recruiting Cloud eoja.fa.ap1.oraclecloud.com, site CX (CX_1
@@ -18696,7 +18779,15 @@ export const SITES: SiteDef[] = [
   // Espoo 2, Berlin 1, Offenburg 1, Dublin 1 — a real zero for Melbourne, not a parse failure.
   // homeHub melbourne is safe: HOME_COUNTRY /australia/ matches none of these, so foreign rows
   // stay unplaced rather than falling to Melbourne.
-  {"id": "melbourne-hsn", "name": "Hansen Technologies", "sector": "Technology, Media and Telecommunications", "platform": "oracle", "endpoint": "https://eoja.fa.ap1.oraclecloud.com", "origin": "https://eoja.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX", "homeHub": "melbourne"},
+  {
+    id: "melbourne-hsn",
+    name: "Hansen Technologies",
+    sector: "Technology, Media and Telecommunications",
+    platform: "oracle",
+    endpoint: "https://eoja.fa.ap1.oraclecloud.com",
+    origin: "https://eoja.fa.ap1.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX",
+    homeHub: "melbourne",
+  },
   // First Quantum Minerals — Measured 2026-09-29: ROSTER DOMAIN IS WRONG —
   // firstquantumminerals.com is a parked domain (JS redirect to /lander, 200 on every path);
   // the company is first-quantum.com, whose careers page embeds Workday
@@ -18712,7 +18803,39 @@ export const SITES: SiteDef[] = [
   // Panama 3, Lima, La Granja, Penonome, 'Port', '2 Locations', Johannesburg 1 (->
   // johannesburg). No Canadian role, so nothing lands on vancouver; the rest are unplaced (no
   // hub) honestly.
-  {"id": "vancouver-fm", "name": "First Quantum Minerals", "sector": "Energy & Natural Resources", "platform": "workday", "endpoint": "https://firstquantum.wd3.myworkdayjobs.com/wday/cxs/firstquantum/First_Quantum_Careers/jobs", "origin": "https://firstquantum.wd3.myworkdayjobs.com/First_Quantum_Careers", "homeHub": "vancouver", "appliedFacets": {"jobFamilyGroup": ["7a9d5f83dad30157243498c7430a5214", "7a9d5f83dad30174b2a4b0c7430a6014", "7a9d5f83dad3011ee95ec0c7430a6a14", "7a9d5f83dad3014e5d7c9ec7430a5614", "7a9d5f83dad3011c3959ccc7430a7214", "1329817b00f41000de9bd4dac1300000", "7a9d5f83dad30184a9e5dfc7430a7e14", "7a9d5f83dad301e4ec1badc7430a5e14", "7a9d5f83dad30164eb5a9bc7430a5414", "7a9d5f83dad3012b2d1195c7430a5014", "7a9d5f83dad3018dff15b4c7430a6214", "7a9d5f83dad301cab1a2a5c7430a5a14", "7e913e04d3751001eed86e0e17390000", "7a9d5f83dad301c8ea03e3c7430a8014", "7a9d5f83dad3015137a2dcc7430a7c14", "7a9d5f83dad3014bf831d9c7430a7a14", "7a9d5f83dad30154ed30d3c7430a7614", "7a9d5f83dad3011917fdcfc7430a7414", "7a9d5f83dad3016bf25ac3c7430a6c14"]}},
+  {
+    id: "vancouver-fm",
+    name: "First Quantum Minerals",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint:
+      "https://firstquantum.wd3.myworkdayjobs.com/wday/cxs/firstquantum/First_Quantum_Careers/jobs",
+    origin: "https://firstquantum.wd3.myworkdayjobs.com/First_Quantum_Careers",
+    homeHub: "vancouver",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "7a9d5f83dad30157243498c7430a5214",
+        "7a9d5f83dad30174b2a4b0c7430a6014",
+        "7a9d5f83dad3011ee95ec0c7430a6a14",
+        "7a9d5f83dad3014e5d7c9ec7430a5614",
+        "7a9d5f83dad3011c3959ccc7430a7214",
+        "1329817b00f41000de9bd4dac1300000",
+        "7a9d5f83dad30184a9e5dfc7430a7e14",
+        "7a9d5f83dad301e4ec1badc7430a5e14",
+        "7a9d5f83dad30164eb5a9bc7430a5414",
+        "7a9d5f83dad3012b2d1195c7430a5014",
+        "7a9d5f83dad3018dff15b4c7430a6214",
+        "7a9d5f83dad301cab1a2a5c7430a5a14",
+        "7e913e04d3751001eed86e0e17390000",
+        "7a9d5f83dad301c8ea03e3c7430a8014",
+        "7a9d5f83dad3015137a2dcc7430a7c14",
+        "7a9d5f83dad3014bf831d9c7430a7a14",
+        "7a9d5f83dad30154ed30d3c7430a7614",
+        "7a9d5f83dad3011917fdcfc7430a7414",
+        "7a9d5f83dad3016bf25ac3c7430a6c14",
+      ],
+    },
+  },
   // Sanofi — Measured 2026-09-29: jobs.sanofi.com (Radancy front end) links every job to
   // sanofi.wd3/SanofiCareers, the Workday board: total 732 (<2,000), ~37s walk, 732 unique, two
   // runs identical. skipTitles drops 2 'Banco de Talentos ...' standing pools (Sao Paulo,
@@ -18723,7 +18846,30 @@ export const SITES: SiteDef[] = [
   // Paris); Alpharetta GA 1 -> atlanta; Fort Worth TX 1 -> dallas; Midrand 1 -> johannesburg.
   // 'N Locations' rows (118) unplaced; Hyderabad 52, Frankfurt 34, Budapest 24, Lyon 11 etc are
   // not hubs.
-  {"id": "paris-san", "name": "Sanofi", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://sanofi.wd3.myworkdayjobs.com/wday/cxs/sanofi/SanofiCareers/jobs", "origin": "https://sanofi.wd3.myworkdayjobs.com/SanofiCareers", "homeHub": "paris", "maxPages": 60, "hubHints": [["london, ky", null], ["cambridge, ma", "boston"], ["waltham, ma", "boston"], ["framingham, ma", "boston"], ["morristown, nj", "newyork"], ["pearl river, ny", "newyork"], ["vitry-sur-seine", "paris"], ["gentilly", "paris"], ["alpharetta, ga", "atlanta"], ["fort worth, tx", "dallas"], ["midrand", "johannesburg"]], "skipTitles": /^banco de talentos\b/i},
+  {
+    id: "paris-san",
+    name: "Sanofi",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://sanofi.wd3.myworkdayjobs.com/wday/cxs/sanofi/SanofiCareers/jobs",
+    origin: "https://sanofi.wd3.myworkdayjobs.com/SanofiCareers",
+    homeHub: "paris",
+    maxPages: 60,
+    hubHints: [
+      ["london, ky", null],
+      ["cambridge, ma", "boston"],
+      ["waltham, ma", "boston"],
+      ["framingham, ma", "boston"],
+      ["morristown, nj", "newyork"],
+      ["pearl river, ny", "newyork"],
+      ["vitry-sur-seine", "paris"],
+      ["gentilly", "paris"],
+      ["alpharetta, ga", "atlanta"],
+      ["fort worth, tx", "dallas"],
+      ["midrand", "johannesburg"],
+    ],
+    skipTitles: /^banco de talentos\b/i,
+  },
   // Adobe — Measured 2026-09-29: careers.adobe.com is a Phenom front end (totalHits 549) over
   // adobe.wd5/external_experienced, read here from Workday: total 552, ~25s walk, 552 unique,
   // two runs identical. No standing talent-pool posts. Trap fixed: 'Remote Washington' (the
@@ -18731,7 +18877,20 @@ export const SITES: SiteDef[] = [
   // washington. San Jose 125 is Adobe HQ. 244 rows are 'N Locations' (Workday multi-location)
   // and stay unplaced - the largest unplaced share; Noida 25, Bucharest 17, Lehi 6 are not
   // hubs. University/intern hiring may sit on a separate Workday site (not probed).
-  {"id": "sanjose-adbe", "name": "Adobe", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://adobe.wd5.myworkdayjobs.com/wday/cxs/adobe/external_experienced/jobs", "origin": "https://adobe.wd5.myworkdayjobs.com/external_experienced", "homeHub": "sanjose", "maxPages": 50, "hubHints": [["remote washington", null], ["mclean", "washington"]]},
+  {
+    id: "sanjose-adbe",
+    name: "Adobe",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://adobe.wd5.myworkdayjobs.com/wday/cxs/adobe/external_experienced/jobs",
+    origin: "https://adobe.wd5.myworkdayjobs.com/external_experienced",
+    homeHub: "sanjose",
+    maxPages: 50,
+    hubHints: [
+      ["remote washington", null],
+      ["mclean", "washington"],
+    ],
+  },
   // King & Wood Mallesons — Measured 2026-09-29: the Australian firm now trades as 'Mallesons
   // (formerly KWM)' - kwm.com/au/en/careers.html redirects to mallesons.com, whose careers page
   // links mallesons.wd105/careers_mallesons: total 43, ~2s, two runs identical. Roster domain
@@ -18740,7 +18899,17 @@ export const SITES: SiteDef[] = [
   // homeHub) and 'Expressions of Interest - Legal Roles' (5 Locations) - use /i. After that
   // every row carries a city; Singapore 1 is the firm's Singapore office. 'N Locations' 4
   // unplaced.
-  {"id": "priv-king-wood-mallesons", "name": "King & Wood Mallesons", "sector": "Legal services", "platform": "workday", "endpoint": "https://mallesons.wd105.myworkdayjobs.com/wday/cxs/mallesons/careers_mallesons/jobs", "origin": "https://mallesons.wd105.myworkdayjobs.com/careers_mallesons", "homeHub": "melbourne", "maxPages": 10, "skipTitles": /^expressions of interest - (support|legal roles)$/i},
+  {
+    id: "priv-king-wood-mallesons",
+    name: "King & Wood Mallesons",
+    sector: "Legal services",
+    platform: "workday",
+    endpoint: "https://mallesons.wd105.myworkdayjobs.com/wday/cxs/mallesons/careers_mallesons/jobs",
+    origin: "https://mallesons.wd105.myworkdayjobs.com/careers_mallesons",
+    homeHub: "melbourne",
+    maxPages: 10,
+    skipTitles: /^expressions of interest - (support|legal roles)$/i,
+  },
   // General Mills — Measured 2026-09-29: careers.generalmills.com links
   // genmills.wd1/GMI_External_Careers: total 343, ~12s walk, 343 unique, two runs identical.
   // skipTitles drops 2 Hong Kong '... (Talent Pipeline)' pipeline reqs - use /i. hubHints
@@ -18751,7 +18920,28 @@ export const SITES: SiteDef[] = [
   // capability centre. Checked Mount Waverley VIC -> melbourne and Rooty Hill NSW -> sydney are
   // the Australian sites. Buffalo NY 11, Wellston OH, Joplin MO etc are plants, unplaced. 'N
   // Locations' 24 unplaced.
-  {"id": "minneapolis-gis", "name": "General Mills", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://genmills.wd1.myworkdayjobs.com/wday/cxs/genmills/GMI_External_Careers/jobs", "origin": "https://genmills.wd1.myworkdayjobs.com/GMI_External_Careers", "homeHub": "minneapolis", "maxPages": 40, "hubHints": [["chanhassen, mn", "minneapolis"], ["geneva, il", "chicago"], ["mississauga, on", "toronto"], ["boulogne billancourt, fr", "paris"], ["kowloon, hk", "hongkong"], ["sha tin, hk", "hongkong"], ["covington, ga", "atlanta"], ["vernon, ca", "losangeles"], ["rogers, ar", "bentonville"]], "skipTitles": /\(talent pipeline\)$/i},
+  {
+    id: "minneapolis-gis",
+    name: "General Mills",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://genmills.wd1.myworkdayjobs.com/wday/cxs/genmills/GMI_External_Careers/jobs",
+    origin: "https://genmills.wd1.myworkdayjobs.com/GMI_External_Careers",
+    homeHub: "minneapolis",
+    maxPages: 40,
+    hubHints: [
+      ["chanhassen, mn", "minneapolis"],
+      ["geneva, il", "chicago"],
+      ["mississauga, on", "toronto"],
+      ["boulogne billancourt, fr", "paris"],
+      ["kowloon, hk", "hongkong"],
+      ["sha tin, hk", "hongkong"],
+      ["covington, ga", "atlanta"],
+      ["vernon, ca", "losangeles"],
+      ["rogers, ar", "bentonville"],
+    ],
+    skipTitles: /\(talent pipeline\)$/i,
+  },
   // Michelin — Measured 2026-09-29: michelinhr.wd3/Michelin is Michelin's global Workday board
   // (jobs.michelinman.com and michelin.com careers point at it), total 743, under Workday's
   // 2,000 cap, one walk ~38s, 743 unique urls; two runs identical. Countries: France 239,
@@ -18768,12 +18958,52 @@ export const SITES: SiteDef[] = [
   // Channahon IL 1. Checked: 'East London' is the UK (Commercial Tyre Technician - East & South
   // London) -> london correct; 'Melbourne' is the Australian office. 'N Locations' rows (~39)
   // stay unplaced (reader behaviour).
-  {"id": "paris-ml", "name": "Michelin", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://michelinhr.wd3.myworkdayjobs.com/wday/cxs/michelinhr/Michelin/jobs", "origin": "https://michelinhr.wd3.myworkdayjobs.com/Michelin", "homeHub": "paris", "maxPages": 60, "hubHints": [["boulogne billancourt", "paris"], ["ile-de-france", "paris"], ["euromaster blanc mesnil", "paris"], ["euromaster villeneuve garenne", "paris"], ["euromaster nanterre", "paris"], ["euromaster massy", "paris"], ["euromaster viry chatillon", "paris"], ["euromaster pontault combault", "paris"], ["euromaster conflans", "paris"], ["euromaster poissy", "paris"], ["euromaster plaisir", "paris"], ["euromaster coignieres", "paris"], ["euromaster corbeil essonnes", "paris"], ["euromaster pierrelaye", "paris"], ["stockbridge, ga", "atlanta"], ["covington, ga", "atlanta"], ["buford, ga", "atlanta"], ["channahon, il", "chicago"]], "skipTitles": /^(banco de talentos\b|candidatura espontanea\b|aplikacja\s+spontaniczna$|apac talent pool - careers website$)|- join our talent pool!?$/i},
+  {
+    id: "paris-ml",
+    name: "Michelin",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://michelinhr.wd3.myworkdayjobs.com/wday/cxs/michelinhr/Michelin/jobs",
+    origin: "https://michelinhr.wd3.myworkdayjobs.com/Michelin",
+    homeHub: "paris",
+    maxPages: 60,
+    hubHints: [
+      ["boulogne billancourt", "paris"],
+      ["ile-de-france", "paris"],
+      ["euromaster blanc mesnil", "paris"],
+      ["euromaster villeneuve garenne", "paris"],
+      ["euromaster nanterre", "paris"],
+      ["euromaster massy", "paris"],
+      ["euromaster viry chatillon", "paris"],
+      ["euromaster pontault combault", "paris"],
+      ["euromaster conflans", "paris"],
+      ["euromaster poissy", "paris"],
+      ["euromaster plaisir", "paris"],
+      ["euromaster coignieres", "paris"],
+      ["euromaster corbeil essonnes", "paris"],
+      ["euromaster pierrelaye", "paris"],
+      ["stockbridge, ga", "atlanta"],
+      ["covington, ga", "atlanta"],
+      ["buford, ga", "atlanta"],
+      ["channahon, il", "chicago"],
+    ],
+    skipTitles:
+      /^(banco de talentos\b|candidatura espontanea\b|aplikacja\s+spontaniczna$|apac talent pool - careers website$)|- join our talent pool!?$/i,
+  },
   // ConocoPhillips — Measured 2026-09-29: careers.conocophillips.com/job-search-results links
   // conocophillips.wd1/External: total 49, ~2.5s, two runs identical. Houston TX 20, London UK
   // 4; Midland TX 6, Loving NM 3, Anchorage/Alpine AK, Kenedy TX, Bartlesville OK unplaced (not
   // hubs), 'N Locations' 10 unplaced. No standing posts.
-  {"id": "houston-cop", "name": "ConocoPhillips", "sector": "Energy & Natural Resources", "platform": "workday", "endpoint": "https://conocophillips.wd1.myworkdayjobs.com/wday/cxs/conocophillips/External/jobs", "origin": "https://conocophillips.wd1.myworkdayjobs.com/External", "homeHub": "houston", "maxPages": 20},
+  {
+    id: "houston-cop",
+    name: "ConocoPhillips",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://conocophillips.wd1.myworkdayjobs.com/wday/cxs/conocophillips/External/jobs",
+    origin: "https://conocophillips.wd1.myworkdayjobs.com/External",
+    homeHub: "houston",
+    maxPages: 20,
+  },
   // London Stock Exchange Group — LSEG - 2026-09-29: www.lseg.com/en/careers links lseg.wd3
   // Workday site 'Careers' (global board, total 672 at offset 0; 672 of 672 on two walks, ~37
   // s, under the 2,000 cap so no facet split). Locations mix 'GBR-London-10 Paternoster Square'
@@ -18786,7 +19016,24 @@ export const SITES: SiteDef[] = [
   // homeHub london (no blank locations seen). Unplaced 270 are real non-hub sites (Gdynia 25,
   // St. Louis 25, Bucharest 28, Colombo 16, Hyderabad 13, Bangkok 8...) plus 127 multi-location
   // postings that Workday prints as 'N Locations'.
-  {"id": "london-lseg", "name": "London Stock Exchange Group", "sector": "Financial Services", "platform": "workday", "endpoint": "https://lseg.wd3.myworkdayjobs.com/wday/cxs/lseg/Careers/jobs", "origin": "https://lseg.wd3.myworkdayjobs.com/Careers", "homeHub": "london", "maxPages": 40, "hubHints": [["ind-blr", "bengaluru"], ["usa-allen", "dallas"], ["allen, texas", "dallas"], ["usa-fort mill", "charlotte"], ["nottingham", null], ["edinburgh", null]]},
+  {
+    id: "london-lseg",
+    name: "London Stock Exchange Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://lseg.wd3.myworkdayjobs.com/wday/cxs/lseg/Careers/jobs",
+    origin: "https://lseg.wd3.myworkdayjobs.com/Careers",
+    homeHub: "london",
+    maxPages: 40,
+    hubHints: [
+      ["ind-blr", "bengaluru"],
+      ["usa-allen", "dallas"],
+      ["allen, texas", "dallas"],
+      ["usa-fort mill", "charlotte"],
+      ["nottingham", null],
+      ["edinburgh", null],
+    ],
+  },
   // Prudential — Prudential plc - 2026-09-29: roster domain prudential.com is Prudential
   // FINANCIAL (US, unrelated); Prudential plc (prudentialplc.com) links prudential.wd3 Workday
   // site 'prudential'. Board total 468 (469 an hour earlier); walks returned 467 twice - the
@@ -18799,7 +19046,16 @@ export const SITES: SiteDef[] = [
   // Office)' and place via HUB_MATCH. Unplaced 126: Ho Chi Minh 29, Taipei 19+, Jakarta 16,
   // Bangkok 9, Ghana 8, Phnom Penh 6, Myanmar 6, 'N Locations' 6, etc. 'Hamilton' 2 left
   // unplaced.
-  {"id": "london-pru", "name": "Prudential", "sector": "Financial Services", "platform": "workday", "endpoint": "https://prudential.wd3.myworkdayjobs.com/wday/cxs/prudential/prudential/jobs", "origin": "https://prudential.wd3.myworkdayjobs.com/prudential", "homeHub": null, "maxPages": 40},
+  {
+    id: "london-pru",
+    name: "Prudential",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://prudential.wd3.myworkdayjobs.com/wday/cxs/prudential/prudential/jobs",
+    origin: "https://prudential.wd3.myworkdayjobs.com/prudential",
+    homeHub: null,
+    maxPages: 40,
+  },
   // Orange — Orange - 2026-09-29: orange.com/careers links orange.jobs (Orange's own Phenom
   // tenant; gb/en and fr/fr both totalHits 738). THE CURRENT READER CANNOT READ IT: the widget
   // API pages in no fixed order on this tenant. Existing fetchPhenom returned 658, 626 and 683
@@ -18827,8 +19083,88 @@ export const SITES: SiteDef[] = [
   // (Delhi NCR, not a hub). Heliopolis 48 (Cairo), Casablanca 42, Ebène 26 (Mauritius) are real
   // non-hub sites. homeHub null: Orange is global and 'UN SPECIFIED' is not Paris. The hub
   // counts above are from the CURRENT (unstable) reader and are indicative only.
-  {"name": "Orange", "sector": "Technology, Media and Telecommunications", "platform": "phenom", "endpoint": "https://orange.jobs/gb/en/search-results", "origin": "https://orange.jobs/gb/en", "homeHub": null, "pageSize": 500, "maxPages": 2, "hubHints": [["nanterre", "paris"], ["châtillon", "paris"], ["issy-les-moulineaux", "paris"], ["massy", "paris"], ["arcueil", "paris"], ["puteaux", "paris"], ["courbevoie", "paris"], ["saint-denis", "paris"], ["navi mumbai", "mumbai"], ["gurgaon", null]], "id": "paris-ora", "key": "paris-ora-fr", "phenomSelected": {"country": ["FRANCE"]}},
-  {"name": "Orange", "sector": "Technology, Media and Telecommunications", "platform": "phenom", "endpoint": "https://orange.jobs/gb/en/search-results", "origin": "https://orange.jobs/gb/en", "homeHub": null, "pageSize": 500, "maxPages": 2, "hubHints": [["nanterre", "paris"], ["châtillon", "paris"], ["issy-les-moulineaux", "paris"], ["massy", "paris"], ["arcueil", "paris"], ["puteaux", "paris"], ["courbevoie", "paris"], ["saint-denis", "paris"], ["navi mumbai", "mumbai"], ["gurgaon", null]], "id": "paris-ora", "key": "paris-ora-intl", "phenomSelected": {"country": ["EGYPT", "MOROCCO", "ROMANIA", "INDIA", "BELGIUM", "POLAND", "MAURITIUS", "MOLDOVA", "SWEDEN", "NORWAY", "SWITZERLAND", "BRAZIL", "NETHERLANDS", "SLOVAKIA", "UNITED STATES", "GERMANY", "MALAYSIA", "MADAGASCAR", "HONG KONG", "SINGAPORE", "SPAIN", "DENMARK", "GREAT BRITAIN", "HUNGARY", "ITALY", "JAPAN", "SOUTH AFRICA", "UN SPECIFIED", "UNITED KINGDOM"]}},
+  {
+    name: "Orange",
+    sector: "Technology, Media and Telecommunications",
+    platform: "phenom",
+    endpoint: "https://orange.jobs/gb/en/search-results",
+    origin: "https://orange.jobs/gb/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 2,
+    hubHints: [
+      ["nanterre", "paris"],
+      ["châtillon", "paris"],
+      ["issy-les-moulineaux", "paris"],
+      ["massy", "paris"],
+      ["arcueil", "paris"],
+      ["puteaux", "paris"],
+      ["courbevoie", "paris"],
+      ["saint-denis", "paris"],
+      ["navi mumbai", "mumbai"],
+      ["gurgaon", null],
+    ],
+    id: "paris-ora",
+    key: "paris-ora-fr",
+    phenomSelected: { country: ["FRANCE"] },
+  },
+  {
+    name: "Orange",
+    sector: "Technology, Media and Telecommunications",
+    platform: "phenom",
+    endpoint: "https://orange.jobs/gb/en/search-results",
+    origin: "https://orange.jobs/gb/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 2,
+    hubHints: [
+      ["nanterre", "paris"],
+      ["châtillon", "paris"],
+      ["issy-les-moulineaux", "paris"],
+      ["massy", "paris"],
+      ["arcueil", "paris"],
+      ["puteaux", "paris"],
+      ["courbevoie", "paris"],
+      ["saint-denis", "paris"],
+      ["navi mumbai", "mumbai"],
+      ["gurgaon", null],
+    ],
+    id: "paris-ora",
+    key: "paris-ora-intl",
+    phenomSelected: {
+      country: [
+        "EGYPT",
+        "MOROCCO",
+        "ROMANIA",
+        "INDIA",
+        "BELGIUM",
+        "POLAND",
+        "MAURITIUS",
+        "MOLDOVA",
+        "SWEDEN",
+        "NORWAY",
+        "SWITZERLAND",
+        "BRAZIL",
+        "NETHERLANDS",
+        "SLOVAKIA",
+        "UNITED STATES",
+        "GERMANY",
+        "MALAYSIA",
+        "MADAGASCAR",
+        "HONG KONG",
+        "SINGAPORE",
+        "SPAIN",
+        "DENMARK",
+        "GREAT BRITAIN",
+        "HUNGARY",
+        "ITALY",
+        "JAPAN",
+        "SOUTH AFRICA",
+        "UN SPECIFIED",
+        "UNITED KINGDOM",
+      ],
+    },
+  },
   // Keppel Ltd. — Keppel Ltd - 2026-09-29: keppel.com/careers/experienced-hires links
   // keppel.wd3 Workday site 'KeppelCareers' (discover-boards found no marker on the landing
   // page; the board is one click deeper). Board total 202, 202 of 202 on two walks, ~9 s.
@@ -18837,7 +19173,17 @@ export const SITES: SiteDef[] = [
   // -> singapore (3: 'SGP Keppel Singspring Desalination Plant', 'SGP Kallang Place'). homeHub
   // singapore (no blank locations; HOME_COUNTRY has no singapore entry, so only a blank would
   // fall there). 'Johor' 6 left unplaced (state, not the Johor Bahru metro).
-  {"id": "singapore-bn4", "name": "Keppel Ltd.", "sector": "Infrastructure and Government", "platform": "workday", "endpoint": "https://keppel.wd3.myworkdayjobs.com/wday/cxs/keppel/KeppelCareers/jobs", "origin": "https://keppel.wd3.myworkdayjobs.com/KeppelCareers", "homeHub": "singapore", "maxPages": 15, "hubHints": [["sgp ", "singapore"]]},
+  {
+    id: "singapore-bn4",
+    name: "Keppel Ltd.",
+    sector: "Infrastructure and Government",
+    platform: "workday",
+    endpoint: "https://keppel.wd3.myworkdayjobs.com/wday/cxs/keppel/KeppelCareers/jobs",
+    origin: "https://keppel.wd3.myworkdayjobs.com/KeppelCareers",
+    homeHub: "singapore",
+    maxPages: 15,
+    hubHints: [["sgp ", "singapore"]],
+  },
   // Paccar — PACCAR - 2026-09-29: jobs.paccar.com is a SuccessFactors career site (table theme,
   // 25 a page, 'Results 1 - 25 of 203'); 203 of 203 on two walks, ~5 s. WA TRAP: without hints
   // the ' wa,' needle filed 97 Washington-state roles on PERTH. hubHints (measured counts):
@@ -18853,7 +19199,31 @@ export const SITES: SiteDef[] = [
   // site US/MX/BR/IN board is not Bellevue. DAF (Eindhoven) and PACCAR Parts are not on this
   // board. Some cells end '+N more&hellip;' (multi-location; entity left undecoded by clean())
   // - harmless to placement.
-  {"id": "seattle-pcar", "name": "Paccar", "sector": "Industrial Manufacturing", "platform": "successfactors", "endpoint": "https://jobs.paccar.com", "origin": "https://jobs.paccar.com", "homeHub": null, "maxPages": 20, "hubHints": [["kirkland, wa", "seattle"], ["renton, wa", "seattle"], ["bellevue, wa", "seattle"], ["mount vernon, wa", null], [", wa, us", null], ["denton, tx", "dallas"], ["lewisville, tx", "dallas"], ["mckinney, tx", "dallas"], ["grand prairie, tx", "dallas"], ["sunnyvale, ca", "sanjose"], ["mississauga, on", "toronto"], ["st laurent, ca, h4t", "montreal"], ["minooka, il", "chicago"]]},
+  {
+    id: "seattle-pcar",
+    name: "Paccar",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://jobs.paccar.com",
+    origin: "https://jobs.paccar.com",
+    homeHub: null,
+    maxPages: 20,
+    hubHints: [
+      ["kirkland, wa", "seattle"],
+      ["renton, wa", "seattle"],
+      ["bellevue, wa", "seattle"],
+      ["mount vernon, wa", null],
+      [", wa, us", null],
+      ["denton, tx", "dallas"],
+      ["lewisville, tx", "dallas"],
+      ["mckinney, tx", "dallas"],
+      ["grand prairie, tx", "dallas"],
+      ["sunnyvale, ca", "sanjose"],
+      ["mississauga, on", "toronto"],
+      ["st laurent, ca, h4t", "montreal"],
+      ["minooka, il", "chicago"],
+    ],
+  },
   // Pop Mart — Pop Mart - 2026-09-29: popmart.com links popmart.wd102 Workday site 'popmart' -
   // its INTERNATIONAL board (US 231, UK 32, AU 25, Indonesia 15, Korea 10...; no mainland-China
   // role - domestic hiring is not on it). 356 of 356 on two walks, ~13 s. homeHub NULL: the
@@ -18874,7 +19244,42 @@ export const SITES: SiteDef[] = [
   // at Tyler, Desert Hills), Sacramento malls, Durham NC, 'Newcastle' (Newcastle upon Tyne -
   // HUB_MATCH correctly leaves it null). Unplaced 231: statewide postings ('California' 49,
   // 'Florida' 13, 'New Jersey' 11 ...), Jakarta/Bangkok/Milan, and non-hub malls.
-  {"id": "beijing-09992", "name": "Pop Mart", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://popmart.wd102.myworkdayjobs.com/wday/cxs/popmart/popmart/jobs", "origin": "https://popmart.wd102.myworkdayjobs.com/popmart", "homeHub": null, "maxPages": 25, "hubHints": [["washington dc", "washington"], ["district of columbia", "washington"], ["washington", null], ["hd - hillsdale", "sanfrancisco"], ["pow - 200 powell", "sanfrancisco"], ["vf - valley fair", "sanjose"], ["scp - south coast plaza", "losangeles"], ["ca - utc", "sandiego"], ["obc - oakbrook center", "chicago"], ["ood - old orchard", "chicago"], ["osq - orland square", "chicago"], ["map - michigan avenue", "chicago"], ["kings plaza", "newyork"], ["wtc - world trade center", "newyork"], ["the westchester", "newyork"], ["walt whitman", "newyork"], ["moa - mall of america", "minneapolis"], ["fc - first colony", "houston"], ["wld - the woodlands", "houston"], ["grapevine mills", "dallas"], ["king of prussia", "philadelphia"], ["kenwood towne centre", "cincinnati"], ["lone tree", "denver"], ["nm - natick mall", "boston"]]},
+  {
+    id: "beijing-09992",
+    name: "Pop Mart",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://popmart.wd102.myworkdayjobs.com/wday/cxs/popmart/popmart/jobs",
+    origin: "https://popmart.wd102.myworkdayjobs.com/popmart",
+    homeHub: null,
+    maxPages: 25,
+    hubHints: [
+      ["washington dc", "washington"],
+      ["district of columbia", "washington"],
+      ["washington", null],
+      ["hd - hillsdale", "sanfrancisco"],
+      ["pow - 200 powell", "sanfrancisco"],
+      ["vf - valley fair", "sanjose"],
+      ["scp - south coast plaza", "losangeles"],
+      ["ca - utc", "sandiego"],
+      ["obc - oakbrook center", "chicago"],
+      ["ood - old orchard", "chicago"],
+      ["osq - orland square", "chicago"],
+      ["map - michigan avenue", "chicago"],
+      ["kings plaza", "newyork"],
+      ["wtc - world trade center", "newyork"],
+      ["the westchester", "newyork"],
+      ["walt whitman", "newyork"],
+      ["moa - mall of america", "minneapolis"],
+      ["fc - first colony", "houston"],
+      ["wld - the woodlands", "houston"],
+      ["grapevine mills", "dallas"],
+      ["king of prussia", "philadelphia"],
+      ["kenwood towne centre", "cincinnati"],
+      ["lone tree", "denver"],
+      ["nm - natick mall", "boston"],
+    ],
+  },
   // Unilever — Unilever - 2026-09-29: careers.unilever.com is Radancy over unilever.wd3 Workday
   // site Unilever_Experienced_Professionals (board total 225); there is also a
   // Unilever_Early_Careers site (17: UK Future Leaders/placement programmes 8, Singapore
@@ -18891,8 +19296,72 @@ export const SITES: SiteDef[] = [
   // 'hoboken us hq' 6 and 'englewood cliffs, nj' 1 -> newyork (NY MSA), 'rueil malmaison' 1 ->
   // paris. Unplaced 181: factories and offices in Brazil, Mexico, Missouri, Germany, Türkiye,
   // Vietnam, Argentina etc.
-  {"id": "london-ulvr", "key": "london-ulvr", "name": "Unilever", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://unilever.wd3.myworkdayjobs.com/wday/cxs/unilever/Unilever_Experienced_Professionals/jobs", "origin": "https://unilever.wd3.myworkdayjobs.com/Unilever_Experienced_Professionals", "homeHub": null, "appliedFacets": {"locationCountry": ["e42ad5eac46d4cc9b367ceaef42577c5", "d903bb3fedad45039383f6de334ad4db", "1a29bb1357b240ab99a2fa755cc87c0e", "db69bf9c446c11de98360015c5e6daf6", "a30a87ed25634629aa6c3958aa2b91ea", "99abe7e6bb3f4c108aebebf01a369ec5", "d865e83093ad42319653b08e61f7db49", "dc96653331d74bd0b01ae3b086bcbe21", "54c5b6971ffb4bf0b116fe7651ec789a", "dcc5b7608d8644b3a93716604e78e995", "b31234dbcdda4da9ba8fa073c5944e36", "db69ebac446c11de98360015c5e6daf6", "db69cbe0446c11de98360015c5e6daf6", "6dfdb00cf8554fb9aab9f4ef39f830e0", "972dc4ba8d454bc0b893ff84b1529077", "e2adff9272454660ac4fdb56fc70bb51", "8ae7375b330441989443b02b66699ff9", "9696868b09c64d52a62ee13b052383cc", "55273a1b49934d97ae15342ef51f6b95", "5f2a092396a6444ab45617cb1cbf50a8", "567ef1bd0cc84d4e83b98d0013008264", "e56f1daf83e04bacae794ba5c5593560", "131d5ac7e3ee4d7b962bdc96e498e412", "50423b5190ad49bb89e94cd58dfaad69", "bd34c524a6a04ae6915f5d96fa086199", "db69e062446c11de98360015c5e6daf6", "187134fccb084a0ea9b4b95f23890dbe", "873d0f604e3b458c990cb4d83a5c0f14", "c2e3bac5bbbb47b29dfc6e8b56a1586e", "7b4fa1f369bd4604ba3692682fcbe345", "29247e57dbaf46fb855b224e03170bc7", "bc33aa3152ec42d4995f4791a106ed09", "db69e8c8446c11de98360015c5e6daf6"]}, "maxPages": 20, "hubHints": [["hoboken us hq", "newyork"], ["englewood cliffs, nj", "newyork"], ["rueil malmaison", "paris"]]},
-  {"id": "london-ulvr", "key": "london-ulvr-early", "name": "Unilever", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://unilever.wd3.myworkdayjobs.com/wday/cxs/unilever/Unilever_Early_Careers/jobs", "origin": "https://unilever.wd3.myworkdayjobs.com/Unilever_Early_Careers", "homeHub": null, "maxPages": 10},
+  {
+    id: "london-ulvr",
+    key: "london-ulvr",
+    name: "Unilever",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint:
+      "https://unilever.wd3.myworkdayjobs.com/wday/cxs/unilever/Unilever_Experienced_Professionals/jobs",
+    origin: "https://unilever.wd3.myworkdayjobs.com/Unilever_Experienced_Professionals",
+    homeHub: null,
+    appliedFacets: {
+      locationCountry: [
+        "e42ad5eac46d4cc9b367ceaef42577c5",
+        "d903bb3fedad45039383f6de334ad4db",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "db69bf9c446c11de98360015c5e6daf6",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "99abe7e6bb3f4c108aebebf01a369ec5",
+        "d865e83093ad42319653b08e61f7db49",
+        "dc96653331d74bd0b01ae3b086bcbe21",
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "db69ebac446c11de98360015c5e6daf6",
+        "db69cbe0446c11de98360015c5e6daf6",
+        "6dfdb00cf8554fb9aab9f4ef39f830e0",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "8ae7375b330441989443b02b66699ff9",
+        "9696868b09c64d52a62ee13b052383cc",
+        "55273a1b49934d97ae15342ef51f6b95",
+        "5f2a092396a6444ab45617cb1cbf50a8",
+        "567ef1bd0cc84d4e83b98d0013008264",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "bd34c524a6a04ae6915f5d96fa086199",
+        "db69e062446c11de98360015c5e6daf6",
+        "187134fccb084a0ea9b4b95f23890dbe",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "c2e3bac5bbbb47b29dfc6e8b56a1586e",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    maxPages: 20,
+    hubHints: [
+      ["hoboken us hq", "newyork"],
+      ["englewood cliffs, nj", "newyork"],
+      ["rueil malmaison", "paris"],
+    ],
+  },
+  {
+    id: "london-ulvr",
+    key: "london-ulvr-early",
+    name: "Unilever",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint:
+      "https://unilever.wd3.myworkdayjobs.com/wday/cxs/unilever/Unilever_Early_Careers/jobs",
+    origin: "https://unilever.wd3.myworkdayjobs.com/Unilever_Early_Careers",
+    homeHub: null,
+    maxPages: 10,
+  },
   // Veolia Environnement — Veolia - 2026-09-29: jobs.veolia.com is Radancy TalentBrew
   // (cdn.radancy.eu company 2702); /en/search-jobs/results data-total-results 2900, 100 a page,
   // 2900 of 2900 unique on two walks. READER BUG (fetchRadancy): this tenant nests an icon span
@@ -18921,7 +19390,83 @@ export const SITES: SiteDef[] = [
   // Pénil/Melun, Étampes, Provins, Meaux, Fontainebleau) deliberately left unplaced; ambiguous
   // US names (Richmond, Springfield, Arlington, Cary, Fremont, Hillsboro, Taylor, Garden City,
   // Kearny, La Porte) too. Walk is ~10-35 s, one feed.
-  {"id": "paris-vie", "name": "Veolia Environnement", "sector": "Infrastructure and Government", "platform": "radancy", "endpoint": "https://jobs.veolia.com/en/search-jobs/results", "origin": "https://jobs.veolia.com", "homeHub": null, "maxPages": 40, "hubHints": [["london, canada", null], ["new philadelphia", null], ["port washington", null], ["portland, united states", null], ["minnetonka", "minneapolis"], ["fairless hills", "philadelphia"], ["trevose", "philadelphia"], ["paramus", "newyork"], ["wantagh", "newyork"], ["haworth", "newyork"], ["leonia", "newyork"], ["edison, united states", "newyork"], ["toms river", "newyork"], ["west nyack", "newyork"], ["new rochelle", "newyork"], ["east rockaway", "newyork"], ["azusa", "losangeles"], ["gardena", "losangeles"], ["irvine, united states", "losangeles"], ["santa clara, united states", "sanjose"], ["burlingame", "sanfrancisco"], ["baytown", "houston"], ["alpharetta", "atlanta"], ["herndon", "washington"], ["ashburn", "washington"], ["woodridge, united states", "chicago"], ["naperville", "chicago"], ["oakbrook terrace", "chicago"], ["commerce city", "denver"], ["troutdale", "portland"], ["wilsonville", "portland"], ["west bridgewater", "boston"], ["oakville, canada", "toronto"], ["pickering, canada", "toronto"], ["burnaby", "vancouver"], ["aubervilliers", "paris"], ["saint-maurice, france", "paris"], ["gennevilliers", "paris"], ["wissous", "paris"], ["gonesse", "paris"], ["saint-ouen-l'aumône", "paris"], ["chelles, france", "paris"], ["valenton", "paris"], ["puteaux", "paris"], ["tremblay-en-france", "paris"], ["sainte-geneviève-des-bois", "paris"], ["trappes", "paris"], ["bonneuil-sur-marne", "paris"], ["villeneuve-le-roi", "paris"], ["neuville-sur-oise", "paris"], ["neuilly-sur-marne", "paris"], ["bonneuil-en-france", "paris"], ["noisy-le-sec", "paris"], ["mitry-mory", "paris"], ["poissy", "paris"], ["arnouville", "paris"], ["montreuil, france", "paris"], ["le plessis-robinson", "paris"], ["guyancourt", "paris"], ["noisy-le-grand", "paris"], ["épinay-sur-seine", "paris"], ["sevran", "paris"], ["ormesson-sur-marne", "paris"], ["noisiel", "paris"], ["vitry-sur-seine", "paris"]]},
+  {
+    id: "paris-vie",
+    name: "Veolia Environnement",
+    sector: "Infrastructure and Government",
+    platform: "radancy",
+    endpoint: "https://jobs.veolia.com/en/search-jobs/results",
+    origin: "https://jobs.veolia.com",
+    homeHub: null,
+    maxPages: 40,
+    hubHints: [
+      ["london, canada", null],
+      ["new philadelphia", null],
+      ["port washington", null],
+      ["portland, united states", null],
+      ["minnetonka", "minneapolis"],
+      ["fairless hills", "philadelphia"],
+      ["trevose", "philadelphia"],
+      ["paramus", "newyork"],
+      ["wantagh", "newyork"],
+      ["haworth", "newyork"],
+      ["leonia", "newyork"],
+      ["edison, united states", "newyork"],
+      ["toms river", "newyork"],
+      ["west nyack", "newyork"],
+      ["new rochelle", "newyork"],
+      ["east rockaway", "newyork"],
+      ["azusa", "losangeles"],
+      ["gardena", "losangeles"],
+      ["irvine, united states", "losangeles"],
+      ["santa clara, united states", "sanjose"],
+      ["burlingame", "sanfrancisco"],
+      ["baytown", "houston"],
+      ["alpharetta", "atlanta"],
+      ["herndon", "washington"],
+      ["ashburn", "washington"],
+      ["woodridge, united states", "chicago"],
+      ["naperville", "chicago"],
+      ["oakbrook terrace", "chicago"],
+      ["commerce city", "denver"],
+      ["troutdale", "portland"],
+      ["wilsonville", "portland"],
+      ["west bridgewater", "boston"],
+      ["oakville, canada", "toronto"],
+      ["pickering, canada", "toronto"],
+      ["burnaby", "vancouver"],
+      ["aubervilliers", "paris"],
+      ["saint-maurice, france", "paris"],
+      ["gennevilliers", "paris"],
+      ["wissous", "paris"],
+      ["gonesse", "paris"],
+      ["saint-ouen-l'aumône", "paris"],
+      ["chelles, france", "paris"],
+      ["valenton", "paris"],
+      ["puteaux", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["sainte-geneviève-des-bois", "paris"],
+      ["trappes", "paris"],
+      ["bonneuil-sur-marne", "paris"],
+      ["villeneuve-le-roi", "paris"],
+      ["neuville-sur-oise", "paris"],
+      ["neuilly-sur-marne", "paris"],
+      ["bonneuil-en-france", "paris"],
+      ["noisy-le-sec", "paris"],
+      ["mitry-mory", "paris"],
+      ["poissy", "paris"],
+      ["arnouville", "paris"],
+      ["montreuil, france", "paris"],
+      ["le plessis-robinson", "paris"],
+      ["guyancourt", "paris"],
+      ["noisy-le-grand", "paris"],
+      ["épinay-sur-seine", "paris"],
+      ["sevran", "paris"],
+      ["ormesson-sur-marne", "paris"],
+      ["noisiel", "paris"],
+      ["vitry-sur-seine", "paris"],
+    ],
+  },
   // Barrick Gold — 2026-09-29: jobs.barrick.com is an Oracle Recruiting Cloud vanity page (host
   // ehkn.fa.ca2.oraclecloud.com; the CE root redirects to sites/CX_1001, hence siteNumber). The
   // REST finder reports TotalJobsCount 430 but serves 429 requisitions (a direct 25-a-page walk
@@ -18935,7 +19480,16 @@ export const SITES: SiteDef[] = [
   // 'Canada' (1) and 'Australia' (1) stay unplaced (no HOME_COUNTRY entry for toronto). No
   // traps found (no ', WA'/Washington strings). Company renamed Barrick Mining Corp. in 2025 —
   // same employer.
-  {"id": "toronto-abx", "name": "Barrick Gold", "sector": "Energy & Natural Resources", "platform": "oracle", "endpoint": "https://ehkn.fa.ca2.oraclecloud.com", "origin": "https://ehkn.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001", "homeHub": "toronto", "siteNumber": "CX_1001"},
+  {
+    id: "toronto-abx",
+    name: "Barrick Gold",
+    sector: "Energy & Natural Resources",
+    platform: "oracle",
+    endpoint: "https://ehkn.fa.ca2.oraclecloud.com",
+    origin: "https://ehkn.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
+    homeHub: "toronto",
+    siteNumber: "CX_1001",
+  },
   // Competitive Foods — 2026-09-29: competitivefoods.com.au has no DNS; the roster card is
   // Hungry Jack's (privateLogos.ts already badges it so). Hungry Jack's board is Workday tenant
   // hungryjacks/wd105/HungryJacksCareers (linked from hungryjacks.com.au/job-search). Board
@@ -18949,9 +19503,57 @@ export const SITES: SiteDef[] = [
   // multi-site regional manager ads stay unplaced; hubHints add 'Westbourne Park' (Adelaide
   // suburb, 1) and 'Delacombe' (Ballarat VIC, 1), which the board prints without a state.
   // homeHub sydney (Competitive Foods/Hungry Jack's HQ, NSW).
-  {"id": "priv-competitive-foods", "name": "Competitive Foods", "sector": "Quick service restaurants", "platform": "workday", "endpoint": "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs", "origin": "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers", "homeHub": "sydney", "maxPages": 80, "key": "priv-competitive-foods-casual", "appliedFacets": {"timeType": ["503bfef9a07b1000f36c6dea5a4f0000"]}, "hubHints": [["westbourne park", "adelaide"], ["delacombe", "melbourne"]]},
-  {"id": "priv-competitive-foods", "name": "Competitive Foods", "sector": "Quick service restaurants", "platform": "workday", "endpoint": "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs", "origin": "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers", "homeHub": "sydney", "maxPages": 20, "key": "priv-competitive-foods-fulltime", "appliedFacets": {"timeType": ["503bfef9a07b1000f36c6d50be8b0000"]}, "hubHints": [["westbourne park", "adelaide"], ["delacombe", "melbourne"]]},
-  {"id": "priv-competitive-foods", "name": "Competitive Foods", "sector": "Quick service restaurants", "platform": "workday", "endpoint": "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs", "origin": "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers", "homeHub": "sydney", "maxPages": 20, "key": "priv-competitive-foods-parttime", "appliedFacets": {"timeType": ["503bfef9a07b1000f36c6cb6c9f20000"]}, "hubHints": [["westbourne park", "adelaide"], ["delacombe", "melbourne"]]},
+  {
+    id: "priv-competitive-foods",
+    name: "Competitive Foods",
+    sector: "Quick service restaurants",
+    platform: "workday",
+    endpoint:
+      "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs",
+    origin: "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers",
+    homeHub: "sydney",
+    maxPages: 80,
+    key: "priv-competitive-foods-casual",
+    appliedFacets: { timeType: ["503bfef9a07b1000f36c6dea5a4f0000"] },
+    hubHints: [
+      ["westbourne park", "adelaide"],
+      ["delacombe", "melbourne"],
+    ],
+  },
+  {
+    id: "priv-competitive-foods",
+    name: "Competitive Foods",
+    sector: "Quick service restaurants",
+    platform: "workday",
+    endpoint:
+      "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs",
+    origin: "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers",
+    homeHub: "sydney",
+    maxPages: 20,
+    key: "priv-competitive-foods-fulltime",
+    appliedFacets: { timeType: ["503bfef9a07b1000f36c6d50be8b0000"] },
+    hubHints: [
+      ["westbourne park", "adelaide"],
+      ["delacombe", "melbourne"],
+    ],
+  },
+  {
+    id: "priv-competitive-foods",
+    name: "Competitive Foods",
+    sector: "Quick service restaurants",
+    platform: "workday",
+    endpoint:
+      "https://hungryjacks.wd105.myworkdayjobs.com/wday/cxs/hungryjacks/HungryJacksCareers/jobs",
+    origin: "https://hungryjacks.wd105.myworkdayjobs.com/HungryJacksCareers",
+    homeHub: "sydney",
+    maxPages: 20,
+    key: "priv-competitive-foods-parttime",
+    appliedFacets: { timeType: ["503bfef9a07b1000f36c6cb6c9f20000"] },
+    hubHints: [
+      ["westbourne park", "adelaide"],
+      ["delacombe", "melbourne"],
+    ],
+  },
   // Vodacom Group — 2026-09-29: vodacom.com is behind Incapsula (403 to the sandbox on every
   // path); its search-jobs.php sends experienced hires to parent Vodafone's group board
   // https://jobs.vodafone.com/careers — Eightfold PCSX (/api/pcsx/search?domain=vodafone.com
@@ -18966,9 +19568,39 @@ export const SITES: SiteDef[] = [
   // from this board, exclude these three countries there or these rows double. Vodacom's early-
   // careers board (vodacom.com/early-careers.php) is behind the same WAF and is not covered.
   // homeHub johannesburg; the TZ/LS rows state their country so they stay unplaced, correctly.
-  {"id": "johannesburg-vod", "name": "Vodacom Group", "sector": "Technology, Media and Telecommunications", "platform": "eightfoldpcs", "origin": "https://jobs.vodafone.com", "homeHub": "johannesburg", "key": "johannesburg-vod-za", "endpoint": "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=South%20Africa"},
-  {"id": "johannesburg-vod", "name": "Vodacom Group", "sector": "Technology, Media and Telecommunications", "platform": "eightfoldpcs", "origin": "https://jobs.vodafone.com", "homeHub": "johannesburg", "key": "johannesburg-vod-tz", "endpoint": "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=Tanzania"},
-  {"id": "johannesburg-vod", "name": "Vodacom Group", "sector": "Technology, Media and Telecommunications", "platform": "eightfoldpcs", "origin": "https://jobs.vodafone.com", "homeHub": "johannesburg", "key": "johannesburg-vod-ls", "endpoint": "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=Lesotho"},
+  {
+    id: "johannesburg-vod",
+    name: "Vodacom Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "eightfoldpcs",
+    origin: "https://jobs.vodafone.com",
+    homeHub: "johannesburg",
+    key: "johannesburg-vod-za",
+    endpoint:
+      "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=South%20Africa",
+  },
+  {
+    id: "johannesburg-vod",
+    name: "Vodacom Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "eightfoldpcs",
+    origin: "https://jobs.vodafone.com",
+    homeHub: "johannesburg",
+    key: "johannesburg-vod-tz",
+    endpoint:
+      "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=Tanzania",
+  },
+  {
+    id: "johannesburg-vod",
+    name: "Vodacom Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "eightfoldpcs",
+    origin: "https://jobs.vodafone.com",
+    homeHub: "johannesburg",
+    key: "johannesburg-vod-ls",
+    endpoint:
+      "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=Lesotho",
+  },
   // Marsh McLennan — 2026-09-29: careers.marshmclennan.com now redirects to careers.marsh.com
   // (Phenom, totalHits 1,910) — but that Phenom pager is unstable (serial walk 1,856 unique of
   // 1,910 with sort '', 1,878 with 'Most recent'), and its rows' applyUrl points at the Workday
@@ -18989,16 +19621,166 @@ export const SITES: SiteDef[] = [
   // newyork; Rollingwood 2 -> austin; Schaumburg 2 -> chicago. 'Houston - Dallas' (Dallas St
   // office) correctly resolves houston via HUB_MATCH order. 'Perth - Railway' is Perth WA
   // (workers-comp claims roles), correct. No standing talent-pool titles found.
-  {"id": "newyork-mmc", "name": "Marsh McLennan", "sector": "Financial Services", "platform": "workday", "endpoint": "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs", "origin": "https://mmc.wd1.myworkdayjobs.com/MMC", "homeHub": "newyork", "maxPages": 100, "key": "newyork-mmc-ccs", "appliedFacets": {"jobFamilyGroup": ["840296504fcf0142c5232712de4a0285"]}, "hubHints": [["conshohocken - washington", "philadelphia"], ["conshohocken -", "philadelphia"], ["king of prussia -", "philadelphia"], ["malvern - lancaster", "philadelphia"], ["darien - boston", null], ["simi valley - los angeles", null], ["portland - congress", null], ["golden valley -", "minneapolis"], ["edina - minnesota", "minneapolis"], ["van nuys -", "losangeles"], ["aliso viejo -", "losangeles"], ["irvine - von karman", "losangeles"], ["walnut creek -", "sanfrancisco"], ["alpharetta -", "atlanta"], ["kennesaw -", "atlanta"], ["newnan - postal", "atlanta"], ["mclean -", "washington"], ["rockville - church", "washington"], ["bethesda -", "washington"], ["frederick - corporate", "washington"], ["fort worth -", "dallas"], ["carrollton - tom reeve", "dallas"], ["morristown - south", "newyork"], ["rollingwood - bee caves", "austin"], ["schaumburg -", "chicago"]]},
-  {"id": "newyork-mmc", "name": "Marsh McLennan", "sector": "Financial Services", "platform": "workday", "endpoint": "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs", "origin": "https://mmc.wd1.myworkdayjobs.com/MMC", "homeHub": "newyork", "maxPages": 100, "key": "newyork-mmc-consulting", "appliedFacets": {"jobFamilyGroup": ["840296504fcf0181b2674312de4a0685"]}, "hubHints": [["conshohocken - washington", "philadelphia"], ["conshohocken -", "philadelphia"], ["king of prussia -", "philadelphia"], ["malvern - lancaster", "philadelphia"], ["darien - boston", null], ["simi valley - los angeles", null], ["portland - congress", null], ["golden valley -", "minneapolis"], ["edina - minnesota", "minneapolis"], ["van nuys -", "losangeles"], ["aliso viejo -", "losangeles"], ["irvine - von karman", "losangeles"], ["walnut creek -", "sanfrancisco"], ["alpharetta -", "atlanta"], ["kennesaw -", "atlanta"], ["newnan - postal", "atlanta"], ["mclean -", "washington"], ["rockville - church", "washington"], ["bethesda -", "washington"], ["frederick - corporate", "washington"], ["fort worth -", "dallas"], ["carrollton - tom reeve", "dallas"], ["morristown - south", "newyork"], ["rollingwood - bee caves", "austin"], ["schaumburg -", "chicago"]]},
-  {"id": "newyork-mmc", "name": "Marsh McLennan", "sector": "Financial Services", "platform": "workday", "endpoint": "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs", "origin": "https://mmc.wd1.myworkdayjobs.com/MMC", "homeHub": "newyork", "maxPages": 100, "key": "newyork-mmc-other", "appliedFacets": {"jobFamilyGroup": ["840296504fcf01baa9f4e312de4a1a85", "840296504fcf01d2c15bce12de4a1685", "840296504fcf016eb3ab9c12de4a0e85", "840296504fcf01a090250d12de4a0085", "840296504fcf01e50e3abc12de4a1485", "840296504fcf01a1ecbb5e12de4a0a85", "840296504fcf016f49bb7a12de4a0c85", "840296504fcf01856e5d1613de4a2a85", "840296504fcf0181f008a912de4a1085", "840296504fcf018dddccb312de4a1285", "840296504fcf01b3a36c1b13de4a2c85", "840296504fcf01210c544c12de4a0885", "840296504fcf01be61280813de4a2685", "840296504fcf0153f94ff512de4a1e85", "840296504fcf015d91a10313de4a2485", "840296504fcf01e78b790d13de4a2885", "840296504fcf01f38f9dfe12de4a2285", "840296504fcf01144f78fa12de4a2085", "840296504fcf01f6e472ef12de4a1c85", "840296504fcf0124f6f72f12de4a0485"]}, "hubHints": [["conshohocken - washington", "philadelphia"], ["conshohocken -", "philadelphia"], ["king of prussia -", "philadelphia"], ["malvern - lancaster", "philadelphia"], ["darien - boston", null], ["simi valley - los angeles", null], ["portland - congress", null], ["golden valley -", "minneapolis"], ["edina - minnesota", "minneapolis"], ["van nuys -", "losangeles"], ["aliso viejo -", "losangeles"], ["irvine - von karman", "losangeles"], ["walnut creek -", "sanfrancisco"], ["alpharetta -", "atlanta"], ["kennesaw -", "atlanta"], ["newnan - postal", "atlanta"], ["mclean -", "washington"], ["rockville - church", "washington"], ["bethesda -", "washington"], ["frederick - corporate", "washington"], ["fort worth -", "dallas"], ["carrollton - tom reeve", "dallas"], ["morristown - south", "newyork"], ["rollingwood - bee caves", "austin"], ["schaumburg -", "chicago"]]},
+  {
+    id: "newyork-mmc",
+    name: "Marsh McLennan",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs",
+    origin: "https://mmc.wd1.myworkdayjobs.com/MMC",
+    homeHub: "newyork",
+    maxPages: 100,
+    key: "newyork-mmc-ccs",
+    appliedFacets: { jobFamilyGroup: ["840296504fcf0142c5232712de4a0285"] },
+    hubHints: [
+      ["conshohocken - washington", "philadelphia"],
+      ["conshohocken -", "philadelphia"],
+      ["king of prussia -", "philadelphia"],
+      ["malvern - lancaster", "philadelphia"],
+      ["darien - boston", null],
+      ["simi valley - los angeles", null],
+      ["portland - congress", null],
+      ["golden valley -", "minneapolis"],
+      ["edina - minnesota", "minneapolis"],
+      ["van nuys -", "losangeles"],
+      ["aliso viejo -", "losangeles"],
+      ["irvine - von karman", "losangeles"],
+      ["walnut creek -", "sanfrancisco"],
+      ["alpharetta -", "atlanta"],
+      ["kennesaw -", "atlanta"],
+      ["newnan - postal", "atlanta"],
+      ["mclean -", "washington"],
+      ["rockville - church", "washington"],
+      ["bethesda -", "washington"],
+      ["frederick - corporate", "washington"],
+      ["fort worth -", "dallas"],
+      ["carrollton - tom reeve", "dallas"],
+      ["morristown - south", "newyork"],
+      ["rollingwood - bee caves", "austin"],
+      ["schaumburg -", "chicago"],
+    ],
+  },
+  {
+    id: "newyork-mmc",
+    name: "Marsh McLennan",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs",
+    origin: "https://mmc.wd1.myworkdayjobs.com/MMC",
+    homeHub: "newyork",
+    maxPages: 100,
+    key: "newyork-mmc-consulting",
+    appliedFacets: { jobFamilyGroup: ["840296504fcf0181b2674312de4a0685"] },
+    hubHints: [
+      ["conshohocken - washington", "philadelphia"],
+      ["conshohocken -", "philadelphia"],
+      ["king of prussia -", "philadelphia"],
+      ["malvern - lancaster", "philadelphia"],
+      ["darien - boston", null],
+      ["simi valley - los angeles", null],
+      ["portland - congress", null],
+      ["golden valley -", "minneapolis"],
+      ["edina - minnesota", "minneapolis"],
+      ["van nuys -", "losangeles"],
+      ["aliso viejo -", "losangeles"],
+      ["irvine - von karman", "losangeles"],
+      ["walnut creek -", "sanfrancisco"],
+      ["alpharetta -", "atlanta"],
+      ["kennesaw -", "atlanta"],
+      ["newnan - postal", "atlanta"],
+      ["mclean -", "washington"],
+      ["rockville - church", "washington"],
+      ["bethesda -", "washington"],
+      ["frederick - corporate", "washington"],
+      ["fort worth -", "dallas"],
+      ["carrollton - tom reeve", "dallas"],
+      ["morristown - south", "newyork"],
+      ["rollingwood - bee caves", "austin"],
+      ["schaumburg -", "chicago"],
+    ],
+  },
+  {
+    id: "newyork-mmc",
+    name: "Marsh McLennan",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mmc.wd1.myworkdayjobs.com/wday/cxs/mmc/MMC/jobs",
+    origin: "https://mmc.wd1.myworkdayjobs.com/MMC",
+    homeHub: "newyork",
+    maxPages: 100,
+    key: "newyork-mmc-other",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "840296504fcf01baa9f4e312de4a1a85",
+        "840296504fcf01d2c15bce12de4a1685",
+        "840296504fcf016eb3ab9c12de4a0e85",
+        "840296504fcf01a090250d12de4a0085",
+        "840296504fcf01e50e3abc12de4a1485",
+        "840296504fcf01a1ecbb5e12de4a0a85",
+        "840296504fcf016f49bb7a12de4a0c85",
+        "840296504fcf01856e5d1613de4a2a85",
+        "840296504fcf0181f008a912de4a1085",
+        "840296504fcf018dddccb312de4a1285",
+        "840296504fcf01b3a36c1b13de4a2c85",
+        "840296504fcf01210c544c12de4a0885",
+        "840296504fcf01be61280813de4a2685",
+        "840296504fcf0153f94ff512de4a1e85",
+        "840296504fcf015d91a10313de4a2485",
+        "840296504fcf01e78b790d13de4a2885",
+        "840296504fcf01f38f9dfe12de4a2285",
+        "840296504fcf01144f78fa12de4a2085",
+        "840296504fcf01f6e472ef12de4a1c85",
+        "840296504fcf0124f6f72f12de4a0485",
+      ],
+    },
+    hubHints: [
+      ["conshohocken - washington", "philadelphia"],
+      ["conshohocken -", "philadelphia"],
+      ["king of prussia -", "philadelphia"],
+      ["malvern - lancaster", "philadelphia"],
+      ["darien - boston", null],
+      ["simi valley - los angeles", null],
+      ["portland - congress", null],
+      ["golden valley -", "minneapolis"],
+      ["edina - minnesota", "minneapolis"],
+      ["van nuys -", "losangeles"],
+      ["aliso viejo -", "losangeles"],
+      ["irvine - von karman", "losangeles"],
+      ["walnut creek -", "sanfrancisco"],
+      ["alpharetta -", "atlanta"],
+      ["kennesaw -", "atlanta"],
+      ["newnan - postal", "atlanta"],
+      ["mclean -", "washington"],
+      ["rockville - church", "washington"],
+      ["bethesda -", "washington"],
+      ["frederick - corporate", "washington"],
+      ["fort worth -", "dallas"],
+      ["carrollton - tom reeve", "dallas"],
+      ["morristown - south", "newyork"],
+      ["rollingwood - bee caves", "austin"],
+      ["schaumburg -", "chicago"],
+    ],
+  },
   // Swiss Re — 2026-09-29: careers.swissre.com is a SuccessFactors career site (table theme, 25
   // rows/page, pager to startrow=250, 'of 269'). 269 of 269 on two runs, ~5-6s. Global board:
   // Bratislava 62, Mexico City 42, Madrid 20, Sao Paulo 10, Kansas City 12 unplaced (no hubs).
   // Zurich 14 via 'Zurich, Zurich, CH'. hubHints: ['armonk, ny','newyork'] (Swiss Re Americas
   // HQ, Westchester = NYC MSA; 4), ['alpharetta, ga','atlanta'] (5), ['plano, tx','dallas']
   // (1). Multi-site rows read 'New York, NY, US +4 more…' and place on their first city.
-  {"id": "zurich-sren", "name": "Swiss Re", "sector": "Financial Services", "platform": "successfactors", "endpoint": "https://careers.swissre.com", "origin": "https://careers.swissre.com", "homeHub": "zurich", "hubHints": [["armonk, ny", "newyork"], ["alpharetta, ga", "atlanta"], ["plano, tx", "dallas"]]},
+  {
+    id: "zurich-sren",
+    name: "Swiss Re",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://careers.swissre.com",
+    origin: "https://careers.swissre.com",
+    homeHub: "zurich",
+    hubHints: [
+      ["armonk, ny", "newyork"],
+      ["alpharetta, ga", "atlanta"],
+      ["plano, tx", "dallas"],
+    ],
+  },
 ];
 
 /**
@@ -19775,6 +20557,44 @@ export const PORTAL_GROUPS: string[][] = [
     "sanfrancisco-docu",
     "priv-mort-co",
     "newyork-mco",
+  ],
+  // Groups 221-224 — the 2026-09-30 eighth batch, PACKED: several boards to
+  // a tick, up to ~150 s of measured walk each, which is only sound because
+  // portal ticks are awaited (15 min) since the same day. The CPU each walk
+  // used was measured too, at 0.1-1.2 s a feed, so a group stays far inside
+  // the CPU limit. Windows of one board share a group, so they run back to
+  // back and the board has little time to move between them.
+  ["sanjose-nvda-eng", "sanjose-nvda-other", "newyork-mmc-ccs"],
+  ["newyork-mmc-consulting", "newyork-mmc-other", "paris-san", "london-lseg"],
+  [
+    "paris-ml",
+    "priv-competitive-foods-casual",
+    "priv-competitive-foods-fulltime",
+    "priv-competitive-foods-parttime",
+    "london-pru",
+    "sanjose-adbe",
+    "beijing-09992",
+  ],
+  [
+    "paris-vie",
+    "london-ulvr",
+    "london-ulvr-early",
+    "minneapolis-gis",
+    "singapore-bn4",
+    "zurich-sren",
+    "seattle-pcar",
+    "toronto-abx",
+    "paris-ora-fr",
+    "paris-ora-intl",
+    "vancouver-fm",
+    "uni-university-of-adelaide",
+    "sanjose-intu",
+    "priv-king-wood-mallesons",
+    "houston-cop",
+    "johannesburg-vod-za",
+    "johannesburg-vod-tz",
+    "johannesburg-vod-ls",
+    "melbourne-hsn",
   ],
 ];
 
