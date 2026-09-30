@@ -423,6 +423,24 @@ interface SiteDef {
   sfRmkSort?: string;
   sfRmkPlaces?: [facetField: string, value: string][];
   /**
+   * The RMK service partitions some boards BY LOCALE, and the reader used to
+   * send only en_GB. Measured 2026-09-29: Colgate's en_GB answers 217 of a
+   * 534-role board and holds no US role at all (en_US 323, pt_BR 13, …);
+   * ENGIE's en_GB answers 0 (en_US 715, fr_FR 654, …). Set, each locale is
+   * walked with `sfRmkSort` and the rows are merged by id, first locale first.
+   * Requires a deterministic sfRmkSort ("date") — see sfRmkSort.
+   */
+  sfRmkLocales?: string[];
+  /**
+   * Phenom's widget sort. The reader sent "" and on some tenants that pages in
+   * no fixed order, so pages overlap and a full walk misses roles. Measured
+   * 2026-09-29 on Givaudan: "" held 358-360 unique of 364, a different set each
+   * run; "Most recent" walked 364 of 364 twice. NOT a cure for every tenant —
+   * Mastercard's Phenom still overlapped with it, which is why Mastercard is
+   * read from Workday. Prove any value with two identical walks.
+   */
+  phenomSort?: string;
+  /**
    * Postings on this board that are not vacancies, matched on the title and
    * dropped before anything is archived. For standing "send us your CV" posts
    * that a board lists alongside real roles: archived, they would count in the
@@ -13255,6 +13273,4577 @@ export const SITES: SiteDef[] = [
       ["newark, nj", "newyork"],
     ],
   },
+  // ── The 2026-09-29 fourth batch — scraper-gap ranks 121-160 ────────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge. Packed several boards to a tick (see PORTAL_GROUPS), which
+  // relies on portal ticks being awaited — see the PORTAL_TICKS branch in
+  // index.ts. Colgate and ENGIE use sfRmkLocales, added the same day.
+  // Nutrien — held from batch 3 until sfRmkLocales existed. jobs.nutrien.com is
+  // one RMK service whose BRAND is chosen by locale (measured 2026-09-29):
+  // en_US -> 552 North American roles (USA 404, CAN 148), en_GB -> 44, all
+  // Australian. Shipping only the en_GB feed the old reader could see would
+  // have made a Calgary company look Australian, so both ship together, each
+  // with its brand's origin for the job links. ", WA, USA" is a US branch, not
+  // Perth.
+  {
+    id: "calgary-ntr",
+    key: "calgary-ntr-na",
+    name: "Nutrien",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://jobs.nutrien.com",
+    origin: "https://jobs.nutrien.com/North-America",
+    homeHub: "calgary",
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_US"],
+    hubHints: [[", wa, usa", null]],
+  },
+  {
+    id: "calgary-ntr",
+    key: "calgary-ntr-au",
+    name: "Nutrien",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://jobs.nutrien.com",
+    origin: "https://jobs.nutrien.com/Australia",
+    homeHub: null,
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_GB"],
+  },
+  // AngloGold Ashanti — Measured 2026-09-29: careers.anglogoldashanti.com is SuccessFactors
+  // (table theme renders rows server-side despite the NES-theme warning); 'Results 1 - 25 of
+  // 115', fetcher 115 of 115 both runs, 5.9-7.1 s. anglogoldashanti.com itself 403s this
+  // sandbox. Global board: Santa Bárbara/Sabará/Nova Lima MG Brazil, Obuasi/Tarkwa Ghana, Geita
+  // Tanzania, Las Vegas/Beatty/Reno NV, Santa Cruz AR, 'GN' - no hubs, left unplaced. perth 25
+  // = Sunrise Dam 9 + Tropicana 9 (remote WA mines, placed on perth by HUB_MATCH's ' wa,' rule,
+  // as for other WA miners) + Perth 7. hubHint greenwood village, co -> denver (4; Arapahoe
+  // County, Denver MSA - the Americas office). Location cells can carry '+1 more&hellip;'
+  // suffixes from the SF template (existing reader behaviour).
+  {
+    id: "johannesburg-ang",
+    name: "AngloGold Ashanti",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://careers.anglogoldashanti.com",
+    origin: "https://careers.anglogoldashanti.com",
+    homeHub: "johannesburg",
+    hubHints: [["greenwood village, co", "denver"]],
+  },
+  // Netflix — Measured 2026-09-29: explore.jobs.netflix.net is Eightfold
+  // (netflix.eightfold.ai), the older /api/apply/v2 API; count 476, walks of 476/476/476 unique
+  // in 7.5-8.7 s, 467 after skipTitles. skipTitles drops the 9 standing 'Expression of Interest
+  // - <team> - Netflix Animation Studios' posts (anchored; 'General Program Manager' is a real
+  // role and is kept). hubHints: 'Los Gatos,California' (63, Netflix HQ, Santa Clara County =
+  // San Jose MSA) -> sanjose; 'Burbank,California' (1, LA County) -> losangeles. The board
+  // writes 'City,State,Country' with no spaces, hence the needle form. Unplaced: 'Remote,
+  // United States' 112, Warsaw 20, Mexico City 7, Amsterdam 7, and other non-hub cities.
+  // 'Vancouver,Canada' is BC (correct). RATE LIMIT CAVEAT: after ~5 full walks (~240 requests)
+  // in ~10 minutes the tenant answered 429 and a walk returned 298 then 0; it recovered within
+  // ~5 minutes and the next walk was complete. One walk a day is ~48 requests and never tripped
+  // it, but fetchEightfold has no 429 retry and pagedParallel stops on a failed page, so a
+  // limited run would truncate (logged by pagedParallel). Consider giving fetchEightfold the
+  // spaced retry fetchEightfoldPcs has. PCSX API is not enabled on this tenant (403 'PCSX is
+  // not enabled'), so eightfoldpcs is not an option.
+  {
+    id: "sanjose-nflx",
+    name: "Netflix",
+    sector: "Technology, Media and Telecommunications",
+    platform: "eightfold",
+    endpoint: "https://explore.jobs.netflix.net/api/apply/v2/jobs?domain=netflix.com",
+    origin: "https://explore.jobs.netflix.net",
+    homeHub: "sanjose",
+    hubHints: [
+      ["los gatos,california", "sanjose"],
+      ["burbank,california", "losangeles"],
+    ],
+    skipTitles: /^expression of interest - /i,
+  },
+  // Dropbox — Measured 2026-09-29: jobs.dropbox.com links carry ?gh_jid= - Greenhouse board
+  // 'dropbox', meta.total 37, fetched 37 both runs in 0.33 s. dropbox.jobs is a separate job-
+  // listing wrapper, not the ATS. EVERY role is remote ('Remote - US: Select locations' 15,
+  // 'Remote - Canada: Select locations' 10, Remote - Poland 3, Remote - US: All locations 3,
+  // Remote - Japan 2, Remote - Ireland; Remote - United Kingdom 2, Remote - Mexico 1, Remote -
+  // Australia: Select locations 1) - Dropbox is 'Virtual First', so 37/37 are honestly
+  // unplaced; no blank locations, so homeHub never fires. The rows archive and count on the
+  // card but plot nowhere; that is the truth of the board, not a parse failure.
+  {
+    id: "sanfrancisco-dbx",
+    name: "Dropbox",
+    sector: "Technology, Media and Telecommunications",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/dropbox/jobs",
+    origin: "https://jobs.dropbox.com",
+    homeHub: "sanfrancisco",
+  },
+  // Nestlé — Measured 2026-09-29: jobdetails.nestle.com is Nestlé's GLOBAL SuccessFactors board
+  // ('of 2104', then 2106 on re-check) at a fixed 10 rows a page (not 25) - 211 pages, 108 s
+  // for the whole walk with the current reader, so it cannot be one feed. fetchSuccessFactors
+  // has NO pageFrom, so windows need this reader change (verified on a patched scratch copy,
+  // not in the repo):   let pageSize = site.pageSize ?? 0;            // was: let pageSize = 0;
+  // const from = site.pageFrom ?? 0;   for (let page = from; page < from + max;) {   // was:
+  // for (let page = 0; page < max;)  startrow stays page*pageSize (absolute), and pageSize MUST
+  // be set on a windowed site so the first request is not startrow=0. With it, six 36-page
+  // windows returned 360x5 + 306 = 2,106 of 2,106 unique, 13.5-16.9 s each. hubHints fix
+  // measured traps: Saudi ', SA' -> adelaide (Madinah 5, Jeddah 7, Riyadh 2 -> null); 'London,
+  // ON, CA' 5 -> null (was london); 'Bellevue, WA, US' 1 -> seattle (was perth); Etobicoke ON 1
+  // -> toronto. ROSTER NOTE: Nestlé's HQ and Swiss sites are Vevey/Lausanne/Orbe/Konolfingen/La
+  // Tour-de-Peilz (Lake Geneva region), NOT Zurich - of 114 CH roles only 1 ('Zürich, CH')
+  // lands on the zurich hub. A CH-only alternative is `searchParams:
+  // 'optionsFacetsDD_country=CH'` (114 roles, 5.7 s, verified twice) but it would plot 1 role.
+  // 'Perth, NSW, AU, 6000' (2) is the board's own error. Also existing Nestlé-SF quirk: '+1
+  // more&hellip;' suffixes in location cells. INTEGRATED 2026-09-29 as ONE feed rather than six
+  // windows: portal ticks are awaited since the same day, so a 108 s walk fits one tick and
+  // fetchSuccessFactors needs no pageFrom.
+  {
+    id: "zurich-nesn",
+    name: "Nestlé",
+    sector: "Consumer and Retail",
+    platform: "successfactors",
+    endpoint: "https://jobdetails.nestle.com",
+    origin: "https://jobdetails.nestle.com",
+    homeHub: "zurich",
+    maxPages: 240,
+    hubHints: [
+      ["madinah, sa", null],
+      ["jeddah, sa", null],
+      ["riyadh, sa", null],
+      ["london, on, ca", null],
+      ["bellevue, wa, us", "seattle"],
+      ["etobicoke, on", "toronto"],
+    ],
+  },
+  // Texas Instruments — 2026-09-29: TI's own board careers.ti.com/en/sites/CX is Oracle
+  // Recruiting Cloud on edbz.fa.us2.oraclecloud.com, siteNumber CX (not CX_1). TotalJobsCount
+  // 806; fetchOracle read 806 unique twice, 9-12 s (33 pages of 25). Global board; placement:
+  // Dallas 240 + Richardson TX 39 (Dallas County/DFW MSA) -> dallas. hubHints: 'south portland,
+  // me' -> null (15 rows; HUB_MATCH 'portland' would file Maine on the Portland OR hub);
+  // 'bellevue, wa' -> seattle (4; would otherwise hit ' wa,' -> PERTH); 'santa clara, ca' ->
+  // sanjose (15); 'irvine, ca' -> losangeles (2); 'sugar land, tx' -> houston (1). Left
+  // unplaced on purpose: Sherman TX (32, Sherman-Denison MSA, not DFW), Lehi UT 40, Chengdu 34,
+  // Freising, Tucson, Knoxville, bare-country rows ('United States' 12, 'Japan' 15) — homeHub
+  // is only a blank-location fallback (no HOME_COUNTRY entry for dallas). Job links
+  // origin/job/<Id> verified 200.
+  {
+    id: "dallas-txn",
+    name: "Texas Instruments",
+    sector: "Technology, Media and Telecommunications",
+    platform: "oracle",
+    endpoint: "https://edbz.fa.us2.oraclecloud.com",
+    origin: "https://careers.ti.com/en/sites/CX",
+    homeHub: "dallas",
+    siteNumber: "CX",
+    hubHints: [
+      ["richardson, tx", "dallas"],
+      ["santa clara, ca", "sanjose"],
+      ["south portland, me", null],
+      ["bellevue, wa", "seattle"],
+      ["irvine, ca", "losangeles"],
+      ["sugar land, tx", "houston"],
+    ],
+  },
+  // ExxonMobil — 2026-09-29: jobs.exxonmobil.com is a server-rendered SuccessFactors RMK board
+  // ('Results 1 - 25 of 570'); fetchSuccessFactors read 570 unique of 570 twice, ~8-9 s.
+  // www.exxonmobil.com/careers answers the sandbox 403 (Akamai) but the board host does not.
+  // Global board. Locations carry a postcode ('Spring, TX, US, 77389'). hubHints: 'spring, tx'
+  // -> houston (106 — the Spring campus is ExxonMobil's HQ, Harris County), 'baytown, tx' ->
+  // houston (6), 'alvin, tx' -> houston (1, Brazoria County, Houston MSA), 'channahon, il' ->
+  // chicago (1, Will County). Beaumont, Baton Rouge, Midland, Edmonton, Buenos Aires, Budapest,
+  // Curitiba etc. stay unplaced (no hub). A few cells end in '+1 more&hellip;' (multi-location
+  // roles) — cosmetic, placement unaffected.
+  {
+    id: "houston-xom",
+    name: "ExxonMobil",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://jobs.exxonmobil.com",
+    origin: "https://jobs.exxonmobil.com",
+    homeHub: "houston",
+    hubHints: [
+      ["spring, tx", "houston"],
+      ["baytown, tx", "houston"],
+      ["alvin, tx", "houston"],
+      ["channahon, il", "chicago"],
+    ],
+  },
+  // Thomson Reuters — 2026-09-29: careers.thomsonreuters.com -> Workday
+  // thomsonreuters/wd5/External_Career_Site, total 460. One walk is 23 pages, 28.3 s measured —
+  // over the ~20 s line — so two windows: pageFrom 0/maxPages 12 (240, 12.5-15.3 s) and
+  // pageFrom 12/maxPages 13 (220, 12.0-15.7 s); union 460 unique of 460, no overlap, twice.
+  // Second window has 1 page of headroom (board up to 500). This tenant sends NO locationsText:
+  // the location is bulletFields[0], bare city names joined by '; ' ('Frisco; Eagan; Ann
+  // Arbor'), no state or country — so HUB_MATCH alone leaves Eagan MN (TR's largest US site)
+  // and Frisco TX unplaced. hubHints (order matters, first needle wins for multi-city roles):
+  // 'toronto' and 'new york' first so the HQ/NY-listed multi-city roles keep the hub HUB_MATCH
+  // gave them; then 'frisco' -> dallas (Collin County, DFW MSA), 'eagan' -> minneapolis (Dakota
+  // County, Minneapolis MSA; 55 single-location rows), 'mclean' -> washington (Fairfax County),
+  // 'pyrmont' -> sydney. Known cost: a multi-city role is filed on one hub chosen by needle
+  // order, not by the board's listed order (e.g. 'Zug; Toronto; New York; London…' -> toronto).
+  // Left unplaced: Mexico City 27, Hyderabad 14, Sao Paulo 12, Gothenburg, Gdansk, Madrid, Zug,
+  // Ann Arbor, and the ambiguous Richmond / Burlington / Rochester (1 each).
+  {
+    id: "toronto-tri",
+    name: "Thomson Reuters",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://thomsonreuters.wd5.myworkdayjobs.com/wday/cxs/thomsonreuters/External_Career_Site/jobs",
+    origin: "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site",
+    homeHub: "toronto",
+    hubHints: [
+      ["toronto", "toronto"],
+      ["new york", "newyork"],
+      ["frisco", "dallas"],
+      ["eagan", "minneapolis"],
+      ["mclean", "washington"],
+      ["pyrmont", "sydney"],
+    ],
+    key: "toronto-tri-1",
+    maxPages: 12,
+  },
+  {
+    id: "toronto-tri",
+    name: "Thomson Reuters",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://thomsonreuters.wd5.myworkdayjobs.com/wday/cxs/thomsonreuters/External_Career_Site/jobs",
+    origin: "https://thomsonreuters.wd5.myworkdayjobs.com/en-US/External_Career_Site",
+    homeHub: "toronto",
+    hubHints: [
+      ["toronto", "toronto"],
+      ["new york", "newyork"],
+      ["frisco", "dallas"],
+      ["eagan", "minneapolis"],
+      ["mclean", "washington"],
+      ["pyrmont", "sydney"],
+    ],
+    key: "toronto-tri-2",
+    pageFrom: 12,
+    maxPages: 13,
+  },
+  // Palo Alto Networks — 2026-09-29: jobs.paloaltonetworks.com -> Workday
+  // paloaltonetworks/wd5/panwexternalcareers, total 1,512 (76 pages). Four pageFrom windows of
+  // 20 pages (last one 22 for headroom, board up to 1,640): 400/400/400/312, 8.5-12.4 s each,
+  // union 1,512 unique of 1,512 on both runs. hubHints: 'office - usa - ca - headquarters' ->
+  // sanjose (260; HQ is Santa Clara), 'santa clara, united states' -> sanjose (61), 'cyberark
+  // santa clara' -> sanjose (2), 'burbank, united states' -> losangeles (11), 'reston' ->
+  // washington (9, Fairfax County), 'plano, united states' -> dallas (3), 'cyberark newton' ->
+  // boston (2, Middlesex County), 'remote - usa - wa' -> null (1; HUB_MATCH ' wa,' would file
+  // Washington State on PERTH). Unplaced 719 is mostly honest: 'N Locations' multi-site cards
+  // (~240, Workday prints only the count), Tel Aviv 94 / Petach Tikva 48, Sao Paulo, Hyderabad,
+  // Office - USA - TX (17, no city), remote-state rows. 'Arlington, United States' (4) left
+  // null — VA or TX, the board does not say.
+  {
+    id: "sanjose-panw",
+    name: "Palo Alto Networks",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://paloaltonetworks.wd5.myworkdayjobs.com/wday/cxs/paloaltonetworks/panwexternalcareers/jobs",
+    origin: "https://paloaltonetworks.wd5.myworkdayjobs.com/en-US/panwexternalcareers",
+    homeHub: "sanjose",
+    hubHints: [
+      ["office - usa - ca - headquarters", "sanjose"],
+      ["santa clara, united states", "sanjose"],
+      ["cyberark santa clara", "sanjose"],
+      ["burbank, united states", "losangeles"],
+      ["reston", "washington"],
+      ["plano, united states", "dallas"],
+      ["cyberark newton", "boston"],
+      ["remote - usa - wa", null],
+    ],
+    key: "sanjose-panw-1",
+    maxPages: 20,
+  },
+  {
+    id: "sanjose-panw",
+    name: "Palo Alto Networks",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://paloaltonetworks.wd5.myworkdayjobs.com/wday/cxs/paloaltonetworks/panwexternalcareers/jobs",
+    origin: "https://paloaltonetworks.wd5.myworkdayjobs.com/en-US/panwexternalcareers",
+    homeHub: "sanjose",
+    hubHints: [
+      ["office - usa - ca - headquarters", "sanjose"],
+      ["santa clara, united states", "sanjose"],
+      ["cyberark santa clara", "sanjose"],
+      ["burbank, united states", "losangeles"],
+      ["reston", "washington"],
+      ["plano, united states", "dallas"],
+      ["cyberark newton", "boston"],
+      ["remote - usa - wa", null],
+    ],
+    key: "sanjose-panw-2",
+    maxPages: 20,
+    pageFrom: 20,
+  },
+  {
+    id: "sanjose-panw",
+    name: "Palo Alto Networks",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://paloaltonetworks.wd5.myworkdayjobs.com/wday/cxs/paloaltonetworks/panwexternalcareers/jobs",
+    origin: "https://paloaltonetworks.wd5.myworkdayjobs.com/en-US/panwexternalcareers",
+    homeHub: "sanjose",
+    hubHints: [
+      ["office - usa - ca - headquarters", "sanjose"],
+      ["santa clara, united states", "sanjose"],
+      ["cyberark santa clara", "sanjose"],
+      ["burbank, united states", "losangeles"],
+      ["reston", "washington"],
+      ["plano, united states", "dallas"],
+      ["cyberark newton", "boston"],
+      ["remote - usa - wa", null],
+    ],
+    key: "sanjose-panw-3",
+    maxPages: 20,
+    pageFrom: 40,
+  },
+  {
+    id: "sanjose-panw",
+    name: "Palo Alto Networks",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint:
+      "https://paloaltonetworks.wd5.myworkdayjobs.com/wday/cxs/paloaltonetworks/panwexternalcareers/jobs",
+    origin: "https://paloaltonetworks.wd5.myworkdayjobs.com/en-US/panwexternalcareers",
+    homeHub: "sanjose",
+    hubHints: [
+      ["office - usa - ca - headquarters", "sanjose"],
+      ["santa clara, united states", "sanjose"],
+      ["cyberark santa clara", "sanjose"],
+      ["burbank, united states", "losangeles"],
+      ["reston", "washington"],
+      ["plano, united states", "dallas"],
+      ["cyberark newton", "boston"],
+      ["remote - usa - wa", null],
+    ],
+    key: "sanjose-panw-4",
+    maxPages: 22,
+    pageFrom: 60,
+  },
+  // ENGIE — 2026-09-29: jobs.engie.com is an NES SuccessFactors RMK site (companyId
+  // engieinforP3): /search/ serves no rows (client-rendered), so fetchSuccessFactors cannot
+  // read it. The RMK JSON service POST /services/recruiting/v1/jobs works, but READER GAP:
+  // fetchSfRmkApi hardcodes locale 'en_GB', and ENGIE answers {"totalJobs":0} for en_GB.
+  // Postings are PER LOCALE: en_US 715, fr_FR 654, de_DE 142, nl_NL 91, ro_RO 30, es_MX 24,
+  // it_IT 17, es_ES 15, pt_BR 15, pl_PL 15, sk_SK 0 — union 1,476 unique ids (en_US∩fr_FR 94).
+  // With sortBy 'date' each locale walked complete and unique (en_US 715/715, fr_FR 654/654).
+  // Exact fix: add `sfRmkLocales?: string[]` to SiteDef; in sfRmkPage/fetchSfRmkApi send
+  // `locale` from it (default ['en_GB']), walk each locale with sfRmkWalk (sortBy
+  // site.sfRmkSort), union by id, and build the url `${origin}/job/${urlTitle}/${id}-${locale}`
+  // (verified: /job/Quality-manager-renewables-Sibiu/68838-en_US -> 200, title matches). Also
+  // unifiedStandardStart is locale-formatted — en_US gives '9/29/26' (m/d/yy), which the
+  // existing dd/MM/yyyy reorder does not handle. Proposed siteDef: sfRmkSort 'date',
+  // sfRmkLocales
+  // ['en_US','fr_FR','de_DE','nl_NL','ro_RO','es_MX','it_IT','es_ES','pt_BR','pl_PL']. Location
+  // cells are 'City, Country, POSTCODE' (joined '; ' for multi-site), so Paris metro can be
+  // placed by Île-de-France postcode prefix: hubHints ', france, 75/77/78/91/92/93/94/95' ->
+  // paris (La Garenne-Colombes 70, Saint-Denis 38, Paris 34+, Courbevoie 8, Champigny 10 ...).
+  // HOUSTON (67, ENGIE North America) resolves via HUB_MATCH; Broomfield CO -> denver hint.
+  // Also note 'Punaauia/Noumea/Port Vila, France' (overseas) are not Paris and are not matched
+  // by the postcode needles (987xx/988xx).
+  {
+    id: "paris-engi",
+    name: "ENGIE",
+    sector: "Infrastructure and Government",
+    platform: "sfrmkapi",
+    endpoint: "https://jobs.engie.com",
+    origin: "https://jobs.engie.com",
+    homeHub: "paris",
+    sfRmkSort: "date",
+    hubHints: [
+      [", france, 75", "paris"],
+      [", france, 77", "paris"],
+      [", france, 78", "paris"],
+      [", france, 91", "paris"],
+      [", france, 92", "paris"],
+      [", france, 93", "paris"],
+      [", france, 94", "paris"],
+      [", france, 95", "paris"],
+      ["broomfield, united states", "denver"],
+    ],
+    sfRmkLocales: [
+      "en_US",
+      "fr_FR",
+      "de_DE",
+      "nl_NL",
+      "ro_RO",
+      "es_MX",
+      "it_IT",
+      "es_ES",
+      "pt_BR",
+      "pl_PL",
+    ],
+  },
+  // Abbott Laboratories — 2026-09-29: Abbott's board (abbott.com/careers, jobs.abbott) is
+  // Workday abbott/wd5/abbottcareers. Workday reports total 2000 — the paging CAP — while the
+  // jobFamilyGroup facet counts sum to 2,647 (measured twice; timeType and workerSubType sums
+  // agree), so an unfiltered walk would silently lose ~650 roles. Partitioned by jobFamilyGroup
+  // facet ids (per tenant, read off the facets array): Sales 820 (3 windows 14/14/16 pages),
+  // Operations 456 (2 windows 12/14), Customer & Technical Support 285 (1), Quality 240 + R&D
+  // 161 (2 windows 11/13), Marketing 157 + Business Support 139 (1), all 11 remaining families
+  // 388 (2 windows 10/12). Every feed 9.3-14.5 s. Union 2,644 unique on both runs; the 3
+  // 'missing' are postings the board serves with no title and no externalPath (bulletFields
+  // only: 31159690, 31160356, 31160358), which the reader correctly skips. The Phenom front end
+  // (www.jobs.abbott, totalHits 2,611) was tried first and REJECTED: its widget pager with
+  // sortBy '' (and 'Most recent') repeats rows — 26 pages x 100 gave 2,286 unique with 325
+  // duplicates — so it samples the board. Locations read 'United States - Illinois - Abbott
+  // Park' / 'United States > Madison : 1 Exact Lane' / 'N Locations'. hubHints are same-metro
+  // only (county/MSA): Abbott Park 65, Lake Forest 16, Waukegan 4, Buffalo Grove 3 -> chicago
+  // (Lake County IL); Alameda 84, Pleasanton 19, Redwood City 8 -> sanfrancisco; Santa Clara
+  // 12, Milpitas 2 -> sanjose; Sylmar 32, Irvine 2 -> losangeles; La Jolla 5 -> sandiego;
+  // Plymouth 30, Minnetonka 18, St. Paul 13, New Brighton 12, Maple Grove 4, Roseville 2 ->
+  // minneapolis; Westfield 13, Avon 5 -> indianapolis; Westford 12, Burlington MA 3 -> boston;
+  // Plano 9, Irving 4, Fort Worth 1 -> dallas; Newark NJ 2 -> newyork; Washington-
+  // Seattle/Tacoma -> seattle; then TRAP guards -> null: 'united states - washington - '
+  // (Spokane was going to the DC hub), 'virginia - charlottesville' (was going to charlotte),
+  // 'new york - albany' and 'new york - remote' (were going to newyork). Unplaced 1,803 is
+  // mostly real: Madison WI ~168, Columbus OH 37, Casa Grande AZ, Sturgis MI, Temecula
+  // (Riverside MSA, not LA), Princeton NJ, 'United States of America : Remote' 61, 'N
+  // Locations' cards, and non-hub countries (Ireland, Netherlands, Vietnam, Germany...).
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-sales-1",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc36e2c70dce531f"] },
+    maxPages: 14,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-sales-2",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc36e2c70dce531f"] },
+    maxPages: 14,
+    pageFrom: 14,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-sales-3",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc36e2c70dce531f"] },
+    maxPages: 16,
+    pageFrom: 28,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-ops-1",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc36ca9a7bcb5315"] },
+    maxPages: 12,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-ops-2",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc36ca9a7bcb5315"] },
+    maxPages: 14,
+    pageFrom: 12,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-support",
+    appliedFacets: { jobFamilyGroup: ["77166004ab82108dbc369f0685c75300"] },
+    maxPages: 18,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-quality-rd-1",
+    appliedFacets: {
+      jobFamilyGroup: ["77166004ab82108dbc36d45444ea5319", "77166004ab82108dbc36ddc1741b531d"],
+    },
+    maxPages: 11,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-quality-rd-2",
+    appliedFacets: {
+      jobFamilyGroup: ["77166004ab82108dbc36d45444ea5319", "77166004ab82108dbc36ddc1741b531d"],
+    },
+    maxPages: 13,
+    pageFrom: 11,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-mkt-bizsupport",
+    appliedFacets: {
+      jobFamilyGroup: ["77166004ab82108dbc36c1aa703d530e", "77166004ab82108dbc368b52e1f452f7"],
+    },
+    maxPages: 18,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-corporate-1",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "77166004ab82108dbc36a3f4c1f35302",
+        "77166004ab82108dbc36c663b1735313",
+        "77166004ab82108dbc36b387bcb25308",
+        "77166004ab82108dbc36d8a13149531b",
+        "77166004ab82108dbc36ae7004d75306",
+        "77166004ab82108dbc36bd400e63530c",
+        "77166004ab82108dbc36b8277206530a",
+        "77166004ab82108dbc36cf373cfb5317",
+        "77166004ab82108dbc3691dba9f452f9",
+        "77166004ab82108dbc36a9373a205304",
+        "77166004ab82108dbc3697ef47b552fb",
+      ],
+    },
+    maxPages: 10,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  {
+    id: "chicago-abt",
+    name: "Abbott Laboratories",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://abbott.wd5.myworkdayjobs.com/wday/cxs/abbott/abbottcareers/jobs",
+    origin: "https://abbott.wd5.myworkdayjobs.com/en-US/abbottcareers",
+    homeHub: "chicago",
+    key: "chicago-abt-corporate-2",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "77166004ab82108dbc36a3f4c1f35302",
+        "77166004ab82108dbc36c663b1735313",
+        "77166004ab82108dbc36b387bcb25308",
+        "77166004ab82108dbc36d8a13149531b",
+        "77166004ab82108dbc36ae7004d75306",
+        "77166004ab82108dbc36bd400e63530c",
+        "77166004ab82108dbc36b8277206530a",
+        "77166004ab82108dbc36cf373cfb5317",
+        "77166004ab82108dbc3691dba9f452f9",
+        "77166004ab82108dbc36a9373a205304",
+        "77166004ab82108dbc3697ef47b552fb",
+      ],
+    },
+    maxPages: 12,
+    pageFrom: 10,
+    hubHints: [
+      ["illinois - abbott park", "chicago"],
+      ["illinois - lake forest", "chicago"],
+      ["illinois - waukegan", "chicago"],
+      ["illinois - buffalo grove", "chicago"],
+      ["california - alameda", "sanfrancisco"],
+      ["california - pleasanton", "sanfrancisco"],
+      ["redwood city", "sanfrancisco"],
+      ["california - santa clara", "sanjose"],
+      ["milpitas", "sanjose"],
+      ["california - sylmar", "losangeles"],
+      ["california - irvine", "losangeles"],
+      ["california - la jolla", "sandiego"],
+      ["minnesota - plymouth", "minneapolis"],
+      ["minnesota - minnetonka", "minneapolis"],
+      ["minnesota - st. paul", "minneapolis"],
+      ["minnesota - new brighton", "minneapolis"],
+      ["minnesota - maple grove", "minneapolis"],
+      ["minnesota - roseville", "minneapolis"],
+      ["indiana - westfield", "indianapolis"],
+      ["indiana - avon", "indianapolis"],
+      ["massachusetts - westford", "boston"],
+      ["massachusetts - burlington", "boston"],
+      ["texas - plano", "dallas"],
+      ["texas - irving", "dallas"],
+      ["texas - fort worth", "dallas"],
+      ["new jersey - newark", "newyork"],
+      ["washington - seattle", "seattle"],
+      ["washington - tacoma", "seattle"],
+      ["united states - washington - ", null],
+      ["virginia - charlottesville", null],
+      ["new york - albany", null],
+      ["new york - remote", null],
+    ],
+  },
+  // Winslow Constructors — 2026-09-29: winslow.com.au/work-with-us links to www.job-
+  // opportunities.com.au — Winslow's OWN branded SuccessFactors RMK site (companyId winslowmgm;
+  // every page is Winslow-branded, 'Winslow Careers'), not a shared board. 'Results 1 - 11 of
+  // 11'; fetchSuccessFactors reads all 11, 1-3 s. skipTitles drops the one standing expression-
+  // of-interest post, exact title 'EOI Engineering Under / Graduates' (Royston Park SA, req
+  // 1055460866 — an id far older than the live roles), leaving 10. Locations carry state +
+  // postcode (Port Melbourne VIC, Eight Mile Plains QLD, Royston Park SA) and all resolve
+  // through HUB_MATCH; 'VIC, Australia' (1) -> melbourne via ' vic,'. No hints needed.
+  {
+    id: "priv-winslow-constructors",
+    name: "Winslow Constructors",
+    sector: "Civil construction",
+    platform: "successfactors",
+    endpoint: "https://www.job-opportunities.com.au",
+    origin: "https://www.job-opportunities.com.au",
+    homeHub: "melbourne",
+    skipTitles: /^EOI Engineering Under \/ Graduates$/i,
+  },
+  // ABB Ltd — Measured 2026-09-29: ABB's global Workday board abb.wd3/external_career_page. The
+  // board reports total 2000 (Workday's cap) but the jobFamilyGroup facet sums to the real
+  // size: 2180, then 2188 later that day. The 18 families are single-valued (their counts sum
+  // to the total, and so do workerSubType's), so the board is split into SEVEN feeds.
+  // Operations (614) and 'Marketing, Sales & Product Management' (475) are each too big for one
+  // tick even filtered, so each is split into two pageFrom windows of its own facet: ops1 0-16,
+  // ops2 16+; sales1 0-12, sales2 12+. c = Service + Project Execution + Finance (390); d =
+  // Engineering + Administration (405); e = the other 11 families (296). Each window takes
+  // 10-18 s; all seven run in 99 s sequentially. Two runs gave 2167 each, 0 duplicate paths.
+  // 2167 + 21 skipped = 2188 = board. RISKS: a new family id falls in no feed, and a window can
+  // drift if Ops or Sales reorders between ticks. skipTitles drops 21 standing 'ABB Talent Pool
+  // - ...' / '... Talent Pool – Share your CV with us' posts (Bangalore, Krakow and no-location
+  // ones). They are CV-collection pools, not vacancies. homeHub is NULL: 17 real postings carry
+  // an empty locationsText (Czech 'Projektový manažer', 'Discovery ... Track - 2027' graduate
+  // tracks, internships). With homeHub zurich, all 17 would have been filed in Zurich, and they
+  // are not Zurich roles. Zurich itself shows almost nothing: ABB Switzerland's sites are
+  // Baden/Daettwil/Untersiggenthal (Aargau, left unplaced) and Quartino TI. Only 'Uster,
+  // Zurich' places, through the canton name. Hints fix WRONG placements: 'USA, TN, Portland' 6
+  // -> null (Portland, Tennessee, not Oregon); 'Remote, Washington, United States' 3 -> null
+  // (the state, not DC). Metro placements: Saint-Laurent QC 7, Pointe-Claire 3 -> montreal;
+  // Milton ON 3, Mississauga 1 -> toronto; Coquitlam 2 -> vancouver; Lancaster TX 2 -> dallas;
+  // Alpharetta GA 1 -> atlanta; Quincy MA 2 -> boston; Clackamas OR 1 -> portland; Milford OH 1
+  // -> cincinnati. Left unplaced: Mebane NC 80, Richmond VA 40, Senatobia/Byhalia MS (Memphis
+  // MSA, no hub), Pinetops NC, New Berlin WI, Cary/Raleigh NC, ~300 'N Locations' placeholders,
+  // and every non-hub country.
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-ops1",
+    appliedFacets: { jobFamilyGroup: ["094a0cd6eed71000b71634094b7d0000"] },
+    maxPages: 16,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-ops2",
+    appliedFacets: { jobFamilyGroup: ["094a0cd6eed71000b71634094b7d0000"] },
+    pageFrom: 16,
+    maxPages: 18,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-sales1",
+    appliedFacets: { jobFamilyGroup: ["094a0cd6eed71000b6e4b66902ef0001"] },
+    maxPages: 12,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-sales2",
+    appliedFacets: { jobFamilyGroup: ["094a0cd6eed71000b6e4b66902ef0001"] },
+    pageFrom: 12,
+    maxPages: 14,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-c",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "094a0cd6eed71000b6ee241ef5a40000",
+        "094a0cd6eed71000b6e4bf6f48eb0000",
+        "094a0cd6eed71000b6e60bc695320000",
+      ],
+    },
+    maxPages: 25,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-d",
+    appliedFacets: {
+      jobFamilyGroup: ["094a0cd6eed71000b6efa5c959010000", "094a0cd6eed71000b6e4bc6da5250000"],
+    },
+    maxPages: 25,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  {
+    id: "zurich-abbn",
+    name: "ABB Ltd",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://abb.wd3.myworkdayjobs.com/wday/cxs/abb/external_career_page/jobs",
+    origin: "https://abb.wd3.myworkdayjobs.com/external_career_page",
+    homeHub: null,
+    key: "zurich-abbn-e",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "094a0cd6eed71000b6e4c13e20230000",
+        "094a0cd6eed71000b6e55e3bb9680000",
+        "094a0cd6eed71000b6e4c43fdb520000",
+        "094a0cd6eed71000b6ee211e24c60000",
+        "094a0cd6eed71000b71632d59a120000",
+        "094a0cd6eed71000b6e55da1ce320000",
+        "094a0cd6eed71000b7162335fd700000",
+        "094a0cd6eed71000b6e4b36788470000",
+        "094a0cd6eed71000b6eef9ce39350000",
+        "094a0cd6eed71000b6ed2d80c5a00000",
+        "094a0cd6eed71000b6ec1aa9c9350000",
+      ],
+    },
+    maxPages: 25,
+    hubHints: [
+      ["usa, tn, portland", null],
+      ["remote, washington, united states", null],
+      ["saint-laurent, quebec", "montreal"],
+      ["pointe-claire, quebec", "montreal"],
+      ["milton, ontario", "toronto"],
+      ["mississauga, ontario", "toronto"],
+      ["coquitlam, canada", "vancouver"],
+      ["lancaster, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["usa, ma, quincy", "boston"],
+      ["quincy, massachusetts", "boston"],
+      ["usa, or, clackamas", "portland"],
+      ["milford, ohio", "cincinnati"],
+    ],
+    skipTitles: /^(ABB )?Talent Pool\b|Talent Pool – Share your CV with us$/i,
+  },
+  // PayPal — Measured 2026-09-29: PayPal's own Workday board, paypal.wd1/jobs, total 293. It is
+  // 15 pages, 15 s, so one feed. Both runs fetched 291; a raw walk shows 2 postings on the
+  // board with no title and no externalPath, which the fetcher correctly skips. Every placed
+  // location was checked and is correct ('San Jose, California' -> sanjose). No hints needed.
+  // Unplaced: 'N Locations' placeholders 79, Scottsdale 8, Milan 8, Berlin 6, 'Germany
+  // (Virtual)', Chennai, Luxembourg, Mexico City. Eightfold (paypal.eightfold.ai) is a front
+  // end over the same requisitions and is not needed.
+  {
+    id: "sanjose-pypl",
+    name: "PayPal",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://paypal.wd1.myworkdayjobs.com/wday/cxs/paypal/jobs/jobs",
+    origin: "https://paypal.wd1.myworkdayjobs.com/jobs",
+    homeHub: "sanjose",
+  },
+  // Medtronic — Measured 2026-09-29: Medtronic's Workday board medtronic.wd1/MedtronicCareers,
+  // total 1093. That is ~55 pages, about 60 s, so it is split into THREE feeds on
+  // jobFamilyGroup. Its 26 values sum exactly to the total. a = Sales + Sales & Marketing
+  // Support (379). b = Engineering + Direct Sales Support + Finance + Intern (392). c = the
+  // other 20 functions (322). Each takes 18-22 s. Both runs gave 1093 distinct. Same risk as
+  // J&J: a new family id falls in no feed. Hints fix WRONG placements: 'Portland, Maine' 2 ->
+  // null (not Oregon). Syracuse, Binghamton, Albany and Poughkeepsie NY -> null; the 'new york'
+  // needle had put them on newyork. 'Spokane, Washington' -> null (the state, not DC). Metro
+  // placements: Fridley 19, Mounds View 9, Brooklyn Center 7, Plymouth 4 MN -> minneapolis
+  // (Medtronic's operational HQ is Fridley/Mounds View). Irvine 6, Santa Ana 1 -> losangeles;
+  // Santa Clara -> sanjose; Fort Worth 5 -> dallas; Danvers MA 2 -> boston; Eatontown 3,
+  // Hackensack 1 NJ -> newyork; Swedesboro NJ 2 -> philadelphia; Plainfield IN -> indianapolis;
+  // Brampton 7, Milton 1 ON -> toronto; Yokohama and Saitama -> tokyo. Left unplaced: Hyderabad
+  // 66, Ho Chi Minh 38, Galway 30, Warsaw 27, Heerlen 26, Lafayette CO 17, Tempe AZ 8, North
+  // Haven CT, and ~150 'N Locations' placeholders.
+  {
+    id: "minneapolis-mdt",
+    name: "Medtronic",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://medtronic.wd1.myworkdayjobs.com/wday/cxs/medtronic/MedtronicCareers/jobs",
+    origin: "https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers",
+    homeHub: "minneapolis",
+    key: "minneapolis-mdt-a",
+    appliedFacets: {
+      jobFamilyGroup: ["3b9e5dd261944d18b3f8d166e2c447bc", "a1fac31977894774aedd9a134ec054ad"],
+    },
+    maxPages: 30,
+    hubHints: [
+      ["portland, maine", null],
+      ["syracuse, new york", null],
+      ["binghamton, new york", null],
+      ["albany, new york", null],
+      ["poughkeepsie, new york", null],
+      ["spokane, washington", null],
+      ["fridley, minnesota", "minneapolis"],
+      ["mounds view, minnesota", "minneapolis"],
+      ["brooklyn center, minnesota", "minneapolis"],
+      ["plymouth, minnesota", "minneapolis"],
+      ["irvine, california", "losangeles"],
+      ["santa ana, california", "losangeles"],
+      ["santa clara, california", "sanjose"],
+      ["fort worth, texas", "dallas"],
+      ["danvers, massachusetts", "boston"],
+      ["eatontown, new jersey", "newyork"],
+      ["hackensack, new jersey", "newyork"],
+      ["swedesboro, new jersey", "philadelphia"],
+      ["plainfield, indiana", "indianapolis"],
+      ["brampton, ontario", "toronto"],
+      ["milton, ontario", "toronto"],
+      ["yokohama, kanagawa", "tokyo"],
+      ["saitama, japan", "tokyo"],
+    ],
+  },
+  {
+    id: "minneapolis-mdt",
+    name: "Medtronic",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://medtronic.wd1.myworkdayjobs.com/wday/cxs/medtronic/MedtronicCareers/jobs",
+    origin: "https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers",
+    homeHub: "minneapolis",
+    key: "minneapolis-mdt-b",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "2fe8588f35e84eb98ef535f4d738f243",
+        "dbaf47119668100109f8c75c272b0000",
+        "5d03e9707876432d93848a9e7146e1ad",
+        "be3ab1d7a62801c1c7c82b804a0529d0",
+      ],
+    },
+    maxPages: 30,
+    hubHints: [
+      ["portland, maine", null],
+      ["syracuse, new york", null],
+      ["binghamton, new york", null],
+      ["albany, new york", null],
+      ["poughkeepsie, new york", null],
+      ["spokane, washington", null],
+      ["fridley, minnesota", "minneapolis"],
+      ["mounds view, minnesota", "minneapolis"],
+      ["brooklyn center, minnesota", "minneapolis"],
+      ["plymouth, minnesota", "minneapolis"],
+      ["irvine, california", "losangeles"],
+      ["santa ana, california", "losangeles"],
+      ["santa clara, california", "sanjose"],
+      ["fort worth, texas", "dallas"],
+      ["danvers, massachusetts", "boston"],
+      ["eatontown, new jersey", "newyork"],
+      ["hackensack, new jersey", "newyork"],
+      ["swedesboro, new jersey", "philadelphia"],
+      ["plainfield, indiana", "indianapolis"],
+      ["brampton, ontario", "toronto"],
+      ["milton, ontario", "toronto"],
+      ["yokohama, kanagawa", "tokyo"],
+      ["saitama, japan", "tokyo"],
+    ],
+  },
+  {
+    id: "minneapolis-mdt",
+    name: "Medtronic",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://medtronic.wd1.myworkdayjobs.com/wday/cxs/medtronic/MedtronicCareers/jobs",
+    origin: "https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers",
+    homeHub: "minneapolis",
+    key: "minneapolis-mdt-c",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "ae3cca7615db4991b6c46b1d1e235e88",
+        "9f511399cde0412cb986049830df9cbd",
+        "521a5de2cfee4fb2b59f864f3dee99d9",
+        "d5575fc80af44949aae34f0770ad3fcf",
+        "e79e0b9165cb48359654bceb06a70b8e",
+        "4e8537909ca04133879bbd846eef97bf",
+        "499486f930f0438c897a3c52fdee4c26",
+        "228ebabf3ac04207ae00c32cd894de24",
+        "65450a2b28c84dd98a01cdc6eba2c86d",
+        "508772feb2be4f23aa55d9395c6ef5af",
+        "1aff29bdfacf4fc2becd9b28aba27c75",
+        "8cde834a61694d76bf6368a671b31a66",
+        "2df7911d885445ecb54c1ed4670e05e7",
+        "568cfc077edf423d8b5ea665f8b15d7a",
+        "584c3caf112b4dd18eb345142f7f47a2",
+        "46a4fe85ccfe40b3b1aef9d430a132d0",
+        "7cf7a079fe7f48d0927540d1fe545051",
+        "e0bda70f61d31078d77ff6c506700d17",
+        "7c6266638abd49ee935561d8c940eb0a",
+        "e9aa3bd518d94d609ac7d9057b259925",
+      ],
+    },
+    maxPages: 30,
+    hubHints: [
+      ["portland, maine", null],
+      ["syracuse, new york", null],
+      ["binghamton, new york", null],
+      ["albany, new york", null],
+      ["poughkeepsie, new york", null],
+      ["spokane, washington", null],
+      ["fridley, minnesota", "minneapolis"],
+      ["mounds view, minnesota", "minneapolis"],
+      ["brooklyn center, minnesota", "minneapolis"],
+      ["plymouth, minnesota", "minneapolis"],
+      ["irvine, california", "losangeles"],
+      ["santa ana, california", "losangeles"],
+      ["santa clara, california", "sanjose"],
+      ["fort worth, texas", "dallas"],
+      ["danvers, massachusetts", "boston"],
+      ["eatontown, new jersey", "newyork"],
+      ["hackensack, new jersey", "newyork"],
+      ["swedesboro, new jersey", "philadelphia"],
+      ["plainfield, indiana", "indianapolis"],
+      ["brampton, ontario", "toronto"],
+      ["milton, ontario", "toronto"],
+      ["yokohama, kanagawa", "tokyo"],
+      ["saitama, japan", "tokyo"],
+    ],
+  },
+  // Beach Energy — Measured 2026-09-29: careers.beachenergy.com.au is Beach Energy's own
+  // SuccessFactors RMK board, and it is EMPTY. /search/ and /go/View-All-Jobs/3599410/ both say
+  // 'There are currently no open positions' and 'The 0 most recent jobs'. Its template is
+  // BS3ColumnizedSearch, the same family as Woodside's, which fetchSuccessFactors reads (data-
+  // row/job-tile-cell). ROW PARSING IS UNPROVEN because there were no rows to parse. An empty
+  // pull is never written, so wiring it now costs nothing. Confirm that the first real posting
+  // parses (title, location) when one appears. Its SEEK ads (the roster's 49) may be agency or
+  // SEEK-only postings. Beach is Adelaide-HQ'd; roles at Moomba, Otway (VIC) and Perth will
+  // place through HUB_MATCH state needles.
+  {
+    id: "beach",
+    name: "Beach Energy",
+    sector: "Oil & Gas",
+    platform: "successfactors",
+    endpoint: "https://careers.beachenergy.com.au",
+    origin: "https://careers.beachenergy.com.au",
+    homeHub: "adelaide",
+  },
+  // Anglo American — Measured 2026-09-29: angloamerican.com/careers/job-opportunities links
+  // SmartRecruiters company 'AngloAmericanDeBeersGroup'. totalFound is 104 and both runs
+  // fetched 104. The tenant is the GROUP: its 'Brands' custom field reads Anglo American 65,
+  // Element Six 21, De Beers Group 17, Namdeb 1, all Anglo American subsidiaries. If the De
+  // Beers sale completes, this board may split, so recheck then. The existing reader cannot
+  // filter by brand. Locations use lowercase ISO country codes ('Moranbah, au'). No ',
+  // sa'-style trap was found: no Saudi rows, and 'Kathu, NC, za' stays unplaced. Hints:
+  // 'moranbah, au' 8 and 'moura, au' 4 -> brisbane. These are the Bowen Basin coal mines; the
+  // same towns tagged QLD already resolve to brisbane through HUB_MATCH, so this only restores
+  // the region's own rule. 'santa clara, us' 1 -> sanjose (Element Six). 'Portland, us' 1 is
+  // left on portland: the Element Six/Lightbox lab-diamond plant is in the Portland OR metro.
+  // 'Bundoora, QLD' 1 resolves to brisbane because the board says QLD, although Bundoora is a
+  // Melbourne suburb; this is the board's data and is left as is. Unplaced: Burghaun DE 12,
+  // Kathu ZA 9, Santiago 6, Brazil mines, Didcot/Maidenhead (outside Greater London), Shannon
+  // IE, Gahcho Kué NWT.
+  {
+    id: "london-aal",
+    name: "Anglo American",
+    sector: "Energy & Natural Resources",
+    platform: "smartrecruiters",
+    endpoint: "AngloAmericanDeBeersGroup",
+    origin: "https://jobs.smartrecruiters.com",
+    homeHub: "london",
+    hubHints: [
+      ["moranbah, au", "brisbane"],
+      ["moura, au", "brisbane"],
+      ["santa clara, us", "sanjose"],
+    ],
+  },
+  // Singtel — Measured 2026-09-29: singtel.com/about-us/careers redirects to
+  // groupcareers.singtel.com, Singtel GROUP's SuccessFactors RMK board, table theme, 25 a page,
+  // 'of 526'. Both runs fetched 526 in 11-13 s. It includes Optus (Singtel's wholly owned
+  // Australian subsidiary; not a separate roster company), NCS and Nxera; that is why Kuala
+  // Lumpur (86) and Australian stores appear. Australian rows say only '<suburb/store>,
+  // Australia'. HOME_COUNTRY has no singapore entry, so there is no country fallback, and 72
+  // distinct store names went unplaced. hubHints place only suburbs that belong to one metro,
+  // each written ' <name>, australia'. Sydney: Macquarie Park 20 (Optus HQ), Hurstville,
+  // Parramatta, Miranda, Merrylands, Carnes Hill, Warriewood, Penrith. Brisbane incl. Gold
+  // Coast (HUB_MATCH's own rule): Wynnum 2, Chermside, Beenleigh, Sunnybank (Hills), Inala,
+  // Ipswich, Strathpine, Morayfield, Capalaba Central, Indooroopilly, North Lakes, Victoria
+  // Point, Pacific Fair, Burleigh Waters, Elanora, Helensvale. Perth: Booragoon, Ocean Keys,
+  // Morley, Mirrabooka, Joondalup, Rockingham, Midland, Carousel. Adelaide: Colonnades 2,
+  // Unley, West Lakes, Munno Para, Mt Barker, Gawler, Marion. Melbourne: Fountain Gate,
+  // Chirnside Park, Northland, Rosebud. Ambiguous names are deliberately left unplaced:
+  // Richmond (Marketplace is SA), Belmont, Springwood, Garden City (Perth and Brisbane),
+  // Claremont, Armadale, Redcliffe, Hyperdome (Logan and Tuggeranong), Willows, 'George St'.
+  // Regional towns are also left unplaced: Cairns, Caloundra, Canelands/Mackay, Horsham, Wagga,
+  // Coffs Harbour, Ballina, Busselton, Sale, Wodonga, Tuggerah. Unplaced 98 -> 34. 'Milan,
+  // Singapore' 1 is on the board as written.
+  {
+    id: "singapore-z74",
+    name: "Singtel",
+    sector: "Technology, Media and Telecommunications",
+    platform: "successfactors",
+    endpoint: "https://groupcareers.singtel.com",
+    origin: "https://groupcareers.singtel.com",
+    homeHub: "singapore",
+    hubHints: [
+      [" macquarie park, australia", "sydney"],
+      [" hurstville, australia", "sydney"],
+      [" parramatta, australia", "sydney"],
+      [" miranda, australia", "sydney"],
+      [" merrylands, australia", "sydney"],
+      [" carnes hill, australia", "sydney"],
+      [" warriewood, australia", "sydney"],
+      [" penrith, australia", "sydney"],
+      [" wynnum, australia", "brisbane"],
+      [" chermside, australia", "brisbane"],
+      [" beenleigh, australia", "brisbane"],
+      [" sunnybank hills, australia", "brisbane"],
+      [" sunnybank, australia", "brisbane"],
+      [" inala, australia", "brisbane"],
+      [" ipswich, australia", "brisbane"],
+      [" strathpine, australia", "brisbane"],
+      [" morayfield, australia", "brisbane"],
+      [" capalaba central, australia", "brisbane"],
+      [" indooroopilly, australia", "brisbane"],
+      [" north lakes, australia", "brisbane"],
+      [" victoria point, australia", "brisbane"],
+      [" pacific fair, australia", "brisbane"],
+      [" burleigh waters, australia", "brisbane"],
+      [" elanora, australia", "brisbane"],
+      [" helensvale, australia", "brisbane"],
+      [" booragoon, australia", "perth"],
+      [" ocean keys, australia", "perth"],
+      [" morley, australia", "perth"],
+      [" mirrabooka, australia", "perth"],
+      [" joondalup, australia", "perth"],
+      [" rockingham, australia", "perth"],
+      [" midland, australia", "perth"],
+      [" carousel, australia", "perth"],
+      [" colonnades, australia", "adelaide"],
+      [" unley, australia", "adelaide"],
+      [" west lakes, australia", "adelaide"],
+      [" munno para, australia", "adelaide"],
+      [" mt barker, australia", "adelaide"],
+      [" gawler, australia", "adelaide"],
+      [" marion, australia", "adelaide"],
+      [" fountain gate, australia", "melbourne"],
+      [" chirnside park, australia", "melbourne"],
+      [" northland, australia", "melbourne"],
+      [" rosebud, australia", "melbourne"],
+    ],
+  },
+  // Samsung Electronics — Measured 2026-09-29: sec.wd3/Samsung_Careers is Samsung Electronics'
+  // global (non-Korea) Workday board. Its hiringCompany facet lists 32 entities, all Samsung
+  // Electronics subsidiaries: Samsung Austin Semiconductor 301, Samsung Electronics America
+  // 174, SRI-Bangalore 47, the Türkiye plant 42, and others. Total was 733 in the morning and
+  // 722 later. Split into TWO feeds on jobFamilyGroup, whose 16 values sum to the total: a =
+  // R&D + Marketing + Sales (366); b = the other 13 (367). Each takes 17-20 s. Both runs were
+  // within 1 row of each other. The board serves 7 postings with no title/externalPath
+  // (skipped). skipTitles drops 5 standing posts: 'Employee Referral SRIB' and four Korean
+  // '상시채용 / ... Talent Pool' posts. homeHub is NULL because 16 postings have no location.
+  // Korean domestic hiring is on samsungcareers.com (recruitment rounds), NOT this board: only
+  // 1 Korea row exists (Suwon). So the Seoul card will be nearly empty from this feed, and that
+  // is honest. Hints fix a WRONG placement: 'Bellevue, WA, USA' 7 -> seattle (it was perth).
+  // Metro placements: Taylor TX 152 (Samsung's new fab, Williamson County) -> austin; Plano TX
+  // 130 (SEA HQ, Excellence Way) -> dallas; Mountain View 9 -> sanjose; Mississauga 10 ->
+  // toronto; Berkeley Heights 2, Englewood Cliffs 1, Pine Brook 1 NJ -> newyork; Bloomington MN
+  // -> minneapolis; Glendale CA -> losangeles; Suwon -> seoul (Capital Area); Saint-Ouen 8, Le
+  // Plessis-Robinson 1 -> paris. Left unplaced: Cerkezkoy TR 42, Newberry SC 9, Chertsey UK 7
+  // (Surrey, outside London), Campinas, Munich, 'N Locations'.
+  {
+    id: "seoul-005930",
+    name: "Samsung Electronics",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://sec.wd3.myworkdayjobs.com/wday/cxs/sec/Samsung_Careers/jobs",
+    origin: "https://sec.wd3.myworkdayjobs.com/Samsung_Careers",
+    homeHub: null,
+    key: "seoul-005930-a",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "189767dd6c9201b4198fe1a6db2997c7",
+        "189767dd6c9201a24f64d1a6db298dc7",
+        "189767dd6c9201c6e5aee7a6db299bc7",
+      ],
+    },
+    maxPages: 25,
+    hubHints: [
+      ["bellevue, wa, usa", "seattle"],
+      ["plano, tx, usa", "dallas"],
+      ["taylor, tx, usa", "austin"],
+      ["mountain view, ca, usa", "sanjose"],
+      ["mississauga, canada", "toronto"],
+      ["berkeley heights, nj, usa", "newyork"],
+      ["englewood cliffs, nj, usa", "newyork"],
+      ["pine brook, nj, usa", "newyork"],
+      ["bloomington, mn, usa", "minneapolis"],
+      ["glendale, ca, usa", "losangeles"],
+      ["suwon, korea", "seoul"],
+      ["saint-ouen, france", "paris"],
+      ["le plessis-robinson, france", "paris"],
+    ],
+    skipTitles: /Talent Pool$|^Employee Referral SRIB$/i,
+  },
+  {
+    id: "seoul-005930",
+    name: "Samsung Electronics",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://sec.wd3.myworkdayjobs.com/wday/cxs/sec/Samsung_Careers/jobs",
+    origin: "https://sec.wd3.myworkdayjobs.com/Samsung_Careers",
+    homeHub: null,
+    key: "seoul-005930-b",
+    appliedFacets: {
+      jobFamilyGroup: [
+        "189767dd6c920162dfa8c4a6db2985c7",
+        "189767dd6c9201d48510dba6db2993c7",
+        "189767dd6c920111f76cbba6db297fc7",
+        "189767dd6c92017e32a6caa6db2989c7",
+        "189767dd6c9201fe2536dea6db2995c7",
+        "189767dd6c9201cda9b8c7a6db2987c7",
+        "189767dd6c92015ef075d4a6db298fc7",
+        "189767dd6c92015e879ee4a6db2999c7",
+        "189767dd6c9201e189e3eaa6db299dc7",
+        "189767dd6c92014f9161d7a6db2991c7",
+        "189767dd6c9201a2cb4bcea6db298bc7",
+        "189767dd6c9201913284bea6db2981c7",
+        "189767dd6c9201e5819dc1a6db2983c7",
+      ],
+    },
+    maxPages: 25,
+    hubHints: [
+      ["bellevue, wa, usa", "seattle"],
+      ["plano, tx, usa", "dallas"],
+      ["taylor, tx, usa", "austin"],
+      ["mountain view, ca, usa", "sanjose"],
+      ["mississauga, canada", "toronto"],
+      ["berkeley heights, nj, usa", "newyork"],
+      ["englewood cliffs, nj, usa", "newyork"],
+      ["pine brook, nj, usa", "newyork"],
+      ["bloomington, mn, usa", "minneapolis"],
+      ["glendale, ca, usa", "losangeles"],
+      ["suwon, korea", "seoul"],
+      ["saint-ouen, france", "paris"],
+      ["le plessis-robinson, france", "paris"],
+    ],
+    skipTitles: /Talent Pool$|^Employee Referral SRIB$/i,
+  },
+  // Colgate-Palmolive — Measured 2026-09-29 by a Python prototype, NOT the real fetcher,
+  // because the reader cannot do it yet. jobs.colgate.com is Colgate's SuccessFactors RMK board
+  // in the 'searchResultsUnify' NES theme. fetchSuccessFactors reads 0 rows from it, because
+  // /search/ serves no data-row or job-tile. The JSON service /services/recruiting/v1/jobs
+  // answers, BUT THE BOARD IS PARTITIONED BY LOCALE, and fetchSfRmkApi hard-codes locale en_GB.
+  // Per-locale totals: en_US 323, en_GB 217, pt_BR 13, de_DE 9, ja_JP 6, fr_FR 4, es_MX 1,
+  // pl_PL 1, ru_RU/vi_VN/zh_CN 0 (the 11 locales the site's own selector lists). The union by
+  // id is 534-535, because ~40 ids appear in two locales. Today's sfrmkapi would therefore
+  // collect 217 and miss EVERY US role, including the New York HQ and Piscataway (63). Sort
+  // matters too. sortBy 'recent' reshuffles: page 20 repeated 4 times gave different slices,
+  // and a full en_US walk held 240 unique of 323. sortBy 'date' was identical 4 of 4 times and
+  // walked 323/323. en_GB gave 216 or 217 across runs, one tie. REQUIRED FIX in careerSites.ts:
+  // add `sfRmkLocales?: string[]` to SiteDef, and give sfRmkPage a locale parameter, used in
+  // place of the literal 'en_GB'. In fetchSfRmkApi, when sfRmkLocales is set, run sfRmkWalk
+  // (parallel, bounded by that locale's totalJobs, sorted by site.sfRmkSort) once per locale.
+  // Merge by id, keeping the first locale's row. Read the location from jobLocationShort joined
+  // '; ', as the plain path does, and build the url as
+  // `${origin}/job/${urlTitle}/${id}-${locale}`. With 10-way parallel pages the prototype took
+  // 11.4-11.6 s for all 11 locales. The board spans Colgate-Palmolive 361, Hill's Pet Nutrition
+  // 151, Skin Health Group 10, Filorga 9 and Tom's of Maine 3, all Colgate subsidiaries.
+  // Placement was checked with the real hubFor over all 534 locations. Two WRONG placements get
+  // null hints: 'Washington Court House, OH' 9 -> null (it was washington DC) and 'San Jose
+  // Iturbide, GUA, MEX' 2 -> null (it was sanjose). Metro placements: Piscataway NJ 63, Paramus
+  // 1 -> newyork; Burlington NJ 1 -> philadelphia; Rosemont IL 4 -> chicago. 'Jeddah, 02, SAU'
+  // does NOT hit adelaide. The hubs above come from the real hubFor with these hints, run over
+  // all 534 union locations. Left unplaced: Overland Park 32, Topeka 22 and Tonganoxie 8 KS
+  // (Hill's; Kansas City/Topeka have no hub), Warsaw, Mexico City, Clinton OK, Morristown TN.
+  {
+    id: "newyork-cl",
+    name: "Colgate-Palmolive",
+    sector: "Consumer and Retail",
+    platform: "sfrmkapi",
+    endpoint: "https://jobs.colgate.com",
+    origin: "https://jobs.colgate.com",
+    homeHub: "newyork",
+    sfRmkSort: "date",
+    sfRmkLocales: [
+      "en_US",
+      "en_GB",
+      "pt_BR",
+      "de_DE",
+      "ja_JP",
+      "fr_FR",
+      "es_MX",
+      "pl_PL",
+      "ru_RU",
+      "vi_VN",
+      "zh_CN",
+    ],
+    hubHints: [
+      ["washington court house", null],
+      ["san jose iturbide", null],
+      ["piscataway, nj", "newyork"],
+      ["paramus, nj", "newyork"],
+      ["burlington, nj", "philadelphia"],
+      ["rosemont, il", "chicago"],
+    ],
+  },
+  // Murata Manufacturing — Measured 2026-09-29: jobs.murata.com is Murata's AMERICAS
+  // SuccessFactors board (tile/table theme, 'Showing 1 to 15 of 57 Jobs'). It covers Murata
+  // Electronics, Murata Vios, Eta Wireless, pSemi and Resonant, all Murata subsidiaries. Both
+  // runs fetched 57 of 57 in 1.4 s. There are no blank locations; 'US' 2 and 'TW' 1 stay
+  // unplaced. Hints: Irvine CA 5 -> losangeles; San Mateo 2 -> sanfrancisco; St. Paul MN 3 ->
+  // minneapolis; Arlington Heights IL 3 -> chicago; Carrollton TX 5 -> dallas; Waltham MA 2 ->
+  // boston. Left unplaced: Rockmart GA 2 (Polk County, outside the Atlanta MSA), Goleta,
+  // Nashua, Novi, 'Irving, CA' 1 (the board's typo), Ipoh. OTHER MURATA BOARDS, found via
+  // recruit.murata.com/en-global/locations/ and not wired: (1) JAPAN,
+  // joblist.recruit.murata.com/job.phtml, a custom EUC-JP page listing 33 mid-career roles as
+  // job.phtml?job_code=NNNN. The location is only on each detail page (勤務地), mostly Kyoto/Shiga
+  // (Murata HQ is Nagaokakyo, Kyoto), so it would not be tokyo anyway. It needs a new reader
+  // with EUC-JP decoding plus a detail fetch. (2) ASEAN, career-murata-
+  // asean.murataconnect.com/job_vacancy.php?country=my (custom). (3) EU,
+  // career5.successfactors.eu/career?company=C0003974859P (legacy SF career page, not RMK). (4)
+  // China, recruit.murata.com/zh-cn/careers/openpositionchina/. The Americas feed is the only
+  // one an existing reader handles.
+  {
+    id: "tokyo-6981",
+    name: "Murata Manufacturing",
+    sector: "Technology, Media and Telecommunications",
+    platform: "successfactors",
+    endpoint: "https://jobs.murata.com",
+    origin: "https://jobs.murata.com",
+    homeHub: "tokyo",
+    hubHints: [
+      ["irvine, ca, us", "losangeles"],
+      ["san mateo, ca, us", "sanfrancisco"],
+      ["st. paul, mn, us", "minneapolis"],
+      ["arlington heights, il, us", "chicago"],
+      ["carrollton, tx, us", "dallas"],
+      ["waltham, ma, us", "boston"],
+    ],
+  },
+  // Lenovo Group — 2026-09-29: jobs.lenovo.com is Avature (portal template; reqs are 'WD…'
+  // Workday ids behind it, but no public Workday cxs site answers — lenovo.wd1 401s every site
+  // name tried). Page size is FIXED at 10 (jobRecordsPerPage=50/100 still return 10), and the
+  // legend says '1-10 of 999+ jobs', a capped figure, so the walk has no total and ends on the
+  // empty-run rule. Measured end: offset 1020 returns 10 rows, 1040 returns 0; a full walk
+  // collected 1,034 in 46s — too long for one tick — so it is split into four 27-page pageFrom
+  // windows (0/27/54/81, ~8-11s each; the last ends on empties). Three runs: 1034, 1034, 1034.
+  // avatureCells {loc:2, cat:1}: the location comes from the subtitle's first span anyway;
+  // without cat the default read 'Share this job:' as the category for every row. homeHub NULL
+  // on purpose: with hongkong, HOME_COUNTRY /hong kong|china/ put every mainland city HUB_MATCH
+  // does not know (Wuhan 11, Tianjin 12, Hefei 3, Dalian 2, Guangzhou 2, Lanzhou, Xiamen,
+  // Fuzhou, Chengdu — 34 rows) on Hong Kong. 'Hong Kong, Hong Kong' (36) still places through
+  // HUB_MATCH. hubHints: 'costa rica' -> null ('Costa Rica, San Jose, Escazú', 4, was landing
+  // on sanjose); 'markham' -> toronto (6, York Region, Toronto CMA); 'rueil-malmaison' -> paris
+  // (14, Hauts-de-Seine). Left unplaced: Morrisville NC (204, Raleigh), Farnborough UK (41),
+  // Riyadh, Taipei, Yokohama/Yamato (Kanagawa — no Tokyo precedent), Gurgaon. skipTitles:
+  // 'evergreen-not submit-wujt4' (1, Beijing) is a test/placeholder req, not a vacancy. The
+  // 'Evergreen Career Opportunity: Inside Sales Representative…' posts (3) are continuous-
+  // hiring reqs for a real role and are kept. skipTitles is given as a pattern string; compile
+  // it case-insensitive (/…/i) in the SiteDef.
+  {
+    id: "hongkong-00992",
+    name: "Lenovo Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "avature",
+    endpoint: "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    origin: "https://jobs.lenovo.com",
+    homeHub: null,
+    hubHints: [
+      ["costa rica", null],
+      ["markham", "toronto"],
+      ["rueil-malmaison", "paris"],
+    ],
+    pageSize: 10,
+    avatureCells: { loc: 2, cat: 1 },
+    key: "hongkong-00992-a",
+    pageFrom: 0,
+    maxPages: 27,
+    skipTitles: /^evergreen-not submit-/i,
+  },
+  {
+    id: "hongkong-00992",
+    name: "Lenovo Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "avature",
+    endpoint: "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    origin: "https://jobs.lenovo.com",
+    homeHub: null,
+    hubHints: [
+      ["costa rica", null],
+      ["markham", "toronto"],
+      ["rueil-malmaison", "paris"],
+    ],
+    pageSize: 10,
+    avatureCells: { loc: 2, cat: 1 },
+    key: "hongkong-00992-b",
+    pageFrom: 27,
+    maxPages: 27,
+    skipTitles: /^evergreen-not submit-/i,
+  },
+  {
+    id: "hongkong-00992",
+    name: "Lenovo Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "avature",
+    endpoint: "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    origin: "https://jobs.lenovo.com",
+    homeHub: null,
+    hubHints: [
+      ["costa rica", null],
+      ["markham", "toronto"],
+      ["rueil-malmaison", "paris"],
+    ],
+    pageSize: 10,
+    avatureCells: { loc: 2, cat: 1 },
+    key: "hongkong-00992-c",
+    pageFrom: 54,
+    maxPages: 27,
+    skipTitles: /^evergreen-not submit-/i,
+  },
+  {
+    id: "hongkong-00992",
+    name: "Lenovo Group",
+    sector: "Technology, Media and Telecommunications",
+    platform: "avature",
+    endpoint: "https://jobs.lenovo.com/en_US/careers/SearchJobs",
+    origin: "https://jobs.lenovo.com",
+    homeHub: null,
+    hubHints: [
+      ["costa rica", null],
+      ["markham", "toronto"],
+      ["rueil-malmaison", "paris"],
+    ],
+    pageSize: 10,
+    avatureCells: { loc: 2, cat: 1 },
+    key: "hongkong-00992-d",
+    pageFrom: 81,
+    maxPages: 27,
+    skipTitles: /^evergreen-not submit-/i,
+  },
+  // Diageo — 2026-09-29: diageo.com/en/careers links to Workday diageo.wd3 / Diageo_Careers.
+  // total 273; three runs 273/273/273. One walk took 15.5-17s (14 pages at ~1.15s), close
+  // enough to the ~20s line that it is split into two 10-page windows (0 and 10; ~10-11s and
+  // ~5-6s) with room to grow to 400. homeHub NULL: no blank locations were measured, but
+  // HOME_COUNTRY for london matches 'england', so any future 'Town, England' would land on
+  // London; every London role says 'London, England' and places via HUB_MATCH. hubHints
+  // (measured counts): '3 world trade center' -> newyork (5, '3 World Trade Center, NY' —
+  // Diageo North America HQ, Manhattan; HUB_MATCH does not read ', ny'); 'huntingwood' ->
+  // sydney (6, Diageo's Huntingwood NSW plant, western Sydney); 'plainfield, illinois' ->
+  // chicago (11, Will County, Chicago MSA); 'mississauga' -> toronto (2). Left unplaced:
+  // Budapest 47, Montgomery AL 8, Tabanan Bali 8, 'N Locations' 13, Scottish distilleries
+  // (Leven, Alloa, Aberlour, Pitlochry, Dalwhinnie), Bundaberg (regional QLD, no brisbane
+  // precedent for it).
+  {
+    id: "london-dge",
+    name: "Diageo",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://diageo.wd3.myworkdayjobs.com/wday/cxs/diageo/Diageo_Careers/jobs",
+    origin: "https://diageo.wd3.myworkdayjobs.com/en-US/Diageo_Careers",
+    homeHub: null,
+    hubHints: [
+      ["3 world trade center", "newyork"],
+      ["huntingwood", "sydney"],
+      ["plainfield, illinois", "chicago"],
+      ["mississauga", "toronto"],
+    ],
+    key: "london-dge-a",
+    pageFrom: 0,
+    maxPages: 10,
+  },
+  {
+    id: "london-dge",
+    name: "Diageo",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://diageo.wd3.myworkdayjobs.com/wday/cxs/diageo/Diageo_Careers/jobs",
+    origin: "https://diageo.wd3.myworkdayjobs.com/en-US/Diageo_Careers",
+    homeHub: null,
+    hubHints: [
+      ["3 world trade center", "newyork"],
+      ["huntingwood", "sydney"],
+      ["plainfield, illinois", "chicago"],
+      ["mississauga", "toronto"],
+    ],
+    key: "london-dge-b",
+    pageFrom: 10,
+    maxPages: 10,
+  },
+  // AstraZeneca — 2026-09-29: careers.astrazeneca.com (job-search.astrazeneca.com redirects
+  // there) is Radancy TalentBrew; /search-jobs/results served data-total-results=832 and the
+  // reader collected 832 over 9 pages of 100, three runs 832/832/832, 4-9s. Two other front
+  // ends exist and were compared, not used: astrazeneca.eightfold.ai (pcsx count 813, 810
+  // collected, 19s) and Workday astrazeneca.wd3 'Careers' (total 1,195 — why it is larger than
+  // the Radancy board was NOT established; possibly other group brands such as Alexion, which
+  // also links its own careers site from careers.astrazeneca.com). Radancy is the board the
+  // company's careers page serves. Radancy rows carry no posting date, so the reader dates them
+  // today (existing, documented behaviour). homeHub NULL on purpose: with london, HOME_COUNTRY
+  // matched 'United Kingdom' and filed Macclesfield (25), Cambridge UK (27), Liverpool (2) and
+  // 'England, United Kingdom' (2) on London; only 'London, England, United Kingdom' (8) is
+  // London, and it places via HUB_MATCH. hubHints (counts): cambridge, massachusetts -> boston
+  // 24; waltham, massachusetts -> boston 1; gaithersburg 108 / rockville 3 / frederick 5,
+  // maryland -> washington (Montgomery & Frederick counties, Washington MSA); wilmington,
+  // delaware -> philadelphia 45 (New Castle County, Philadelphia MSA); santa monica 5 / long
+  // beach 1, california -> losangeles; mississauga, ontario -> toronto 9; coppell, texas ->
+  // dallas 2; newark, new jersey -> newyork 1; levallois-perret -> paris 3; 'île-de-france
+  // region, france' -> paris 7 (region-only rows; the region is the Paris metro); null guards:
+  // utica, new york 1 and syracuse, new york 1 (HUB_MATCH read the state as NYC); portland,
+  // maine 1 (would land on the Oregon hub). Left unplaced: Hamburg 34, Barcelona 28, Ho Chi
+  // Minh 24, Osaka 20, Kaluga 18, Taipei 17, Södertälje 12, Dublin 12, Durham NC 3, Hamilton ON
+  // 4. Not skipped but worth knowing: 'Franchise Lead (m/w/d) - Talent Pipeline' (1) is a
+  // pipeline post for a named role.
+  {
+    id: "london-azn",
+    name: "AstraZeneca",
+    sector: "Healthcare and Life Sciences",
+    platform: "radancy",
+    endpoint: "https://careers.astrazeneca.com/search-jobs/results",
+    origin: "https://careers.astrazeneca.com",
+    homeHub: null,
+    hubHints: [
+      ["cambridge, massachusetts", "boston"],
+      ["waltham, massachusetts", "boston"],
+      ["gaithersburg, maryland", "washington"],
+      ["rockville, maryland", "washington"],
+      ["frederick, maryland", "washington"],
+      ["wilmington, delaware", "philadelphia"],
+      ["santa monica, california", "losangeles"],
+      ["long beach, california", "losangeles"],
+      ["mississauga, ontario", "toronto"],
+      ["coppell, texas", "dallas"],
+      ["newark, new jersey", "newyork"],
+      ["levallois-perret", "paris"],
+      ["île-de-france region, france", "paris"],
+      ["utica, new york", null],
+      ["syracuse, new york", null],
+      ["portland, maine", null],
+    ],
+  },
+  // Airbus — 2026-09-29: airbus.com careers -> Workday ag.wd3 / site 'Airbus'. The unfiltered
+  // board reports total 2000 (Workday's cap) and offsets >=2000 keep answering, so it cannot be
+  // walked whole. Facet sums put the board at ~2,958 (workerSubType 2958, FullPartTime 2956).
+  // Partitioned by locationCountry into two groups, each under the cap: EU3 =
+  // France+Germany+Spain (ids 54c5b697…, dcc5b760…, bd34c524…; total 1,549-1,550) and ROW = the
+  // other 33 countries (total 1,345). The groups overlap by 2 multi-country postings (same url,
+  // dedupes). Union 2,892-2,895 unique over three runs (2894, 2895, 2897 rows). GAP, measured:
+  // 63 postings carry NO location at all (locationsText absent, e.g. 'Electrical System
+  // Installation Design Engineer' JR10438388) and so sit in no country facet; they are
+  // reachable only through jobFamilyGroup (whose own sum, 2,778, misses 180 others). ~2% of the
+  // board, and they could not be placed anyway. ~1.2s a page, so each group is walked in
+  // 12-page windows (~14-18s each): EU3 pageFrom 0..72 step 12 (7 feeds, 84 pages, room to
+  // ~1,680), ROW pageFrom 0..60 step 12 (6 feeds, 72 pages, room to ~1,440). An earlier
+  // 16/17-page split measured 19-21s a window and was rejected. homeHub NULL: the 63 location-
+  // less postings would otherwise all file on Paris, and Airbus' French roles are mostly
+  // Toulouse (368) and Marseille (171), not Paris. 'Paris Area' (81) places via HUB_MATCH.
+  // hubHints (counts): 'bingen, wa' -> null (11, Washington STATE; HUB_MATCH's ' wa,' filed it
+  // on PERTH); 'mukilteo, wa' -> seattle (2, Snohomish County); herndon -> washington (36,
+  // 'Herndon Area, VA'/'Herndon, VA'); 'dulles, va' -> washington (8); 'grand prairie, tx' 14 /
+  // 'grapevine, tx' 6 -> dallas; 'newport beach, ca' -> losangeles (6, Orange County); mirabel
+  // -> montreal (14, Mirabel is in the Montreal CMA); elancourt 4 / 'le bourget' 2 / tremblay-
+  // en-france 1 -> paris; subang 29 / sepang 13 -> kualalumpur (Airbus Helicopters Malaysia at
+  // Subang; KLIA Sepang — both in the Greater KL/Klang Valley municipalities; Putrajaya already
+  // maps there in HUB_MATCH). Left unplaced: Toulouse, Getafe, Marseille, Mobile AL, Manching,
+  // Hamburg, Bremen, Tianjin, Kinston NC, Wichita, Fort Erie, Waterloo, New Delhi/Gurugram, 'N
+  // Locations' placeholders (~160). skipTitles: 'EVERGREEN DIGITAL CAMPUS' and 'EVERGREEN
+  // HACKATON UCLM' (Albacete, 1 each) are talent-pool/event posts, not vacancies. skipTitles is
+  // given as a pattern string; compile it case-insensitive (/…/i) in the SiteDef.
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu1",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 0,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu2",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 12,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu3",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 24,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu4",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 36,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu5",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 48,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu6",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 60,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-eu7",
+    appliedFacets: {
+      locationCountry: [
+        "54c5b6971ffb4bf0b116fe7651ec789a",
+        "dcc5b7608d8644b3a93716604e78e995",
+        "bd34c524a6a04ae6915f5d96fa086199",
+      ],
+    },
+    pageFrom: 72,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row1",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 0,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row2",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 12,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row3",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 24,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row4",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 36,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row5",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 48,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  {
+    id: "paris-air",
+    name: "Airbus",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://ag.wd3.myworkdayjobs.com/wday/cxs/ag/Airbus/jobs",
+    origin: "https://ag.wd3.myworkdayjobs.com/en-US/Airbus",
+    homeHub: null,
+    hubHints: [
+      ["bingen, wa", null],
+      ["mukilteo, wa", "seattle"],
+      ["herndon", "washington"],
+      ["dulles, va", "washington"],
+      ["grand prairie, tx", "dallas"],
+      ["grapevine, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["mirabel", "montreal"],
+      ["elancourt", "paris"],
+      ["le bourget", "paris"],
+      ["tremblay-en-france", "paris"],
+      ["subang", "kualalumpur"],
+      ["sepang", "kualalumpur"],
+    ],
+    key: "paris-air-row6",
+    appliedFacets: {
+      locationCountry: [
+        "a04ea128f43a42e59b1e6a19e8f0b374",
+        "1a29bb1357b240ab99a2fa755cc87c0e",
+        "a30a87ed25634629aa6c3958aa2b91ea",
+        "53fe09ef12b9408682a1d2439823f2e0",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "49ab063f422741e2aef271de00efeac8",
+        "d4afdeb461d446e4babd204bd102dba8",
+        "9db257f5937e4421b2fac64eec6832f8",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "04a05835925f45b3a59406a2a6b72c8a",
+        "8cd04a563fd94da7b06857a79faaf815",
+        "8b705da2becf43cfaccc091da0988ab2",
+        "db69ebac446c11de98360015c5e6daf6",
+        "7a5a2aadf9d34086a2bfbfd408bc28da",
+        "972dc4ba8d454bc0b893ff84b1529077",
+        "e2adff9272454660ac4fdb56fc70bb51",
+        "7aaca3f6fc774f16802a4df4718a5b53",
+        "9696868b09c64d52a62ee13b052383cc",
+        "e56f1daf83e04bacae794ba5c5593560",
+        "131d5ac7e3ee4d7b962bdc96e498e412",
+        "2e8c5034deb045d49315417c347472ca",
+        "f2e609fe92974a55a05fc1cdc2852122",
+        "50423b5190ad49bb89e94cd58dfaad69",
+        "80938777cac5440fab50d729f9634969",
+        "d2f29df0c90f4cea9e7d17f2ed8a86ad",
+        "6a800a4736884df5826858d435650f45",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "873d0f604e3b458c990cb4d83a5c0f14",
+        "7b4fa1f369bd4604ba3692682fcbe345",
+        "29247e57dbaf46fb855b224e03170bc7",
+        "bc33aa3152ec42d4995f4791a106ed09",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    pageFrom: 60,
+    maxPages: 12,
+    skipTitles: /^EVERGREEN (DIGITAL CAMPUS|HACKATON UCLM)$/i,
+  },
+  // Relx — 2026-09-29: relx.com/careers -> Workday relx.wd3 / site 'relx' (the group board:
+  // Elsevier, LexisNexis, LexisNexis Risk, RX). total 782 at first read, 783 later; runs
+  // collected 780, 780, 780 and a later single window re-run showed the board had grown (window
+  // c 220 -> 222) — churn, not truncation. One walk took 40.5s, so three 14-page windows
+  // (pageFrom 0/14/28, 12-15s each). homeHub NULL: 5 postings carry NO location (e.g. 'Sr
+  // Investigative Analyst (DC)', 'Davao Professionals Evergreen') and would all file on London;
+  // London roles say 'London Wall' / 'London Strand' / 'UK - London' and place via HUB_MATCH.
+  // Costs 'United Kingdom' (3) and 'Home Based - United Kingdom' (1), which are country-wide
+  // and should not sit on London anyway. hubHints (counts): farringdon -> london (25,
+  // 'Farringdon' / 'UK-Farringdon (Lexis House)'); 'richmond, va' -> null then ' richmond,' ->
+  // london (16 bare 'Richmond' + 4 'UK - Richmond' — RX's Gateway House, Richmond upon Thames:
+  // the titles are Exhibition Manager, Event Director, Conference Producer, Head of Legal UK
+  // Hub; the null guard stops a future 'Richmond, VA' matching); 'cambridge, ma' 1 / 'medford,
+  // ma' 2 -> boston; 'alpharetta, ga' 23 / 'duluth, ga' 1 -> atlanta (LexisNexis Risk);
+  // 'irving, tx' -> dallas 1; 'horsham, pa' -> philadelphia 1; issy-les-moulineaux -> paris 2;
+  // 'guangdong_kerry plaza' -> shenzhen 2 (Kerry Plaza, Futian — one title says 'Elsevier STMJ
+  // in Shenzhen'); banglore -> bengaluru 1 (the board's misspelling). Left unplaced: 'N
+  // Locations' (~270), Raleigh, Dayton OH, Norwalk CT (Fairfield County is its own MSA), Boca
+  // Raton, Iloilo, Chennai, Gurgaon, Amsterdam, 'FRANCE - Tour Vista' (building not verified),
+  // bare 'Cambridge' (UK). skipTitles: 'Davao Professionals Evergreen' (1, blank location) is a
+  // standing talent pool, not a vacancy. skipTitles is given as a pattern string; compile it
+  // case-insensitive (/…/i) in the SiteDef.
+  {
+    id: "london-rel",
+    name: "Relx",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://relx.wd3.myworkdayjobs.com/wday/cxs/relx/relx/jobs",
+    origin: "https://relx.wd3.myworkdayjobs.com/en-US/relx",
+    homeHub: null,
+    hubHints: [
+      ["farringdon", "london"],
+      ["richmond, va", null],
+      [" richmond,", "london"],
+      ["cambridge, ma", "boston"],
+      ["medford, ma", "boston"],
+      ["alpharetta, ga", "atlanta"],
+      ["duluth, ga", "atlanta"],
+      ["irving, tx", "dallas"],
+      ["horsham, pa", "philadelphia"],
+      ["issy-les-moulineaux", "paris"],
+      ["guangdong_kerry plaza", "shenzhen"],
+      ["banglore", "bengaluru"],
+    ],
+    key: "london-rel-a",
+    pageFrom: 0,
+    maxPages: 14,
+    skipTitles: /^Davao Professionals Evergreen$/i,
+  },
+  {
+    id: "london-rel",
+    name: "Relx",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://relx.wd3.myworkdayjobs.com/wday/cxs/relx/relx/jobs",
+    origin: "https://relx.wd3.myworkdayjobs.com/en-US/relx",
+    homeHub: null,
+    hubHints: [
+      ["farringdon", "london"],
+      ["richmond, va", null],
+      [" richmond,", "london"],
+      ["cambridge, ma", "boston"],
+      ["medford, ma", "boston"],
+      ["alpharetta, ga", "atlanta"],
+      ["duluth, ga", "atlanta"],
+      ["irving, tx", "dallas"],
+      ["horsham, pa", "philadelphia"],
+      ["issy-les-moulineaux", "paris"],
+      ["guangdong_kerry plaza", "shenzhen"],
+      ["banglore", "bengaluru"],
+    ],
+    key: "london-rel-b",
+    pageFrom: 14,
+    maxPages: 14,
+    skipTitles: /^Davao Professionals Evergreen$/i,
+  },
+  {
+    id: "london-rel",
+    name: "Relx",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://relx.wd3.myworkdayjobs.com/wday/cxs/relx/relx/jobs",
+    origin: "https://relx.wd3.myworkdayjobs.com/en-US/relx",
+    homeHub: null,
+    hubHints: [
+      ["farringdon", "london"],
+      ["richmond, va", null],
+      [" richmond,", "london"],
+      ["cambridge, ma", "boston"],
+      ["medford, ma", "boston"],
+      ["alpharetta, ga", "atlanta"],
+      ["duluth, ga", "atlanta"],
+      ["irving, tx", "dallas"],
+      ["horsham, pa", "philadelphia"],
+      ["issy-les-moulineaux", "paris"],
+      ["guangdong_kerry plaza", "shenzhen"],
+      ["banglore", "bengaluru"],
+    ],
+    key: "london-rel-c",
+    pageFrom: 28,
+    maxPages: 14,
+    skipTitles: /^Davao Professionals Evergreen$/i,
+  },
+  // ── The 2026-09-29 fifth batch — scraper-gap ranks 161-200 ─────────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge; packed several boards to a tick like batch 4. Givaudan uses
+  // phenomSort, added the same day. "brisbane-smr" is NOT wired: it is the
+  // same Stanmore Resources as `smr` above, and a second feed would archive
+  // every role twice.
+  // Publicis Groupe — Measured 2026-09-29: careers.publicisgroupe.com is Jibe (iCIMS-branded
+  // shell; discover would say icims). /api/jobs totalCount 3,169 then 3,151 on the rerun; 3,010
+  // unique req_id (translated duplicates) and 2,565/2,543 unique title|location, which is what
+  // fetchJibe's title|loc dedupe returns and what job_key would collapse to anyway. Walk ~11s
+  // at 100/page. homeHub NULL on purpose: 13 raw postings (7 after dedupe; 'Senior Associate
+  // Global Security Office' etc.) carry no city or country, and a homeHub would file them on
+  // Paris without evidence. fetchJibe drops the US state (city, country only), so the US hints
+  // were checked against the raw `state` field: every El Segundo/Agoura
+  // Hills/Irvine/Burbank/Santa Monica is California, Plano/Irving Texas, Westminster Colorado,
+  // Arlington Virginia (7), Needham/Wakefield Massachusetts, Morristown New Jersey (Morris Co.,
+  // NY MSA), Naperville Illinois, Alpharetta Georgia. Traps nulled: 'San Jose, Costa Rica' (54
+  // -> sanjose via HUB_MATCH), 'London, Canada' (1, London ON). 'Montreal' with accent defeats
+  // HUB_MATCH (18). Boulogne-Billancourt (12) and Aubervilliers (7) are Paris metro. Birmingham
+  // (Michigan 23 / Alabama 4) deliberately unhinted. Rest of the ~990 unplaced are non-hub
+  // cities (Bogota 226, Duesseldorf, Warsaw, Milan...).
+  {
+    id: "paris-pub",
+    name: "Publicis Groupe",
+    sector: "Technology, Media and Telecommunications",
+    platform: "jibe",
+    endpoint: "https://careers.publicisgroupe.com/api/jobs",
+    origin: "https://careers.publicisgroupe.com",
+    homeHub: null,
+    maxPages: 60,
+    hubHints: [
+      ["san jose, costa rica", null],
+      ["london, canada", null],
+      ["montréal, canada", "montreal"],
+      ["el segundo, united states", "losangeles"],
+      ["agoura hills, united states", "losangeles"],
+      ["santa monica, united states", "losangeles"],
+      ["burbank, united states", "losangeles"],
+      ["irvine, united states", "losangeles"],
+      ["plano, united states", "dallas"],
+      ["irving, united states", "dallas"],
+      ["westminster, united states", "denver"],
+      ["arlington, united states", "washington"],
+      ["needham, united states", "boston"],
+      ["wakefield, united states", "boston"],
+      ["morristown, united states", "newyork"],
+      ["naperville, united states", "chicago"],
+      ["alpharetta, united states", "atlanta"],
+      ["boulogne-billancourt, france", "paris"],
+      ["aubervilliers, france", "paris"],
+      ["st leonards, australia", "sydney"],
+    ],
+  },
+  // Coronado Global Resources — Roster domain coronadoglobalresources.com is WRONG (no answer);
+  // the company site is coronadoglobal.com, whose /jobs links to careers.coronadoglobal.com -
+  // SuccessFactors RMK classic. Measured 2026-09-29: /search/ lists 5 roles (same 5 under
+  // en_US, en_AU, en_GB); the RMK JSON service (/services/recruiting/v1/jobs) answers 'Error
+  // retrieving jobs', so platform successfactors, not sfrmkapi. 'Blackwater, QLD, AU, 4717'
+  // (Curragh) and 'Brisbane, QLD, AU, 4000' -> brisbane; 'Raven, VA, US' (Buchanan mine)
+  // unplaced, correctly. Small board; US operations advertise on the same board.
+  {
+    id: "brisbane-crn",
+    name: "Coronado Global Resources",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://careers.coronadoglobal.com",
+    origin: "https://careers.coronadoglobal.com",
+    homeHub: "brisbane",
+  },
+  // Norco Co-op — norco.com.au links to jobboards.adlogic.com.au/norco/ - an AdLogic-hosted
+  // board whose widget config reads ajaxServer: '<ajaxurl>?action=searchJobs&page_id=4' with
+  // ajaxurl https://jobboards.adlogic.com.au/norco/adlogic-jobs. Measured 2026-09-29: count=16,
+  // 16 returned in one request (~2s), twice. Locations are 'Suburb, State, Australia': NSW
+  // sites (Lismore, Wauchope, Bowraville, Heatherbrae, Raleigh NSW) resolve to sydney and QLD
+  // (Labrador/Ormeau on the Gold Coast, Toowoomba, Windera) to brisbane by HUB_MATCH's state
+  // rule - no hints needed, 0 unplaced.
+  {
+    id: "priv-norco-co-op",
+    name: "Norco Co-op",
+    sector: "Dairy co-operative",
+    platform: "adlogic",
+    endpoint: "https://jobboards.adlogic.com.au/norco/adlogic-jobs?action=searchJobs&page_id=4",
+    origin: "https://jobboards.adlogic.com.au/norco",
+    homeHub: "sydney",
+  },
+  // Pfizer — Measured 2026-09-29: pfizer.wd1 / PfizerCareers, total 549 then 553, walked in
+  // full (~27-30s), under Workday's 2,000 cap so one feed. locationsText is 'Country - State -
+  // Site'. Hints: 'United States - Washington - Bothell' went to DC via the Washington needle
+  // (2 -> seattle); Cambridge and Andover MA -> boston (2, 5); 'Australia - Victoria -
+  // Mulgrave' -> melbourne (1); 'Canada - Quebec - Kirkland' is West Island Montreal (1). ~90
+  // rows are Workday 'N Locations' and stay unplaced (the card carries no place). 'Pearl River,
+  // NY' (Rockland Co.) is NY MSA so newyork is right. Rest unplaced: Vizag, Thessaloniki,
+  // Groton CT, Puurs, Chinese provincial cities.
+  {
+    id: "newyork-pfe",
+    name: "Pfizer",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://pfizer.wd1.myworkdayjobs.com/wday/cxs/pfizer/PfizerCareers/jobs",
+    origin: "https://pfizer.wd1.myworkdayjobs.com/en-US/PfizerCareers",
+    homeHub: "newyork",
+    maxPages: 60,
+    hubHints: [
+      ["bothell", "seattle"],
+      ["massachusetts - cambridge", "boston"],
+      ["massachusetts - andover", "boston"],
+      ["victoria - mulgrave", "melbourne"],
+      ["quebec - kirkland", "montreal"],
+    ],
+  },
+  // VF Corporation — Measured 2026-09-29: vfc.wd5 / vfc_careers (linked from vfc.com/careers),
+  // total 1,366 then 1,375, full walk ~66-70s, one feed (under 2,000). Covers every VF brand
+  // (TNF, Vans, Timberland, Kipling, Icebreaker, Altra, Smartwool). locationsText is 'REGION >
+  // ISO3 > State/City > Store - BRAND', so hints are keyed on 'state > city'. Store-level
+  // retail board, so hints are many; each is a metro assignment by county/MSA (Census CBSA): LA
+  // incl. Orange Co.; SF incl. Alameda/Contra Costa/San Mateo; Seattle-Tacoma incl. Snohomish
+  // (Tulalip, Lynnwood); Vancouver WA -> portland (Clark Co.); Rockingham NH (Salem, Stratham =
+  // Timberland HQ) -> boston; Kenosha Co. (Pleasant Prairie) and Lake Co. IN (Merrillville) ->
+  // chicago; Delaware Newark -> philadelphia. TRAPS fixed: every 'USA > Washington > X' went to
+  // DC (catch-all null after the Seattle/Vancouver hints: Spokane, Olympia, Kennewick,
+  // Bellingham now unplaced); 'Florida > Wellington' -> NZ Wellington; upstate New York
+  // (Buffalo, Niagara Falls, Syracuse, Albany, Lake George, Central Valley/Woodbury Common in
+  // Orange Co., outside the NY MSA since the 2023 delineation) -> newyork; 'Maine > South
+  // Portland' -> portland OR; 'ESP > Alcorcon > Concession San Jose de Valderas' -> sanjose.
+  // 'AUS > Victoria >' stores were unplaced -> melbourne; 'GBR > Kingston' -> london; 'HKG >
+  // Kowloon Bay' -> hongkong. Left unplaced deliberately: Inland Empire, Ventura Co., Baltimore
+  // area, Phoenix, Las Vegas, other non-hub metros and European outlets (Stabio CH 47 = VF
+  // International).
+  {
+    id: "denver-vfc",
+    name: "VF Corporation",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://vfc.wd5.myworkdayjobs.com/wday/cxs/vfc/vfc_careers/jobs",
+    origin: "https://vfc.wd5.myworkdayjobs.com/en-US/vfc_careers",
+    homeHub: "denver",
+    maxPages: 100,
+    hubHints: [
+      ["usa > washington > vancouver", "portland"],
+      ["usa > washington > auburn", "seattle"],
+      ["usa > washington > bellevue", "seattle"],
+      ["usa > washington > lynnwood", "seattle"],
+      ["usa > washington > tacoma", "seattle"],
+      ["usa > washington > tukwila", "seattle"],
+      ["usa > washington > tulalip", "seattle"],
+      ["usa > washington > seattle", "seattle"],
+      ["usa > washington >", null],
+      ["florida > wellington", null],
+      ["new york > albany", null],
+      ["new york > buffalo", null],
+      ["new york > central valley", null],
+      ["new york > lake george", null],
+      ["new york > niagara falls", null],
+      ["new york > syracuse", null],
+      ["maine > south portland", null],
+      ["san jose de valderas", null],
+      ["california > alhambra", "losangeles"],
+      ["california > arcadia", "losangeles"],
+      ["california > azusa", "losangeles"],
+      ["california > brea", "losangeles"],
+      ["california > buena park", "losangeles"],
+      ["california > burbank", "losangeles"],
+      ["california > canoga park", "losangeles"],
+      ["california > cerritos", "losangeles"],
+      ["california > commerce", "losangeles"],
+      ["california > costa mesa", "losangeles"],
+      ["california > culver city", "losangeles"],
+      ["california > downey", "losangeles"],
+      ["california > fullerton", "losangeles"],
+      ["california > glendale", "losangeles"],
+      ["california > hermosa beach", "losangeles"],
+      ["california > huntington beach", "losangeles"],
+      ["california > irvine", "losangeles"],
+      ["california > laguna hills", "losangeles"],
+      ["california > lakewood", "losangeles"],
+      ["california > long beach", "losangeles"],
+      ["california > manhattan beach", "losangeles"],
+      ["california > mission viejo", "losangeles"],
+      ["california > montebello", "losangeles"],
+      ["california > monterey park", "losangeles"],
+      ["california > northridge", "losangeles"],
+      ["california > norwalk", "losangeles"],
+      ["california > orange", "losangeles"],
+      ["california > palmdale", "losangeles"],
+      ["california > san clemente", "losangeles"],
+      ["california > santa ana", "losangeles"],
+      ["california > santa monica", "losangeles"],
+      ["california > sherman oaks", "losangeles"],
+      ["california > torrance", "losangeles"],
+      ["california > tustin", "losangeles"],
+      ["california > valencia", "losangeles"],
+      ["california > west covina", "losangeles"],
+      ["california > westminster", "losangeles"],
+      ["california > whittier", "losangeles"],
+      ["california > alpine", "sandiego"],
+      ["california > carlsbad", "sandiego"],
+      ["california > el cajon", "sandiego"],
+      ["california > encinitas", "sandiego"],
+      ["california > escondido", "sandiego"],
+      ["california > national city", "sandiego"],
+      ["california > pacific beach", "sandiego"],
+      ["california > san ysidro", "sandiego"],
+      ["california > concord", "sanfrancisco"],
+      ["california > daly city", "sanfrancisco"],
+      ["california > emeryville", "sanfrancisco"],
+      ["california > livermore", "sanfrancisco"],
+      ["california > pleasanton", "sanfrancisco"],
+      ["california > san mateo", "sanfrancisco"],
+      ["california > walnut creek", "sanfrancisco"],
+      ["california > gilroy", "sanjose"],
+      ["california > milpitas", "sanjose"],
+      ["california > santa clara", "sanjose"],
+      ["colorado > aurora", "denver"],
+      ["colorado > broomfield", "denver"],
+      ["colorado > castle rock", "denver"],
+      ["colorado > cherry creek", "denver"],
+      ["colorado > lakewood", "denver"],
+      ["colorado > littleton", "denver"],
+      ["colorado > lone tree", "denver"],
+      ["colorado > thornton", "denver"],
+      ["illinois > aurora", "chicago"],
+      ["illinois > gurnee", "chicago"],
+      ["illinois > oak brook", "chicago"],
+      ["illinois > orland park", "chicago"],
+      ["illinois > rosemont", "chicago"],
+      ["illinois > schaumburg", "chicago"],
+      ["illinois > skokie", "chicago"],
+      ["indiana > merrillville", "chicago"],
+      ["wisconsin > pleasant prairie", "chicago"],
+      ["indiana > greenwood", "indianapolis"],
+      ["georgia > buford", "atlanta"],
+      ["georgia > dawsonville", "atlanta"],
+      ["georgia > woodstock", "atlanta"],
+      ["massachusetts > braintree", "boston"],
+      ["massachusetts > burlington", "boston"],
+      ["massachusetts > lynnfield", "boston"],
+      ["massachusetts > natick", "boston"],
+      ["massachusetts > peabody", "boston"],
+      ["massachusetts > wrentham", "boston"],
+      ["new hampshire > salem", "boston"],
+      ["new hampshire > stratham", "boston"],
+      ["new jersey > bridgewater", "newyork"],
+      ["new jersey > east rutherford", "newyork"],
+      ["new jersey > edison", "newyork"],
+      ["new jersey > elizabeth", "newyork"],
+      ["new jersey > freehold", "newyork"],
+      ["new jersey > jackson", "newyork"],
+      ["new jersey > jersey city", "newyork"],
+      ["new jersey > paramus", "newyork"],
+      ["new jersey > rockaway", "newyork"],
+      ["new jersey > tinton falls", "newyork"],
+      ["new jersey > toms river", "newyork"],
+      ["new jersey > wayne", "newyork"],
+      ["new jersey > cherry hill", "philadelphia"],
+      ["new jersey > deptford", "philadelphia"],
+      ["pennsylvania > king of prussia", "philadelphia"],
+      ["pennsylvania > pottstown", "philadelphia"],
+      ["delaware > newark", "philadelphia"],
+      ["virginia > arlington", "washington"],
+      ["virginia > fairfax", "washington"],
+      ["virginia > leesburg", "washington"],
+      ["virginia > springfield", "washington"],
+      ["virginia > tysons", "washington"],
+      ["virginia > woodbridge", "washington"],
+      ["maryland > clarksburg", "washington"],
+      ["texas > allen", "dallas"],
+      ["texas > arlington", "dallas"],
+      ["texas > fort worth", "dallas"],
+      ["texas > frisco", "dallas"],
+      ["texas > garland", "dallas"],
+      ["texas > grand prairie", "dallas"],
+      ["texas > grapevine", "dallas"],
+      ["texas > hurst", "dallas"],
+      ["texas > mesquite", "dallas"],
+      ["texas > cypress", "houston"],
+      ["texas > friendswood", "houston"],
+      ["texas > humble", "houston"],
+      ["texas > katy", "houston"],
+      ["texas > sugar land", "houston"],
+      ["texas > texas city", "houston"],
+      ["texas > the woodlands", "houston"],
+      ["texas > woodlands", "houston"],
+      ["texas > cedar park", "austin"],
+      ["texas > round rock", "austin"],
+      ["texas > san marcos", "austin"],
+      ["minnesota > albertville", "minneapolis"],
+      ["minnesota > bloomington", "minneapolis"],
+      ["minnesota > eagan", "minneapolis"],
+      ["minnesota > minnetonka", "minneapolis"],
+      ["minnesota > roseville", "minneapolis"],
+      ["nebraska > gretna", "omaha"],
+      ["oregon > happy valley", "portland"],
+      ["oregon > tigard", "portland"],
+      ["oregon > troutdale", "portland"],
+      ["ohio > monroe", "cincinnati"],
+      ["north carolina > concord", "charlotte"],
+      ["north carolina > pineville", "charlotte"],
+      ["british columbia > burnaby", "vancouver"],
+      ["british columbia > richmond", "vancouver"],
+      ["british columbia > surrey", "vancouver"],
+      ["ontario > brampton", "toronto"],
+      ["ontario > mississauga", "toronto"],
+      ["ontario > vaughan", "toronto"],
+      ["ontario > halton hills", "toronto"],
+      ["quebec > laval", "montreal"],
+      ["quebec > mirabel", "montreal"],
+      ["alberta > rocky view", "calgary"],
+      ["aus > victoria >", "melbourne"],
+      ["gbr > kingston", "london"],
+      ["hkg > kowloon", "hongkong"],
+    ],
+  },
+  // ServiceNow — Measured 2026-09-29: api.smartrecruiters.com company 'ServiceNow'
+  // (careers.servicenow.com's board), totalFound 677 then 694, all returned (~6s). Hints: Santa
+  // Clara (HQ, 121) and Mountain View (43) CA -> sanjose, Pleasanton CA -> sanfrancisco;
+  // 'Kirkland, Washington' (11) was going to DC -> seattle; Vienna/Alexandria VA and Silver
+  // Spring MD -> washington; Addison TX -> dallas; Waltham MA -> boston; Sandy Springs GA ->
+  // atlanta. Traps nulled: 'Riyadh, sa' (3 -> adelaide via ', sa'), 'San Francisco de Heredia,
+  // cr' (Costa Rica -> sanfrancisco). 'San Diego' (41) is genuine. Unplaced ~190: Hyderabad,
+  // Staines (outside Greater London), Dublin, Munich, West Palm Beach etc.
+  {
+    id: "sanjose-now",
+    name: "ServiceNow",
+    sector: "Technology, Media and Telecommunications",
+    platform: "smartrecruiters",
+    endpoint: "ServiceNow",
+    origin: "https://careers.servicenow.com",
+    homeHub: "sanjose",
+    maxPages: 40,
+    hubHints: [
+      ["santa clara, california", "sanjose"],
+      ["mountain view, california", "sanjose"],
+      ["pleasanton, california", "sanfrancisco"],
+      ["kirkland, washington", "seattle"],
+      ["kirkland , washington", "seattle"],
+      ["vienna, virginia", "washington"],
+      ["alexandria, virginia", "washington"],
+      ["silver spring, maryland", "washington"],
+      ["addison, texas", "dallas"],
+      ["waltham, massachusetts", "boston"],
+      ["sandy springs, georgia", "atlanta"],
+      ["san francisco de heredia", null],
+      ["riyadh, sa", null],
+    ],
+  },
+  // Bank of America — Roster domain bankamerica.com; careers.bankofamerica.com links to
+  // ghr.wd1.myworkdayjobs.com / Lateral-US. Measured 2026-09-29: total 2,007 then 2,003, the
+  // walk collected all of them in one feed (~68s). THIS TENANT SERVES PAST OFFSET 2,000 (offset
+  // 2000 returned the 7 remaining rows), so the 2,000 cap did not bite - and no facet
+  // partitions it: timeType 2006/1, workerSubType 2005/2, jobFamilyGroup values overlap (every
+  // role is in 'Band' 2,007), location facets overlap (multi-location roles). If the board
+  // grows and 'walk incomplete' appears, there is no clean appliedFacets split; revisit.
+  // PLACEMENT IS WEAK BY THE BOARD'S DESIGN: locationsText is a BARE city name ('Charlotte',
+  // 'Plano') with no state, and 882 of 2,007 are 'N Locations'. Hints only for names that are
+  // traps or unambiguous: 'Charlottesville' (2) and 'Charlotte Amalie' (USVI, 1) were going to
+  // charlotte -> null; bare 'Vancouver' on this US-only board is Vancouver WA (Relationship
+  // Banker) -> portland; Jersey City, Brooklyn, Melville, Iselin -> newyork; Fort Worth, Plano,
+  // Frisco -> dallas; Newport Beach, Irvine, El Segundo -> losangeles; McLean, Reston ->
+  // washington; etc. Bare 'Washington' (15) checked: every sample is DC (K Street, Georgia Ave,
+  // 'Washington DC Market'). Ambiguous names (Columbia, Birmingham, Richmond, Newark, Glendale,
+  // Portland, Redmond) left to HUB_MATCH/unplaced. homeHub charlotte is safe: 0 blank
+  // locations.
+  {
+    id: "charlotte-bac",
+    name: "Bank of America",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://ghr.wd1.myworkdayjobs.com/wday/cxs/ghr/Lateral-US/jobs",
+    origin: "https://ghr.wd1.myworkdayjobs.com/en-US/Lateral-US",
+    homeHub: "charlotte",
+    maxPages: 130,
+    hubHints: [
+      ["charlottesville", null],
+      ["charlotte amalie", null],
+      [" vancouver,", "portland"],
+      ["jersey city", "newyork"],
+      [" brooklyn,", "newyork"],
+      [" melville,", "newyork"],
+      [" iselin,", "newyork"],
+      [" fort worth,", "dallas"],
+      [" plano,", "dallas"],
+      [" frisco,", "dallas"],
+      [" newport beach,", "losangeles"],
+      [" irvine,", "losangeles"],
+      [" el segundo,", "losangeles"],
+      [" mclean,", "washington"],
+      [" reston,", "washington"],
+      [" northbrook,", "chicago"],
+      [" oak brook,", "chicago"],
+      [" greenwood village,", "denver"],
+      [" waltham,", "boston"],
+      [" millbrae,", "sanfrancisco"],
+      [" san mateo,", "sanfrancisco"],
+      [" san rafael,", "sanfrancisco"],
+      [" milpitas,", "sanjose"],
+      [" palo alto,", "sanjose"],
+      [" alpharetta,", "atlanta"],
+      [" kennesaw,", "atlanta"],
+    ],
+  },
+  // Haleon — Haleon — 2026-09-29: careers.haleon.com is Eightfold PCSX (the v2 /api/apply path
+  // answers 'Not authorized for PCSX'); /api/pcsx/search?domain=haleon.com. data.count 328; 328
+  // collected on two runs, 6-8s (first measure earlier the same day: 316/316). GLOBAL board,
+  // whole board read (Goodman/HSBC rule). homeHub NULL on purpose: with homeHub london,
+  // HOME_COUNTRY's /united kingdom/ would file every Weybridge, Surrey role (9+, Haleon's old
+  // HQ site, outside Greater London) on London. No blank locations. Hints: 'East Durham, New
+  // York' (15, Oak Hill plant, Greene County, Catskills) -> null — HUB_MATCH 'new york' put it
+  // on newyork; 'Warren, New Jersey' (14, US HQ, Somerset County, NY-Newark MSA) -> newyork;
+  // Mississauga (1) -> toronto. Unplaced by design: Poznan, Gurgaon, Weybridge, Levice, Guayama
+  // PR, Milan, Madrid, Richmond VA, 'Field Worker - XXX' rows.
+  {
+    id: "london-hln",
+    name: "Haleon",
+    sector: "Healthcare and Life Sciences",
+    platform: "eightfoldpcs",
+    endpoint: "https://careers.haleon.com/api/pcsx/search?domain=haleon.com",
+    origin: "https://careers.haleon.com",
+    homeHub: null,
+    hubHints: [
+      ["east durham, new york", null],
+      ["warren, new jersey", "newyork"],
+      ["mississauga", "toronto"],
+    ],
+  },
+  // Mastercard — Mastercard — 2026-09-29: careers.mastercard.com is Phenom over Workday
+  // mastercard/wd1/CorporateCareers. READ THE WORKDAY SITE, NOT PHENOM: Phenom's /widgets pager
+  // returns overlapping slices — 1,100 rows walked held 1,051 unique jobSeqNo with sortBy '',
+  // and 1,053 / 1,014 unique on two walks with sortBy 'Most recent' (ties); fetchPhenom
+  // collected 1,023. Workday total 1,061 then 978 (board moved during the day), under the 2,000
+  // cap, so one feed: 1,061/1,061 in 62s, then 977/978 twice in 51-53s (the 978th a duplicate
+  // externalPath). Global, whole board read. homeHub NULL: 3 postings carry no location, one of
+  // them 'Graduate Launch Program 2027 - Cairo, Egypt', so a blank is not HQ. Hints: 'San Jose,
+  // Costa Rica' (2) -> null (HUB_MATCH 'san jose' -> sanjose, wrong continent); 'Arlington,
+  // Virginia' (10) -> washington (DC MSA); 'St. Leonards, Australia' (8-10, North Sydney) ->
+  // sydney; 'Manilla, Philippines (Transfast)' misspelling (4) -> manila. Purchase NY
+  // (Westchester, NY MSA) places on newyork through 'new york'. Unplaced: Pune 179, O'Fallon MO
+  // 99, 'N Locations' ~100, Dublin, Gurgaon, Mexico City, Lisbon, Bogota, Sao Paulo,
+  // Harrogate/Dunstable (Vocalink), Waterloo Belgium, Tbilisi Georgia (correctly not Atlanta).
+  {
+    id: "newyork-ma",
+    name: "Mastercard",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mastercard.wd1.myworkdayjobs.com/wday/cxs/mastercard/CorporateCareers/jobs",
+    origin: "https://mastercard.wd1.myworkdayjobs.com/en-US/CorporateCareers",
+    homeHub: null,
+    maxPages: 60,
+    hubHints: [
+      ["san jose, costa rica", null],
+      ["arlington, virginia", "washington"],
+      ["st. leonards, australia", "sydney"],
+      ["manilla, philippines", "manila"],
+    ],
+  },
+  // Sun Life Financial — Sun Life — 2026-09-29: Workday sunlife/wd3, two external sites:
+  // Experienced-Jobs (total 273, earlier 287) and Campus (16, earlier 17, student/co-op roles).
+  // Both belong to the one roster company, so they share the id with distinct keys. No url
+  // overlap between them. Global (Canada, US, Philippines, Hong Kong, Indonesia, Ireland...),
+  // whole board read. homeHub NULL (no blank locations; a blank would not be Toronto on this
+  // board). Hints: 'Charlottetown' (1) -> null (HUB_MATCH 'charlotte' filed Prince Edward
+  // Island on Charlotte NC); 'Wellesley Hills, Massachusetts' (4, Boston MSA, Sun Life US) ->
+  // boston; 'Brossard, Quebec' (1, Montreal CMA) -> montreal. Unplaced by design: 'N Locations'
+  // (~90, Workday multi-location label), Waterford Ireland 16, Jakarta, Winnipeg, Moncton,
+  // Gurugram, Cebu. Other site names probed (External, Campus-Jobs, Students, Asia,
+  // Philippines, Careers, SunLife_US) all 404.
+  {
+    id: "toronto-slf",
+    key: "toronto-slf",
+    name: "Sun Life Financial",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://sunlife.wd3.myworkdayjobs.com/wday/cxs/sunlife/Experienced-Jobs/jobs",
+    origin: "https://sunlife.wd3.myworkdayjobs.com/en-US/Experienced-Jobs",
+    homeHub: null,
+    hubHints: [
+      ["charlottetown", null],
+      ["wellesley hills, massachusetts", "boston"],
+      ["brossard, quebec", "montreal"],
+    ],
+  },
+  {
+    id: "toronto-slf",
+    key: "toronto-slf-campus",
+    name: "Sun Life Financial",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://sunlife.wd3.myworkdayjobs.com/wday/cxs/sunlife/Campus/jobs",
+    origin: "https://sunlife.wd3.myworkdayjobs.com/en-US/Campus",
+    homeHub: null,
+    hubHints: [
+      ["charlottetown", null],
+      ["wellesley hills, massachusetts", "boston"],
+      ["brossard, quebec", "montreal"],
+    ],
+  },
+  // Givaudan — Givaudan — 2026-09-29: careers.givaudan.com (jobs.givaudan.com redirects there)
+  // is Phenom with Phenom's own Apply Studio; no separate ATS board found. fetchPhenom reads
+  // it, but the /widgets pager sends sortBy '' and on this tenant that returns OVERLAPPING
+  // slices: 364 rows walked held 358-360 unique jobSeqNo, and fetchPortal collected 362, 364,
+  // 365 and 366 against totals of 364/368. With sortBy 'Most recent' the same walk returned 364
+  // of 364 unique on two runs. READER FIX (needs-new-reader): add `phenomSort?: string` to
+  // SiteDef and in phenomWidget send `sortBy: site.phenomSort ?? ""` (default unchanged for
+  // Coles/IAG/etc.); siteDef carries phenomSort: 'Most recent'. NOTE Mastercard's Phenom tenant
+  // is NOT fixed by 'Most recent' (1,053 then 1,014 unique of 1,100) — ties — which is why
+  // Mastercard is read from Workday; so check each Phenom tenant's stability before trusting
+  // the sort. Placement: the reader uses cityState, which is a bare city here ('Argenteuil',
+  // 'Mako', 'Vernier'); raw country agrees with every placed hub (Sydney = Australia, New York
+  // = US). Hints (same-metro): East Hanover (12) and Budd Lake (4) NJ, Morris County, NY MSA ->
+  // newyork; Carol Stream IL (2, DuPage) -> chicago; Mississauga (1) -> toronto; Newport Beach
+  // CA (1, Orange County) -> losangeles; Dübendorf (1), Volketswil (1) -> zurich (Zurich
+  // agglomeration); Kemptthal (6-7, Givaudan's innovation centre, Canton Zurich, ~20 km NE — in
+  // the Zurich metropolitan area but the Winterthur agglomeration; drop this hint if that is
+  // too wide). homeHub NULL — homeHub zurich would be reached by nothing (no blanks, no
+  // HOME_COUNTRY for zurich) but null is the honest value. skipTitles '^Talent (Pool|Community)
+  // - ' drops 'Talent Pool - Operations Internship (m/w/d)' and 'Talent Community - Perfumery
+  // School Trainee', standing pools whose applyUrl is the bare careers home. 14 rows carry
+  // applyUrl 'https://jobs.givaudan.com/' (a generic link, not a job page) — harmless to
+  // job_key, noted.
+  {
+    id: "zurich-givn",
+    name: "Givaudan",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    endpoint: "https://careers.givaudan.com/global/en/search-results",
+    origin: "https://careers.givaudan.com/global/en",
+    homeHub: null,
+    hubHints: [
+      ["east hanover", "newyork"],
+      ["budd lake", "newyork"],
+      ["carol stream", "chicago"],
+      ["mississauga", "toronto"],
+      ["newport beach", "losangeles"],
+      ["dübendorf", "zurich"],
+      ["volketswil", "zurich"],
+      ["kemptthal", "zurich"],
+    ],
+    phenomSort: "Most recent",
+    skipTitles: /^Talent (Pool|Community) - /i,
+  },
+  // MetLife — MetLife — 2026-09-29: metlife.com/careers -> jobs.metlife.com ->
+  // www.metlifecareers.com/en_US/ml, Avature. Page size FIXED AT 6 (jobRecordsPerPage 6/20/50
+  // all return 6; jobOffset honoured), so pageSize 6; 'aria-label="449 results"' bounds the
+  // walk (75 pages), maxPages 100 for headroom. 442/442 earlier, then 448 twice against 449
+  // (the board moved; 1 short is a repeated JobDetail href). 27-37s. Global, whole board.
+  // Locations are 'City, Country' with NO state. homeHub NULL (no blanks). Hints, each checked
+  // against the job page (which names only the state in its pay-transparency text) and each a
+  // town name with one US namesake of note: Whippany (15, NJ, Morris County) and Bridgewater
+  // (7, NJ, Somerset County; the page names only New Jersey) -> newyork; McLean (1, VA) ->
+  // washington; Chesterbrook (1, PA, Chester County) -> philadelphia; Greenwood Village (1, CO)
+  // -> denver. Deliberately unplaced: Cary 48 (Raleigh, no hub), Aurora 9 (IL or CO — the page
+  // does not say), Irvine 2 (page names only NJ), Tampa, Southfield, St Louis, Greenville,
+  // 'Virtual' 31, Noida, Jaipur, Mexico City.
+  {
+    id: "newyork-met",
+    name: "MetLife",
+    sector: "Financial Services",
+    platform: "avature",
+    endpoint: "https://www.metlifecareers.com/en_US/ml/SearchJobs",
+    origin: "https://www.metlifecareers.com",
+    homeHub: null,
+    pageSize: 6,
+    maxPages: 100,
+    hubHints: [
+      ["whippany, united states", "newyork"],
+      ["bridgewater, united states", "newyork"],
+      ["mclean, united states", "washington"],
+      ["chesterbrook, united states", "philadelphia"],
+      ["greenwood village, united states", "denver"],
+    ],
+  },
+  // Danaher — Danaher — 2026-09-29: jobs.danaher.com is Phenom over Workday
+  // danaher/wd1/DanaherJobs; read Workday (stable offset paging; the Phenom pager overlaps on
+  // other tenants). The board is the WHOLE GROUP: OpCo facet Cytiva 310, Pall 156, Beckman
+  // Coulter Dx 153, Corporate 93, Beckman LS 92, Radiometer 82, Leica Biosystems 77, IDT 68,
+  // Leica Microsystems 63, Cepheid 58, Sciex 54, Abcam 33, Aldevron 32, ... Masimo 9 — none of
+  // those opcos is a separate roster company. total 1,366 then 1,400, under the 2,000 cap: one
+  // feed, 1,366/1,366 then 1,400/1,400 twice, 54-75s. homeHub NULL (no blanks; a blank would
+  // not be DC). TRAPS: 'London, Ontario' (3) -> null; 'Cortland, New York' (12, upstate) and
+  // 'Rochester, New York' (1) -> null (were newyork); 'Guangzhou, Beijing, China' (1, bad data)
+  // -> null; 'Penang, Selangor' -> penang (HUB_MATCH 'selangor' filed it on KL). Same-metro
+  // hints (US by Census CBSA): Marlborough/Waltham/Lexington MA -> boston; Chaska/New Brighton
+  // MN -> minneapolis; Sunnyvale -> sanjose; Torrance/Brea/Irvine CA -> losangeles;
+  // Vista/Carlsbad CA -> sandiego; Deer Park/Deerfield/Richmond IL -> chicago; Hebron KY (Boone
+  // County) -> cincinnati; Downingtown PA -> philadelphia; Concord ON -> toronto; Burnaby ->
+  // vancouver. Hauppauge NY (Long Island) stays on newyork. Unplaced: 'N Locations' ~200, Logan
+  // UT, Coralville IA, Krakow, New Port Richey FL, Fargo, Pensacola, Cambridge UK, Uppsala,
+  // Timonium MD, Westborough MA (Worcester MSA), Loveland/Boulder CO, 'XXX - Remote'.
+  {
+    id: "washington-dhr",
+    name: "Danaher",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://danaher.wd1.myworkdayjobs.com/wday/cxs/danaher/DanaherJobs/jobs",
+    origin: "https://danaher.wd1.myworkdayjobs.com/en-US/DanaherJobs",
+    homeHub: null,
+    maxPages: 90,
+    hubHints: [
+      ["london, ontario", null],
+      ["cortland, new york", null],
+      ["rochester, new york", null],
+      ["guangzhou, beijing", null],
+      ["penang", "penang"],
+      ["marlborough, massachusetts", "boston"],
+      ["usa - marlborough", "boston"],
+      ["waltham, massachusetts", "boston"],
+      ["lexington, massachusetts", "boston"],
+      ["chaska, minnesota", "minneapolis"],
+      ["new brighton, minnesota", "minneapolis"],
+      ["sunnyvale", "sanjose"],
+      ["torrance, california", "losangeles"],
+      ["brea, california", "losangeles"],
+      ["irvine, california", "losangeles"],
+      ["vista, california", "sandiego"],
+      ["usa - vista", "sandiego"],
+      ["usa - carlsbad", "sandiego"],
+      ["deer park, illinois", "chicago"],
+      ["usa - deer park", "chicago"],
+      ["deerfield, illinois", "chicago"],
+      ["richmond, illinois", "chicago"],
+      ["hebron, kentucky", "cincinnati"],
+      ["usa - hebron", "cincinnati"],
+      ["downingtown, pennsylvania", "philadelphia"],
+      ["concord, ontario", "toronto"],
+      ["burnaby, british columbia", "vancouver"],
+    ],
+  },
+  // Caterpillar — Caterpillar — 2026-09-29: Workday cat/wd5/CaterpillarCareers
+  // (careers.caterpillar.com 403s a plain fetch; the tenant answers directly). total 967 then
+  // 936, under the 2,000 cap: one feed, 966/967 (one duplicate externalPath) then 936/936
+  // twice, 37-47s. Global, whole board. homeHub NULL (no blanks). TRAP: 'Spokane, Washington'
+  // (1) -> null (HUB_MATCH 'washington' = DC). 'Georgia' bare (2) left unplaced (state or
+  // country). Same-metro hints: Irving TX (62, the HQ) and 'USA - TX - Irving' -> dallas, Fort
+  // Worth -> dallas; Alpharetta, Peachtree City, Griffin (Spalding County, in the Atlanta MSA)
+  // -> atlanta; Vaughan ON -> toronto; Brooklyn Park MN -> minneapolis; Channelview TX ->
+  // houston; Kennett Square PA -> philadelphia; Tullamarine and Rowville VIC -> melbourne (bare
+  // 'Victoria' is not in HUB_MATCH). Christchurch -> wellington and Burnie -> hobart are
+  // HUB_MATCH's own NZ/TAS rules, left alone. Unplaced: Wuxi 51, Mossville/East Peoria/Peoria
+  // IL ~60, Kosice, Chennai, Kiel, Lafayette IN, Rayong, 'N Locations' ~170, Athens GA, San
+  // Antonio area, Phoenix area, Cary NC.
+  {
+    id: "dallas-cat",
+    name: "Caterpillar",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://cat.wd5.myworkdayjobs.com/wday/cxs/cat/CaterpillarCareers/jobs",
+    origin: "https://cat.wd5.myworkdayjobs.com/en-US/CaterpillarCareers",
+    homeHub: null,
+    maxPages: 70,
+    hubHints: [
+      [" spokane, washington", null],
+      ["irving, texas", "dallas"],
+      ["usa - tx - irving", "dallas"],
+      ["fort worth, texas", "dallas"],
+      ["alpharetta, georgia", "atlanta"],
+      ["peachtree city, georgia", "atlanta"],
+      ["griffin, georgia", "atlanta"],
+      ["ga-griffin", "atlanta"],
+      ["vaughan, ontario", "toronto"],
+      ["brooklyn park, minnesota", "minneapolis"],
+      ["channelview, texas", "houston"],
+      ["kennett square", "philadelphia"],
+      ["tullamarine, victoria", "melbourne"],
+      ["rowville, victoria", "melbourne"],
+    ],
+  },
+  // Kantra Copper — Kantra Copper (formerly Hillgrove Resources; hillgroveresources.com.au
+  // redirects to kantra.com) — 2026-09-29: kantra.com/jobs/ embeds the Employment Hero jobs
+  // widget with org-id 626c182d-feb3-4095-91b0-f5ce2335561a; the public career_page API answers
+  // that id directly (total_items 10, one page). Job links
+  // employmenthero.com/jobs/position/<friendly_id>/ checked 200. 9 collected on two runs, 1.9s.
+  // skipTitles drops the standing 'Jobs at Kantra - Expression of Interest' post (the page
+  // itself says to use it when the right job isn't advertised). All roles are South Australian:
+  // Kanmantoo 5, Mount Barker 2 (Adelaide Hills), Cockburn SA 2 (exploration, near Broken Hill,
+  // placed on adelaide by HUB_MATCH's state rule like regional QLD -> brisbane). homeHub
+  // adelaide (roster city; no blanks, every row names South Australia). The roster domain
+  // kantra.com is right.
+  {
+    id: "hgo",
+    name: "Kantra Copper",
+    sector: "Copper & Base Metals",
+    platform: "employmenthero",
+    endpoint:
+      "https://services.employmenthero.com/ats/api/v1/career_page/organisations/626c182d-feb3-4095-91b0-f5ce2335561a/jobs",
+    origin: "https://employmenthero.com",
+    homeHub: "adelaide",
+    pageSize: 100,
+    skipTitles: /^Jobs at Kantra - Expression of Interest$/i,
+  },
+  // Smith & Nephew — Measured 2026-09-29: Workday tenant smithnephew/wd5/External (linked from
+  // smith-nephew.com/careers; roster domain smithnephew.com is wrong, real one is smith-
+  // nephew.com). Board total 304, 303 collected (1 skipped), identical on two runs, ~13-17s.
+  // Board is GLOBAL (US 157, UK 31, Poland 21, China 11...). homeHub NULL on purpose: with
+  // london, HOME_COUNTRY /uk/ would file 'UK - Hull', 'UK - Field', 'UK - Birmingham' etc. on
+  // London; no posting has a blank location. 'N Locations' (~60 rows) stay unplaced, as Workday
+  // gives no single place. hubHints (counts): 'melbourne, fl' -> null (1, 'US - Melbourne, FL'
+  // was landing on Melbourne AU); 'uk - watford' -> london (7, S&N's global HQ; Watford is in
+  // the Greater London Built-up Area — a judgement, drop it if you want strict Greater London);
+  // 'can - mississauga' -> toronto (2); 'manhattan, ny' 1 / 'queens, ny' 1 -> newyork; 'fort
+  // worth' -> dallas (4, Tarrant Co., DFW MSA); 'andover, ma' -> boston (3, Essex Co.); 'maple
+  // plain' -> minneapolis (3, Hennepin Co.). Left unplaced: Memphis 11, Mansfield MA 9 (Bristol
+  // Co. = Providence MSA), Pittsburgh, Wroclaw, Pune, Hull, Alajuela CR, Oklahoma City,
+  // Rochester/Albany/Syracuse/Buffalo NY (correctly NOT newyork). skipTitles (compile /…/i):
+  // 'Talent Pool / Initiativbewerbung (Deutschland, Österreich, Schweiz)' (1, 24 locations) is
+  // a standing CV drop. '(Evergreen)' and '- Future Opportunities' sales reqs (~15) are
+  // continuous-hire reqs for real roles and are KEPT, per the Lenovo precedent.
+  {
+    id: "london-sn",
+    name: "Smith & Nephew",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://smithnephew.wd5.myworkdayjobs.com/wday/cxs/smithnephew/External/jobs",
+    origin: "https://smithnephew.wd5.myworkdayjobs.com/External",
+    homeHub: null,
+    maxPages: 40,
+    hubHints: [
+      ["melbourne, fl", null],
+      ["uk - watford", "london"],
+      ["can - mississauga", "toronto"],
+      ["manhattan, ny", "newyork"],
+      ["queens, ny", "newyork"],
+      ["fort worth", "dallas"],
+      ["andover, ma", "boston"],
+      ["maple plain", "minneapolis"],
+    ],
+    skipTitles: /^Talent Pool \/ Initiativbewerbung\b/i,
+  },
+  // Royal Bank of Canada — Measured 2026-09-29: jobs.rbc.com is a Phenom front end whose
+  // applyUrls point at Workday rbc.wd3 RBCGLOBAL1 — read Workday directly. The PHENOM WIDGET IS
+  // UNUSABLE HERE: sortBy "" returns a different slice per request (full walk of 1,134 hits
+  // gave 1,044 unique ids; Cisco's gave 1,117-1,159 of 1,314), and fetchPhenom cannot pass a
+  // sort. Workday total 1,122-1,123, stable. SPLIT FOR TIME, NOT FOR THE 2,000 CAP: this tenant
+  // answers ~5s per 20-row page from here (curl-measured 5.0-6.0s), so one walk was 292s.
+  // Partitioned by the Category facet (ids from the unfiltered facets array; category counts
+  // sum exactly to the board total): a Sales and Advisory 537 (~132s), b
+  // Technology+Ops+Project+Governance 361 (~90s), c remaining 15 categories 225 (~56s); put
+  // them on separate ticks. If Worker-side latency is lower, a and b could merge. Locations are
+  // 'CITY, Province, Canada' or 'STREET:CITY'. homeHub toronto (no HOME_COUNTRY entry for
+  // toronto, so it only catches a blank location; none seen). hubHints (counts): ':toronto' ->
+  // toronto (1; 'RBC CENTRE, 155 WELLINGTON ST W:TORONTO' was on WELLINGTON NZ); 'london,
+  // ontario' -> null (1); 'charlottetown' -> null (1, PEI, was on charlotte); 'spokane,
+  // washington' -> null (1, was DC); 'portland, maine' -> null (1); 'montréal' -> montreal (41
+  // — the accent defeats HUB_MATCH's 'montreal'); laval 3, longueuil 1, brossard 1, pointe-
+  // claire 1 -> montreal; Toronto CMA: mississauga 11, markham 2, oakville 2, pickering 2,
+  // aurora 2, newmarket 2, brampton 1, vaughan, richmond hill, halton hills 1, 'king, ontario'
+  // 1 -> toronto; 'gatineau, quebec' -> ottawa (4); Metro Vancouver: richmond BC 3, coquitlam
+  // 3, surrey BC 2, new westminster -> vancouver; 'jersey city' -> newyork (26, Hudson Co. NJ);
+  // 'red bank, new jersey' -> newyork (1, Monmouth Co.); walnut creek CA -> sanfrancisco 2;
+  // beverly hills -> losangeles 1; shoreview MN 1 and ':saint paul' 1 -> minneapolis.
+  // 'STREET:PUTRAJAYA' (66) -> kualalumpur via HUB_MATCH's own 'putrajaya'. Left unplaced: 'N
+  // Locations' (~110), Halifax 26, Edmonton 11, Québec City 7, Edinburgh, Bedford NS, Winnipeg,
+  // regional Canada, Trinidad, Frankfurt. Titles like 'PIV_INS_BIL_Quebec' / 'PIV_FRAU_1' are
+  // internal codes on REAL roles (checked: Licensed Insurance Advisor, 36 Montreal-area
+  // branches) — kept, no skipTitles.
+  {
+    id: "toronto-ry",
+    key: "toronto-ry-a",
+    name: "Royal Bank of Canada",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://rbc.wd3.myworkdayjobs.com/wday/cxs/rbc/RBCGLOBAL1/jobs",
+    origin: "https://rbc.wd3.myworkdayjobs.com/RBCGLOBAL1",
+    homeHub: "toronto",
+    appliedFacets: { Category: ["7911130ac480011864964fc0692d0000"] },
+    maxPages: 40,
+    hubHints: [
+      [":toronto", "toronto"],
+      ["london, ontario", null],
+      ["charlottetown", null],
+      ["spokane, washington", null],
+      ["portland, maine", null],
+      ["mississauga", "toronto"],
+      ["brampton, ontario", "toronto"],
+      ["markham, ontario", "toronto"],
+      ["vaughan, ontario", "toronto"],
+      ["richmond hill, ontario", "toronto"],
+      ["oakville, ontario", "toronto"],
+      ["pickering, ontario", "toronto"],
+      ["aurora, ontario", "toronto"],
+      ["newmarket, ontario", "toronto"],
+      ["halton hills, ontario", "toronto"],
+      ["king, ontario", "toronto"],
+      ["montréal", "montreal"],
+      ["laval, quebec", "montreal"],
+      ["longueuil, quebec", "montreal"],
+      ["brossard", "montreal"],
+      ["pointe-claire", "montreal"],
+      ["gatineau, quebec", "ottawa"],
+      ["richmond, british columbia", "vancouver"],
+      ["coquitlam, british columbia", "vancouver"],
+      ["surrey, british columbia", "vancouver"],
+      ["new westminster, british columbia", "vancouver"],
+      ["jersey city", "newyork"],
+      ["red bank, new jersey", "newyork"],
+      ["walnut creek, california", "sanfrancisco"],
+      ["beverly hills, california", "losangeles"],
+      ["shoreview, minnesota", "minneapolis"],
+      [":saint paul", "minneapolis"],
+    ],
+  },
+  {
+    id: "toronto-ry",
+    key: "toronto-ry-b",
+    name: "Royal Bank of Canada",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://rbc.wd3.myworkdayjobs.com/wday/cxs/rbc/RBCGLOBAL1/jobs",
+    origin: "https://rbc.wd3.myworkdayjobs.com/RBCGLOBAL1",
+    homeHub: "toronto",
+    appliedFacets: {
+      Category: [
+        "7911130ac48001186496552dce380000",
+        "7911130ac480011864965229f9670002",
+        "7911130ac4800118649652c39f3d0001",
+        "7911130ac4800118649656fd57bf0001",
+      ],
+    },
+    maxPages: 40,
+    hubHints: [
+      [":toronto", "toronto"],
+      ["london, ontario", null],
+      ["charlottetown", null],
+      ["spokane, washington", null],
+      ["portland, maine", null],
+      ["mississauga", "toronto"],
+      ["brampton, ontario", "toronto"],
+      ["markham, ontario", "toronto"],
+      ["vaughan, ontario", "toronto"],
+      ["richmond hill, ontario", "toronto"],
+      ["oakville, ontario", "toronto"],
+      ["pickering, ontario", "toronto"],
+      ["aurora, ontario", "toronto"],
+      ["newmarket, ontario", "toronto"],
+      ["halton hills, ontario", "toronto"],
+      ["king, ontario", "toronto"],
+      ["montréal", "montreal"],
+      ["laval, quebec", "montreal"],
+      ["longueuil, quebec", "montreal"],
+      ["brossard", "montreal"],
+      ["pointe-claire", "montreal"],
+      ["gatineau, quebec", "ottawa"],
+      ["richmond, british columbia", "vancouver"],
+      ["coquitlam, british columbia", "vancouver"],
+      ["surrey, british columbia", "vancouver"],
+      ["new westminster, british columbia", "vancouver"],
+      ["jersey city", "newyork"],
+      ["red bank, new jersey", "newyork"],
+      ["walnut creek, california", "sanfrancisco"],
+      ["beverly hills, california", "losangeles"],
+      ["shoreview, minnesota", "minneapolis"],
+      [":saint paul", "minneapolis"],
+    ],
+  },
+  {
+    id: "toronto-ry",
+    key: "toronto-ry-c",
+    name: "Royal Bank of Canada",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://rbc.wd3.myworkdayjobs.com/wday/cxs/rbc/RBCGLOBAL1/jobs",
+    origin: "https://rbc.wd3.myworkdayjobs.com/RBCGLOBAL1",
+    homeHub: "toronto",
+    appliedFacets: {
+      Category: [
+        "7911130ac480011864965833370e0002",
+        "7911130ac4800118649655c8a5290002",
+        "7911130ac4800118649658ce350e0001",
+        "7911130ac480011864965493391d0002",
+        "7911130ac48001186496535e1c620000",
+        "7911130ac48001186496518f6fc00000",
+        "7911130ac480011864965493391d0000",
+        "7911130ac48001186496505a55e70001",
+        "7911130ac4800118649653f8b5ec0000",
+        "7911130ac480011864965833370e0000",
+        "7911130ac48001186496535e1c620002",
+        "7911130ac4800118649650f4d5000001",
+        "7911130ac48001186496566254ba0001",
+        "7911130ac48001186496596934870000",
+        "7911130ac48001186496579834b90000",
+      ],
+    },
+    maxPages: 40,
+    hubHints: [
+      [":toronto", "toronto"],
+      ["london, ontario", null],
+      ["charlottetown", null],
+      ["spokane, washington", null],
+      ["portland, maine", null],
+      ["mississauga", "toronto"],
+      ["brampton, ontario", "toronto"],
+      ["markham, ontario", "toronto"],
+      ["vaughan, ontario", "toronto"],
+      ["richmond hill, ontario", "toronto"],
+      ["oakville, ontario", "toronto"],
+      ["pickering, ontario", "toronto"],
+      ["aurora, ontario", "toronto"],
+      ["newmarket, ontario", "toronto"],
+      ["halton hills, ontario", "toronto"],
+      ["king, ontario", "toronto"],
+      ["montréal", "montreal"],
+      ["laval, quebec", "montreal"],
+      ["longueuil, quebec", "montreal"],
+      ["brossard", "montreal"],
+      ["pointe-claire", "montreal"],
+      ["gatineau, quebec", "ottawa"],
+      ["richmond, british columbia", "vancouver"],
+      ["coquitlam, british columbia", "vancouver"],
+      ["surrey, british columbia", "vancouver"],
+      ["new westminster, british columbia", "vancouver"],
+      ["jersey city", "newyork"],
+      ["red bank, new jersey", "newyork"],
+      ["walnut creek, california", "sanfrancisco"],
+      ["beverly hills, california", "losangeles"],
+      ["shoreview, minnesota", "minneapolis"],
+      [":saint paul", "minneapolis"],
+    ],
+  },
+  // Cisco Systems — Measured 2026-09-29: careers.cisco.com is Phenom, but its rows link to
+  // Workday cisco.wd5 Cisco_Careers, and the Phenom widget pages unstably (1,314 hits walked
+  // twice -> 1,159 and 1,117 unique ids), so Workday is read directly: total 1,336-1,339 (under
+  // the 2,000 cap), 1,336 of 1,336 on two runs, ~35s. homeHub sanjose (no HOME_COUNTRY entry,
+  // so blank-only; none seen). ~450 of the 743 unplaced are 'N Locations' multi-site reqs.
+  // hubHints (counts): 'san jose, costa rica' -> null (3, was on sanjose); 'milpitas,
+  // california' -> sanjose (27, Santa Clara Co.); 'minato, japan' -> tokyo (65, Tokyo special
+  // ward); 'kanata, ontario' -> ottawa (4); 'feltham, united kingdom' -> london (3, LB
+  // Hounslow); 'herndon, virginia' -> washington (1, Fairfax); richardson 1 / allen 4, texas ->
+  // dallas; santa monica 3 / glendale 1, california -> losangeles; 'carlsbad, california' ->
+  // sandiego (2); 'alpharetta, georgia' -> atlanta (1); maynard 9 / boxborough 1, massachusetts
+  // -> boston (Middlesex Co.); 'holmdel, new jersey' -> newyork (4, Monmouth Co.); 'elk grove
+  // village, illinois' -> chicago (1); wallisellen 1 / thalwil 2, switzerland -> zurich. Left
+  // unplaced: RTP NC 34, Krakow 42, Galway 28, Taipei 28, Lysaker 17, Kita JP 3 (ambiguous
+  // Tokyo/Osaka ward), Gurgaon, Pune, Fulton MD (Baltimore MSA). No pool/talent-community
+  // titles.
+  {
+    id: "sanjose-csco",
+    name: "Cisco Systems",
+    sector: "Technology, Media and Telecommunications",
+    platform: "workday",
+    endpoint: "https://cisco.wd5.myworkdayjobs.com/wday/cxs/cisco/Cisco_Careers/jobs",
+    origin: "https://cisco.wd5.myworkdayjobs.com/Cisco_Careers",
+    homeHub: "sanjose",
+    maxPages: 80,
+    hubHints: [
+      ["san jose, costa rica", null],
+      ["milpitas, california", "sanjose"],
+      ["minato, japan", "tokyo"],
+      ["kanata, ontario", "ottawa"],
+      ["feltham, united kingdom", "london"],
+      ["herndon, virginia", "washington"],
+      ["richardson, texas", "dallas"],
+      ["allen, texas", "dallas"],
+      ["santa monica, california", "losangeles"],
+      ["glendale, california", "losangeles"],
+      ["carlsbad, california", "sandiego"],
+      ["alpharetta, georgia", "atlanta"],
+      ["maynard, massachusetts", "boston"],
+      ["boxborough, massachusetts", "boston"],
+      ["holmdel, new jersey", "newyork"],
+      ["elk grove village, illinois", "chicago"],
+      ["wallisellen, switzerland", "zurich"],
+      ["thalwil, switzerland", "zurich"],
+    ],
+  },
+  // Standard Bank Group — Measured 2026-09-29: standardbank.com/sbg/standard-bank-group/careers
+  // applies through SmartRecruiters company 'StandardBankGroup'. First run 133 of totalFound
+  // 133; ~20 min later the API itself reported totalFound 108 and three consecutive checks
+  // agreed (100 + 8 over two pages), and the fetcher returned 108 — a board change, not a
+  // paging fault. ~1.4s. Pan-African board: Luanda, Douglas IoM, St Helier, Kampala, Lagos,
+  // Lusaka, Gaborone, Windhoek, Cape Town are not hubs and stay unplaced. SmartRecruiters
+  // writes 'city, region, country-code' — South Africa is 'za', so the Saudi ', sa' -> adelaide
+  // trap does not fire here. homeHub johannesburg (blank-only; no HOME_COUNTRY entry). Pretoria
+  // (Tshwane) left unplaced — its own metro. No hints needed; no pool postings (two Graduate
+  // Programmes are real intakes).
+  {
+    id: "johannesburg-sbk",
+    name: "Standard Bank Group",
+    sector: "Financial Services",
+    platform: "smartrecruiters",
+    endpoint: "StandardBankGroup",
+    origin: "https://www.standardbank.com/sbg/standard-bank-group/careers",
+    homeHub: "johannesburg",
+  },
+  // Gold Fields — Measured 2026-09-29: careers.goldfields.com is SuccessFactors; the search
+  // page states 'of 52', fetched 52; a later run 51 (board shrank by one). ~2s. Locations like
+  // 'Granny Smith - Laverton, WA, AU, 6440' — the remote WA mines (Granny Smith 16, St Ives 12,
+  // Agnew 8, Gruyere 7) resolve to perth via HUB_MATCH's ' wa,' rule, the existing precedent
+  // for AngloGold's Sunrise Dam/Tropicana. Salares Norte / Santiago ('…, Americas') and
+  // Westonaria/South Deep (West Rand, not Johannesburg metro) stay unplaced. homeHub NULL: the
+  // workforce is overwhelmingly Australian, so a blank location should not default to the
+  // Johannesburg head office (none seen anyway).
+  {
+    id: "johannesburg-gfi",
+    name: "Gold Fields",
+    sector: "Energy & Natural Resources",
+    platform: "successfactors",
+    endpoint: "https://careers.goldfields.com",
+    origin: "https://careers.goldfields.com",
+    homeHub: null,
+  },
+  // Pexa Group — Measured 2026-09-29: pexa-group.com/careers/positions/ renders client-side
+  // from api.lever.co/v0/postings/pexa (found in the page's Next.js chunk 360-*.js), 6
+  // postings, 6 on two runs. The 2 'United Kingdom' conveyancer roles are PEXA's UK legal arm
+  // and stay unplaced. Do NOT use SmartRecruiters 'pexa': its 3 postings include 'Test Job -
+  // MF' and 'PEXA Unicorn' — a sandbox.
+  {
+    id: "melbourne-pxa",
+    name: "Pexa Group",
+    sector: "Financial Services",
+    platform: "lever",
+    endpoint: "pexa",
+    origin: "https://jobs.lever.co/pexa",
+    homeHub: "melbourne",
+  },
+  // Chrysos Corporation — Measured 2026-09-29: the roster domain chrysos.com is WRONG — it is
+  // Chrysos S.p.A., an Italian company. Chrysos Corporation (ASX: C79, PhotonAssay) is
+  // chrysoscorp.com (chrysos.com.au redirects there); its careers page embeds
+  // chrysos.bamboohr.com/careers. /careers/list meta.totalCount 7, 7 fetched on two runs.
+  // Deployed-unit roles sit at mine sites: Geijersvlijt (Suriname), Sodankylä (Finland), Carlin
+  // NV, Liverpool UK — unplaced; Tonsley SA -> adelaide, West Perth -> perth, Vancouver BC ->
+  // vancouver.
+  {
+    id: "adelaide-c79",
+    name: "Chrysos Corporation",
+    sector: "Technology, Media and Telecommunications",
+    platform: "bamboohr",
+    endpoint: "https://chrysos.bamboohr.com",
+    origin: "https://chrysos.bamboohr.com",
+    homeHub: "adelaide",
+  },
+  // Perfection Fresh — 2026-09-29: perfection.com.au/perfection-fresh-jobs embeds
+  // perfection.elmotalent.com.au/careers/joinus/jobs?layout=iframe; the path without ?layout is
+  // the server-rendered list fetchElmo walks. Board prints '1 - 2 of 2 jobs shown', both
+  // 'Homebush, Distribution Centre' (Sydney Markets, Homebush West NSW) -- a bare site name
+  // with no state, so hubHints ['homebush','sydney'] (2). homeHub kept as the roster city
+  // brisbane, but NOTE the company's head office and DC are in Sydney (Homebush); the roster
+  // city looks wrong and should be reviewed. Every ELMO card carries a location so homeHub only
+  // catches a blank one.
+  {
+    id: "priv-perfection-fresh",
+    name: "Perfection Fresh",
+    sector: "Fresh produce",
+    platform: "elmo",
+    endpoint: "https://perfection.elmotalent.com.au/careers/joinus/jobs",
+    origin: "https://perfection.elmotalent.com.au",
+    homeHub: null,
+    hubHints: [["homebush", "sydney"]],
+  },
+  // Novartis — 2026-09-29: global board novartis.wd3/Novartis_Careers, total 837 (run 2: 839
+  // advertised, 838 read -- live churn during a 40 s walk). Under Workday's 2,000 cap, so one
+  // feed; maxPages 60 (20/page = 42 pages needed; the default 40 would truncate at 800).
+  // locationsText is a bare SITE name ('Hyderabad (Office)', 'Basel (City)', 'East Hanover',
+  // 'Cambridge (USA)', 'Toranomon (NPKK Head Office)'), hence hints: cambridge (usa)->boston
+  // 37, east hanover->newyork 35 and morris plains->newyork 4 (Morris County NJ, NY MSA),
+  // toranomon->tokyo 15 (Minato-ku), carlsbad->sandiego 3 (San Diego County). 675 unplaced is
+  // correct: Hyderabad, Ljubljana, Schaftenau, Kundl, Mexico City (INSURGENTES), Barcelona,
+  // Prague, 'N Locations' multi-site rows, and BASEL (32) -- Basel is its own metro, not
+  // Zurich, so it is deliberately NOT hinted to the zurich hub even though Novartis is
+  // headquartered there; there were 0 Zurich-area rows. 'Queensland (QLD)'/'New South Wales
+  // (NSW)' state-only rows go to brisbane/sydney by the existing HUB_MATCH convention.
+  {
+    id: "zurich-novn",
+    name: "Novartis",
+    sector: "Healthcare and Life Sciences",
+    platform: "workday",
+    endpoint: "https://novartis.wd3.myworkdayjobs.com/wday/cxs/novartis/Novartis_Careers/jobs",
+    origin: "https://novartis.wd3.myworkdayjobs.com/Novartis_Careers",
+    homeHub: "zurich",
+    maxPages: 60,
+    hubHints: [
+      ["cambridge (usa)", "boston"],
+      ["east hanover", "newyork"],
+      ["morris plains", "newyork"],
+      ["toranomon", "tokyo"],
+      ["carlsbad", "sandiego"],
+    ],
+  },
+  // Absa Group — 2026-09-29: absa.africa/careers links
+  // absa.wd3.myworkdayjobs.com/ABSAcareersite; total 61, of which page 0's FIRST posting is an
+  // empty object (no title, no path) -- so 60 real roles and the fetcher's '60 rows vs 61' log
+  // is that phantom, not truncation (confirmed by a raw walk: 61 postings, 1 blank). 5 are
+  // standing 'Talent Pipeline: ...' posts (Private Wealth Banker - Gauteng/Limpopo/Paarl,
+  // Wealth Banker - Pretoria, Area Segment Manager - North West) -> skipTitles '^Talent
+  // Pipeline: ' leaves 55. homeHub NULL: 8 postings carry no location at all (e.g. 'Lead
+  // Generator (Various Locations)', 'Acquisition Banker - Pipeline Mpumalanga'), which would
+  // otherwise fall to Johannesburg wrongly; HOME_COUNTRY has no johannesburg entry so homeHub
+  // affects only blanks. hubHints sandton->johannesburg 5, randburg->johannesburg 3 (both City
+  // of Johannesburg). Unplaced: Cape Town, Pretoria (Tshwane, own metro), Ebene/Grand Bay
+  // (Mauritius), Kenya, Botswana, Western Cape towns, blanks. Workday board is the whole Absa
+  // group across Africa, which is the roster company.
+  {
+    id: "johannesburg-abg",
+    name: "Absa Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://absa.wd3.myworkdayjobs.com/wday/cxs/absa/ABSAcareersite/jobs",
+    origin: "https://absa.wd3.myworkdayjobs.com/ABSAcareersite",
+    homeHub: null,
+    hubHints: [
+      ["sandton", "johannesburg"],
+      ["randburg", "johannesburg"],
+    ],
+    skipTitles: /^Talent Pipeline: /i,
+  },
+  // AMD — 2026-09-29: careers.amd.com is Jibe (fingerprints as iCIMS), /api/jobs totalCount
+  // 1258, 13 pages at 100, ~5 s. fetchJibe dedupes by title|loc, so 1258 reqs -> 1192 rows (66
+  // same-title same-city reqs collapse -- the archive's job_key would collapse them anyway).
+  // Both runs identical. Jibe's loc is 'city, country' with NO state, so hints are written
+  // against that: santa clara, united states->sanjose 136 (HQ; Santa Clara County), markham,
+  // canada->toronto 98 (York Region, Toronto CMA), secaucus, united states->newyork 32 (Hudson
+  // County NJ), boxborough, united states->boston 4, bellevue, united states->seattle 4 (raw
+  // state = Washington; AMD has no Bellevue NE site). Unplaced 232: Hyderabad 76,
+  // Hsinchu/Taipei, Cambridge UK, Fort Collins, Belgrade, Folsom, and 23 state-only US rows
+  // that read just 'United States' because the reader drops the state. One 'Washington, United
+  // States' row has city Washington and no state -> HUB_MATCH washington (DC), left as is.
+  {
+    id: "sanjose-amd",
+    name: "AMD",
+    sector: "Technology, Media and Telecommunications",
+    platform: "jibe",
+    endpoint: "https://careers.amd.com/api/jobs",
+    origin: "https://careers.amd.com",
+    homeHub: "sanjose",
+    hubHints: [
+      ["santa clara, united states", "sanjose"],
+      ["markham, canada", "toronto"],
+      ["secaucus, united states", "newyork"],
+      ["boxborough, united states", "boston"],
+      ["bellevue, united states", "seattle"],
+    ],
+  },
+  // Goldman Sachs — 2026-09-29: higher.gs.com is a Next.js front on a GraphQL gateway (api-
+  // higher.gs.com/gateway/api/v1/graphql, roleSearch totalCount 864 for
+  // EARLY_CAREER+PROFESSIONAL) whose back end is Oracle Recruiting Cloud tenant
+  // hdpc.fa.us2.oraclecloud.com. The existing oracle reader reads siteNumber CX_2 directly:
+  // TotalJobsCount 1134, 1133 read in ~16 s, twice (CX_2001 returns the same 1134; CX_1 returns
+  // 0). CX_2's UI 302s to sites/LateralHiring, so origin is set to that to give job links that
+  // resolve without a redirect (checked: .../LateralHiring/job/143223 -> 200). The campus site
+  // CX_3001 ('Candidate Experience Site - Campus', 271 reqs: '2027 | EMEA | ... | New Analyst /
+  // Summer Analyst' programme intakes) is NOT included -- a second feed with key newyork-gs-
+  // campus, siteNumber CX_3001 if wanted. Hints: jersey city, nj->newyork 6, richardson,
+  // tx->dallas 14, irving, tx->dallas 1, newport beach, ca->losangeles 4, deerfield,
+  // il->chicago 1. Unplaced 261 is honest: Salt Lake City 60, Birmingham UK 39 (Marcus), Warsaw
+  // 36, Hyderabad, Frankfurt, 'NY, United States' state-only 9, Albany NY 2 (correctly NOT
+  // newyork), West Palm Beach, Draper UT. The GraphQL gateway returned INTERNAL_ERROR on some
+  // filtered queries, another reason to read Oracle directly.
+  {
+    id: "newyork-gs",
+    name: "Goldman Sachs",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://hdpc.fa.us2.oraclecloud.com",
+    origin: "https://hdpc.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/LateralHiring",
+    homeHub: "newyork",
+    siteNumber: "CX_2",
+    maxPages: 60,
+    hubHints: [
+      ["jersey city, nj", "newyork"],
+      ["richardson, tx", "dallas"],
+      ["irving, tx", "dallas"],
+      ["newport beach, ca", "losangeles"],
+      ["deerfield, il", "chicago"],
+    ],
+  },
+  // ── The 2026-09-30 sixth batch — scraper-gap ranks 201-240 ─────────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge; packed several boards to a tick like batches 4 and 5.
+  // AbbVie uses the Attrax searchParams fix and BAT the Radancy card-shape
+  // fix, both of the same day. "beijing-00992" is NOT wired: it is the same
+  // Lenovo as `hongkong-00992` above.
+  // AbbVie — 2026-09-29: careers.abbvie.com is Attrax (attrax-vacancy-tile markup, 'Job Search
+  // | AbbVie'), GLOBAL board, 1,588 roles. BUG/LIMIT 1: Attrax serves at most 25 pages -
+  // measured at size=48, pages 25..34 all return the SAME 48 ids (page 26 vs 25: 48 of 48
+  // shared), so an unfiltered walk stops at 1,200 of 1,581 (measured: fetchPortal returned
+  // exactly 1200). fetchAttrax's seen-set makes page 26 add 0 and stops cleanly, so the loss is
+  // silent, not a loop. BUG/LIMIT 2: fetchAttrax cannot filter - it builds
+  // `${endpoint}?page=N&size=S`, so an endpoint carrying '?options=8' becomes
+  // '...?options=8?page=1&size=48', which returns 0 tiles (measured). FIX (one line in
+  // fetchAttrax): `const html = await
+  // getText(`${site.endpoint}?page=${page}&size=${size}${site.searchParams ? "&" +
+  // site.searchParams : ""}`);` and note in the searchParams doc comment that attrax reads it
+  // too. Partition: the Function facet (filter ids read off the board's own
+  // SearchFiltersWidget: 8 Allergan Aesthetics 93, 9 Commercial 422, 10 Corporate 296, 11
+  // Operations 310, 12 Research & Development 460; sum = 1,581 = total, every role carries
+  // exactly one Function) - each under the 1,200 cap, so maxPages 25.  alone returns total 93
+  // (measured). Location is 'City, ST' from location-freetext. hubHints: Mettawa IL 123 (AbbVie
+  // HQ, Lake County = Chicago MSA; North Chicago IL 407 already matches 'chicago'); Irvine CA
+  // 83 (Allergan Aesthetics, Orange County = LA MSA, Google precedent); Florham Park NJ 60 and
+  // Branchburg NJ 13 (Morris/Somerset counties, NY MSA); Jersey City/Newark NJ, Great Neck NY
+  // -> newyork; Waltham MA 20, Cambridge MA 8 -> boston; Fairfax VA -> washington; Boulogne-
+  // Billancourt IDF 4 -> paris. Null guards (would be misfiled): 'Portland, ME' 2 (HUB_MATCH
+  // portland = Oregon), 'Magdeburg, SA' 2 (Saxony-Anhalt -> adelaide), 'Mattawa, WA' 1 and
+  // 'Spokane, WA' 1 (-> perth via ' wa,'); 'seattle, wa' is listed BEFORE the ', wa,' null so
+  // Seattle (3) still resolves. Unplaced are real non-hub sites: Waco TX 42, Ludwigshafen 34,
+  // Worcester MA 33 (own MSA), Sligo, Taipei, Westport (IE), Martillac, Wiesbaden, Tempe,
+  // Dublin, Warsaw etc. homeHub chicago only catches a blank location; none measured blank.
+  // Walk ~70s total across the 5 feeds (largest 24s), fine within an awaited tick.
+  {
+    id: "chicago-abbv",
+    key: "chicago-abbv-allergan-aesthetics",
+    name: "AbbVie",
+    sector: "Healthcare and Life Sciences",
+    platform: "attrax",
+    endpoint: "https://careers.abbvie.com/en/jobs",
+    origin: "https://careers.abbvie.com",
+    homeHub: "chicago",
+    pageSize: 48,
+    maxPages: 25,
+    hubHints: [
+      ["seattle, wa", "seattle"],
+      ["mettawa, il", "chicago"],
+      ["irvine, ca", "losangeles"],
+      ["florham park, nj", "newyork"],
+      ["branchburg, nj", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["newark, nj", "newyork"],
+      ["great neck, ny", "newyork"],
+      ["waltham, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["fairfax, va", "washington"],
+      ["boulogne-billancourt, idf", "paris"],
+      ["portland, me", null],
+      ["magdeburg, sa", null],
+      [", wa,", null],
+    ],
+    searchParams: "options=8",
+  },
+  {
+    id: "chicago-abbv",
+    key: "chicago-abbv-commercial",
+    name: "AbbVie",
+    sector: "Healthcare and Life Sciences",
+    platform: "attrax",
+    endpoint: "https://careers.abbvie.com/en/jobs",
+    origin: "https://careers.abbvie.com",
+    homeHub: "chicago",
+    pageSize: 48,
+    maxPages: 25,
+    hubHints: [
+      ["seattle, wa", "seattle"],
+      ["mettawa, il", "chicago"],
+      ["irvine, ca", "losangeles"],
+      ["florham park, nj", "newyork"],
+      ["branchburg, nj", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["newark, nj", "newyork"],
+      ["great neck, ny", "newyork"],
+      ["waltham, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["fairfax, va", "washington"],
+      ["boulogne-billancourt, idf", "paris"],
+      ["portland, me", null],
+      ["magdeburg, sa", null],
+      [", wa,", null],
+    ],
+    searchParams: "options=9",
+  },
+  {
+    id: "chicago-abbv",
+    key: "chicago-abbv-corporate",
+    name: "AbbVie",
+    sector: "Healthcare and Life Sciences",
+    platform: "attrax",
+    endpoint: "https://careers.abbvie.com/en/jobs",
+    origin: "https://careers.abbvie.com",
+    homeHub: "chicago",
+    pageSize: 48,
+    maxPages: 25,
+    hubHints: [
+      ["seattle, wa", "seattle"],
+      ["mettawa, il", "chicago"],
+      ["irvine, ca", "losangeles"],
+      ["florham park, nj", "newyork"],
+      ["branchburg, nj", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["newark, nj", "newyork"],
+      ["great neck, ny", "newyork"],
+      ["waltham, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["fairfax, va", "washington"],
+      ["boulogne-billancourt, idf", "paris"],
+      ["portland, me", null],
+      ["magdeburg, sa", null],
+      [", wa,", null],
+    ],
+    searchParams: "options=10",
+  },
+  {
+    id: "chicago-abbv",
+    key: "chicago-abbv-operations",
+    name: "AbbVie",
+    sector: "Healthcare and Life Sciences",
+    platform: "attrax",
+    endpoint: "https://careers.abbvie.com/en/jobs",
+    origin: "https://careers.abbvie.com",
+    homeHub: "chicago",
+    pageSize: 48,
+    maxPages: 25,
+    hubHints: [
+      ["seattle, wa", "seattle"],
+      ["mettawa, il", "chicago"],
+      ["irvine, ca", "losangeles"],
+      ["florham park, nj", "newyork"],
+      ["branchburg, nj", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["newark, nj", "newyork"],
+      ["great neck, ny", "newyork"],
+      ["waltham, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["fairfax, va", "washington"],
+      ["boulogne-billancourt, idf", "paris"],
+      ["portland, me", null],
+      ["magdeburg, sa", null],
+      [", wa,", null],
+    ],
+    searchParams: "options=11",
+  },
+  {
+    id: "chicago-abbv",
+    key: "chicago-abbv-rd",
+    name: "AbbVie",
+    sector: "Healthcare and Life Sciences",
+    platform: "attrax",
+    endpoint: "https://careers.abbvie.com/en/jobs",
+    origin: "https://careers.abbvie.com",
+    homeHub: "chicago",
+    pageSize: 48,
+    maxPages: 25,
+    hubHints: [
+      ["seattle, wa", "seattle"],
+      ["mettawa, il", "chicago"],
+      ["irvine, ca", "losangeles"],
+      ["florham park, nj", "newyork"],
+      ["branchburg, nj", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["newark, nj", "newyork"],
+      ["great neck, ny", "newyork"],
+      ["waltham, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["fairfax, va", "washington"],
+      ["boulogne-billancourt, idf", "paris"],
+      ["portland, me", null],
+      ["magdeburg, sa", null],
+      [", wa,", null],
+    ],
+    searchParams: "options=12",
+  },
+  // S&P Global — 2026-09-29: careers.spglobal.com is Jibe (iCIMS Jibe front) over the Workday
+  // tenant spgi.wd5 / SPGI_Careers; both carry the same board (Jibe totalCount 270, Workday
+  // total 270). Jibe chosen over Workday because Workday's locationsText reads '2 Locations' /
+  // '3 Locations' for 84 of 270 roles (all unplaced), while Jibe gives the primary city +
+  // country for every role: Workday placed 125, Jibe places 189. Walk ~2s, one page of 100 x3.
+  // hubHints: 'Charlottesville, United States' would match HUB_MATCH 'charlotte' -> null (1);
+  // 'Cambridge, United States' is S&P's Cambridge MA office (Workday facet 'Cambridge, MA' = 7)
+  // -> boston (7). Deliberately not hinted: Princeton NJ (Mercer County = Trenton MSA, not NY),
+  // Englewood (Workday says CO, but 'Englewood, United States' is ambiguous with Englewood NJ).
+  // Unplaced are non-hub places: Hyderabad 16, Gurgaon 8, Mexico City, Islamabad, Buenos Aires,
+  // Sao Paulo, Sofia, Boulder, Nashville, Virtual-*. No blank locations measured, so homeHub
+  // newyork only affects none.
+  {
+    id: "newyork-spgi",
+    name: "S&P Global",
+    sector: "Financial Services",
+    platform: "jibe",
+    endpoint: "https://careers.spglobal.com/api/jobs",
+    origin: "https://careers.spglobal.com",
+    homeHub: "newyork",
+    hubHints: [
+      ["charlottesville", null],
+      ["cambridge, united states", "boston"],
+    ],
+  },
+  // Komatsu — 2026-09-29: Komatsu runs regional SuccessFactors boards, not one global one. (1)
+  // komatsu.jobs - RMK (companyId KomatsuLive), linked from the en-us/en-gb/en-in/en-za/en-ae
+  // careers pages: Americas + mining division. The plain `successfactors` reader returns 0
+  // (client-rendered RMK). RMK service /services/recruiting/v1/jobs: en_US totalJobs 311;
+  // en_GB, ja_JP, es_ES, pt_BR, fr_CA, pl_PL, zh_CN and 12 other locales all 0 - so
+  // sfRmkLocales ['en_US'] with sfRmkSort 'date' (the default en_GB-only walk would read 0).
+  // Two walks 310/310 unique (1 short of 311, stable). (2) careers.komatsu.com.au - classic SF:
+  // Australia + New Zealand, 'of 65', successfactors reader 65/65 both runs. homeHub null:
+  // neither board lists a Japanese role, and no row has a blank location, so tokyo would only
+  // ever be a wrong fallback. Locations US: 'City, State, USA, ZIP' (multi-location roles
+  // joined with '; ' by the reader, so ~5 long multi-site lists are placed by whichever needle
+  // appears first - e.g. one 40-site list lands on denver). hubHints US: 'malta, new york' ->
+  // null (Saratoga County; HUB_MATCH 'new york' would file it on NYC, 2); 'pflugerville, texas'
+  // -> austin (Travis County, 2). AU cards are 'Site - Type, AU': hints for same-metro depots:
+  // Fairfield (Komatsu Australia head office, Fairfield NSW) and Seven Hills -> sydney,
+  // Campbellfield -> melbourne, Bassendean -> perth, Wacol and Hemmant -> brisbane. Regional
+  // sites (Emerald, Mt Isa, Mackay, Batchfire, Mount Thorley, Gunnedah, Geraldton, Bunbury,
+  // Invercargill, 'CMS - Branch 13') left unplaced. US unplaced: Peoria 39, Milwaukee 21,
+  // Tucson 20, Elko 17, Mesa, Longview, Franklin PA, Fort McMurray etc. NOT wired:
+  // career2.successfactors.eu company=komatsusou (South Africa link) and
+  // komatsupakistanuat.harmonyhcm.com (a UAT host); Komatsu Ltd's own Japanese graduate/mid-
+  // career recruiting is not an ATS any reader handles. Feeds share id tokyo-6301, so keys are
+  // required.
+  {
+    id: "tokyo-6301",
+    key: "tokyo-6301-us",
+    name: "Komatsu",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://komatsu.jobs",
+    origin: "https://komatsu.jobs",
+    homeHub: null,
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_US"],
+    hubHints: [
+      ["malta, new york", null],
+      ["pflugerville, texas", "austin"],
+    ],
+  },
+  {
+    id: "tokyo-6301",
+    key: "tokyo-6301-au",
+    name: "Komatsu",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://careers.komatsu.com.au",
+    origin: "https://careers.komatsu.com.au",
+    homeHub: null,
+    hubHints: [
+      ["fairfield - ", "sydney"],
+      ["seven hills - ", "sydney"],
+      ["campbellfield - ", "melbourne"],
+      ["bassendean - ", "perth"],
+      ["wacol - ", "brisbane"],
+      ["hemmant - ", "brisbane"],
+    ],
+  },
+  // Chow Tai Fook Jewellery — Measured 2026-09-29: roster domain chowtaifookjewellery.com is a
+  // parked page (careers./jobs. answer an empty cloudns stub). The group's own board is
+  // career.chowtaifook.com, a SuccessFactors RMK career site (table theme, 10 a page, 'Results
+  // 1 – 10 of N'); /search/?q= lists All-Jobs incl. the Hearts On Fire (HOF) brand, which is a
+  // CTF subsidiary. Runs: 34 of 34, then 33 of 33 (board changed), ~3s. Locations read 'Hong
+  // Kong China', 'Macau China', 'Taipei, Taiwan China', 'Singapore', 'Kuala Lumpur, Malaysia'.
+  // HOME_COUNTRY for hongkong is /hong kong|china/, so WITHOUT hints 'Macau China' and 'Taipei,
+  // Taiwan China' filed on Hong Kong, and any mainland city HUB_MATCH does not name (Guangzhou,
+  // Wuhan...) would too. Hints: 'hong kong' -> hongkong first, Macau and Taiwan -> null, the
+  // three mainland hubs kept explicitly (hints run before HUB_MATCH), then ' china,' -> null so
+  // an unnamed mainland city stays unplaced instead of landing in Hong Kong. No blank locations
+  // seen.
+  {
+    id: "hongkong-01929",
+    name: "Chow Tai Fook Jewellery",
+    sector: "Consumer and Retail",
+    platform: "successfactors",
+    endpoint: "https://career.chowtaifook.com",
+    origin: "https://career.chowtaifook.com",
+    homeHub: "hongkong",
+    hubHints: [
+      ["hong kong", "hongkong"],
+      ["macau", null],
+      ["taiwan", null],
+      ["shanghai", "shanghai"],
+      ["beijing", "beijing"],
+      ["shenzhen", "shenzhen"],
+      [" china,", null],
+    ],
+  },
+  // Bowens Timber & Hardware — Measured 2026-09-29: bowens.com.au 403s this sandbox
+  // (Cloudflare) on every path; the board is Workday bowens.wd105.myworkdayjobs.com/BOW (found
+  // via search, answered the cxs API directly). total 10 then 8 (real churn; the walk matched
+  // total both times, ~1.5s). locationsText is a BARE STORE SUBURB: Bentleigh East, Hastings,
+  // Cheltenham, Belmont, Port Melbourne, Mt Evelyn, Heidelberg, Shepparton — without
+  // assumeHomeHub 7 of 10 resolved to no hub. Bowens is a single-state employer (19 stores, all
+  // Victoria, per its own careers copy), so assumeHomeHub:true is a claim about the employer,
+  // the UnitingCare case; Heidelberg/Cheltenham/Belmont are ambiguous names worldwide but on
+  // this board are Victorian stores. Shepparton (regional VIC) -> melbourne is the HUB_MATCH
+  // regional rule.
+  {
+    id: "priv-bowens-timber-hardware",
+    name: "Bowens Timber & Hardware",
+    sector: "Timber & hardware retail",
+    platform: "workday",
+    endpoint: "https://bowens.wd105.myworkdayjobs.com/wday/cxs/bowens/BOW/jobs",
+    origin: "https://bowens.wd105.myworkdayjobs.com/BOW",
+    homeHub: "melbourne",
+    assumeHomeHub: true,
+  },
+  // Uber Technologies — Measured 2026-09-29: uber.com/careers is behind a Cloudflare challenge,
+  // but jobs.uber.com points at Oracle Recruiting Cloud tenant iaziqy.fa.ocs.oraclecloud.com,
+  // site number UberCareers; the recruitingCEJobRequisitions finder answers directly.
+  // TotalJobsCount 552 -> fetched 552; second run 549 of 549 (churn), 7.6-8.2s at 25 a page.
+  // Global board (Tokyo 44, Sao Paulo 16, Mexico City ...), all non-hub places left unplaced.
+  // PrimaryLocation is 'City, ST, United States'; hint: 'Sunnyvale, CA' -> sanjose (47 rows,
+  // Santa Clara County; HUB_MATCH resolved it to nothing). 'San José, Costa Rica' is accented
+  // and not claimed by HUB_MATCH's 'san jose' - checked, stays null. No blank locations;
+  // 'United States'/'Australia' country-only rows stay unplaced (HOME_COUNTRY has no
+  // sanfrancisco entry).
+  {
+    id: "sanfrancisco-uber",
+    name: "Uber Technologies",
+    sector: "Technology, Media and Telecommunications",
+    platform: "oracle",
+    endpoint: "https://iaziqy.fa.ocs.oraclecloud.com",
+    origin: "https://iaziqy.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/UberCareers",
+    homeHub: "sanfrancisco",
+    siteNumber: "UberCareers",
+    hubHints: [["sunnyvale, ca", "sanjose"]],
+  },
+  // Expeditors International — Measured 2026-09-29: expeditors.com/careers/jobs/ embeds the
+  // SmartRecruiters widget (company_code 'Expeditors'); public postings API answers. First walk
+  // 500 of totalFound 500 (the round number was checked: per-country totals summed to 500 and
+  // offset 500+ is empty); ~40 min later totalFound 484 and the walk returned 484 twice (23 ids
+  // gone, 7 new - real churn). 3.3-4.8s. GLOBAL board, 43 countries (US 222, MX 40, DE 31, GB
+  // 25...). SmartRecruiters writes 'City, REGION, cc', so the ' wa,' needle filed
+  // Bellevue/Federal Way/Kent/Vancouver WA (18 rows) on PERTH and 'Brisbane, CA, us' (12) on
+  // brisbane, 'Melbourne, FL' on melbourne - all fixed by hints. Hints are same-metro only
+  // (Census MSA): Seattle (Kent, Federal Way, Bellevue), Vancouver WA -> portland,
+  // Brisbane/Hayward CA -> sanfrancisco, Milpitas -> sanjose, Hawthorne/Torrance/Carson ->
+  // losangeles, Irving/Grapevine/Addison -> dallas, Humble -> houston, Uniondale
+  // NY/Edison/Carteret NJ -> newyork, Folcroft PA -> philadelphia, Bensenville/Melrose Park ->
+  // chicago, Peabody MA -> boston, Aurora CO -> denver, Ellenwood GA -> atlanta, Eagan ->
+  // minneapolis, Plainfield IN -> indianapolis, Hebron KY -> cincinnati, Sterling VA ->
+  // washington, Richmond BC -> vancouver, Mississauga -> toronto, Roissy/Survilliers (IDF) ->
+  // paris, Feltham -> london, Kowloon Bay/Chek Lap Kok (country code 'hk', which HUB_MATCH does
+  // not read) -> hongkong. Left unplaced: Jurupa Valley (Riverside MSA), Elkridge MD
+  // (Baltimore), Doral FL (no Miami hub), Incheon, Narita/Shibayama. Seattle homeHub only
+  // catches a blank location; none seen.
+  {
+    id: "seattle-expd",
+    name: "Expeditors International",
+    sector: "Industrial Manufacturing",
+    platform: "smartrecruiters",
+    endpoint: "Expeditors",
+    origin: "https://www.expeditors.com/careers/jobs/",
+    homeHub: "seattle",
+    hubHints: [
+      ["kent, wa, us", "seattle"],
+      ["federal way, wa, us", "seattle"],
+      ["bellevue, wa, us", "seattle"],
+      ["vancouver, wa, us", "portland"],
+      ["melbourne, fl, us", null],
+      ["brisbane, ca, us", "sanfrancisco"],
+      ["hayward, ca, us", "sanfrancisco"],
+      ["milpitas, ca, us", "sanjose"],
+      ["hawthorne, ca, us", "losangeles"],
+      ["torrance, ca, us", "losangeles"],
+      ["carson, ca, us", "losangeles"],
+      ["irving, t", "dallas"],
+      ["grapevine, tx, us", "dallas"],
+      ["addison, tx, us", "dallas"],
+      ["humble, tx, us", "houston"],
+      ["uniondale, ny, us", "newyork"],
+      ["edison, nj, us", "newyork"],
+      ["carteret, nj, us", "newyork"],
+      ["folcroft, pa, us", "philadelphia"],
+      ["bensenville, il, us", "chicago"],
+      ["melrose park, il, us", "chicago"],
+      ["peabody, ma, us", "boston"],
+      ["aurora, co, us", "denver"],
+      ["ellenwood, ga, us", "atlanta"],
+      ["eagan, mn, us", "minneapolis"],
+      ["plainfield, in", "indianapolis"],
+      ["hebron, ky, us", "cincinnati"],
+      ["sterling, va, us", "washington"],
+      ["richmond, bc, ca", "vancouver"],
+      ["mississauga, on, ca", "toronto"],
+      ["roissy-en-france", "paris"],
+      ["survilliers", "paris"],
+      ["feltham", "london"],
+      ["kowloon bay, hk", "hongkong"],
+      ["chek lap kok, hk", "hongkong"],
+    ],
+  },
+  // Pernod Ricard — Measured 2026-09-29: pernod-ricard.com/en/careers links Workday
+  // pernodricard.wd3 site 'pernod-ricard' (one board for the whole group incl. Martell, Mumm,
+  // Chivas, Irish Distillers, Corby). total 296 then 300; the walk returns total-1 both times
+  // and the 'walk incomplete' log is EXPECTED: one posting (/job/_JR-033012-1) has no title at
+  // all and fetchWorkday rightly skips it (verified by a raw 300-row walk: 300 distinct paths,
+  // one untitled). ~16s (15 pages). Under 2,000, no partition. skipTitles drops 4 standing
+  // talent-pool posts: 'Pernod Ricard Australia / New Zealand Talent Community and Employee
+  // Referrals', '2026 National Black MBA Association Conference – Pernod Ricard Talent
+  // Community', 'On-Trade Talent Pool' (anchored at the end: 'Talent (Community|Pool)( and
+  // Employee Referrals)?$'). homeHub NULL on purpose: 12 postings carry no location (French
+  // internships/alternances, a stale 'Sales Data Analyst - Austria', and the AU/NZ talent
+  // community), and with homeHub paris they would all have filed in Paris — the AU one plainly
+  // wrong. Paris roles place via HUB_MATCH anyway (91). Hints: Fort Worth TX -> dallas, Irvine
+  // CA -> losangeles. Cognac (13), Marseille (30), Reims etc. are production sites with no hub
+  // and stay unplaced.
+  {
+    id: "paris-ri",
+    name: "Pernod Ricard",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://pernodricard.wd3.myworkdayjobs.com/wday/cxs/pernodricard/pernod-ricard/jobs",
+    origin: "https://pernodricard.wd3.myworkdayjobs.com/en-US/pernod-ricard",
+    homeHub: null,
+    hubHints: [
+      ["fort worth, tx", "dallas"],
+      ["irvine, ca", "losangeles"],
+    ],
+    skipTitles: /Talent (Community|Pool)( and Employee Referrals)?$/i,
+  },
+  // British American Tobacco — 2026-09-29: careers.bat.com is Radancy TalentBrew (search page
+  // data-total-results 275 then 283 an hour later; SuccessFactors behind it). The /en/search-
+  // jobs/results JSON endpoint answers the exact params fetchRadancy sends (RecordsPerPage=100
+  // honoured; the /search-jobs/results path without /en 301s), but fetchRadancy returns 0
+  // because this tenant's card markup differs from Chevron's: `<li class="search-results-job">`
+  // (reader splits on a bare `<li>`), title in `<h3 class="search-results-job-title">` (reader
+  // wants h2), location in `<span class="search-results-job-location">Location: Winston-Salem,
+  // NC</span>` (reader wants class="job-location", and the text carries a 'Location: ' prefix).
+  // READER FIX: split on /<li[\s>]/i; title /<h[23][^>]*>([\s\S]*?)<\/h[23]>/i; location
+  // /class="(?:job-location|search-results-job-location)"[^>]*>([\s\S]*?)<\/span>/i then strip
+  // /^Location:\s*/i. Non-job <li>s lack the data-job-id anchor and are already skipped, so
+  // Chevron/Capital One/AstraZeneca are unaffected. Simulated with that fix: 283 of 283 on two
+  // runs, 3 pages, <2 s. GLOBAL board with only 4 London roles (Southampton 3 is its own
+  // metro): Winston-Salem NC 36 (Reynolds American), Tokyo 16, Malang 13, Monterrey 12, Warsaw
+  // 12, Hamburg 9 ... homeHub NULL — every row states a location, and a London home hub would
+  // only mis-file a blank one. hubFor checked on every string: no trap fired (Brunswick GA,
+  // Albany GA, Lake Charles LA, Norman OK all stay unplaced). One hint: 'Hillcrest Heights,
+  // Prince George's County, MD' (1) -> washington (DC MSA). Locations arrive HTML-entity
+  // encoded (Nuevo Le&#xF3;n) — clean() must decode.
+  {
+    id: "london-bats",
+    name: "British American Tobacco",
+    sector: "Consumer and Retail",
+    platform: "radancy",
+    endpoint: "https://careers.bat.com/en/search-jobs/results",
+    origin: "https://careers.bat.com",
+    homeHub: null,
+    hubHints: [["hillcrest heights", "washington"]],
+  },
+  // NRMA Motoring & Services — 2026-09-29: mynrma.com.au/careers links to SmartRecruiters
+  // company MYNRMA (every posting's company 'My NRMA' — NRMA's motoring, Thrifty rental,
+  // holiday parks, ferries). API totalFound 192; fetched 192 on two runs in ~1.5 s, 178 after
+  // skipTitles. skipTitles drops the 14 standing talent-pool posts: 12 'Expression of Interest
+  // - Vehicle Detailer|Rental Sales Agent - <X> Airport', 'Expression of Interest: Management
+  // Couples', 'GPH - Deckhand (Expression of Interest)'. hubHints: the region field comes in
+  // two shapes, 'NSW' and 'AU-NSW' (e.g. 'Yamba, AU-NSW, au'); HUB_MATCH's ' nsw' needle needs
+  // a leading space so the AU- form went unplaced (61 of 192) and 'au' is not /australia/. The
+  // hints map the AU- forms exactly as HUB_MATCH already maps the bare state: au-nsw -> sydney
+  // (43), au-qld -> brisbane (13), au-tas -> hobart (5). With them 0 unplaced. homeHub sydney:
+  // one row reads 'Australia, au' and falls to it. As on every NSW row, regional places (Yamba,
+  // Coffs Harbour) land on sydney by the state rule.
+  {
+    id: "priv-nrma-motoring-services",
+    name: "NRMA Motoring & Services",
+    sector: "Insurance & motoring club",
+    platform: "smartrecruiters",
+    endpoint: "MYNRMA",
+    origin: "https://jobs.smartrecruiters.com",
+    homeHub: "sydney",
+    hubHints: [
+      ["au-nsw", "sydney"],
+      ["au-qld", "brisbane"],
+      ["au-tas", "hobart"],
+    ],
+    skipTitles: /^Expression of Interest\b|\(Expression of Interest\)\s*$/i,
+  },
+  // State Street — 2026-09-29: careers.statestreet.com is Phenom over Workday; the Workday cxs
+  // site statestreet/wd1/Global is read directly. Board total 1,355 at first measurement (two
+  // walks, 1,355 each, 65-70 s) and 1,111 an hour later (total re-read three times = 1,111; two
+  // walks, 1,111 each, 42-50 s) — the board itself shrank, not the walk. Under 2,000, so one
+  // feed, maxPages 80. Placement: 185 rows are '2 Locations'/'3 Locations'... (multi-location
+  // postings, Workday gives no place) and stay unplaced, as do Hyderabad, Krakow, Hangzhou,
+  // Pune, Dublin, Kilkenny, Gdansk, Princeton NJ (Trenton MSA), Stamford CT, Sacramento, Kansas
+  // City. hubHints (counts from the 1,355 walk): 'quincy, massachusetts' -> boston 100 (incl.
+  // North Quincy), 'burlington massachusetts' -> boston 74 (Workday writes it without a comma),
+  // 'cambridge, massachusetts' -> boston 2, 'clifton, new jersey' -> newyork 7 (Passaic County,
+  // NY MSA), 'jersey city' -> newyork (Hudson County), 'berwyn, pennsylvania' -> philadelphia 1
+  // (Chester County), 'irvine, california' -> losangeles 7 (Orange County). homeHub boston: no
+  // posting on this board has a blank location, so it is never used as a fallback except via
+  // HOME_COUNTRY (none for boston).
+  {
+    id: "boston-stt",
+    name: "State Street",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://statestreet.wd1.myworkdayjobs.com/wday/cxs/statestreet/Global/jobs",
+    origin: "https://statestreet.wd1.myworkdayjobs.com/en-US/Global",
+    homeHub: "boston",
+    maxPages: 80,
+    hubHints: [
+      ["quincy, massachusetts", "boston"],
+      ["burlington massachusetts", "boston"],
+      ["cambridge, massachusetts", "boston"],
+      ["clifton, new jersey", "newyork"],
+      ["jersey city", "newyork"],
+      ["berwyn, pennsylvania", "philadelphia"],
+      ["irvine, california", "losangeles"],
+    ],
+  },
+  // Hindustan Unilever — 2026-09-29: hul.co.in 403s this address on every path; HUL hires
+  // through Unilever's own Workday board (careers.unilever.com is Radancy over unilever.wd3
+  // Unilever_Experienced_Professionals; board total 224). appliedFacets locationCountry India =
+  // c4f78be1a8f14da0ab49ce1162348a5e, facet count 21, filtered walk 21 on two runs, ~2 s.
+  // CAVEAT: the India facet is Unilever-in-India, and 4 of the 21 are 'Uniops Bangalore Centre'
+  // / 'Unilever R&D Bangalore' (Unilever group entities, not HUL) — acceptable as HUL is
+  // Unilever's Indian arm, but say so. Locations are site names ('Mumbai HO', 'Mumbai HURC' ->
+  // mumbai; factories at Silvassa, Mysore, Etah, Rajpura, Pondicherry, Doom Dooma; regional
+  // offices Delhi/Kolkata; DC Patna) — none in the Mumbai metro beyond HO/HURC, so no hints.
+  // london-ulvr (Unilever) is on the roster too: if Unilever is wired from this board later, it
+  // must EXCLUDE India or the two feeds double-count.
+  {
+    id: "mumbai-hindunilvr",
+    name: "Hindustan Unilever",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint:
+      "https://unilever.wd3.myworkdayjobs.com/wday/cxs/unilever/Unilever_Experienced_Professionals/jobs",
+    origin: "https://unilever.wd3.myworkdayjobs.com/Unilever_Experienced_Professionals",
+    homeHub: "mumbai",
+    appliedFacets: { locationCountry: ["c4f78be1a8f14da0ab49ce1162348a5e"] },
+    maxPages: 10,
+  },
+  // TotalEnergies — Measured 2026-09-29: jobs.totalenergies.com is Avature, 20 a page; the
+  // tenant prints no 'N results' aria-label, so the total is read off the last page: offset
+  // 1040 serves 12 roles and offset 1060 none, i.e. 1,052. Two walks returned 1,052 of 1,052 in
+  // 34 s each. The LISTING CARRIES ONLY A COUNTRY - cells [date, country, employment type,
+  // employer company], so avatureCells.loc=2 - which is why homeHub is null and almost nothing
+  // places (France 382, United States 161, Mexico 63...; only 'Singapore' 10 resolves). The
+  // city exists only on each job page, labelled 'City' (e.g. 'PAU Area64 - Pyrenees-
+  // Atlantiques'), and avatureDetail reads a field labelled 'Location', which this tenant does
+  // not have, so it would return empty locations; a detail pass would also be 1,052 extra
+  // requests. 4 cards omit the country cell and the employment type ('Regular position') lands
+  // in the location - those 4 rows go unplaced, harmless for the map but a wrong location
+  // string in job_key. Improvement (not needed to ship): a configurable avatureDetail label
+  // ('City') would place the French roles.
+  {
+    id: "paris-tte",
+    name: "TotalEnergies",
+    sector: "Energy & Natural Resources",
+    platform: "avature",
+    endpoint: "https://jobs.totalenergies.com/en_US/careers/SearchJobs",
+    origin: "https://jobs.totalenergies.com",
+    homeHub: null,
+    pageSize: 20,
+    maxPages: 70,
+    avatureCells: { loc: 2 },
+  },
+  // Equinix — Measured 2026-09-29: equinix.wd1 External, total 262 (well under Workday's 2,000
+  // cap), 262 of 262 on two walks, 10-18 s. careers.equinix.com is a marketing front; the roles
+  // are this Workday site. Locations are bare site names (no state/country), so hints are per-
+  // site and each was checked against the posting's own country: Redwood City (12, HQ, San
+  // Mateo Co. -> sanfrancisco), Sunnyvale/Palo Alto (Santa Clara Co. -> sanjose), Secaucus NJ
+  // (3 -> newyork), Ashburn VA (2 -> washington), Pantin/Saint Denis (Paris metro), JP Minato-
+  // ku (tokyo), Brampton ON (toronto), Shenton Park (1, Australia per jobPostingInfo.country ->
+  // perth), Derrimut (1, Australia -> melbourne), Englewood (2, the description names 'DE2
+  // Denver' -> denver, not Englewood NJ), Elk Grove Village (1, US -> chicago), Torrance (1, US
+  // -> losangeles). Unplaced 142: 'N Locations' multi-site rows (73) and non-hub cities
+  // (Frankfurt, Amsterdam, Warsaw, Slough, Osaka...). Roster sector says Financial Services;
+  // Equinix is a data-centre REIT - sector kept as roster.
+  {
+    id: "sanfrancisco-eqix",
+    name: "Equinix",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://equinix.wd1.myworkdayjobs.com/wday/cxs/equinix/External/jobs",
+    origin: "https://equinix.wd1.myworkdayjobs.com/en-US/External",
+    homeHub: "sanfrancisco",
+    hubHints: [
+      ["redwood city", "sanfrancisco"],
+      ["sunnyvale", "sanjose"],
+      ["palo alto", "sanjose"],
+      ["secaucus", "newyork"],
+      ["ashburn", "washington"],
+      ["pantin", "paris"],
+      ["saint denis", "paris"],
+      ["minato-ku", "tokyo"],
+      ["brampton", "toronto"],
+      ["shenton park", "perth"],
+      ["derrimut", "melbourne"],
+      ["englewood", "denver"],
+      ["elk grove village", "chicago"],
+      ["torrance", "losangeles"],
+    ],
+  },
+  // Applied Materials — Measured 2026-09-29: careers.appliedmaterials.com is Eightfold PCS
+  // (/api/pcsx/search, domain=appliedmaterials.com), data.count 1,990-1,991 - a real count, not
+  // a cap (start=1990 returns 1 row, start=2000 none). Seven walks with the real fetcher
+  // returned 1,971-1,989 (99.0-99.9%), 27-216 s: fast runs ~30 s, but the tenant throttles the
+  // 6-wide window on some runs and the retry pass stretches it to ~110-216 s - fine inside an
+  // awaited tick, not in a shared 30 s one. A sequential 3-wide python walk got 1,985 of 1,985
+  // unique with 0 failures, so the shortfall is failed pages, not duplicates. Endpoint
+  // deliberately has NO sort_by: the default order was byte-identical on repeated pages, while
+  // sort_by=timestamp ties (1,978 unique of 1,985). maxPages 260 so growth past 2,000 is not
+  // truncated (default is 200 = exactly today's board). Hints: 'San Francisco,CRI' is San
+  // Francisco de Heredia, COSTA RICA (3) -> null, before anything else; 'Santa Clara,CA' (465+
+  // single, plus multi-site strings led by it) -> sanjose; 'Hillsboro,OR' (14 + multi) ->
+  // portland (Washington County, Portland MSA). 'Gloucester,MA' (65, Varian, Essex Co.) and
+  // 'Billerica,MA' (25, Middlesex Co.) -> boston: both counties are in the Boston-Cambridge-
+  // Newton MSA, the rule GOOGLE_HUB_HINTS applies. Left unplaced: Benicia CA (Vallejo MSA),
+  // Albany NY, Phoenix/Tempe/Chandler (no hub), Asia fabs. skipTitles drops 1 evergreen
+  // pipeline req ('Process Support Engineer ... (Future Opportunities)').
+  {
+    id: "sanjose-amat",
+    name: "Applied Materials",
+    sector: "Technology, Media and Telecommunications",
+    platform: "eightfoldpcs",
+    endpoint: "https://careers.appliedmaterials.com/api/pcsx/search?domain=appliedmaterials.com",
+    origin: "https://careers.appliedmaterials.com",
+    homeHub: "sanjose",
+    maxPages: 260,
+    hubHints: [
+      ["san francisco,cri", null],
+      ["santa clara,ca", "sanjose"],
+      ["santa clara, ca", "sanjose"],
+      ["hillsboro,or", "portland"],
+      ["gloucester,ma", "boston"],
+      ["billerica,ma", "boston"],
+    ],
+    skipTitles: /\(Future Opportunities\)$/i,
+  },
+  // Valterra Platinum — Measured 2026-09-29: valterraplatinum.com/working-here/opportunities-
+  // valterra/ embeds SmartRecruiters company 'ValterraPlatinum1' (Anglo American Platinum's
+  // successor); API totalFound 25, fetched 25 of 25 twice, <1 s. Placement: 5 Johannesburg
+  // (head office, 'Johannesburg, GP, za'); 20 at the mines - Burgersfort, Steelpoort,
+  // Thabazimbi, Mokopane, Sekhukhune (Limpopo), Rustenburg (North West), Mashishing (MP) - left
+  // unplaced, they are 100-300 km from Johannesburg. The ', za' suffix does not trip the ', sa'
+  // -> adelaide trap. No standing CV posts.
+  {
+    id: "johannesburg-val",
+    name: "Valterra Platinum",
+    sector: "Energy & Natural Resources",
+    platform: "smartrecruiters",
+    endpoint: "ValterraPlatinum1",
+    origin: "https://jobs.smartrecruiters.com",
+    homeHub: "johannesburg",
+  },
+  // Barry Callebaut — Measured 2026-09-29: jobs.barry-callebaut.com is SuccessFactors
+  // (www.barry-callebaut.com 403s this sandbox); the board's own pager says 'of 164', fetched
+  // 164 of 164 twice, 2-5 s. Global board, cell shape 'City, [state,] CC, postcode'. Hints:
+  // 'Eddystone, PA' (12, Delaware County) and 'Pennsauken' (2, NJ, Camden County) are
+  // Philadelphia MSA. Unplaced 131 are real non-hub sites (Lebbeke-Wieze BE 14, Lodz 13,
+  // American Canyon CA 8, Meulan FR 7, St. Albans VT 6 - correctly NOT London,
+  // Brantford/Chatham ON - correctly not London ON...). Zurich HQ holds 3.
+  {
+    id: "zurich-barn",
+    name: "Barry Callebaut",
+    sector: "Consumer and Retail",
+    platform: "successfactors",
+    endpoint: "https://jobs.barry-callebaut.com",
+    origin: "https://jobs.barry-callebaut.com",
+    homeHub: "zurich",
+    hubHints: [
+      ["eddystone, pa", "philadelphia"],
+      ["pennsauken", "philadelphia"],
+    ],
+  },
+  // Visa — Measured 2026-09-29: corporate.visa.com/careers points to visa.wd5 'Visa'; total 750
+  // (under Workday's 2,000 cap, no partition needed), 750 of 750 on two walks, 43-47 s (38
+  // pages; maxPages 60 leaves headroom - the default 40 would truncate at 800). Locations read
+  // 'US - Foster City, CA'. Hints: 'foster city, ca' (59, HQ, San Mateo Co. -> sanfrancisco),
+  // 'bellevue, wa' (9 -> seattle, must beat ' wa,' -> perth), 'ashburn, va' (11 -> washington),
+  // 'san jose, costa rica' -> null (none today; guards HUB_MATCH 'san jose'). 'SA - Riyadh,
+  // Saudi Arabia' (11) stays unplaced, not adelaide. Unplaced 261: 'N Locations' (51) and non-
+  // hub cities (Bogota 21, Sao Paulo 14, Warsaw 14, Miami 13...).
+  {
+    id: "sanfrancisco-v",
+    name: "Visa",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://visa.wd5.myworkdayjobs.com/wday/cxs/visa/Visa/jobs",
+    origin: "https://visa.wd5.myworkdayjobs.com/en-US/Visa",
+    homeHub: "sanfrancisco",
+    maxPages: 60,
+    hubHints: [
+      ["foster city, ca", "sanfrancisco"],
+      ["bellevue, wa", "seattle"],
+      ["ashburn, va", "washington"],
+      ["san jose, costa rica", null],
+    ],
+  },
+  // Hong Kong Exchanges and Clearing — Measured 2026-09-29: hkexgroup.com Careers-at-HKEX links
+  // to hkex.wd3 'HKEXCareerPage'; total 167, 167 of 167 twice, ~7 s. Includes 5 London Metal
+  // Exchange roles ('UK-London', hiringCompany LME - an HKEX subsidiary) and 22 HKEX Technology
+  // (Shenzhen) roles; both are the group's own and are kept. Locations are office codes: 'HK-
+  // TKO 5/F', 'HK-ONE ES 30/F' -> hint ' hk-' -> hongkong (115); 'CN-Shenzhen-HyQ' -> shenzhen
+  // via HUB_MATCH. 6 postings have NO location (locationsText null, bulletFields = requisition
+  // id only) - all Listing/IPO-vetting roles (e.g. 'AVP, Listing Enforcement', 'Operation
+  // Officer (IPO Vetting)'), which are Hong Kong regulatory functions, so falling to homeHub
+  // hongkong is right. 18 '2 Locations' rows stay unplaced; jobPostingInfo shows every one has
+  // a Hong Kong primary site plus a Shenzhen/HK secondary, but that is only visible on the
+  // detail page.
+  {
+    id: "hongkong-00388",
+    name: "Hong Kong Exchanges and Clearing",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://hkex.wd3.myworkdayjobs.com/wday/cxs/hkex/HKEXCareerPage/jobs",
+    origin: "https://hkex.wd3.myworkdayjobs.com/en-US/HKEXCareerPage",
+    homeHub: "hongkong",
+    hubHints: [[" hk-", "hongkong"]],
+  },
 ];
 
 /**
@@ -13850,6 +18439,158 @@ export const PORTAL_GROUPS: string[][] = [
   ["houston-bkr-3"],
   ["portland-nke-a"],
   ["portland-nke-b"],
+  // Groups 202-208 — the 2026-09-29 fourth batch, PACKED: several boards to
+  // a tick, up to ~150 s of measured walk each, which is only sound because
+  // portal ticks are awaited (15 min) since the same day. The CPU each walk
+  // used was measured too, at 0.1-1.2 s a feed, so a group stays far inside
+  // the CPU limit. Windows of one board share a group, so they run back to
+  // back and the board has little time to move between them.
+  [
+    "paris-air-eu1",
+    "paris-air-eu2",
+    "paris-air-eu3",
+    "paris-air-eu4",
+    "paris-air-eu5",
+    "paris-air-eu6",
+    "paris-air-eu7",
+    "paris-air-row1",
+    "paris-air-row2",
+    "paris-air-row3",
+  ],
+  [
+    "paris-air-row4",
+    "paris-air-row5",
+    "paris-air-row6",
+    "chicago-abt-sales-1",
+    "chicago-abt-sales-2",
+    "chicago-abt-sales-3",
+    "chicago-abt-ops-1",
+    "chicago-abt-ops-2",
+    "chicago-abt-support",
+    "chicago-abt-quality-rd-1",
+    "chicago-abt-quality-rd-2",
+  ],
+  [
+    "chicago-abt-mkt-bizsupport",
+    "chicago-abt-corporate-1",
+    "chicago-abt-corporate-2",
+    "zurich-abbn-ops1",
+    "zurich-abbn-ops2",
+    "zurich-abbn-sales1",
+    "zurich-abbn-sales2",
+    "zurich-abbn-c",
+    "zurich-abbn-d",
+    "zurich-abbn-e",
+  ],
+  ["zurich-nesn", "minneapolis-mdt-a", "minneapolis-mdt-b"],
+  [
+    "minneapolis-mdt-c",
+    "london-rel-a",
+    "london-rel-b",
+    "london-rel-c",
+    "sanjose-panw-1",
+    "sanjose-panw-2",
+    "sanjose-panw-3",
+    "sanjose-panw-4",
+    "seoul-005930-a",
+    "seoul-005930-b",
+  ],
+  [
+    "hongkong-00992-a",
+    "hongkong-00992-b",
+    "hongkong-00992-c",
+    "hongkong-00992-d",
+    "toronto-tri-1",
+    "toronto-tri-2",
+    "paris-engi",
+    "london-dge-a",
+    "london-dge-b",
+    "sanjose-pypl",
+    "singapore-z74",
+    "calgary-ntr-na",
+    "calgary-ntr-au",
+    "dallas-txn",
+    "sanjose-nflx",
+  ],
+  [
+    "houston-xom",
+    "johannesburg-ang",
+    "newyork-cl",
+    "london-azn",
+    "priv-winslow-constructors",
+    "london-aal",
+    "tokyo-6981",
+    "beach",
+    "sanfrancisco-dbx",
+  ],
+  // Groups 209-214 — the 2026-09-29 fifth batch, PACKED: several boards to
+  // a tick, up to ~150 s of measured walk each, which is only sound because
+  // portal ticks are awaited (15 min) since the same day. The CPU each walk
+  // used was measured too, at 0.1-1.2 s a feed, so a group stays far inside
+  // the CPU limit. Windows of one board share a group, so they run back to
+  // back and the board has little time to move between them.
+  ["toronto-ry-a"],
+  ["toronto-ry-b", "toronto-ry-c"],
+  ["charlotte-bac", "denver-vfc"],
+  ["washington-dhr", "newyork-ma"],
+  ["dallas-cat", "sanjose-csco", "zurich-novn", "newyork-pfe"],
+  [
+    "newyork-met",
+    "newyork-gs",
+    "toronto-slf",
+    "toronto-slf-campus",
+    "london-sn",
+    "paris-pub",
+    "london-hln",
+    "sanjose-amd",
+    "sanjose-now",
+    "priv-perfection-fresh",
+    "zurich-givn",
+    "johannesburg-abg",
+    "priv-norco-co-op",
+    "hgo",
+    "johannesburg-gfi",
+    "johannesburg-sbk",
+    "brisbane-crn",
+    "melbourne-pxa",
+    "adelaide-c79",
+  ],
+  // Groups 215-217 — the 2026-09-30 sixth batch, PACKED: several boards to
+  // a tick, up to ~150 s of measured walk each, which is only sound because
+  // portal ticks are awaited (15 min) since the same day. The CPU each walk
+  // used was measured too, at 0.1-1.2 s a feed, so a group stays far inside
+  // the CPU limit. Windows of one board share a group, so they run back to
+  // back and the board has little time to move between them.
+  [
+    "chicago-abbv-allergan-aesthetics",
+    "chicago-abbv-commercial",
+    "chicago-abbv-corporate",
+    "chicago-abbv-operations",
+    "chicago-abbv-rd",
+    "sanfrancisco-v",
+  ],
+  [
+    "boston-stt",
+    "paris-tte",
+    "sanjose-amat",
+    "paris-ri",
+    "sanfrancisco-uber",
+    "sanfrancisco-eqix",
+    "hongkong-00388",
+    "tokyo-6301-us",
+  ],
+  [
+    "tokyo-6301-au",
+    "hongkong-01929",
+    "seattle-expd",
+    "zurich-barn",
+    "newyork-spgi",
+    "mumbai-hindunilvr",
+    "london-bats",
+    "priv-nrma-motoring-services",
+    "priv-bowens-timber-hardware",
+    "johannesburg-val",
+  ],
 ];
 
 const UA =
@@ -14829,11 +19570,21 @@ async function fetchEightfold(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? 200; // HSBC alone is ~1,500 roles at 10 a page
   const positions = await pagedParallel<EightfoldPos>(
     async (i) => {
-      const json = await getJson<{ positions?: EightfoldPos[] }>(
-        `${site.endpoint}&start=${i * EF_PAGE}&num=${EF_PAGE}`,
-      );
+      // A FAILED PAGE IS RETRIED, spaced, before it counts as a miss — as
+      // fetchEightfoldPcs already does. Measured 2026-09-29 on Netflix: after
+      // ~5 full walks in 10 minutes the tenant answered 429 and the next walks
+      // collected 298, then 0, of 476, recovering after ~5 minutes. One daily
+      // walk never tripped it, but a run that does should lose a pause, not
+      // the board.
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+        const json = await getJson<{ positions?: EightfoldPos[] }>(
+          `${site.endpoint}&start=${i * EF_PAGE}&num=${EF_PAGE}`,
+        );
+        if (json) return json.positions ?? [];
+      }
       // null, not [] — see the pagedParallel contract.
-      return json ? (json.positions ?? []) : null;
+      return null;
     },
     EF_PAGE,
     max,
@@ -15528,7 +20279,7 @@ async function phenomWidget(
         country: "us",
         pageName: "search-results",
         ddoKey: "refineSearch",
-        sortBy: "",
+        sortBy: site.phenomSort ?? "",
         subsearch: "",
         from,
         jobs: true,
@@ -17157,6 +21908,7 @@ async function sfRmkPage(
   site: SiteDef,
   page: number,
   facetFilters?: Record<string, string[]>,
+  locale = "en_GB",
 ): Promise<{ hits: SfRmkJob[]; total: number } | null> {
   const res = await getJson<{
     jobSearchResult?: { response?: SfRmkJob }[];
@@ -17166,7 +21918,7 @@ async function sfRmkPage(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       keywords: "",
-      locale: "en_GB",
+      locale,
       location: "",
       pageNumber: page,
       sortBy: site.sfRmkSort ?? "recent",
@@ -17187,16 +21939,17 @@ async function sfRmkPage(
 async function sfRmkWalk(
   site: SiteDef,
   facetFilters?: Record<string, string[]>,
+  locale?: string,
 ): Promise<SfRmkJob[] | null> {
-  const first = await sfRmkPage(site, 0, facetFilters);
+  const first = await sfRmkPage(site, 0, facetFilters, locale);
   if (!first) return null;
   const out = [...first.hits];
   const pages = Math.ceil(first.total / 10);
   const rest = await pagedParallel(
-    async (i) => (await sfRmkPage(site, i + 1, facetFilters))?.hits ?? null,
+    async (i) => (await sfRmkPage(site, i + 1, facetFilters, locale))?.hits ?? null,
     10,
     Math.max(0, pages - 1),
-    `${site.key ?? site.id}${facetFilters ? ` ${JSON.stringify(facetFilters)}` : ""}`,
+    `${site.key ?? site.id}${facetFilters ? ` ${JSON.stringify(facetFilters)}` : ""}${locale ? ` ${locale}` : ""}`,
   );
   return [...out, ...rest];
 }
@@ -17255,8 +22008,64 @@ async function fetchSfRmkFaceted(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+/**
+ * `unifiedStandardStart` is written in the LOCALE's own date order: en_US
+ * "9/29/26" (m/d/yy), en_GB "29/09/2026". Only the orders measured are read;
+ * anything else is left undated rather than guessed.
+ */
+function sfRmkDate(raw: string, locale: string): string {
+  const v = raw.trim();
+  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(v);
+  if (m) return isoDay(`${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`);
+  m = /^(\d{1,2})[/.](\d{1,2})[/.](\d{2}|\d{4})$/.exec(v);
+  if (!m) return "";
+  const year = m[3].length === 2 ? `20${m[3]}` : m[3];
+  const [mo, d] = locale === "en_US" ? [m[1], m[2]] : [m[2], m[1]];
+  return isoDay(`${year}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`);
+}
+
+/** The per-locale walk (SiteDef.sfRmkLocales), merged by id. */
+async function fetchSfRmkLocales(site: SiteDef): Promise<PortalJob[]> {
+  const byId = new Map<string, { r: SfRmkJob; locale: string }>();
+  const walks = await Promise.all(
+    (site.sfRmkLocales ?? []).map(async (locale) => ({
+      locale,
+      rows: await sfRmkWalk(site, undefined, locale),
+    })),
+  );
+  // Locales are merged in the order the site lists them, so the first wins.
+  for (const { locale, rows } of walks) {
+    for (const r of rows ?? []) if (!byId.has(String(r.id))) byId.set(String(r.id), { r, locale });
+  }
+  const out: PortalJob[] = [];
+  for (const { r, locale } of byId.values()) {
+    const title = clean(r.unifiedStandardTitle ?? "");
+    if (!title) continue;
+    const loc = (r.jobLocationShort ?? [])
+      .map((x) => clean(x))
+      .filter(Boolean)
+      .join("; ");
+    const cat = [r.filter2?.[0], r.businessUnit_obj?.[0], r.custEmploymentType?.[0]]
+      .filter(Boolean)
+      .map((x) => clean(String(x)))
+      .join(" — ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/job/${clean(r.urlTitle ?? "")}/${r.id}-${locale}`,
+        sfRmkDate(r.unifiedStandardStart ?? "", locale),
+        cat || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
 async function fetchSfRmkApi(site: SiteDef): Promise<PortalJob[]> {
   if (site.sfRmkPlaces) return fetchSfRmkFaceted(site);
+  if (site.sfRmkLocales) return fetchSfRmkLocales(site);
   const rows = new Map<string, SfRmkJob>();
   let total = 0;
   for (let pass = 0; pass < SFRMK_PASSES; pass++) {
@@ -18648,7 +23457,17 @@ async function fetchAttrax(site: SiteDef): Promise<PortalJob[]> {
   const MISS_BUDGET = 3;
   let misses = 0;
   for (let page = 1; page <= max;) {
-    const html = await getText(`${site.endpoint}?page=${page}&size=${size}`);
+    // `searchParams` narrows the board, and is how a board over Attrax's page
+    // cap is read at all. Measured 2026-09-29 on AbbVie: Attrax serves at
+    // most 25 pages — from page 25 every page repeats the same 48 ids — so an
+    // unfiltered walk of 1,581 stops at exactly 1,200 without a word. Split by
+    // the board's own Function filter (options=8..12, counts summing to the
+    // total, each under the cap), every role is reachable. Appended with "&",
+    // because an endpoint carrying "?options=8" produced "?options=8?page=1",
+    // which returns nothing.
+    const html = await getText(
+      `${site.endpoint}?page=${page}&size=${size}${site.searchParams ? `&${site.searchParams}` : ""}`,
+    );
     if (!html) {
       if (++misses <= MISS_BUDGET) continue;
       break;
@@ -19116,12 +23935,18 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
       if (!total) break;
     }
     let added = 0;
-    for (const li of html.split(/<li>/i).slice(1)) {
+    // TWO CARD SHAPES, measured 2026-09-29. Chevron, Capital One and
+    // AstraZeneca serve a bare `<li>` with an `<h2>` title and
+    // `class="job-location"`; BAT serves `<li class="search-results-job">`, an
+    // `<h3>` title and `class="search-results-job-location"` whose text starts
+    // "Location: ". Reading only the first shape returned 0 of BAT's 283. A
+    // `<li>` without the data-job-id anchor is not a job and is still skipped.
+    for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
       const href = clean(a[1]);
       const id = clean(a[2]) || href;
-      const title = clean(li.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] ?? "");
+      const title = clean(li.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)?.[1] ?? "");
       if (!title || seen.has(id)) continue;
       seen.add(id);
       added++;
@@ -19129,7 +23954,11 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
         job(
           site,
           title,
-          clean(li.match(/class="job-location"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ?? ""),
+          clean(
+            li.match(
+              /class="(?:job-location|search-results-job-location)"[^>]*>([\s\S]*?)<\/span>/i,
+            )?.[1] ?? "",
+          ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
           // The list carries no posting date, only the job page does. Dating
           // every row "today" would be a fabricated field; the archive's
