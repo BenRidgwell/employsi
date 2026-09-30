@@ -20742,7 +20742,13 @@ async function fetchMartianLogic(site: SiteDef): Promise<PortalJob[]> {
           // "Kalgoorlie | Western Australia" — the pipe is the site's own
           // separator, not part of either field.
           (r.location || "").split("|").map(clean).filter(Boolean).join(", "),
-          r.advertUrl || site.origin,
+          // The API sends no advertUrl (measured 2026-09-30 on Lynas and
+          // Nepean), so every row linked to the site root. The board's own
+          // code links a job as <client>/<id>, and those pages load.
+          r.advertUrl ||
+            (r.id != null
+              ? `https://jobboards.martianlogic.com/${site.endpoint}/${r.id}/`
+              : site.origin),
           (r.postedDate || "").slice(0, 10),
           (r.type || "").trim() || "Career portal",
         ),
