@@ -217,7 +217,9 @@ type Platform =
   | "sgquantum"
   | "wisetech"
   | "x0pa"
-  | "workdaystores";
+  | "workdaystores"
+  | "applynow"
+  | "hutchies";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -23912,6 +23914,200 @@ export const SITES: SiteDef[] = [
       ["norwell, ma", "boston"],
     ],
   })),
+  // ── batch 13: J ──
+  //
+  // Measured 2026-09-30. Wired below: Domino's, Regis Healthcare, Alliance
+  // Aviation, Amplitude Energy (Cooper Energy), Hutchies, Mainfreight (NZ),
+  // Fonterra, Todd Corporation. Checked and NOT wired, each for a measured
+  // reason:
+  //   NAB, Stockland, TechnologyOne, Dyno Nobel, Sandfire, EVT, BMD, Uniting,
+  //     Avant Mutual, Built — ALREADY FED, by GitHub Actions writing under the
+  //     roster id (portal-cl, portal-sf, portal-t1, portal-tl, portal-dayforce,
+  //     portal-pu), with live rows in D1 on 2026-09-30. No Worker duplicate.
+  //   Opal HealthCare — Dayforce (jobs.dayforcehcm.com/en-AU/opalhealthcare/
+  //     CANDIDATEPORTAL). /api/geo/opalhealthcare/jobposting/search answers
+  //     this sandbox a bare 403, the same wall scripts/dayforce-to-d1.py
+  //     documents; its PORTALS table is where Opal belongs, not here.
+  //   Kane Constructions — ELMO tenant `kane`, boards KaneVIC/KaneNSW/KaneQLD,
+  //     8 posts each and all 24 are standing "(EOI - Kane VIC)" expressions of
+  //     interest closing 31/12/2030. No vacancies to read.
+  //   Mainfreight AU — ConnX tenant mainfreightaucareers: 5 rows, 4 flagged
+  //     isExpressionOfInterest and the fifth a graduate programme with no
+  //     place. Americas/Europe/Asia pages are static role descriptions and an
+  //     open-application form. Only the NZ Teamtailor board is wired.
+  //   Pro Medicus (Visage Imaging) — visageimaging.com/about/careers is a
+  //     static WordPress accordion (Berlin / San Diego roles, apply by email),
+  //     no ids, no dates: nothing distinguishes an open role from a filled one.
+  //   Resolute Mining, Magellan Financial Group, Atlas Arteria — no careers
+  //     board on rml.com.au, magellaninvestmentpartners.com or
+  //     atlasarteria.com (LinkedIn / recruiters only).
+  //   ABC Tissue — abctissue.com (the .com.au certificate is for another host)
+  //     has no careers page at all.
+  //   NGP Group — unidentified; the roster's own privateLogos note says no
+  //     domain identifies it, so there is no board to find.
+  //   Infratil — externally managed (Morrison), no staff of its own.
+  //
+  // Domino's Pizza Enterprises — applynow.net.au, the ANZ store + support
+  // board; 1,315 roles in one GET (see fetchApplyNow). CAVEAT FOR THE READER
+  // OF THE CARD: this is the network's store recruitment, and most Domino's
+  // ANZ stores are franchised; the board does not say which store is
+  // corporate, so these are Domino's-branded store roles rather than DPE's
+  // own payroll. The support-office board (dominos-supportoffice.
+  // applynow.net.au) prints "no vacancies" today, so whether its roles also
+  // appear on this board could not be measured; it is not a feed yet.
+  // homeHub null: the board is national and trans-Tasman, and 154 rows name a
+  // bare place with no state, which must stay unplaced rather than default.
+  {
+    id: "brisbane-dmp",
+    name: "Domino's Pizza Enterprises",
+    sector: "Consumer & Retail",
+    platform: "applynow",
+    endpoint: "https://dpe-jobs-portal.applynow.net.au/",
+    origin: "https://dpe-jobs-portal.applynow.net.au",
+    homeHub: null,
+    hubHints: [
+      // Measured NZ stores in Auckland's own suburbs.
+      ["new lynn, new zealand", "auckland"],
+      ["onehunga, new zealand", "auckland"],
+    ],
+  },
+  // Regis Healthcare — Avature (regis.avature.net), 6 a page, aria-label
+  // "112 results" and 112 read. The location cell is a BARE SUBURB, the
+  // facility's ("Toowong", "Kippa-Ring", "Tiwi"), across every state, and the
+  // job page adds nothing ("Office Location: Toowong"). So homeHub is null and
+  // hubHints name only suburbs MEASURED on this board that sit inside a hub
+  // metro; regional homes (Drysdale, Torquay, Mildura, Redlynch, Kirwan,
+  // Whitfield, Kuluin, Port Macquarie, Elermore Vale, Legana…) stay unplaced.
+  // Salisbury, Armadale and Woodlands exist in two states each and the board
+  // does not say which — left unplaced. Camp Hill's own job slugs read
+  // "Queensland-Australia-…", and Camberwell is Regis's Victorian office.
+  {
+    id: "melbourne-reg",
+    name: "Regis Healthcare",
+    sector: "Healthcare & Life Sciences",
+    platform: "avature",
+    endpoint: "https://regis.avature.net/en_US/careers/SearchJobs",
+    origin: "https://regis.avature.net",
+    pageSize: 6,
+    homeHub: null,
+    hubHints: [
+      ["kippa-ring", "brisbane"],
+      ["holland park west", "brisbane"],
+      ["sandgate", "brisbane"],
+      ["toowong", "brisbane"],
+      ["aspley", "brisbane"],
+      ["the gap", "brisbane"],
+      ["greenbank", "brisbane"],
+      ["wynnum west", "brisbane"],
+      ["camp hill", "brisbane"],
+      ["ferny grove", "brisbane"],
+      ["morayfield", "brisbane"],
+      ["chelmer", "brisbane"],
+      ["birkdale", "brisbane"],
+      ["lutwyche", "brisbane"],
+      ["mill park", "melbourne"],
+      ["camberwell", "melbourne"],
+      ["frankston", "melbourne"],
+      ["east malvern", "melbourne"],
+      ["blackburn south", "melbourne"],
+      ["davoren park", "adelaide"],
+      ["marleston", "adelaide"],
+      ["linden park", "adelaide"],
+      ["tiwi", "darwin"],
+    ],
+  },
+  // Alliance Aviation Services — AdLogic widget on careers.allianceairlines
+  // .com.au (page_id=4, read off the inline adlogicJobSearch config). 6 roles
+  // in one request, every one "…, Queensland, Australia" (Pinkenba, Nundah,
+  // Rockhampton). The standing "Expression of Interest Rockhampton" is dropped.
+  {
+    id: "brisbane-aqz",
+    name: "Alliance Aviation Services",
+    sector: "Consumer & Retail",
+    platform: "adlogic",
+    endpoint: "https://careers.allianceairlines.com.au/adlogic-jobs?action=searchJobs&page_id=4",
+    origin: "https://careers.allianceairlines.com.au",
+    homeHub: "brisbane",
+    skipTitles: /expression of interest/i,
+  },
+  // Amplitude Energy (formerly Cooper Energy; roster id adelaide-coe) —
+  // amplitudeenergy.com.au/work-with-us/careers links this ELMO board, which
+  // printed "No jobs found" on 2026-09-30. Wired anyway: the ELMO reader is
+  // the one Steadfast and Regis Resources use, an empty pull is never
+  // written, and the day it advertises the roles arrive without a new look.
+  {
+    id: "adelaide-coe",
+    name: "Cooper Energy",
+    sector: "Energy & Natural Resources",
+    platform: "elmo",
+    endpoint: "https://cooperenergy.elmotalent.com.au/careers/careers-1724882256/jobs",
+    origin: "https://cooperenergy.elmotalent.com.au",
+    homeHub: "adelaide",
+  },
+  // Hutchies (Hutchinson Builders) — its own CMS opportunities page; see
+  // fetchHutchies. 18 roles after the standing "General Applications" card.
+  // homeHub null: Hutchies is national and every role states its place.
+  {
+    id: "priv-hutchies-builders",
+    name: "Hutchies Builders",
+    sector: "Commercial construction",
+    platform: "hutchies",
+    endpoint: "https://www.hutchinsonbuilders.com.au/careers/opportunities",
+    origin: "https://www.hutchinsonbuilders.com.au",
+    homeHub: null,
+    skipTitles: /^general applications$/i,
+  },
+  // Mainfreight — NZ board only: Teamtailor, mainfreightnewzealand.au
+  // .teamtailor.com, linked as "Current Vacancies" from the NZ careers page.
+  // The board prints "14 jobs" and 14 are read. Places are branch names
+  // ("Mainfreight Transport Palmerston North", "Daily Freight Christchurch");
+  // the two Savill IT roles carry no place and their titles say Auckland,
+  // which is also the home fallback. Palmerston North, Blenheim, Timaru and
+  // Cromwell stay unplaced; Christchurch is HUB_MATCH's -> wellington.
+  {
+    id: "nz-mainfreight",
+    name: "Mainfreight",
+    sector: "Transport & Logistics",
+    platform: "teamtailor",
+    endpoint: "https://mainfreightnewzealand.au.teamtailor.com/jobs",
+    origin: "https://mainfreightnewzealand.au.teamtailor.com",
+    homeHub: "auckland",
+  },
+  // Fonterra — Avature (careers.fonterra.com), 6 a page, "31 results" and 31
+  // read. The LISTING's location span is REGION-level and prefixed with a
+  // hidden "location:" label that the listing parser reads past to the
+  // "posted:" label, so the job-page path (avatureDetail) is used: its
+  // Location field reads "Auckland", "Canterbury", "Hamilton & North
+  // Waikato", "Netherlands". 31 detail pages, ~17 s. Regions outside a hub
+  // metro (Canterbury, Taranaki, Otago, Southland, Northland, Manawatu) stay
+  // unplaced; Waikato/Taupo resolve through HUB_MATCH.
+  {
+    id: "nz-fonterra-co-operative-group",
+    name: "Fonterra Co-operative Group",
+    sector: "Dairy & Food",
+    platform: "avature",
+    endpoint: "https://careers.fonterra.com/careers/SearchJobs",
+    origin: "https://careers.fonterra.com",
+    pageSize: 6,
+    avatureDetail: true,
+    homeHub: "auckland",
+  },
+  // Todd Corporation (Todd Energy, Nova Energy, Todd Corporate Services) —
+  // JobAdder widget. todd.co.nz/working-at-todd lists three roles whose
+  // apply.jobadder.com/18221/<id>/pxhqmizqpzxunmxrolokdmnvi4?site=au2 links
+  // ALL 302 to /closed/ — the CMS list is stale. The widget keyed by that
+  // same board (AU2_pxhq…) is the live list: 2 roles, "Page 1 of 1",
+  // both apply links 200. homeHub null: one row is "Taranaki", which the
+  // widget reader cannot place and would otherwise default to Wellington.
+  {
+    id: "nz-todd-corporation",
+    name: "Todd Corporation",
+    sector: "Energy & Investment",
+    platform: "jobadder",
+    endpoint: "AU2_pxhqmizqpzxunmxrolokdmnvi4",
+    origin: "https://todd.co.nz/working-at-todd",
+    homeHub: null,
+  },
 ];
 
 /**
@@ -36008,6 +36204,161 @@ async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
   });
 }
 
+// ── batch 13 J: applynow.net.au job blocks (Domino's), Hutchies' own page ────
+
+/**
+ * applynow.net.au candidate board — the whole board server-rendered as one
+ * page of `<div data-… class="jobblock block">` elements, every field a data-
+ * attribute (data-id, data-title, data-location, data-address_state,
+ * data-created_at, data-url). The page's own React filter bar is fed from
+ * exactly those divs (`staticJobs`), so the divs ARE the board: there is no
+ * pager, no API and no printed total.
+ *
+ * Measured 2026-09-30 on Domino's (dpe-jobs-portal.applynow.net.au): ONE GET,
+ * 1.58 MB, 1,315 blocks, 1,315 distinct data-id.
+ *
+ * TRAPS, all measured on that pull:
+ *   - `data-country` is "Australia" on EVERY row, including the 28 New Zealand
+ *     stores, so it is never read.
+ *   - `data-address_state` is free text typed per store: "QLD" 294 and
+ *     "Queensland" 129, "NSW"/"New South Wales", 166 blank, "Toowoomba" once —
+ *     and NZ stores carry "NZ", "Auckland", "Otago Region" and, twice, "QLD"
+ *     (Hastings, Hawke's Bay). A Hastings NZ store read as "Hastings, QLD"
+ *     would plot on Brisbane.
+ *   - So NZ rows are identified by the tenant's NZ board instead
+ *     (APPLYNOW_NZ_BOARD): measured the same day, dominos-nz.applynow.net.au
+ *     serves 28 blocks and every one of those 28 ids is also on the main
+ *     board. A row whose id is on the NZ board is written "<place>, New
+ *     Zealand" and its typed state is dropped. If the NZ board cannot be read
+ *     the pull is refused, since the NZ rows could then not be told apart.
+ *   - A blank state leaves the bare place ("Blacktown", "Alice Springs"),
+ *     which HUB_MATCH places or leaves unplaced; nothing here guesses a state.
+ *
+ * Refused (returns []) when the number of `jobblock` elements and the number
+ * of parsed rows disagree — that means the markup moved under the regex, and
+ * a partial read would archive a random subset.
+ */
+const APPLYNOW_NZ_BOARD: Record<string, string> = {
+  "brisbane-dmp": "https://dominos-nz.applynow.net.au/",
+};
+
+/**
+ * The state field spelled out, as 267 of Domino's 1,149 stated rows are, back
+ * to the abbreviation the rest of the board uses. It matters for one of them:
+ * HUB_MATCH has no bare "victoria" needle (Victoria BC, Victoria Island), so
+ * "Vermont South, Victoria" and 66 like it resolved to no hub while
+ * "MILL PARK, VIC" placed. The field is the board's own STATE field, and only
+ * on rows the NZ board does not claim, so reading "Victoria" as VIC here is
+ * the board's statement and not a guess.
+ */
+const APPLYNOW_STATE: Record<string, string> = {
+  queensland: "QLD",
+  "new south wales": "NSW",
+  victoria: "VIC",
+  "western australia": "WA",
+  "south australia": "SA",
+  tasmania: "TAS",
+  "northern territory": "NT",
+  "australian capital territory": "ACT",
+};
+
+function applyNowBlocks(html: string): string[] {
+  return [...html.matchAll(/<div\s+data-[^>]*\bclass="jobblock block"[^>]*>/gi)].map((m) => m[0]);
+}
+
+function applyNowAttr(block: string, name: string): string {
+  return clean(new RegExp(`\\sdata-${name}="([^"]*)"`, "i").exec(block)?.[1] ?? "");
+}
+
+async function fetchApplyNow(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const blocks = applyNowBlocks(html);
+  const expected = (html.match(/class="jobblock block"/gi) ?? []).length;
+  if (!blocks.length || blocks.length !== expected) {
+    console.log(
+      `applynow ${site.key ?? site.id}: ${blocks.length} parsed of ${expected} — refused`,
+    );
+    return [];
+  }
+  const nzUrl = APPLYNOW_NZ_BOARD[site.key ?? site.id];
+  const nzIds = new Set<string>();
+  if (nzUrl) {
+    const nz = await getText(nzUrl);
+    if (!nz) {
+      console.log(`applynow ${site.key ?? site.id}: NZ board unreadable — refused`);
+      return [];
+    }
+    for (const b of applyNowBlocks(nz)) nzIds.add(applyNowAttr(b, "id"));
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const b of blocks) {
+    const id = applyNowAttr(b, "id");
+    const title = applyNowAttr(b, "title");
+    const url = applyNowAttr(b, "url");
+    if (!id || !title || !url || seen.has(id)) continue;
+    seen.add(id);
+    const place = applyNowAttr(b, "location");
+    const typed = applyNowAttr(b, "address_state");
+    const state = APPLYNOW_STATE[typed.toLowerCase()] ?? typed;
+    const loc = nzIds.has(id)
+      ? [place, "New Zealand"].filter(Boolean).join(", ")
+      : [place, state].filter(Boolean).join(", ");
+    const day = applyNowAttr(b, "created_at").slice(0, 10);
+    out.push(
+      job(site, title, loc, url, /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "", "Career portal"),
+    );
+  }
+  return out;
+}
+
+/**
+ * Hutchinson Builders' own opportunities page,
+ * www.hutchinsonbuilders.com.au/careers/opportunities — a server-rendered CMS
+ * collection of `<div class="column item-card">` cards, each an
+ * <h3><a href="/feed/news/<slug>">title</a></h3> and a
+ * `<p class="lead …">` holding the place ("Toowoomba QLD", "Sydney NSW").
+ *
+ * Measured 2026-09-30: 22 cards, 19 distinct /feed/news/ roles. The other
+ * cards are the standing "General Applications" and "Apprenticeships" entries,
+ * which link to the apply form rather than to a post and are skipped on that.
+ * One role (Construction Cadets, Toowoomba) is carded twice and is deduped on
+ * its href. No pager, no total, no dates anywhere — on the card or the post.
+ *
+ * WHY A DATELESS CMS LIST IS TRUSTED HERE (the Pallion lesson is that a
+ * WordPress list can outlive its vacancies): every state-suffixed job post in
+ * the site's own sitemap.xml — 21 of them — is also on this page bar one news
+ * article, i.e. filled roles are DELETED from the site rather than left behind.
+ * That is what makes "on the page" mean "open".
+ *
+ * TRAP: two cards carry "Careers" in the place slot instead of a place. Their
+ * slug still ends in the place, "-sydney-nsw" / "-rockhampton-qld", so for
+ * those the slug's final STATE token alone is used ("NSW", "QLD"): the town
+ * part of a slug cannot be split reliably ("gold-coast-qld"), and a state is
+ * what HUB_MATCH places anyway.
+ */
+async function fetchHutchies(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<div class="column item-card">/i).slice(1)) {
+    const a = /<h3[^>]*>\s*<a href="(\/feed\/news\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/i.exec(card);
+    if (!a || seen.has(a[1])) continue;
+    const title = clean(a[2]);
+    if (!title) continue;
+    seen.add(a[1]);
+    let loc = clean(/<p class="lead[^"]*">([\s\S]*?)<\/p>/i.exec(card)?.[1] ?? "");
+    if (!/\b(?:QLD|NSW|VIC|TAS|WA|SA|NT|ACT)\b|australia wide/i.test(loc)) {
+      const st = /-(qld|nsw|vic|tas|wa|sa|nt|act)$/i.exec(a[1]);
+      loc = st ? st[1].toUpperCase() : "";
+    }
+    out.push(job(site, title, loc, `${site.origin}${a[1]}`, "", "Career portal"));
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sonar: fetchSonar,
   axol: fetchAxol,
@@ -36032,6 +36383,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sgquantum: fetchSgQuantum,
   wisetech: fetchWiseTech,
   x0pa: fetchX0pa,
+  applynow: fetchApplyNow,
+  hutchies: fetchHutchies,
   sfclassicxml: fetchSfClassicXml,
   tencent: fetchTencent,
   baidu: fetchBaidu,
@@ -36151,6 +36504,9 @@ export const SOURCE_TAG: Record<Platform, string> = {
   sgquantum: "sgq",
   wisetech: "wtc",
   x0pa: "x0pa",
+  // batch 13 J: applynow.net.au is named for its host; Hutchies for the employer.
+  applynow: "applynow",
+  hutchies: "hutchies",
   successfactors: "sf",
   workday: "wd",
   eightfold: "ef",
