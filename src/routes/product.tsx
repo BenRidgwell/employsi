@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import siteCss from "@/site/site.css?url";
 import { ClosingCta, ShotStack, Site, SiteFooter, SiteNav } from "@/site/SiteChrome";
+import { drawContours } from "@/site/globeBackdrop";
 
 const TITLE = "Product — employsi";
 const DESCRIPTION =
@@ -185,20 +186,7 @@ function useJourneyPath(
       const { W, H, dpr } = geom.current;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = "rgba(28,28,30,.06)";
-      ctx.lineWidth = 1;
-      for (let g = 1; g <= 5; g++) {
-        ctx.beginPath();
-        ctx.ellipse(W * 0.5, H * 0.5, W * 0.18 * g, H * 0.9, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      for (let g = 1; g <= 7; g++) {
-        ctx.beginPath();
-        const y = (H * g) / 8;
-        ctx.moveTo(0, y + 40);
-        ctx.quadraticCurveTo(W / 2, y - 60, W, y + 40);
-        ctx.stroke();
-      }
+      drawContours(ctx, W, H);
       for (const d of dots.current) {
         const on = d.t <= p;
         const near = Math.max(0, 1 - Math.abs(d.t - p) / 0.025);

@@ -761,6 +761,26 @@
 .ws-stage {
   position: relative;
 }
+
+/* Landing: the same contours behind everything between the banner and the
+   footer. The canvas sits ABOVE the sections' own fills (the grey band, the
+   closing section) so the lines run through them, and BELOW their content
+   (copy, screenshots, the dark CTA panel), which is lifted over it. */
+.ws-backdrop {
+  position: relative;
+}
+.ws-backdrop > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+.ws-backdrop > section > * {
+  position: relative;
+  z-index: 2;
+}
 .ws-stage > canvas {
   position: absolute;
   left: 0;

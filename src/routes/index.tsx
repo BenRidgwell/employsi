@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import siteCss from "@/site/site.css?url";
 import { ClosingCta, ShotStack, Site, SiteFooter, SiteNav } from "@/site/SiteChrome";
 import { HeroCallouts } from "@/site/HeroCallouts";
+import { useGlobeBackdrop } from "@/site/globeBackdrop";
 
 /** The one address this page wants to be found at. See the canonical link below. */
 const CANONICAL_URL = "https://employsi.com.au/";
@@ -106,6 +107,9 @@ function HeroVideo() {
 }
 
 function Landing() {
+  const backdrop = useRef<HTMLDivElement | null>(null);
+  const backdropCanvas = useRef<HTMLCanvasElement | null>(null);
+  useGlobeBackdrop(backdrop, backdropCanvas);
   return (
     <Site>
       <SiteNav />
@@ -131,44 +135,49 @@ function Landing() {
           </div>
         </section>
 
-        <section className="ws-split" data-screen-label="Hero">
-          <div className="text">
-            <h2 className="ws-display lg">
-              A stock market,
-              <br />
-              for jobs.
-            </h2>
-            <p className="ws-lede">
-              Employsi is the HR intelligence platform that treats the job market like a stock
-              market. Built on a live interactive 3D globe, it lets anyone search a skill and see
-              real-time demand and supply across countries, cities, and individual companies.
-            </p>
-          </div>
-          <div className="ws-stackwrap end">
-            <div className="ws-stack">
-              <ShotStack shots={HERO_SHOTS} fan="right" />
+        {/* The product page's globe contours, without its dotted path, behind
+            everything between the banner and the footer. */}
+        <div className="ws-backdrop" ref={backdrop}>
+          <canvas ref={backdropCanvas} aria-hidden />
+          <section className="ws-split" data-screen-label="Hero">
+            <div className="text">
+              <h2 className="ws-display lg">
+                A stock market,
+                <br />
+                for jobs.
+              </h2>
+              <p className="ws-lede">
+                Employsi is the HR intelligence platform that treats the job market like a stock
+                market. Built on a live interactive 3D globe, it lets anyone search a skill and see
+                real-time demand and supply across countries, cities, and individual companies.
+              </p>
             </div>
-          </div>
-        </section>
-
-        <section className="ws-split reverse" data-screen-label="Workforce economy">
-          <div className="ws-stackwrap start">
-            <div className="ws-stack">
-              <ShotStack shots={ECONOMY_SHOTS} fan="left" />
+            <div className="ws-stackwrap end">
+              <div className="ws-stack">
+                <ShotStack shots={HERO_SHOTS} fan="right" />
+              </div>
             </div>
-          </div>
-          <div className="text">
-            <h2 className="ws-display lg" style={{ lineHeight: 1.05, letterSpacing: "-0.03em" }}>
-              Learn what the market wants, build the skills employers need.
-            </h2>
-            <p className="ws-lede">
-              Job seekers discover where their skills are worth most, and employers see exactly who
-              they're competing with for talent and where.
-            </p>
-          </div>
-        </section>
+          </section>
 
-        <ClosingCta />
+          <section className="ws-split reverse" data-screen-label="Workforce economy">
+            <div className="ws-stackwrap start">
+              <div className="ws-stack">
+                <ShotStack shots={ECONOMY_SHOTS} fan="left" />
+              </div>
+            </div>
+            <div className="text">
+              <h2 className="ws-display lg" style={{ lineHeight: 1.05, letterSpacing: "-0.03em" }}>
+                Learn what the market wants, build the skills employers need.
+              </h2>
+              <p className="ws-lede">
+                Job seekers discover where their skills are worth most, and employers see exactly
+                who they're competing with for talent and where.
+              </p>
+            </div>
+          </section>
+
+          <ClosingCta />
+        </div>
       </main>
       <SiteFooter />
     </Site>
