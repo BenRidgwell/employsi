@@ -433,9 +433,29 @@ def close_browser():
 # on: a WAF configured to answer 200 with the same body is one setting away, and
 # then the body is all there is to go on. Measured 2026-09-28 while looking for
 # Infratil's FY2026 annual report.
+#
+# AND A FIFTH, WHICH IS THE ONE THIS LIST EXISTS FOR: IT ANSWERS 200. Measured
+# 2026-09-30 on www.parliament.nz, while checking whether New Zealand publishes
+# papers presented to the House the way Queensland publishes tabled papers. A
+# plain fetch of /en/pb/papers-presented/ returns HTTP 200 and 15,064 bytes —
+# a size and a status that read as a real page — and the body is a "Radware
+# Captcha Page" saying "your activity and behavior on this site made us think
+# that you are a bot".
+#
+# Every earlier entry here arrived as a 403 or a tiny body. This one has neither
+# tell: 200, fifteen kilobytes, no brand in the title. It was nearly written down
+# as "the papers page opened and lists nothing", which is the same error this
+# file keeps recording — a measurement of one response read as a fact about the
+# source. Two markers are listed because the brand name is the sort of thing a
+# vendor rewrites and the sentence is the sort of thing a reader recognises.
+#
+# The browser DOES clear it (19,473 bytes of real page), so parliament.nz is
+# reachable; its papers listing is a Blazor shell that the render does not
+# populate, which is a different problem and not this one.
 CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
              'Attention Required!', 'challenge-platform', 'Client Challenge',
-             '/.safeline/', 'slg-title')
+             '/.safeline/', 'slg-title', 'Radware Captcha Page',
+             'made us think that you are a bot')
 
 
 def _challenged(html):

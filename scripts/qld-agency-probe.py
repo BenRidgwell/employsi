@@ -92,9 +92,15 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # named rather than left to look like a page with no links on it. The Queensland
 # one is an AWS WAF action and arrives as `202 with an empty body`, which no
 # pattern can match — probe() checks the length instead.
+# A FIFTH DOORMAN, AND THE DANGEROUS ONE: Radware answers 200 with fifteen
+# kilobytes, so neither the status nor the size says anything is wrong. Met on
+# www.parliament.nz 2026-09-30 — see the note beside CHALLENGE in
+# gen-gov-workforce.py. Listed here too because probe() would otherwise print
+# "200 and NO annual-report link", which reads as a finding about the page.
 CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
              'Attention Required!', 'challenge-platform', 'Client Challenge',
-             'awsWafCoo', '/.safeline/', 'slg-title')
+             'awsWafCoo', '/.safeline/', 'slg-title', 'Radware Captcha Page',
+             'made us think that you are a bot')
 
 # live ads at 2026-09-29, for whoever picks this up next
 SITES = {

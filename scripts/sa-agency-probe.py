@@ -63,7 +63,8 @@ UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 # so it is named rather than left to look like a page with no sentences in it.
 CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
              'Attention Required!', 'challenge-platform', 'Client Challenge',
-             '/.safeline/', 'slg-title')
+             '/.safeline/', 'slg-title', 'Radware Captcha Page',
+             'made us think that you are a bot')
 
 # THE RELATIONSHIP QUESTION, not the head-count one. Each of these asks who the
 # employer is; a number without one of these beside it settles nothing, because

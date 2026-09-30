@@ -371,6 +371,76 @@ OWN_REPORT = {
     # the revenue change; team numbers FELL 2.6% this year. Deriving a prior year
     # from it would have published a rise where the report states a fall, which is
     # why the prior year is read from the panel and not reconstructed.
+    # THE REASON HERE WAS A MEASUREMENT OF A TRUNCATED URL, and it closed a card
+    # that was reachable all along. It said api.nzx.com "serves it with an Akamai
+    # 'Access Denied' 403 to this network, with a browser User-Agent and the
+    # announcement page as referer alike" — and that was measured against
+    #
+    #     /public/announcement/478352/attachment/475174
+    #
+    # which is not the URL NZX publishes. The announcement page's own link carries
+    # a trailing filename segment:
+    #
+    #     /public/announcement/478352/attachment/475174/478352-475174.pdf
+    #
+    # and THAT downloads 9,646,736 bytes of PDF to a plain urllib fetch, no
+    # browser, no referer, no User-Agent games. Measured 2026-09-30. The 403 was
+    # real and was about the path, not about the network — the fourth time in this
+    # campaign that a measurement of one URL got written down as a measurement of
+    # something larger, and the first time it cost a filing.
+    #
+    # THE ANNOUNCEMENT PAGE IS HOW TO GET THE REAL LINK: www.nzx.com/announcements/
+    # <id> renders through the browser and lists every attachment with its full
+    # URL. Guessing the path is what produced the old reason.
+    #
+    # WHAT IS FILED, AND WHY IT IS THE INFOGRAPHIC AND NOT THE ACCOUNTS. p14's
+    # value-creation model states "745 employees (420 male | 325 female)" at
+    # 30 June 2026, and 420 + 325 = 745, which `parts` asserts. The financial
+    # statements have no employee total at all — only the Companies Act
+    # remuneration brackets, exactly as at Fletcher Building — so there is no
+    # better-placed figure to prefer.
+    #
+    # p6's "~750 EMPLOYEES NATIONWIDE" is the same workforce rounded, and is NOT
+    # used: it cannot serve as `cross`, which demands equality.
+    #
+    # NO PRIOR YEAR, AND THE NUMBER THAT LOOKS LIKE ONE IS NOT ONE. p63 gives
+    # "699 employees in KiwiSaver (30 June 2025: 712 employees)" — that is
+    # SCHEME MEMBERSHIP, not the workforce, and 699 + 7 in the Government
+    # Superannuation Fund is 706 against a head count of 745, so it does not even
+    # cover everyone. Filing 712 as last year would invent a -4.4% out of a
+    # KiwiSaver opt-in rate.
+    # CONTROLS, 2026-09-30, run against a local copy of the same bytes because
+    # own_report opens this 113-page 9.6 MB PDF three times per call:
+    #
+    #   as written                      -> 745, no prior year
+    #   col=2 (male count as the total) -> REJECTED by `parts`: "components sum
+    #                                      to 745 against the 420 stated beside
+    #                                      them" — so `parts` does fire
+    #   `proof` moved to ...2025        -> REJECTED
+    #   `parts` removed                 -> still 745, as a removed guard on a
+    #                                      correct parse must be; it is the col=2
+    #                                      control above that earns it its place
+    #   `doc_proof` moved to 2025       -> still 745, ACCEPTED
+    #
+    # THE LAST ONE IS NOT THE DEFECT IT LOOKS LIKE, and it is worth saying why
+    # rather than "fixing" it. Substituting "year ended 30 June 2025" passes
+    # because a 2026 annual report states its COMPARATIVE year too — every annual
+    # report does. That control therefore proves the 2025 string is present; it
+    # says nothing about whether asserting the 2026 one is useful, and it is: a
+    # 2025-edition report, or one moved to a March balance date, would not carry
+    # "for the year ended 30 June 2026" at all. `doc_proof` stays. (Contrast the
+    # EPA spec in gen-gov-workforce.py, where `integers` was DELETED because it
+    # genuinely could not fire.)
+    'nz-chorus': dict(
+        url='https://api.nzx.com/public/announcement/478352/attachment/'
+            '475174/478352-475174.pdf',
+        needle='How we create value',
+        find=r'(\d[\d,]*) employees[^\n]*\n[^\n]*\((\d[\d,]*) male \| (\d[\d,]*) female\)',
+        col=1, parts=(2, 3),
+        proof=r'CHORUS FULL YEAR RESULTS 2026',
+        doc_proof=r'for the year ended 30 June 2026',
+        asof='Jun 2026'),
+
     'nz-mainfreight': dict(
         url='https://www.mainfreight.com/getcontentasset/'
             '9f6d081f-03d5-4e1d-a2be-992dd1ca826c/'
@@ -605,6 +675,40 @@ NO_FIGURE_PUBLISHED = {
     'pru':
         'its own site publishes quarterly reports only; none carries a workforce '
         'figure',
+    # THIS CARD HAD NO REASON AT ALL, and the fact that explains it was already
+    # written down one file over. privateLogos.ts has carried, since the badge
+    # pass, "nra.health.nz, which resolves to Health NZ: the alliance has been
+    # absorbed into Te Whatu Ora" — measured, correct, and never copied to the
+    # table that decides whether this card is a gap. So the headcount gap listed
+    # it as an unexplained blank while the codebase knew the answer. Same defect
+    # as a measurement of one URL written down as a measurement of something
+    # larger: the finding existed, the place that needed it was empty.
+    #
+    # RE-MEASURED 2026-09-30 and the redirect is still there, two hops:
+    # nra.health.nz -> 302 -> tewhatuora.govt.nz -> www.healthnz.govt.nz. (The
+    # final host answers 403 to this network from CloudFront, which is not the
+    # point — the LOCATION header is, and it arrives before the block.)
+    #
+    # NOT AN EMPLOYER, AND FILING ANYTHING HERE WOULD DOUBLE COUNT. The NRA was
+    # the northern district health boards' shared-services agency; the 2022 health
+    # reforms abolished the DHBs and folded it into Te Whatu Ora. Its people are
+    # inside the four Te Whatu Ora district cards this repo already files —
+    # Te Toka Tumai Auckland 11,473, Waitemata 8,724, Counties Manukau 8,651 and
+    # Capital, Coast & Hutt Valley 9,251 at 31 March 2026.
+    #
+    # WORTH A ROSTER DECISION RATHER THAN A HEADCOUNT ONE: nzGov.ts records 14
+    # roles observed under this name in the first full harvest, so it was
+    # advertising as the NRA. If it still is, the ads are Te Whatu Ora's and this
+    # card is a duplicate of a district rather than a company with no figure —
+    # but retiring a roster card is not this file's call, so it is flagged here
+    # rather than done.
+    'nz-northern-regional-alliance-nra':
+        'not an employer: the Northern Regional Alliance was the northern DHBs\' '
+        'shared-services agency and the 2022 health reforms folded it into Te '
+        'Whatu Ora. Its domain nra.health.nz 302s to tewhatuora.govt.nz '
+        '(re-measured 2026-09-30), and its people are inside the four Te Whatu '
+        'Ora district figures already filed — 11,473 + 8,724 + 8,651 + 9,251 at '
+        '31 March 2026. A figure on this card would double count one of them',
     'nz-fletcher-building':
         'annual report FOUND and read — the browser located '
         'assets/4-investor-centre/annual-reports/2026-annual-report.pdf, which a '
@@ -623,7 +727,15 @@ NO_FIGURE_PUBLISHED = {
     'nz-auckland-international-airport':
         'behind a Cloudflare interstitial that a WARMED browser does clear — but '
         'its investor pages then carry only meeting notices and a PwC summary, no '
-        'annual report with a staff figure',
+        'annual report with a staff figure.\n\n'
+        'THE SAME UNTRIED ROUTE AS INFRATIL, and here the case is stronger, '
+        'because the obstacle was never a doorman: the browser gets in and the '
+        'document is not there. Auckland Airport is NZX-listed (AIA), so its '
+        'annual report is an NZX announcement whatever its own investor pages '
+        'carry, and an NZX attachment downloads to a plain fetch when the URL '
+        'keeps its trailing filename segment (see nz-chorus). The open step is '
+        'the same: find the announcement id, which needs a way into the '
+        'per-issuer listing that /companies/AIA/announcements is not',
     'nz-reserve-bank-of-new-zealand':
         'Cloudflare interstitial does NOT clear for this host even warmed, over '
         'twelve waits; rbnz.govt.nz also 403s a plain fetch on every path tried',
@@ -638,30 +750,21 @@ NO_FIGURE_PUBLISHED = {
         'so the size-and-title tell those three share does not apply to it. The '
         'FY2026 annual report is published — infratil.com/for-investors/'
         'annual-reports/annual-report-2026/ is indexed — and the page holding it '
-        'is behind the same 403',
-    'nz-chorus':
-        'the FY26 annual report is located exactly: NZX announcement 478352, '
-        'attachment 475174, labelled "3. Chorus FY26 Annual Report". '
-        'api.nzx.com serves it with an Akamai "Access Denied" 403 to this '
-        'network, with a browser User-Agent and the announcement page as referer '
-        'alike. Its own site cannot supply it either: company.chorus.co.nz is a '
-        'Nuxt app with SSR off — /investors/financial-reports is in its sitemap '
-        'and the HTML a fetch returns is the empty app shell, so the report links '
-        'exist only after the page runs. Contentful holds the FY25 file under '
-        'assets.ctfassets.net/7urik9yedtqc/nzx-doc-450318/, so the FY26 asset '
-        'almost certainly has a sibling id, and guessing an id is not finding one',
-    # A PRIVATE NZ COMPANY, and the only one of these whose ROSTER DOMAIN is the
-    # problem as well. The card carries domain todd.com, which is a parked
-    # placeholder — 832 bytes titled "todd.com is almost here!". The company is at
-    # todd.co.nz and toddcorporation.com, both serving the same 293,922-byte site.
-    # That is exactly what check-company-live.ts exists to surface and it is worth
-    # fixing on the roster separately from this figure.
-    #
-    # The site links one document, "Todd 2025 Report on Sustainable Development",
-    # 46 pages, and it was read: no group head count, no FTE, no workforce total.
-    # The only people numbers in it are a partnership anecdote and "More than 180
-    # people, representing" at an event. Nothing else on the site carries a staff
-    # figure, and a private company files no annual report.
+        'is behind the same 403.\n\n'
+        'NOT RETRIED YET BY THE ROUTE THAT OPENED CHORUS, and it should be. '
+        'Infratil is NZX-listed, so its FY2026 annual report is an NZX '
+        'announcement, and api.nzx.com serves an attachment to a plain fetch '
+        'once the URL carries its trailing filename segment — see the nz-chorus '
+        'spec in OWN_REPORT, where that one missing segment was what a reason had '
+        'recorded as the network being blocked. What is needed is the '
+        'announcement id: www.nzx.com/announcements/<id> renders through the '
+        'browser and lists every attachment with its full URL, but the '
+        'per-issuer listing at /companies/INF/announcements does NOT exist '
+        '(316 bytes, measured 2026-09-30) and the main /announcements page '
+        'renders its table client-side with no anchors to walk. Infratil has a '
+        'MARCH balance date, so its announcement is months back in that listing '
+        'rather than on its first page. Finding the id is the open step, and the '
+        'SafeLine 403 on its own site is no longer the reason to stop',
     'nz-todd-corporation':
         'private, and its own site publishes no workforce figure. The one document '
         'it links — the 2025 Report on Sustainable Development, 46 pages — was '
@@ -958,6 +1061,24 @@ def own_report(cid, spec):
             raise RuntimeError(f'{cid}: the table gives {now:,} and the document '
                                f'states {said:,} for the same workforce — one of '
                                f'them is the wrong year or the wrong column')
+    # COMPONENTS CAPTURED IN THE SAME MATCH, summed and checked against the
+    # total. `sums` below finds each component by its own LABEL, which needs the
+    # label to come before the number; Chorus prints the split the other way
+    # round and on the next line — "745 employees" then "(420 male | 325
+    # female)" — so there is no label to search for, only capture groups in the
+    # one match. Same job as `sums`, different shape of page.
+    #
+    # IT IS THE ONLY ARITHMETIC GUARD CHORUS HAS. Its figure sits in an infographic
+    # with no year columns and no second statement of the same number to point
+    # `cross` at, so without this the spec would be asserting a regex and trusting
+    # it. 420 + 325 = 745 is the document checking itself.
+    if spec.get('parts'):
+        total = sum(g(i) for i in spec['parts'])
+        if total != now:
+            raise RuntimeError(f'{cid}: the components captured alongside the total '
+                               f'sum to {total:,} against the {now:,} stated beside '
+                               f'them — the regex matched the wrong groups')
+
     prev = spec.get('prev')
     if spec.get('prev_col'):
         prev = g(spec['prev_col'])
