@@ -167,7 +167,8 @@ type Platform =
   | "delorean"
   | "googlecareers"
   | "data3"
-  | "glencore";
+  | "glencore"
+  | "moka";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -868,6 +869,19 @@ const DVA_HUB_HINTS: [string, string | null][] = [
   [", washington,", null],
   [" new york, new york,", "newyork"],
   [", new york,", null],
+];
+
+/**
+ * Chinese-script place names for the MokaHR feeds, which HUB_MATCH (Latin
+ * script) cannot read. Only cities that ARE hubs; the rest stay unplaced, and
+ * each feed's homeHub is null because none of these employers is headquartered
+ * where the roster listed it (see each SITES entry).
+ */
+const MOKA_CN_HINTS: [string, string | null][] = [
+  ["北京", "beijing"],
+  ["上海", "shanghai"],
+  ["深圳", "shenzhen"],
+  ["香港", "hongkong"],
 ];
 
 export const SITES: SiteDef[] = [
@@ -21760,6 +21774,63 @@ export const SITES: SiteDef[] = [
       [" portland, maine", null],
     ],
   },
+  // ── MokaHR, 2026-09-30 — the five employers the encrypted list had blocked ──
+  // See fetchMoka. Each board's total is the decrypted jobStats.total, read on
+  // the day: ZTE 253, DJI 502, CATL 1,836, East Money 162, Hengrui ~990.
+  // homeHub is null wherever the roster city is not where the employer is:
+  // CATL is Ningde (Fujian) and Hengrui Lianyungang, neither a hub; East
+  // Money is headquartered in Shanghai though listed in Shenzhen, so its rows
+  // place by their own city, not by the listing. ZTE and DJI ARE Shenzhen.
+  {
+    id: "shenzhen-000063",
+    name: "ZTE",
+    sector: "Technology, Media and Telecommunications",
+    platform: "moka",
+    endpoint: "https://app.mokahr.com/api/outer/ats-apply/website/jobs/v2",
+    origin: "https://app.mokahr.com/social-recruitment/zte/47588",
+    homeHub: "shenzhen",
+    hubHints: MOKA_CN_HINTS,
+  },
+  {
+    id: "shenzhen-dji",
+    name: "DJI",
+    sector: "Technology, Media and Telecommunications",
+    platform: "moka",
+    endpoint: "https://apply.careers.dji.com/api/outer/ats-apply/website/jobs/v2",
+    origin: "https://apply.careers.dji.com/social-recruitment/dji/170070",
+    homeHub: "shenzhen",
+    hubHints: MOKA_CN_HINTS,
+  },
+  {
+    id: "shenzhen-300750",
+    name: "Contemporary Amperex (CATL)",
+    sector: "Energy & Natural Resources",
+    platform: "moka",
+    endpoint: "https://talent.catl.com/api/outer/ats-apply/website/jobs/v2",
+    origin: "https://talent.catl.com/social-recruitment/catlhr/96144/",
+    homeHub: null,
+    hubHints: MOKA_CN_HINTS,
+  },
+  {
+    id: "shenzhen-300059",
+    name: "East Money Information",
+    sector: "Financial Services",
+    platform: "moka",
+    endpoint: "https://app.mokahr.com/api/outer/ats-apply/website/jobs/v2",
+    origin: "https://app.mokahr.com/apply/eastmoney/57970",
+    homeHub: null,
+    hubHints: MOKA_CN_HINTS,
+  },
+  {
+    id: "shanghai-600276",
+    name: "Jiangsu Hengrui Medicine",
+    sector: "Healthcare and Life Sciences",
+    platform: "moka",
+    endpoint: "https://app.mokahr.com/api/outer/ats-apply/website/jobs/v2",
+    origin: "https://app.mokahr.com/apply/hengrui/145996",
+    homeHub: null,
+    hubHints: MOKA_CN_HINTS,
+  },
 ];
 
 /**
@@ -22610,7 +22681,9 @@ export const PORTAL_GROUPS: string[][] = [
   ],
   // Groups 227-229 — the 2026-09-30 tenth batch. RTX (129 s, 13 s CPU) and
   // Qualcomm (a tenant that rate-limits repeated walks) each run alone; the
-  // other eighteen share one awaited tick, ~225 s of measured walk.
+  // other eighteen share one awaited tick, ~225 s of measured walk; the five
+  // MokaHR feeds (~90 s, 5.8 s CPU) joined it on 2026-09-30 so they need no
+  // cron trigger of their own.
   ["washington-rtx"],
   ["sandiego-qcom"],
   [
@@ -22632,6 +22705,11 @@ export const PORTAL_GROUPS: string[][] = [
     "singapore-5e2",
     "london-imb",
     "bentonville-tsn",
+    "shenzhen-000063",
+    "shenzhen-dji",
+    "shenzhen-300750",
+    "shenzhen-300059",
+    "shanghai-600276",
   ],
 ];
 
@@ -28798,6 +28876,153 @@ async function fetchData3(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── MokaHR (ZTE, DJI, CATL, East Money, Hengrui) ─────────────────────────────
+/**
+ * MokaHR ENCRYPTS ITS JOB LIST, and that — not the board — is why five
+ * employers sat unwired. Measured 2026-09-30 on all five: POST
+ * `<host>/api/outer/ats-apply/website/jobs/v2` with `{orgId, siteId, site:
+ * "social", limit, offset, needStat}` answers `{data, necromancer}`, where
+ * `data` is base64 AES-128-CBC ciphertext and `necromancer` is that response's
+ * own 16-character key. The IV is fixed per site and is in the board page's
+ * own init data (`aesIv`, HTML-escaped: `aesIv&quot;:&quot;de7c…`), which is
+ * how the site's own bundle decrypts it (PKCS7, key and IV as UTF-8). So the
+ * reader loads the page once for the IV, then decrypts every list page with
+ * the key that page came with.
+ *
+ * THE PAGE 302-LOOPS WITHOUT A COOKIE — it sets one and redirects to itself —
+ * so the first load follows redirects by hand and keeps the cookies, which the
+ * API calls then carry.
+ *
+ * `site.origin` is the board page (…/social-recruitment/<org>/<siteId> or
+ * …/apply/<org>/<siteId>); the org and site ids are read from it, and a job
+ * links as `<origin>#/job/<id>`, the board's own route.
+ *
+ * `limit` is capped: CATL answers 20 and 30 and rejects 50 with code 102, so
+ * pages are 20. Bounded by the decrypted `jobStats.total`, never by a short
+ * page alone.
+ *
+ * Locations arrive in Chinese (`上海市`, `深圳市`), which HUB_MATCH does not
+ * read, so these feeds carry MOKA_CN_HINTS.
+ */
+const MOKA_PAGE = 20;
+
+async function mokaPage(url: string): Promise<{ html: string; cookies: string } | null> {
+  const jar: string[] = [];
+  let u = url;
+  for (let i = 0; i < 6; i++) {
+    let res: Response;
+    try {
+      res = await fetch(u, {
+        redirect: "manual",
+        headers: { "User-Agent": UA, Accept: "text/html", Cookie: jar.join("; ") },
+      });
+    } catch {
+      return null;
+    }
+    for (const c of res.headers.getSetCookie?.() ?? []) jar.push(c.split(";")[0]);
+    if (res.status >= 300 && res.status < 400) {
+      const loc = res.headers.get("location");
+      if (!loc) return null;
+      u = new URL(loc, u).toString();
+      continue;
+    }
+    return res.ok ? { html: await res.text(), cookies: jar.join("; ") } : null;
+  }
+  return null;
+}
+
+async function mokaDecrypt(b64: string, key: string, iv: string): Promise<unknown> {
+  const enc = new TextEncoder();
+  const k = await crypto.subtle.importKey("raw", enc.encode(key), { name: "AES-CBC" }, false, [
+    "decrypt",
+  ]);
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  const plain = await crypto.subtle.decrypt({ name: "AES-CBC", iv: enc.encode(iv) }, k, bytes);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+interface MokaJob {
+  id?: string;
+  title?: string;
+  locations?: { cityName?: string; provinceName?: string; country?: string; address?: string }[];
+  publishedAt?: string;
+  openedAt?: string;
+  department?: { name?: string };
+  zhineng?: { name?: string };
+}
+
+async function fetchMoka(site: SiteDef): Promise<PortalJob[]> {
+  const ids = site.origin.match(/\/(?:social-recruitment|apply)\/([^/]+)\/(\d+)/);
+  if (!ids) return [];
+  const [, orgId, siteId] = ids;
+  const page = await mokaPage(site.origin);
+  const iv = page?.html.match(/aesIv(?:&quot;|")\s*:\s*(?:&quot;|")([0-9a-zA-Z]{16})/)?.[1];
+  if (!page || !iv) {
+    console.log(`moka ${site.key ?? site.id}: board page or its aesIv not found`);
+    return [];
+  }
+  const read = async (offset: number): Promise<{ total: number; jobs: MokaJob[] } | null> => {
+    const res = await getJson<{ data?: string; necromancer?: string }>(site.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: page.cookies, Referer: site.origin },
+      body: JSON.stringify({
+        orgId,
+        siteId: Number(siteId),
+        site: "social",
+        limit: MOKA_PAGE,
+        offset,
+        needStat: true,
+      }),
+    });
+    if (!res?.data || !res.necromancer) return null;
+    try {
+      const d = (await mokaDecrypt(res.data, res.necromancer, iv)) as {
+        data?: { jobStats?: { total?: number }; jobs?: MokaJob[] };
+      };
+      return { total: Number(d.data?.jobStats?.total) || 0, jobs: d.data?.jobs ?? [] };
+    } catch {
+      return null;
+    }
+  };
+  const first = await read(0);
+  if (!first) return [];
+  const pages = Math.min(Math.ceil(first.total / MOKA_PAGE), site.maxPages ?? 150);
+  const rest = await pagedParallel<MokaJob>(
+    async (i) => (await read((i + 1) * MOKA_PAGE))?.jobs ?? null,
+    MOKA_PAGE,
+    Math.max(0, pages - 1),
+    `moka ${site.key ?? site.id}`,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...first.jobs, ...rest]) {
+    const title = clean(r.title ?? "");
+    const id = r.id ?? "";
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    // One row per role, at its FIRST location, as everywhere in this file.
+    const l = r.locations?.[0];
+    const loc = l
+      ? [l.cityName, l.provinceName, l.country].filter(Boolean).join(", ") || (l.address ?? "")
+      : "";
+    const posted = (r.publishedAt || r.openedAt || "").slice(0, 10);
+    out.push(
+      job(
+        site,
+        title,
+        clean(loc),
+        `${site.origin}#/job/${id}`,
+        /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : "",
+        clean(r.zhineng?.name ?? r.department?.name ?? "") || "Career portal",
+      ),
+    );
+  }
+  if (first.total && out.length < first.total * 0.98) {
+    console.log(`moka ${site.key ?? site.id}: ${out.length} of ${first.total} — walk incomplete`);
+  }
+  return out;
+}
+
 // ── Glencore ─────────────────────────────────────────────────────────────────
 /**
  * Glencore's own board, www.glencore.com/en/careers/jobs, is a Magnolia CMS
@@ -28884,6 +29109,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   googlecareers: fetchGoogleCareers,
   data3: fetchData3,
   glencore: fetchGlencore,
+  moka: fetchMoka,
   workable: fetchWorkable,
   bamboohr: fetchBambooHr,
   cjd: fetchCjd,
@@ -29054,6 +29280,8 @@ export const SOURCE_TAG: Record<Platform, string> = {
   // Data#3's own Salesforce Sites page, named for the employer as `cjd` is.
   data3: "data3",
   glencore: "glen",
+  // MokaHR, the Chinese ATS behind ZTE, DJI, CATL, East Money and Hengrui.
+  moka: "moka",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
