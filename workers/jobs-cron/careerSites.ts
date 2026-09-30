@@ -168,7 +168,12 @@ type Platform =
   | "googlecareers"
   | "data3"
   | "glencore"
-  | "moka";
+  | "moka"
+  | "lvmh"
+  | "amazonjobs"
+  | "ibmsearch"
+  | "applyflow"
+  | "foxcareers";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -8126,7 +8131,8 @@ export const SITES: SiteDef[] = [
   // 2-4 walks; the board is 21,719 roles), Swinburne (NGA.NET CAPTCHA). New
   // readers needed: ByteDance (csrf + 10,000-row cap), Hengrui (MokaHR,
   // AES-encrypted), UTS (Oracle iRecruitment session forms), Amazon (10,000
-  // cap), IBM (www-api.ibm.com search, sort by dcdate), Teys and RAA (RSS
+  // cap; since wired for the Seattle MSA only, see fetchAmazonJobs), IBM
+  // (www-api.ibm.com search; since wired, see fetchIbmSearch), Teys and RAA (RSS
   // <item>, which fetchXmlFeed does not read), Notre Dame (Jobvite). No board
   // of their own: ARA, Canberra Airport, Swift Holdings, CSCEC, Thomas Foods
   // (its WordPress vacancies are all 2023 or older), Wilmar (points to
@@ -21832,6 +21838,158 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     hubHints: MOKA_CN_HINTS,
   },
+  // ── batch 11: C ──
+  // LVMH — every maison's roles from the group's Algolia index. No maison is
+  // wired separately in this file, so none is excluded. See fetchLvmh.
+  {
+    id: "paris-mc",
+    name: "LVMH",
+    sector: "Consumer and Retail",
+    platform: "lvmh",
+    endpoint: "https://SDMQTD2J9T-dsn.algolia.net/1/indexes/PRD-en-us-timestamp-desc/query",
+    origin: "https://www.lvmh.com",
+    homeHub: null,
+    // Measured 2026-09-30 against all 6,224 rows. Same-metro places, plus the
+    // places a global needle would put on the wrong hub (or wrong continent).
+    hubHints: [
+      // Paris: Neuilly-sur-Seine 158 and Levallois-Perret 43 are LVMH/Dior/LV head
+      // offices in Hauts-de-Seine; the region is the Paris metro.
+      ["neuilly", "paris"],
+      ["levallois", "paris"],
+      // The region cell is sometimes wrong — "Marseille, Ile-de-France",
+      // "Lyon, Ile-de-France", "Orléans, Ile-de-France" (1 each) — so the
+      // cities it misfiles go first.
+      ["marseille", null],
+      ["lyon,", null],
+      ["orléans", null],
+      ["orleans", null],
+      [", ile-de-france,", "paris"],
+      [", île-de-france,", "paris"],
+      // Chinese Mainland rows are written in Chinese ("上海, 上海" 111, "静安区, 上海"
+      // 29, "北京, 北京" 26, "深圳, 广东省" 39), which HUB_MATCH cannot read.
+      ["上海", "shanghai"],
+      ["北京", "beijing"],
+      ["深圳", "shenzhen"],
+      ["tôkyô", "tokyo"], // "Minato-Ku, Tôkyô, Japan" 5
+      // US metros — the board mostly omits the state.
+      ["queens, united states", "newyork"], // 12
+      ["brooklyn, united states", "newyork"], // 10
+      ["jersey city, new jersey", "newyork"], // 8
+      ["whippany", "newyork"], // 9 — Morris County NJ, NY MSA (Moët Hennessy USA)
+      // Orange County NY is the Kiryas Joel-Poughkeepsie-Newburgh MSA since 2023,
+      // not New York's; HUB_MATCH's "new york" would claim it (Woodbury Common).
+      ["central valley, new york", null], // 5
+      ["new york, florida", null], // 1 — the board's own contradiction
+      ["beverly hills", "losangeles"], // 25
+      ["costa mesa", "losangeles"], // 25 — Orange County CA, in the LA MSA
+      ["culver city", "losangeles"], // 6
+      ["santa clara, united states", "sanjose"], // 8
+      ["palo alto, united states", "sanjose"], // 6
+      ["walnut creek", "sanfrancisco"], // 8 — Contra Costa, SF MSA
+      ["fort worth, united states", "dallas"], // 10
+      ["irving, texas", "dallas"], // 7
+      ["mclean, virginia", "washington"], // 7 — Fairfax County
+      ["king of prussia", "philadelphia"], // 12
+      ["the woodlands", "houston"], // 6
+      // King County / Pierce County, WA. They must precede the state rule below.
+      ["bellevue, washington", "seattle"], // 3
+      ["tacoma, washington", "seattle"], // 1
+      // Washington STATE, which HUB_MATCH's "washington" would file on DC:
+      // "Washington, United States" 3 does not say which.
+      [" washington, united states", null],
+      // The board's own contradictions (1 each): Chadstone is a Melbourne
+      // centre whatever the state cell says; "Sydney, Victoria" is unknowable.
+      ["chadstone", "melbourne"],
+      ["sydney, victoria", null],
+      ["laval, canada", "montreal"], // 10
+      ["rosemere", "montreal"], // 8
+      // Wrong-continent traps: each a real place the global needle misreads.
+      ["london, canada", null], // 6 — London, Ontario
+      ["sydney, canada", null], // 1 — Sydney, Nova Scotia
+      ["melbourne, united states", null], // 1 — Melbourne, Florida
+      ["vancouver, united states", null], // 2 — Vancouver, Washington
+      ["charlottetown", null], // 1 — "charlotte"
+      ["south portland", null], // 2 — Maine
+      // Bare "Portland, United States" (7) does not say Oregon or Maine.
+      ["portland, united states", null],
+      ["abu dhabi", null], // "Abu Dhabi, Dubai, United Arab Emirates" 1
+      // "Manchester, London, United Kingdom" and "Birmingham (UK), London, …" —
+      // the region cell says London for cities that are not.
+      ["manchester", null],
+      ["birmingham", null],
+    ],
+  },
+  // Amazon — the Seattle MSA only (King, Snohomish, Pierce counties); the
+  // unfiltered board is capped at 10,000. See fetchAmazonJobs for why no
+  // other hub is read.
+  {
+    id: "seattle-amzn",
+    name: "Amazon",
+    sector: "Technology, Media and Telecommunications",
+    platform: "amazonjobs",
+    endpoint: "https://www.amazon.jobs/en/search.json",
+    origin: "https://www.amazon.jobs",
+    homeHub: null,
+    // Every row this feed keeps is county-checked to the Seattle MSA, so the
+    // state is enough here — without it HUB_MATCH files "Bellevue, Washington,
+    // USA" and "Redmond, Washington, USA" on DC through "washington".
+    hubHints: [[", washington, usa", "seattle"]],
+  },
+  {
+    id: "newyork-ibm",
+    name: "IBM",
+    sector: "Technology, Media and Telecommunications",
+    platform: "ibmsearch",
+    endpoint: "https://www-api.ibm.com/search/api/v2",
+    origin: "https://careers.ibm.com",
+    homeHub: null,
+    // Measured 2026-09-30 against all 1,897 rows. */
+    hubHints: [
+      // Westchester County — IBM Research (Yorktown) and IBM's HQ (Armonk).
+      ["yorktown heights, us", "newyork"], // 54
+      ["armonk, us", "newyork"], // 16
+      // Poughkeepsie (48) is Dutchess County, the Kiryas Joel-Poughkeepsie-Newburgh
+      // MSA, and no needle claims it — left unplaced on purpose.
+      ["markham, ca", "toronto"], // 21 — York Region, Toronto CMA
+      ["herndon, us", "washington"], // 8 — Fairfax County
+      ["chantilly, us", "washington"], // 1
+      ["bethesda, us", "washington"], // 2 — Montgomery County MD
+      ["cambridge, us", "boston"], // 4 — IBM Research Cambridge, MA
+      // The country code is ISO: "Riyadh, SA" is Saudi Arabia, which HUB_MATCH's
+      // " sa," (South Australia) would put on Adelaide.
+      [", sa,", null],
+    ],
+  },
+  // Programmed — its OWN staff roles only (company_name "Programmed", 143 of
+  // 718 on 2026-09-30); the labour-hire placements on the same board are left
+  // out. See fetchApplyFlow.
+  {
+    id: "priv-programmed",
+    name: "Programmed",
+    sector: "Maintenance & workforce services",
+    platform: "applyflow",
+    endpoint: "https://account-api.applyflow.com/api/seeker/v1/search-job",
+    origin: "https://www.jobs.programmed.com.au/jobs/",
+    homeHub: "melbourne",
+  },
+  {
+    id: "newyork-foxa",
+    name: "Fox Corporation",
+    sector: "Technology, Media and Telecommunications",
+    platform: "foxcareers",
+    endpoint: "https://www.foxcareers.com/Search/JobsList/",
+    origin: "https://www.foxcareers.com",
+    homeHub: null,
+    // Measured 2026-09-30 against all 374 rows (38 distinct location strings). */
+    hubHints: [
+      ["seattle, washington", "seattle"], // 2
+      // Washington STATE — HUB_MATCH's "washington" means DC ("Washington,
+      // District of Columbia" 22 starts with the word and is not caught here).
+      [", washington,", null],
+      ["oakland, california", "sanfrancisco"], // 3
+      ["bethesda, maryland", "washington"], // 1
+    ],
+  },
 ];
 
 /**
@@ -29105,6 +29263,568 @@ async function fetchGlencore(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 11: C — readers ────────────────────────────────────────────────────
+
+// ── LVMH (Algolia) ───────────────────────────────────────────────────────────
+/**
+ * lvmh.com/en/join-us/our-job-offers is a Next.js page over ALGOLIA. The app id
+ * and key below are the PUBLIC SEARCH-ONLY credentials shipped in that page's
+ * own JavaScript bundle — any visitor's browser sends them — not a secret.
+ *
+ * DO NOT read the site's own /api/search proxy instead: Akamai 403s it after
+ * ~8 requests (measured 2026-09-29).
+ *
+ * Measured 2026-09-30: POST `/1/indexes/PRD-en-us-timestamp-desc/query`
+ * `{params}`, filter `category:job`, hitsPerPage 1000 (honoured;
+ * the index lets a walk page past Algolia's usual 1,000-hit window) -> nbHits
+ * 6,224, 7 pages, 6,224 distinct objectIDs and 6,224 distinct links.
+ *
+ * THE SINGLE-INDEX `/query` PATH, NOT THE SITE'S MULTI-INDEX `/1/indexes/*
+ * /queries`: the `*` does not survive fetch()'s URL handling — Bun sent it and
+ * Algolia answered 404 "Path not supported" — while `/query` returns the same
+ * `{nbHits, hits}` for the one index. The
+ * board is every maison's: Sephora 2,459, Louis Vuitton 659, Christian Dior
+ * Couture 480, Tiffany 465, Parfums Christian Dior 256 ... 54 maisons.
+ *
+ * NO MAISON IS FILTERED OUT. None of them is wired in this file under its own
+ * id (grep Sephora, Dior, Tiffany, Bulgari, Moët, Louis Vuitton: nothing), so
+ * nothing here can double-count. `paris-cdi` (Christian Dior SE) is on the
+ * Paris roster but has no feed; if one is ever added, it must either read this
+ * index with `maison:"Christian Dior Couture"` and this feed exclude that
+ * maison, or not exist — Dior Couture is inside LVMH's consolidated group, so
+ * both ids carrying the same ads would double the Dior rows.
+ *
+ * `link` is the maison's own ATS url (SuccessFactors for Sephora US, etc.),
+ * which is what the row stores. `profile`/`description` are whole job texts,
+ * so the request retrieves only the fields read here (~1 MB a page -> small).
+ *
+ * Location is `city, regionState, country`; regionState is null on ~44% of
+ * rows, so US rows often read "Las Vegas, United States" — see the paris-mc
+ * SiteDef's hubHints for the wrong-continent traps that shape produces.
+ */
+const LVMH_ALGOLIA = {
+  app: "SDMQTD2J9T",
+  // Public search-only key from lvmh.com's page bundle (not a secret).
+  key: "a5c6f4c87dea9aac0732631cd87583b2",
+};
+const LVMH_PAGE = 1000;
+
+interface LvmhHit {
+  objectID?: string;
+  name?: string;
+  maison?: string;
+  city?: string | null;
+  regionState?: string | null;
+  country?: string | null;
+  link?: string;
+  function?: string | null;
+  publicationTimestamp?: number;
+}
+
+async function fetchLvmh(site: SiteDef): Promise<PortalJob[]> {
+  const attrs = [
+    "name",
+    "maison",
+    "city",
+    "regionState",
+    "country",
+    "link",
+    "function",
+    "publicationTimestamp",
+  ];
+  const read = async (page: number): Promise<{ nbHits: number; hits: LvmhHit[] } | null> => {
+    const params = new URLSearchParams({
+      query: "",
+      hitsPerPage: String(LVMH_PAGE),
+      page: String(page),
+      filters: "category:job",
+      attributesToRetrieve: JSON.stringify(attrs),
+      attributesToHighlight: "[]",
+    });
+    const r = await getJson<{ nbHits?: number; hits?: LvmhHit[] }>(site.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Algolia-Application-Id": LVMH_ALGOLIA.app,
+        "X-Algolia-API-Key": LVMH_ALGOLIA.key,
+      },
+      body: JSON.stringify({ params: params.toString() }),
+    });
+    if (!r || !Array.isArray(r.hits)) return null;
+    return { nbHits: Number(r.nbHits) || 0, hits: r.hits };
+  };
+  const first = await read(0);
+  if (!first) return [];
+  const pages = Math.ceil(first.nbHits / LVMH_PAGE);
+  const rest = await pagedParallel<LvmhHit>(
+    async (i) => (await read(i + 1))?.hits ?? null,
+    LVMH_PAGE,
+    Math.max(0, pages - 1),
+    `lvmh ${site.key ?? site.id}`,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const h of [...first.hits, ...rest]) {
+    const id = h.objectID ?? "";
+    const title = clean(h.name ?? "");
+    const url = (h.link ?? "").trim();
+    if (!id || !title || !url || seen.has(id)) continue;
+    seen.add(id);
+    const loc = [h.city, h.regionState, h.country]
+      .map((x) => clean(x ?? ""))
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        url,
+        isoFromEpoch(Number(h.publicationTimestamp) || 0),
+        clean(h.function ?? "") || clean(h.maison ?? "") || "Career portal",
+      ),
+    );
+  }
+  // A timestamp-desc index shifts by one row when an ad is published mid-walk,
+  // which costs a row or two; more than 2% missing is a walk that failed.
+  if (out.length < first.nbHits * 0.98) {
+    console.log(`lvmh: ${out.length} of ${first.nbHits} — walk incomplete, not written`);
+    return [];
+  }
+  return out;
+}
+
+// ── amazon.jobs ──────────────────────────────────────────────────────────────
+/**
+ * Amazon's own board. GET `https://www.amazon.jobs/en/search.json?offset=N&
+ * result_limit=100&sort=recent` -> `{hits, jobs[]}`; result_limit 100 is
+ * honoured.
+ *
+ * THE UNFILTERED BOARD IS CAPPED: `hits` reads exactly 10,000 (and the US
+ * filter alone also 10,000) while the real total is larger, so a full walk is
+ * impossible and would be a sample. The reader is therefore SCOPED, per feed,
+ * to one metro, which it can read completely:
+ *
+ *   `normalized_state_name[]=Washington` -> hits 5,504 (measured 2026-09-30),
+ *   56 requests of 100, ~10 s, two walks 5,504/5,504 with 0 ids differing.
+ *
+ * The state filter matches ANY of a job's locations, and 52% of these list
+ * more than one (up to 10), so the filtered set holds roles whose FIRST
+ * location is Arlington VA or New York. Each job carries `locations[]` (JSON
+ * strings) with `normalizedCountyName`, and the feed keeps a role only if one
+ * of its locations is in the scope's COUNTIES — King, Snohomish and Pierce,
+ * the Seattle MSA — and files it there, at its primary location when that
+ * qualifies and else at its first qualifying one. Measured: 5,455 kept
+ * (primary in-metro 4,004; multi-site roles whose primary is elsewhere 1,451);
+ * the other 49 are Spokane, Walla Walla, Kitsap … or "Virtual Location -
+ * Washington" (no county), and are dropped rather than filed on Seattle.
+ *
+ * ONE ROW PER ROLE. Other hubs (Arlington/Herndon 2,400, New York 1,500,
+ * Austin 1,350, the Bay Area ~1,700) are NOT added, because a second scope run
+ * as a separate feed would file every multi-site role twice. Widening this
+ * must be done inside one walk that dedupes by id across scopes, and each
+ * scope's filtered `hits` must stay under 10,000 — the walk refuses (returns
+ * []) when it reads 10,000, since that is the cap, not a count.
+ */
+const AMAZON_PAGE = 100;
+const AMAZON_CAP = 10000;
+const AMAZON_SCOPE: Record<string, { query: string; state: string; counties: string[] }> = {
+  "seattle-amzn": {
+    query: "normalized_state_name[]=Washington",
+    state: "Washington",
+    counties: ["King", "Snohomish", "Pierce"],
+  },
+};
+
+interface AmazonJob {
+  id_icims?: string;
+  title?: string;
+  job_path?: string;
+  posted_date?: string;
+  job_category?: string;
+  normalized_location?: string;
+  locations?: string[];
+}
+
+async function fetchAmazonJobs(site: SiteDef): Promise<PortalJob[]> {
+  const scope = AMAZON_SCOPE[site.key ?? site.id];
+  if (!scope) return [];
+  const read = async (offset: number): Promise<{ hits: number; jobs: AmazonJob[] } | null> => {
+    const res = await getJson<{ hits?: number; jobs?: AmazonJob[] }>(
+      `${site.endpoint}?offset=${offset}&result_limit=${AMAZON_PAGE}&sort=recent&${scope.query}`,
+    );
+    if (!res || !Array.isArray(res.jobs)) return null;
+    return { hits: Number(res.hits) || 0, jobs: res.jobs };
+  };
+  const first = await read(0);
+  if (!first) return [];
+  if (first.hits >= AMAZON_CAP) {
+    console.log(`amazon ${site.key ?? site.id}: hits ${first.hits} is the cap — scope too wide`);
+    return [];
+  }
+  const pages = Math.ceil(first.hits / AMAZON_PAGE);
+  const rest = await pagedParallel<AmazonJob>(
+    async (i) => (await read((i + 1) * AMAZON_PAGE))?.jobs ?? null,
+    AMAZON_PAGE,
+    Math.max(0, pages - 1),
+    `amazon ${site.key ?? site.id}`,
+  );
+  const all = [...first.jobs, ...rest];
+  const ids = new Set(all.map((j) => j.id_icims).filter(Boolean));
+  if (ids.size < first.hits * 0.98) {
+    console.log(`amazon ${site.key ?? site.id}: ${ids.size} of ${first.hits} — walk incomplete`);
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of all) {
+    const id = r.id_icims ?? "";
+    const title = clean(r.title ?? "");
+    if (!id || !title || !r.job_path || seen.has(id)) continue;
+    seen.add(id);
+    const inScope: string[] = [];
+    for (const s of r.locations ?? []) {
+      let l: {
+        normalizedStateName?: string;
+        normalizedCountyName?: string;
+        normalizedLocation?: string;
+      };
+      try {
+        l = JSON.parse(s) as typeof l;
+      } catch {
+        continue;
+      }
+      if (
+        l.normalizedStateName === scope.state &&
+        scope.counties.includes(l.normalizedCountyName ?? "") &&
+        l.normalizedLocation
+      )
+        inScope.push(l.normalizedLocation);
+    }
+    if (!inScope.length) continue;
+    const primary = r.normalized_location ?? "";
+    out.push(
+      job(
+        site,
+        title,
+        inScope.includes(primary) ? primary : inScope[0],
+        `${site.origin}${r.job_path}`,
+        r.posted_date ? isoDay(r.posted_date) : "",
+        clean(r.job_category ?? "") || "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── IBM (www-api.ibm.com search) ─────────────────────────────────────────────
+/**
+ * careers.ibm.com is an Avature front end that answers a non-browser with
+ * HTTP 202 and an empty body (a bot challenge), so fetchAvature cannot read
+ * it. The listing is IBM's own search service:
+ *
+ *   POST https://www-api.ibm.com/search/api/v2
+ *   {appId:"careers", scopes:["careers2"], size:100, from:N, sort, …}
+ *   -> hits.total.value, hits.hits[]._source {title, url, field_keyword_19
+ *      (location), field_keyword_08 (category), dcdate}
+ *
+ * size 100 is the maximum (500 -> "Parameter size has an invalid value").
+ *
+ * THE SORT DECIDES WHETHER THIS IS A WALK OR A SAMPLE. Measured 2026-09-30,
+ * total 1,897: the site's own [_score, pageviews] ties everything (1,751
+ * unique, 2026-09-29); [dcdate desc] alone still ties within a day — two
+ * walks gave 1,891 and 1,890 unique, different sets; [dcdate desc, _id asc]
+ * gave 1,897 of 1,897 twice with 0 ids differing. 19 requests, ~3 s.
+ *
+ * Locations are "City, CC" with an ISO country code and no US state
+ * ("Yorktown Heights, US", "POUGHKEEPSIE, US"), or "Multiple Cities" (329),
+ * which names no place and stays unplaced (homeHub null). See the SiteDef's hubHints.
+ */
+const IBM_PAGE = 100;
+
+interface IbmHit {
+  _id?: string;
+  _source?: {
+    title?: string;
+    url?: string;
+    field_keyword_19?: string;
+    field_keyword_08?: string;
+    dcdate?: string;
+  };
+}
+
+async function fetchIbmSearch(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (from: number): Promise<{ total: number; hits: IbmHit[] } | null> => {
+    const res = await getJson<{ hits?: { total?: { value?: number }; hits?: IbmHit[] } }>(
+      site.endpoint,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://www.ibm.com",
+          Referer: "https://www.ibm.com/careers/search",
+        },
+        body: JSON.stringify({
+          appId: "careers",
+          scopes: ["careers2"],
+          query: { bool: { must: [] } },
+          size: IBM_PAGE,
+          from,
+          sort: [{ dcdate: "desc" }, { _id: "asc" }],
+          lang: "zz",
+          localeSelector: {},
+          sm: { query: "", lang: "zz" },
+          _source: ["_id", "title", "url", "field_keyword_19", "field_keyword_08", "dcdate"],
+        }),
+      },
+    );
+    const h = res?.hits;
+    if (!h || !Array.isArray(h.hits)) return null;
+    return { total: Number(h.total?.value) || 0, hits: h.hits };
+  };
+  const first = await read(0);
+  if (!first) return [];
+  const pages = Math.ceil(first.total / IBM_PAGE);
+  const rest = await pagedParallel<IbmHit>(
+    async (i) => (await read((i + 1) * IBM_PAGE))?.hits ?? null,
+    IBM_PAGE,
+    Math.max(0, pages - 1),
+    `ibm ${site.key ?? site.id}`,
+  );
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const h of [...first.hits, ...rest]) {
+    const s = h._source ?? {};
+    const title = clean(s.title ?? "");
+    const url = (s.url ?? "").trim();
+    if (!title || !url || seen.has(url)) continue;
+    seen.add(url);
+    const loc = clean(s.field_keyword_19 ?? "");
+    const day = (s.dcdate ?? "").slice(0, 10);
+    out.push(
+      job(
+        site,
+        title,
+        /^multiple cities$/i.test(loc) ? "" : loc,
+        url,
+        /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "",
+        clean(s.field_keyword_08 ?? "") || "Career portal",
+      ),
+    );
+  }
+  if (out.length < first.total * 0.98) {
+    console.log(`ibm: ${out.length} of ${first.total} — walk incomplete, not written`);
+    return [];
+  }
+  return out;
+}
+
+// ── ApplyFlow (Programmed) ───────────────────────────────────────────────────
+/**
+ * www.jobs.programmed.com.au is an ApplyFlow (WordPress + Vue) job site whose
+ * list is fetched client-side from
+ *
+ *   POST https://account-api.applyflow.com/api/seeker/v1/search-job
+ *   headers job-buckets / platform-code / site-code (from window.afConfig)
+ *   body {"page":N,"resultsPerPage":200,"search_keywords":""}
+ *   -> search_results.job_count, search_results.jobs[]
+ *
+ * THE PAGING KEYS ARE TOP-LEVEL. Nested under `search_filters` they are
+ * silently ignored and every page is page 1. resultsPerPage 200 and 500 are
+ * both honoured (measured 2026-09-30); 200 keeps each call ~4 s.
+ *
+ * THE BOARD IS NOT ALL PROGRAMMED'S OWN VACANCIES. Measured 2026-09-30,
+ * job_count 718, split by `company_name`:
+ *
+ *   Programmed                   143  source rss-feed, applied for through
+ *                                     Programmed's own PageUp tenant 432 —
+ *                                     its OWN staff (technicians, coordinators,
+ *                                     account managers, HR, apprentices)
+ *   Programmed / PERSOLKELLY     388  labour-hire placements via aplitrak /
+ *   Programmed Skilled Workforce 139  Broadbean, at a client's site ("our
+ *                                     client, Laminex …", 152 of 527 name one)
+ *   PERSOL                        48  PERSOLKELLY NZ, a sister company
+ *
+ * ONLY `company_name === expectCompany ?? name` is filed. The labour-hire ads
+ * are a client's demand for labour — the workplace, the work and usually the
+ * hiring decision are the client's — so filed here they would make a staffing
+ * brand look like a 700-role employer and put the client's hiring on the
+ * wrong company. The split is logged on every walk so a change in it shows.
+ *
+ * Location is `location_label` + country; every row has one ("Perth WA",
+ * "Melbourne VIC 3000", "WA", "Australia", "North Island, New Zealand").
+ */
+const APPLYFLOW_PAGE = 200;
+const APPLYFLOW_TENANT: Record<string, { bucket: string; siteCode: string }> = {
+  "priv-programmed": { bucket: "PROGRAMMED", siteCode: "programmed" },
+};
+
+interface ApplyFlowJob {
+  id?: string | number;
+  job_title?: string;
+  location_label?: string;
+  location_level_5_label?: string;
+  company_name?: string;
+  activates_at?: string;
+  URL?: string;
+}
+
+async function fetchApplyFlow(site: SiteDef): Promise<PortalJob[]> {
+  const t = APPLYFLOW_TENANT[site.key ?? site.id];
+  if (!t) return [];
+  const read = async (page: number): Promise<{ total: number; jobs: ApplyFlowJob[] } | null> => {
+    const res = await getJson<{
+      search_results?: { job_count?: number; jobs?: ApplyFlowJob[] };
+    }>(site.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "job-buckets": t.bucket,
+        "platform-code": "applyflow",
+        "site-code": t.siteCode,
+      },
+      body: JSON.stringify({ page, resultsPerPage: APPLYFLOW_PAGE, search_keywords: "" }),
+    });
+    const r = res?.search_results;
+    if (!r || !Array.isArray(r.jobs)) return null;
+    return { total: Number(r.job_count) || 0, jobs: r.jobs };
+  };
+  const first = await read(1);
+  if (!first) return [];
+  const pages = Math.ceil(first.total / APPLYFLOW_PAGE);
+  const rest = await pagedParallel<ApplyFlowJob>(
+    async (i) => (await read(i + 2))?.jobs ?? null,
+    APPLYFLOW_PAGE,
+    Math.max(0, pages - 1),
+    `applyflow ${site.key ?? site.id}`,
+  );
+  const all = [...first.jobs, ...rest];
+  const ids = new Set(all.map((j) => String(j.id ?? "")).filter(Boolean));
+  if (ids.size < first.total * 0.98) {
+    console.log(`applyflow ${site.key ?? site.id}: ${ids.size} of ${first.total} — incomplete`);
+    return [];
+  }
+  const want = site.expectCompany ?? site.name;
+  const split: Record<string, number> = {};
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of all) {
+    const id = String(r.id ?? "");
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const company = clean(r.company_name ?? "");
+    split[company] = (split[company] ?? 0) + 1;
+    if (company !== want) continue;
+    const title = clean(r.job_title ?? "");
+    if (!title || !r.URL) continue;
+    const label = clean(r.location_label ?? "");
+    const country = clean(r.location_level_5_label ?? "");
+    const loc = country && label !== country ? `${label}, ${country}` : label || country;
+    const day = (r.activates_at ?? "").slice(0, 10);
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}${r.URL}`,
+        /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "",
+        "Career portal",
+      ),
+    );
+  }
+  console.log(
+    `applyflow ${site.key ?? site.id}: kept ${out.length} "${want}" of ${seen.size} — ` +
+      Object.entries(split)
+        .map(([k, n]) => `${k} ${n}`)
+        .join(", "),
+  );
+  return out;
+}
+
+// ── FOX (foxcareers.com) ─────────────────────────────────────────────────────
+/**
+ * Fox's own board is a custom ASP.NET site; the req ids (R5xxxxxxx) come from
+ * an internal Workday with no public cxs site (fox.wd1.myworkdayjobs.com
+ * 'External'/'Fox' -> 404), so this is the only readable list.
+ *
+ * GET `/Search/JobsList/?page=N&jobFunction=&brand=…&keyword=` returns an
+ * HTML fragment: `<input id="hiddenJobCount" value="374"/>`, then ten
+ * `<div class="jobListing">` cards — title anchor to /Search/JobDetail/<R id>/,
+ * `searchResultBrand`, a `searchResultDetail` of location `<span>`s separated
+ * by `<span>;</span>`, and "Job Posting Date: September 28, 2026".
+ *
+ * PAGE 0 IS THE FIRST PAGE (measured 2026-09-30: page=0 and page=1 carry
+ * different ids). Walked 0..37 against hiddenJobCount 374: 374 rows, 374
+ * distinct ids, page 38 empty, ~5 s. The walk is bounded by that count.
+ *
+ * Titles end " (R50033705)"; stripped. Locations are "City, State" in full
+ * words, foreign ones "City, Region , Country". A role is placed at its first
+ * listed location that lands on a hub, else recorded at its first unplaced —
+ * the rule the Google and Glencore feeds use.
+ */
+const FOX_PAGE = 10;
+
+async function fetchFoxCareers(site: SiteDef): Promise<PortalJob[]> {
+  const url = (page: number) =>
+    `${site.endpoint}?page=${page}&jobFunction=&brand=&subBrand=&country=&location=&city=` +
+    `&latitude=&longitude=&locationType=&keyword=`;
+  type Card = { id: string; title: string; locs: string[]; brand: string; posted: string };
+  const parse = (html: string): Card[] => {
+    const cards: Card[] = [];
+    for (const c of html.split(/class="jobListing"/i).slice(1)) {
+      const a = c.match(/href="(\/Search\/JobDetail\/(R\d+)\/[^"]*)"[^>]*>([\s\S]*?)<\/a>/i);
+      if (!a) continue;
+      const title = clean(a[3]).replace(/\s*\(R\d+\)\s*$/, "");
+      const detail = c.match(/<p class="searchResultDetail">([\s\S]*?)<\/p>/i)?.[1] ?? "";
+      const locs = clean(detail)
+        .split(";")
+        .map((s) => s.replace(/\s+,/g, ",").trim())
+        .filter(Boolean);
+      const posted = c.match(/Job Posting Date:\s*([^<]+)</i)?.[1] ?? "";
+      const brand = clean(c.match(/<p class="searchResultBrand">([\s\S]*?)<\/p>/i)?.[1] ?? "");
+      cards.push({ id: a[2], title, locs, brand, posted: clean(posted) });
+    }
+    return cards;
+  };
+  const firstHtml = await getText(url(0));
+  if (!firstHtml) return [];
+  const total = Number(firstHtml.match(/id="hiddenJobCount"[^>]*value="(\d+)"/i)?.[1]) || 0;
+  const pages = Math.ceil(total / FOX_PAGE);
+  const rest = await pagedParallel<Card>(
+    async (i) => {
+      const h = await getText(url(i + 1));
+      return h === null ? null : parse(h);
+    },
+    FOX_PAGE,
+    Math.max(0, pages - 1),
+    `fox ${site.key ?? site.id}`,
+  );
+  const home = HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const c of [...parse(firstHtml), ...rest]) {
+    if (!c.title || seen.has(c.id)) continue;
+    seen.add(c.id);
+    const loc =
+      c.locs.find((l) => hubFor(l, site.homeHub, home, site.hubHints) !== null) ?? c.locs[0] ?? "";
+    out.push(
+      job(
+        site,
+        c.title,
+        loc,
+        `${site.origin}/Search/JobDetail/${c.id}/`,
+        c.posted ? isoDay(c.posted) : "",
+        c.brand || "Career portal",
+      ),
+    );
+  }
+  if (out.length < total * 0.98) {
+    console.log(`fox: ${out.length} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jibe: fetchJibe,
   googlecareers: fetchGoogleCareers,
@@ -29176,6 +29896,11 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   capgemini: fetchCapgemini,
   wipro: fetchWipro,
   eightfoldpcs: fetchEightfoldPcs,
+  lvmh: fetchLvmh,
+  amazonjobs: fetchAmazonJobs,
+  ibmsearch: fetchIbmSearch,
+  applyflow: fetchApplyFlow,
+  foxcareers: fetchFoxCareers,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -29283,6 +30008,14 @@ export const SOURCE_TAG: Record<Platform, string> = {
   glencore: "glen",
   // MokaHR, the Chinese ATS behind ZTE, DJI, CATL, East Money and Hengrui.
   moka: "moka",
+  // Named for the page each came from: LVMH's group board (an Algolia index
+  // over every maison's ATS), Amazon's, IBM's and Fox's own boards.
+  lvmh: "lvmh",
+  amazonjobs: "amzn",
+  ibmsearch: "ibm",
+  // ApplyFlow is a real job-site platform, so the tag is the platform.
+  applyflow: "applyflow",
+  foxcareers: "fox",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
