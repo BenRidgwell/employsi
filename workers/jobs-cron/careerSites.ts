@@ -196,7 +196,19 @@ type Platform =
   | "cmbchina"
   | "saicrecruit"
   | "hotjob"
-  | "atsx";
+  | "atsx"
+  | "sonar"
+  | "axol"
+  | "mitsuicareer"
+  | "fanuc"
+  | "hyundaitalent"
+  | "lgeglobal"
+  | "hansenyuncken"
+  | "jetengine"
+  | "ritchies"
+  | "cianywhere"
+  | "borgcareers"
+  | "irecruitment";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -5824,7 +5836,9 @@ export const SITES: SiteDef[] = [
   // (eightfoldpcs 429 after ~300 of 531 pages), Thiess (Clinch serves a
   // different slice per identical request; sitemap.xml lists all 135), and new
   // readers still to write for Larsen & Toubro
-  // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279).
+  // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279 —
+  // since found to be all CLIENTS' ads and deliberately not wired; see the
+  // batch 12: I note at the end of SITES).
   // ARB (ConnX), Vault Minerals (Datakiosk) and Defence Health (Taleo Business
   // Edition) have readers since 2026-09-30, batch 11: A. No board of their own: Sydney Tools, Alto, Loan
   // Market, SEEK (lists only on SEEK itself).
@@ -8205,7 +8219,8 @@ export const SITES: SiteDef[] = [
   // 2-4 walks; the board is 21,719 roles), Swinburne (NGA.NET CAPTCHA). New
   // readers needed: ByteDance (csrf + 10,000-row cap — since read, Beijing
   // partition only, by fetchBytedance in batch 11 D), Hengrui (MokaHR,
-  // AES-encrypted), UTS (Oracle iRecruitment session forms), Amazon (10,000
+  // AES-encrypted), UTS (Oracle iRecruitment session forms; since read by
+  // fetchIRecruitment, batch 12: I), Amazon (10,000
   // cap; since wired for the Seattle MSA only, see fetchAmazonJobs), IBM
   // (www-api.ibm.com search; since wired, see fetchIbmSearch). Teys and RAA
   // (RSS <item>) and Notre Dame (Jobvite) are wired since 2026-09-30, batch
@@ -22649,7 +22664,406 @@ export const SITES: SiteDef[] = [
     origin: "https://jobs.jobvite.com",
     homeHub: null,
     skipTitles: /^EOI\s*-\s*Academic Sessional/i,
+  }, // ── batch 12: I ──
+  //
+  // Measured 2026-09-30. Wired: Hansen Yuncken, Leader Computers, Ritchies,
+  // BAC Holdings, Australian Panels (as Porta), UTS. NOT wired, each for a
+  // measured reason:
+  //   Pallion — pallion.com/wp-json/wp/v2/job reads fine with fetchWpRest
+  //     (X-WP-Total 2; title.rendered is the real title; no location field,
+  //     so rows would fall to homeHub sydney, which is right — Marrickville).
+  //     But both posts are DEAD: re-checked today, each acf.apply_button_link
+  //     (apply.jobadder.com/18047/877379/…, /878199/…) still 302s to
+  //     apply.jobadder.com/closed/…. The WP list is not maintained, and REST
+  //     cannot tell a live post from a closed one (the Perseus lesson), so
+  //     reading it would archive two ended vacancies as live indefinitely.
+  //   Newcastle Greater Mutual Group — www.ngmgroup.com.au/careers,
+  //     greater.com.au/careers and newcastlepermanent.com.au all answer 403
+  //     behind a Cloudflare managed challenge, to curl, WebFetch and headless
+  //     Chromium alike ("Just a moment…" after 20 s). The ATS still cannot be
+  //     named: no LiveHire segment (ngmgroup/greaterbank/newcastlepermanent
+  //     token 404), no Lever board, ELMO/Expr3ss subdomains bounce to the
+  //     vendor, applynow.net.au answers the same page for any subdomain.
+  //     Roster domain ngm.com.au is an unrelated site; the group is
+  //     Newcastle-based (roster home sydney is questionable).
+  //   Talent International — a recruitment agency. All 273 posts in its
+  //     wp-json `job` type are CLIENTS' vacancies ("Talent International is
+  //     currently recruiting … to work for the NSW Government", "our client,
+  //     a leading national logistics organisation"); read 2026-09-30, the
+  //     recruiter-shaped titles (Recruitment Business Partner, Talent
+  //     Acquisition Administrator, Recruitment Officer) are client placements
+  //     too. No post is Talent's own role, so nothing can be filed under its
+  //     id without describing someone else's demand as Talent's.
+  //   ADCO Constructions — adcoconstruct.com.au reset every connection from
+  //     here today (curl: connection reset, both hosts) and WebFetch got 503,
+  //     so the page could not be re-measured. Yesterday it listed ONE role
+  //     (a summer intern programme) and wp-json/wp/v2/cpt_job is 401
+  //     (iThemes Security). Not wired on an unmeasured page.
+  //
+  // Hansen Yuncken — own positions page, 4 roles after the standing EOI block
+  // is skipped. Every role names its city ("Melbourne, VIC", "Sydney, NSW",
+  // "Brisbane or Cairns, QLD" -> brisbane), so homeHub is null: HY is
+  // national, and a blank location must not default to Melbourne.
+  {
+    id: "priv-hansen-yuncken",
+    name: "Hansen Yuncken",
+    sector: "Commercial construction",
+    platform: "hansenyuncken",
+    endpoint: "https://www.hansenyuncken.com.au/people-culture/positions/",
+    origin: "https://www.hansenyuncken.com.au",
+    homeHub: null,
+    skipTitles: /^(General )?Expression of Interest$/i,
   },
+  // Leader Computers — the company is Leader (leadersystems.com.au, HQ
+  // Franklin St Adelaide); the roster's leadercomputers.com.au has no DNS.
+  // JetEngine grid, 11 roles: Adelaide CBD 5, Melbourne (Clayton South) 2,
+  // Sydney (Lidcombe) 2, Brisbane (Archerfield) 3 — each placed by its own
+  // city name.
+  {
+    id: "priv-leader-computers",
+    name: "Leader Computers",
+    sector: "IT distribution",
+    platform: "jetengine",
+    endpoint: "https://leadersystems.com.au/careers/",
+    origin: "https://leadersystems.com.au",
+    homeHub: "adelaide",
+  },
+  // Ritchies Supa IGA — per-store accordions; 4 real vacancies among 84
+  // panels of standing "General Positions" posts. Stores are mostly regional
+  // Victoria and NSW, so ONLY metro stores are hinted (the Melbourne ones by
+  // name — Mornington Peninsula, Cardinia and Yarra Ranges stores included,
+  // being inside Greater Melbourne; Sydney's North Ryde, Spit Junction, Taren
+  // Point and the Central Coast stores, which are in Greater Sydney; Daisy
+  // Hill in Logan for Brisbane), and each state is then hinted to NULL, so
+  // Kurri Kurri or Mildura cannot fall to a capital through "new south wales"
+  // or a state token. Wallan (Mitchell Shire) and Woodend are left unplaced.
+  {
+    id: "priv-ritchies-supa-iga",
+    name: "Ritchies Supa IGA",
+    sector: "Supermarkets",
+    platform: "ritchies",
+    endpoint: "https://www.ritchies.com.au/careers/Current-Vacancies",
+    origin: "https://www.ritchies.com.au",
+    homeHub: null,
+    skipTitles: /^General (Positions?|Roles?)( Available)?$/i,
+    hubHints: [
+      ["amberly park", "melbourne"],
+      ["aspendale gardens", "melbourne"],
+      ["balnarring", "melbourne"],
+      ["bentleigh east", "melbourne"],
+      ["carrum downs", "melbourne"],
+      ["diamond creek", "melbourne"],
+      ["dromana", "melbourne"],
+      ["emerald", "melbourne"],
+      ["frankston", "melbourne"],
+      ["glenferrie road", "melbourne"],
+      ["hawthorn square", "melbourne"],
+      ["heathmont", "melbourne"],
+      ["mt eliza", "melbourne"],
+      ["mt martha", "melbourne"],
+      ["mt waverley", "melbourne"],
+      ["narre warren", "melbourne"],
+      ["pentridge", "melbourne"],
+      ["ringwood east", "melbourne"],
+      ["ringwood north", "melbourne"],
+      ["rowville", "melbourne"],
+      ["seaford", "melbourne"],
+      ["sorrento", "melbourne"],
+      ["wantirna", "melbourne"],
+      ["yarra glen", "melbourne"],
+      ["north ryde", "sydney"],
+      ["spit junction", "sydney"],
+      ["taren point", "sydney"],
+      ["bateau bay", "sydney"],
+      ["erina", "sydney"],
+      ["daisy hill", "brisbane"],
+      ["victoria", null],
+      ["new south wales", null],
+      ["queensland", null],
+    ],
+  },
+  // BAC Holdings — Brisbane Airport Corporation, TechnologyOne CiAnywhere
+  // public board, 2 roles today. Locations are airport sites ("12-14 The
+  // Circuit", "Head Office"), so assumeHomeHub: every place BAC can advertise
+  // is at Brisbane Airport.
+  {
+    id: "priv-bac-holdings",
+    name: "BAC Holdings",
+    sector: "Airport operations",
+    platform: "cianywhere",
+    endpoint:
+      "https://bacair.t1cloud.com/T1Default/CiAnywhere/Web/BACAIR/Public/Function/$ORG.REC.EXJOBB.ENQ/RECRUIT_EXT?suite=CES",
+    origin: "https://bacair.t1cloud.com",
+    homeHub: "brisbane",
+    assumeHomeHub: true,
+  },
+  // Australian Panels — australianpanels.com.au now redirects to
+  // porta.com.au/careers: Porta is the Borg group brand that "unifies
+  // Australian Panels, Porta Mouldings, Dongwha Australia, easycraft", and its
+  // careers page links to Borg's board. The board still has an "Australian
+  // Panels" brand facet, at 0; the roles are filed under Porta. So this feed
+  // is the PORTA brand only (13 today) — the successor of this employer — and
+  // NOT the whole Borg group (30), whose polytec, Crossmuller, Group
+  // Logistics and Techplas roles are other businesses. Places arrive as
+  // "Suburb, New South Wales": Charmhaven / Somersby / West Gosford (Central
+  // Coast) and Oberon (Central Tablelands, 8 of the 13). None of them is in
+  // Sydney, and HUB_MATCH's state needle would file every one there, so they
+  // are hinted to no hub: a Central Coast or Oberon plant is not a Sydney
+  // vacancy, and the local layer counts one city. homeHub is null so a blank
+  // place does not default there either.
+  {
+    id: "priv-australian-panels",
+    name: "Australian Panels",
+    sector: "Timber panel manufacturing",
+    platform: "borgcareers",
+    endpoint: "https://careers.borgs.com.au/jobs/?brands=porta.png",
+    origin: "https://careers.borgs.com.au",
+    homeHub: null,
+    hubHints: [
+      ["oberon", null],
+      ["charmhaven", null],
+      ["somersby", null],
+      ["gosford", null],
+    ],
+  },
+  // UTS — Jobs@UTS, Oracle EBS iRecruitment visitor search, 26 roles. One
+  // is a standing "Indigenous Employment Opportunities – Expression of
+  // Interest" pool (closing 29-Jan-2027), dropped by skipTitles. No location
+  // column; every role is UTS Broadway, hence homeHub sydney.
+  {
+    id: "uni-university-of-technology-sydney",
+    name: "University of Technology Sydney",
+    sector: "Higher education",
+    platform: "irecruitment",
+    endpoint:
+      "https://recruitment.uts.edu.au/OA_HTML/RF.jsp?function_id=14296&resp_id=23350&resp_appl_id=800&security_group_id=0&lang_code=US&params=1MRbeqL8d4H-45F7eWg8tcMZi9yxQo7E2xB8NXRsSOlGRIRQXIcwO8OMC-ZaHNY2&oas=BGBPtyycAC0jP53NIJF7Bw..",
+    origin: "https://recruitment.uts.edu.au",
+    homeHub: "sydney",
+    skipTitles: /Expression of Interest/i,
+  },
+  // ── batch 12: G ──
+  // Japanese and Korean own boards. HUB_MATCH is Latin-script and its only
+  // hubs here are tokyo and seoul (no osaka, nagoya, busan), so every feed
+  // below places Japanese/Korean-script addresses through its own hubHints.
+  // Greater Tokyo follows the Canon (hrmos) precedent: 東京都, 神奈川県, 埼玉県
+  // and 千葉県 -> tokyo; every other prefecture stays unplaced. Seoul Capital
+  // Area follows the existing "gyeonggi-do · seongnam/suwon/…" -> seoul hints.
+  // homeHub is null throughout: a blank place must not default to the capital.
+  //
+  // Toyota Motor — Sonar, toyota-career.snar.jp (linked from recruit.toyota/
+  // career/, which 403s this address; the board does not). 2026-09-30: 78
+  // stated, 78 read. Places by prefecture: every role names 愛知県 (Toyota City
+  // / Nagoya) and/or 東京都 (Bunkyo, Chiyoda, …) — 14 list Tokyo first. Aichi
+  // is not a hub and stays unplaced. skipTitles drops the one standing
+  // "【オープンエントリー】" (open entry) post. NOTE for the roster: its earlier
+  // ads came from JobStreet-PH, i.e. Toyota Motor Philippines, a different
+  // employer; this board is Toyota Motor Corporation's own.
+  {
+    id: "tokyo-7203",
+    name: "Toyota Motor",
+    sector: "Industrial Manufacturing",
+    platform: "sonar",
+    endpoint: "https://toyota-career.snar.jp/index.aspx",
+    origin: "https://toyota-career.snar.jp",
+    homeHub: null,
+    hubHints: [
+      ["東京都", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+    skipTitles: /^【オープンエントリー】/,
+  },
+  // Honda Motor — Sonar, honda-career.snar.jp (linked from honda.co.jp;
+  // global.honda has no careers host). 2026-09-30: 516 stated, 516 read, one
+  // 4.6 MB page. First-listed prefecture: 栃木県 148 (Haga/Utsunomiya R&D),
+  // 埼玉県 147 (Wako R&D HQ, Sayama), 東京都 108 (Minato HQ), 大阪府 49, 熊本県
+  // 26, 愛知県 21, … Saitama -> tokyo under the Greater-Tokyo rule above
+  // (Wako borders Tokyo). Titles carry Honda's own requisition prefix
+  // ("【45】_HM_…"), kept: it is what tells two same-named roles apart.
+  // skipTitles drops the casual-interview posts (カジュアル面談) and the
+  // "【キャリア登録特別求人】" talent-registration pools ("…ポジション(集約)",
+  // positions aggregated) — standing posts, not vacancies. The department
+  // "オープンポジション" posts are kept, as for Mitsui below: each is a real
+  // opening in a named department.
+  {
+    id: "tokyo-7267",
+    name: "Honda Motor",
+    sector: "Industrial Manufacturing",
+    platform: "sonar",
+    endpoint: "https://honda-career.snar.jp/index.aspx",
+    origin: "https://honda-career.snar.jp",
+    homeHub: null,
+    hubHints: [
+      ["東京都", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+    skipTitles: /カジュアル面談|【キャリア登録特別求人】/,
+  },
+  // Denso — Sonar, denso-recruitment.snar.jp/index.aspx?id=9dboN7cGhc4 (linked
+  // from careers.denso.com; denso.com 403s this address). 2026-09-30: 314
+  // stated, 314 read. Denso writes places as "<short prefecture> ＞<site>
+  // （<full address>）": first-listed 愛知 280 (Kariya HQ and plants), 東京 26,
+  // 三重 5, 兵庫 1. Hints match the full-address forms ("東京都", "神奈川県", …),
+  // which every Denso site carries in its parentheses; "R&D Tokyo Haneda" also
+  // reaches tokyo through HUB_MATCH, correctly. A second board, ?id=_rHR6JZQJdM,
+  // holds 9 disability-hiring posts that are ALL also on this one (compared by
+  // title 2026-09-30), so it is not wired — it would only double-count.
+  // skipTitles: casual-interview pools, the "【オープンエントリー】" standing
+  // entries, and two office-tour/seminar sign-ups ("※…エントリーください※").
+  {
+    id: "tokyo-6902",
+    name: "Denso",
+    sector: "Industrial Manufacturing",
+    platform: "sonar",
+    endpoint: "https://denso-recruitment.snar.jp/index.aspx?id=9dboN7cGhc4",
+    origin: "https://denso-recruitment.snar.jp",
+    homeHub: null,
+    hubHints: [
+      ["東京都", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+    skipTitles: /カジュアル面談|【オープンエントリー】|^※.*エントリーください※/,
+  },
+  // KDDI — axol, job.axol.jp/hy/c/kddi (linked from career.kddi.com/career/
+  // recruit/). 2026-09-30: 141 listed, 141 described by the place view. Two are
+  // not vacancies and are skipped: the talent registration ("キャリア登録＜…＞")
+  // and the alumni/referral how-to ("アルムナイ・リファラルの応募方法について").
+  // Places are street addresses from the board's own office records
+  // ("東京都 港区高輪２－２１－１" = THE LINKPILLAR, Takanawa).
+  {
+    id: "tokyo-9433",
+    name: "KDDI",
+    sector: "Technology, Media and Telecommunications",
+    platform: "axol",
+    endpoint: "https://job.axol.jp/hy/c/kddi/job/list",
+    origin: "https://job.axol.jp",
+    homeHub: null,
+    hubHints: [
+      ["東京都", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+    skipTitles: /^(キャリア登録＜.*＞|アルムナイ・リファラルの応募方法について)$/,
+  },
+  // Mitsui & Co. — its own board's REST route, 35 postings (see fetchMitsuiCareer).
+  // These are standing departmental openings, one per unit and career track,
+  // not dated requisitions; they are what the company advertises for
+  // mid-career hiring, so they are archived, and the card should be read as
+  // such. Unplaced: the board states no place and its terms say work location
+  // is anywhere in Japan or overseas (Global track) or the hiring region
+  // (Regional). mitsui.com/careers 403s this address.
+  {
+    id: "tokyo-8031",
+    name: "Mitsui & Co.",
+    sector: "Energy & Natural Resources",
+    platform: "mitsuicareer",
+    endpoint: "https://career.mitsui.com/wp-json/mitsui/v1/career-jobs",
+    origin: "https://career.mitsui.com",
+    homeHub: null,
+  },
+  // FANUC — static list on fanuc.co.jp, 33 roles, apply by e-mail (see
+  // fetchFanuc). Places, from each role page (2026-09-30): 山梨県忍野村（本社）
+  // (Oshino, Yamanashi — HQ) for most, 茨城県筑西市 (Tsukuba plant) 2, and branch
+  // lists "本社（山梨）・日野支社・前橋支店・名古屋支社・…" for the sales and support
+  // roles. Hino (日野支社) is in Tokyo -> tokyo; everything else is unplaced.
+  // The field-service role says it is "decided after training at Hino or
+  // Nagoya, one of 25 sites" — it names Hino but is not placed there, so a
+  // null hint for "研修後に決定" (decided after training) comes first. homeHub
+  // null matters here: FANUC is on the Tokyo roster but is not a Tokyo employer.
+  // fanuc.com (the roster domain) is the global site and has no careers page.
+  {
+    id: "tokyo-6954",
+    name: "Fanuc",
+    sector: "Industrial Manufacturing",
+    platform: "fanuc",
+    endpoint: "https://www.fanuc.co.jp/ja/employ/infomation/",
+    origin: "https://www.fanuc.co.jp",
+    homeHub: null,
+    hubHints: [
+      ["研修後に決定", null],
+      ["日野支社", "tokyo"],
+      ["東京都", "tokyo"],
+    ],
+  },
+  // Hyundai Motor Company — talent.hyundai.com's JSON list (see
+  // fetchHyundaiTalent). 2026-09-30: 65 stated, 65 read. Places are Hyundai's
+  // own site names, in Korean: 의왕 (Uiwang R&D) 12, 양재본사 (Yangjae HQ,
+  // Seoul) 10, 서울 9, 남양연구소 (Namyang R&D, Hwaseong) 8, 판교 (Pangyo,
+  // Seongnam) 7, 울산공장 (Ulsan plant) 7, 아산공장 3, 서울(강남) 2, 전주공장 2,
+  // 경기 1, 시화하이테크센터 (Siheung) 1, 서부산하이테크센터 (Busan) 1, 의왕연구소 1,
+  // 서울(대방) 1. Seoul and Gyeonggi sites -> seoul; the Ulsan, Asan, Jeonju and
+  // Busan plants are other metros and stay unplaced. The roster's JobStreet-PH
+  // ads were Hyundai's Philippine distributor, not this employer.
+  {
+    id: "seoul-005380",
+    name: "Hyundai Motor Company",
+    sector: "Industrial Manufacturing",
+    platform: "hyundaitalent",
+    endpoint:
+      "https://talent.hyundai.com/api/rec/AP-HM-FO-02700?hgrCd=1&lang=ko&page=1&pageblock=100&searchFieldList=&searchOccupList=&searchPlaceList=&searchSectorList=&searchText=&jdSec=&srcOrd=",
+    origin: "https://talent.hyundai.com",
+    homeHub: null,
+    hubHints: [
+      ["서울", "seoul"],
+      ["양재", "seoul"],
+      ["의왕", "seoul"],
+      ["판교", "seoul"],
+      ["남양", "seoul"],
+      ["시화", "seoul"],
+      ["경기", "seoul"],
+    ],
+  },
+  // LG Electronics — LGE Global Careers (see fetchLgeGlobal): 261 roles at
+  // LGE's subsidiaries, NONE in Korea (US 114, India 29, Canada 19, Germany
+  // 18, …). Korea HQ hiring is on the LG GROUP board, careers.lg.com
+  // (api.careers.lg.com/rmk/job/retrieveJobNoticesList), which is NOT wired:
+  // measured 2026-09-30 it held 73 notices across the group, 3 of them LG전자 —
+  // two 산학장학생 (industry-academic scholarship) intakes, not vacancies, and
+  // one Changwon contract post. homeHub null: no Seoul role exists to default
+  // to. Placement traps, all measured: "Washington, United States" is the
+  // STATE (HUB_MATCH 'washington' = DC) and "Dublin, United States" is Dublin
+  // CA/OH, not Ireland — both null. The board writes US places as "<city>,
+  // United States" with no state, so the same-metro hints below carry the
+  // country: Englewood Cliffs NJ (LG's US HQ) -> newyork, as the file's other
+  // Bergen County NJ hints do; Santa Clara -> sanjose; Alpharetta -> atlanta;
+  // Farmers Branch -> dallas; Lincolnshire and Buffalo Grove IL -> chicago.
+  // Clarksville TN (the Tennessee plant), Troy MI, Huntsville AL, Aliso Viejo
+  // and the state-only rows stay unplaced; so do Eschborn, Nürnberg, Milan and
+  // the rest, which are not hubs.
+  {
+    id: "seoul-066570",
+    name: "LG Electronics",
+    sector: "Technology, Media and Telecommunications",
+    platform: "lgeglobal",
+    endpoint: "https://globalcareers.lge.com/api/job/v1/jobs/?page=1",
+    origin: "https://globalcareers.lge.com",
+    homeHub: null,
+    hubHints: [
+      ["washington, united states", null],
+      ["dublin, united states", null],
+      ["englewood cliffs, united states", "newyork"],
+      ["santa clara, united states", "sanjose"],
+      ["alpharetta, united states", "atlanta"],
+      ["farmers branch, united states", "dallas"],
+      ["lincolnshire, united states", "chicago"],
+      ["buffalo grove, united states", "chicago"],
+    ],
+  },
+  // Samsung C&T (seoul-028260) — NOT WIRED. It recruits through the group
+  // portal samsungcareers.com (company codes B11 상사, B12 건설, E71 리조트, E7A
+  // 패션; POST /hr/list.data, which needs the session cookie from GET /hr/ —
+  // without it every query answers "no postings"). Measured 2026-09-30: the
+  // whole portal held 3 notices (Samsung Global Research ×2, Samsung Heavy),
+  // and each C&T code returned 0. The posts there are recruitment ROUNDS
+  // ("경력사원 채용" over several fields), not vacancies. rnc.samsungcnt.com (E&C)
+  // is behind Incapsula and JS-only. A reader for a board holding nothing could
+  // not be verified; the Seoul card stays empty from own-board data, honestly.
   // ── batch 12: F ──
   // Trip.com Group (shanghai-tcom) — NOT WIRED: the API reads completely from
   // curl but a real fetch is bot-challenged. Two boards, one shape:
@@ -32995,7 +33409,1092 @@ async function fetchHotjob(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 12: G — readers ────────────────────────────────────────────────────
+// ── Sonar ATS (Thinkings) job board, *.snar.jp ──────────────────────────────
+/**
+ * `site.endpoint` is the tenant's board, https://<tenant>.snar.jp/index.aspx
+ * (with `?id=<board>` where the tenant runs more than one board). An ASP.NET
+ * WebForms page that server-renders EVERY posting on one GET — no paging —
+ * and states the count in its filter button: "フィルターで絞り込む(516件)".
+ *
+ * Measured 2026-09-30:
+ *   toyota-career          78 of 78 cards,   587 KB, ~2.5 s
+ *   honda-career          516 of 516 cards, 4.6 MB, ~7.5 s
+ *   denso-recruitment     314 of 314 cards, 2.3 MB, ~7 s  (?id=9dboN7cGhc4)
+ *
+ * Each card is `<div id="rpt_GroupItem_customBg_N">` with the title in
+ * `<a id="rpt_GroupItem_lkb_Title_N">`, then `<dl class="guidelines">` holding
+ * `<dt>職種</dt>` (job type) and `<dt>勤務地</dt>` (work location), each followed
+ * by one `<dd>` per value. A role at several sites lists every site. The three
+ * tenants write places three ways — Toyota "東京都（文京区）", Honda
+ * "東京都 ＞港区", Denso "東京 ＞東京支社（東京都港区/…）" — so placement is
+ * per-site hubHints, not a parse. All sites are joined into `loc`, and a row
+ * lands on a hub if ANY of its sites is one, as multi-city rows do elsewhere.
+ *
+ * TRAPS:
+ * - THERE IS NO PER-JOB URL. The title is `javascript:__doPostBack(...)`; the
+ *   postback 302s to /jobboard/detail.aspx?id=<opaque token>, and getting that
+ *   token means re-POSTing the whole page (4.6 MB of form state on Honda) once
+ *   per role. Not done. The page's own __VIEWSTATE, though, carries the table
+ *   the cards are rendered from (a .NET DataTable diffgram, "Table1" rows with
+ *   RowNo, JobOfferNo, Title), so each row's link is the board plus
+ *   `#job-<JobOfferNo>` — the board the role is listed on, with the board's own
+ *   stable id. RowNo N is card N-1; the title is checked against the card, and
+ *   a board whose ViewState does not line up is refused rather than linked
+ *   wrongly.
+ * - The ViewState is base64 of a binary blob (3.6 MB on Honda). It is decoded
+ *   once; the diffgram rows inside are plain UTF-8 XML.
+ * - `PublicOpenStart` is absent on most rows (76 of 78 on Toyota, 0 of 516 on
+ *   Honda), so no posting date is taken.
+ */
+async function fetchSonar(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const total = Number(/フィルターで絞り込む\((\d+)件\)/.exec(html)?.[1] ?? NaN);
+  const label = `sonar ${site.key ?? site.id}`;
+  if (!Number.isFinite(total)) {
+    console.log(`${label}: no stated total — page shape changed, feed skipped`);
+    return [];
+  }
+  // RowNo -> [JobOfferNo, Title] from the ViewState's Table1 rows.
+  const vsB64 = /id="__VIEWSTATE" value="([^"]*)"/.exec(html)?.[1] ?? "";
+  const byRow = new Map<number, [string, string]>();
+  try {
+    const bin = atob(vsB64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const vs = new TextDecoder().decode(bytes);
+    for (const m of vs.matchAll(
+      /<Table1 diffgr:id="[^"]*" msdata:rowOrder="\d+">([\s\S]*?)<\/Table1>/g,
+    )) {
+      const row = Number(/<RowNo>(\d+)<\/RowNo>/.exec(m[1])?.[1] ?? NaN);
+      const no = /<JobOfferNo>(\d+)<\/JobOfferNo>/.exec(m[1])?.[1];
+      const t = /<Title>([\s\S]*?)<\/Title>/.exec(m[1])?.[1];
+      if (Number.isFinite(row) && no && t !== undefined) byRow.set(row, [no, clean(t)]);
+    }
+  } catch {
+    // byRow stays empty and the check below refuses the board.
+  }
+  const out: PortalJob[] = [];
+  const cards = html.split(/<div id="rpt_GroupItem_customBg_\d+"/).slice(1);
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    const title = clean(
+      /id="rpt_GroupItem_lkb_Title_\d+"[^>]*>([\s\S]*?)<\/a>/.exec(card)?.[1] ?? "",
+    );
+    const vsRow = byRow.get(i + 1);
+    if (!title || !vsRow || vsRow[1] !== title) {
+      console.log(`${label}: card ${i + 1} does not match the ViewState row — feed skipped`);
+      return [];
+    }
+    const dl = /<dl class="guidelines[^"]*">([\s\S]*?)<\/dl>/.exec(card)?.[1] ?? "";
+    const field = (name: string): string[] => {
+      const part = dl.split(/<dt>/).find((p) => p.startsWith(`${name}</dt>`)) ?? "";
+      return [...part.matchAll(/<dd>([\s\S]*?)<\/dd>/g)].map((d) => clean(d[1])).filter(Boolean);
+    };
+    out.push(
+      job(
+        site,
+        title,
+        field("勤務地").join(" / "),
+        `${site.endpoint}#job-${vsRow[0]}`,
+        "",
+        field("職種").join(" / ") || "Career portal",
+      ),
+    );
+  }
+  if (out.length !== total || new Set(out.map((j) => j.url)).size !== total) {
+    console.log(`${label}: ${out.length} cards of ${total} stated — feed skipped`);
+    return [];
+  }
+  return out;
+}
+
+// ── axol (Axol Inc.) mid-career job board, job.axol.jp ──────────────────────
+/**
+ * `site.endpoint` is the tenant's full list, https://job.axol.jp/hy/c/<tenant>/job/list:
+ * every posting on one server-rendered page, as
+ * `<div class="offer__list__item"><a href=".../job/detail/<encid>">TITLE</a>`
+ * grouped under `<div class="offer__list__category">CATEGORY</div>`.
+ * Measured 2026-09-30 on KDDI: 141 items, 141 distinct ids, ~1.3 s.
+ *
+ * The list carries no place. The board's 勤務地 (work location) view does:
+ * GET .../job/pref with no filter answers the WHOLE board ("141件の検索結果",
+ * in `<span class="hit_cnt_str">`), ten full postings a page, each with its
+ * `job_encid` (the same id as the detail link) and one
+ * `<span class="jsAxolJob_jusho_switch" locName=… locJusho="東京都 港区高輪…">`
+ * per site. Later pages are `?page=N&searchKey=<key>`, the key printed in page
+ * one's pager; measured, it answers without a cookie. So a pull is 1 + 15
+ * requests on KDDI.
+ *
+ * The list is the set of roles; the pref walk only supplies places, keyed by
+ * id. The walk is bounded by its stated count, and a page it cannot read fails
+ * the pull (return []): a partial walk would leave some roles unplaced for a
+ * reason that is not the board's. The two non-vacancy posts print no place
+ * and get none (they are skipTitles on KDDI anyway).
+ */
+async function fetchAxol(site: SiteDef): Promise<PortalJob[]> {
+  const label = `axol ${site.key ?? site.id}`;
+  const list = await getText(site.endpoint);
+  if (!list) return [];
+  const base = site.endpoint.replace(/\/list\/?$/, "");
+  const roles: { id: string; title: string; cat: string; url: string }[] = [];
+  const seen = new Set<string>();
+  for (const area of list.split(/<div class="offer__list__area\b/).slice(1)) {
+    const cat = clean(/<div class="offer__list__category">([\s\S]*?)<\/div>/.exec(area)?.[1] ?? "");
+    for (const m of area.matchAll(
+      /<div class="offer__list__item"><a href="([^"]*\/job\/detail\/([A-Za-z0-9_-]+))"[^>]*>([\s\S]*?)<\/a>/g,
+    )) {
+      if (seen.has(m[2])) continue;
+      seen.add(m[2]);
+      roles.push({ id: m[2], url: m[1], title: clean(m[3]), cat });
+    }
+  }
+  const readPref = async (url: string) => {
+    const html = await getText(url);
+    const hit = html ? /class="hit_cnt_str">(\d+)</.exec(html) : null;
+    return html && hit ? { html, total: Number(hit[1]) } : null;
+  };
+  const first = await readPref(`${base}/pref`);
+  if (!first) return [];
+  const key = /[?&]searchKey=([A-Za-z0-9_-]+)/.exec(first.html)?.[1];
+  const pages = Math.ceil(first.total / 10);
+  if (pages > 1 && !key) {
+    console.log(`${label}: no searchKey on the place view — feed skipped`);
+    return [];
+  }
+  const rest = await allPages(
+    Math.max(0, pages - 1),
+    async (i) => {
+      const p = await readPref(`${base}/pref?page=${i + 2}&searchKey=${key}`);
+      return p ? [p.html] : null;
+    },
+    label,
+  );
+  if (!rest) return [];
+  // A posting is matched to its list row by job_encid, or — for the few the
+  // view prints without an entry button, and so without job_encid (6 of 141 on
+  // 2026-09-30, besides the two non-vacancies) — by its title, which is unique
+  // on the list. Every block the view printed must match a list row.
+  const byTitle = new Map<string, string | null>();
+  for (const r of roles) byTitle.set(r.title, byTitle.has(r.title) ? null : r.id);
+  const places = new Map<string, string>();
+  let blocks = 0;
+  let unmatched = 0;
+  for (const html of [first.html, ...rest]) {
+    for (const block of html.split(/class="jsAxolJob_title job__offer__title__text">/).slice(1)) {
+      blocks++;
+      const id =
+        /job_encid="([A-Za-z0-9_-]+)"/.exec(block)?.[1] ??
+        byTitle.get(clean(block.slice(0, block.indexOf("<"))));
+      if (!id || !seen.has(id)) {
+        unmatched++;
+        continue;
+      }
+      const locs = [...block.matchAll(/class="jsAxolJob_jusho_switch"[^>]*locJusho="([^"]*)"/g)]
+        .map((m) => clean(m[1]))
+        .filter(Boolean);
+      places.set(id, [...new Set(locs)].join(" / "));
+    }
+  }
+  if (
+    roles.length < first.total * 0.98 ||
+    blocks < first.total * 0.98 ||
+    places.size < roles.length * 0.98
+  ) {
+    console.log(
+      `${label}: list ${roles.length}, place view ${blocks} blocks / ${places.size} matched ` +
+        `(${unmatched} unmatched) of ${first.total} — feed skipped`,
+    );
+    return [];
+  }
+  return roles.map((r) =>
+    job(site, r.title, places.get(r.id) ?? "", r.url, "", r.cat || "Career portal"),
+  );
+}
+
+// ── Mitsui & Co. mid-career board (WordPress custom REST route) ──────────────
+/**
+ * GET https://career.mitsui.com/wp-json/mitsui/v1/career-jobs — a JSON array
+ * of segment objects {term_id, title (segment), list: [{post_id, url, name,
+ * position (本部, the business unit), group_tag: [{label: 'BD'|'BI'|'CE'}],
+ * recruitment_status_id, isDisable, …}]}. Measured 2026-09-30: 8 segments, 35
+ * postings, all 'open', none disabled, 35 distinct urls. The whole board in
+ * one response, so nothing to truncate. fetchWpRest cannot read it (not a
+ * wp/v2 type).
+ *
+ * TITLE: 18 of the 35 are named just "オープンポジション" (open position), and
+ * two units post one each for their BD and BI tracks, so the name alone would
+ * collapse 18 roles into one archive key. Those take "<position> オープン
+ * ポジション（<tracks>）", which is unique on the day; named posts ("投資事業室")
+ * keep their name with the unit in front.
+ *
+ * NO PLACE. The posts have none, and the board's terms say why: 勤務地 is
+ * "Global: anywhere in Japan or overseas" or "Regional: the region you are
+ * hired in" (career.mitsui.com/recruit/career/, read 2026-09-30). The rows are
+ * therefore unplaced — homeHub is null, deliberately, although Mitsui is a
+ * Tokyo company.
+ */
+interface MitsuiSegment {
+  title?: string;
+  list?: {
+    url?: string;
+    name?: string;
+    position?: string;
+    isDisable?: boolean;
+    recruitment_status_id?: string;
+    group_tag?: { label?: string }[];
+  }[];
+}
+
+async function fetchMitsuiCareer(site: SiteDef): Promise<PortalJob[]> {
+  const segs = await getJson<MitsuiSegment[]>(site.endpoint);
+  if (!Array.isArray(segs)) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const seg of segs) {
+    for (const it of seg.list ?? []) {
+      const url = it.url ?? "";
+      const name = clean(it.name ?? "");
+      if (!url || !name || seen.has(url)) continue;
+      if (it.isDisable || (it.recruitment_status_id ?? "open") !== "open") continue;
+      seen.add(url);
+      const unit = clean(it.position ?? "");
+      const tracks = (it.group_tag ?? []).map((g) => clean(g.label ?? "")).filter(Boolean);
+      const title =
+        name === "オープンポジション"
+          ? `${unit} ${name}${tracks.length ? `（${tracks.join("/")}）` : ""}`.trim()
+          : unit
+            ? `${unit} ${name}`
+            : name;
+      out.push(job(site, title, "", url, "", clean(seg.title ?? "") || "Career portal"));
+    }
+  }
+  return out;
+}
+
+// ── FANUC's own mid-career page (static HTML) ────────────────────────────────
+/**
+ * `site.endpoint` is https://www.fanuc.co.jp/ja/employ/infomation/ (sic). It
+ * lists the open roles after "現在、以下の職種について募集しています" as links to
+ * one static page each (sl.html, rs.html, …). Measured 2026-09-30: 33 roles.
+ * There is no ATS and no total; the list IS the board.
+ *
+ * The place is only on each role's page, under `<h3>N.勤務地</h3><p>…</p>`:
+ * "山梨県忍野村（本社）" (Oshino, Yamanashi — the HQ) for most, "茨城県筑西市
+ * （筑波工場）", or a branch list "本社（山梨）・日野支社・前橋支店・…". So a pull
+ * is 1 + 33 GETs, six at a time; a role page that cannot be read fails the pull.
+ * Only the paragraph's first line is kept: the rest is the "※転勤・海外赴任の
+ * 可能性もあります" (transfers possible) note or, once, commuting directions.
+ */
+async function fetchFanuc(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  const start = html?.indexOf("現在、以下の職種について募集しています") ?? -1;
+  if (!html || start < 0) return [];
+  // Only same-directory slugs: the footer's links are all "../…".
+  const seg = html.slice(start);
+  const roles: { url: string; title: string }[] = [];
+  const seen = new Set<string>();
+  for (const m of seg.matchAll(/<a href="([a-z0-9-]+\.html)"[^>]*>([\s\S]*?)<\/a>/g)) {
+    const url = new URL(m[1], site.endpoint).toString();
+    const title = clean(m[2]);
+    if (!title || seen.has(url)) continue;
+    seen.add(url);
+    roles.push({ url, title });
+  }
+  if (!roles.length) return [];
+  const places = await b11ePool(roles, PAGE_CONCURRENCY, async (r) => {
+    const page = await getText(r.url);
+    if (!page) return null;
+    const p = /<h3>\s*\d+\.\s*勤務地\s*<\/h3>\s*<p[^>]*>([\s\S]*?)<\/p>/.exec(page)?.[1] ?? "";
+    // First line only: later lines are the "※" transfer note or, on one
+    // page (2026-09-30), bus directions to the Nagoya branch.
+    return clean(p.split(/<br\s*\/?>/i)[0].replace(/※[\s\S]*$/, ""));
+  });
+  if (places.some((p) => p === null)) {
+    console.log(`fanuc ${site.key ?? site.id}: a role page could not be read — feed skipped`);
+    return [];
+  }
+  return roles.map((r, i) => job(site, r.title, places[i] ?? "", r.url, "", "Career portal"));
+}
+
+// ── Hyundai Motor Company, talent.hyundai.com ────────────────────────────────
+/**
+ * The board's own JSON list:
+ *   GET /api/rec/AP-HM-FO-02700?hgrCd=1&lang=ko&page=1&pageblock=100&…
+ * -> {status:200, data:{listCnt, list:[{recuYy, recuType, recuCls,
+ *     recuNoticeNm, workPlaceCodeNm, fldCodeNm, channelCodeNm, applyStartDt}]}}
+ * Measured 2026-09-30: listCnt 65, all 65 in one call (pageblock=100), ~1.9 s.
+ * `site.endpoint` is that URL. The site's HTML pages sit behind a NetFunnel
+ * queue; this is the plain public API those pages call, read once a day.
+ *
+ * lang=ko, not en: the English list held only 46 of 65 on 2026-09-29, so it
+ * would archive a subset. Titles and places are therefore Korean.
+ * The job page is /apply/applyView.hc?recuYy=…&recuType=…&recuCls=… (measured
+ * 2026-09-29 by clicking a card). One notice can cover several positions; it
+ * is one row, as the board shows it.
+ * Walk: one page; if listCnt ever exceeds the page it is walked, bounded by
+ * listCnt, and a failed page fails the pull.
+ */
+interface HyundaiRec {
+  recuYy?: string;
+  recuType?: string;
+  recuCls?: string | number;
+  recuNoticeNm?: string;
+  workPlaceCodeNm?: string | null;
+  fldCodeNm?: string | null;
+  channelCodeNm?: string | null;
+  applyStartDt?: string | null;
+}
+
+async function fetchHyundaiTalent(site: SiteDef): Promise<PortalJob[]> {
+  const per = 100;
+  const at = (n: number) => {
+    const u = new URL(site.endpoint);
+    u.searchParams.set("page", String(n));
+    u.searchParams.set("pageblock", String(per));
+    return u.toString();
+  };
+  const get = async (n: number) => {
+    const r = await getJson<{ status?: number; data?: { listCnt?: number; list?: HyundaiRec[] } }>(
+      at(n),
+    );
+    return r?.status === 200 && Array.isArray(r.data?.list) ? r.data : null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const total = Number(first.listCnt ?? 0);
+  const rest = await allPages(
+    Math.max(0, Math.ceil(total / per) - 1),
+    async (i) => (await get(i + 2))?.list ?? null,
+    `hyundai ${site.key ?? site.id}`,
+  );
+  if (!rest) return [];
+  const origin = new URL(site.endpoint).origin;
+  const byUrl = new Map<string, PortalJob>();
+  for (const r of [...(first.list ?? []), ...rest]) {
+    const title = clean(r.recuNoticeNm ?? "");
+    if (!title || !r.recuYy || !r.recuType || r.recuCls == null) continue;
+    const url = `${origin}/apply/applyView.hc?recuYy=${r.recuYy}&recuType=${r.recuType}&recuCls=${r.recuCls}`;
+    const d = /^(\d{4})(\d{2})(\d{2})$/.exec(r.applyStartDt ?? "");
+    byUrl.set(
+      url,
+      job(
+        site,
+        title,
+        clean(r.workPlaceCodeNm ?? ""),
+        url,
+        d ? `${d[1]}-${d[2]}-${d[3]}` : "",
+        clean(r.fldCodeNm ?? "") || clean(r.channelCodeNm ?? "") || "Career portal",
+      ),
+    );
+  }
+  if (!total || byUrl.size < total * 0.98) {
+    console.log(`hyundai ${site.key ?? site.id}: ${byUrl.size} of ${total} — feed skipped`);
+    return [];
+  }
+  return [...byUrl.values()];
+}
+
+// ── LG Electronics Global Careers, globalcareers.lge.com ─────────────────────
+/**
+ * GET https://globalcareers.lge.com/api/job/v1/jobs/?page=N (1-based).
+ * -> {successOrNot:'Y', data:{total, pages, list:[{id, title, cntryNm,
+ *     location, corpCd, jobFamily, …}]}}
+ * Measured 2026-09-30: total 261, 20 a page (pageSize is ignored), 14 pages,
+ * 261 distinct ids, ~1 s a page. The board is LGE's subsidiaries worldwide
+ * (Greenhouse, SAP and two other ATSs merged by LG) and carries NO Korean
+ * role — Korea hiring is on the LG group board, see the SITES note.
+ *
+ * TRAPS:
+ * - A page past the end REPEATS the last page (page 15 = page 14), so the
+ *   walk is bounded by `total`, never by an empty page.
+ * - The list is ordered by update time; a row updated mid-walk can shift a
+ *   page boundary. Deduped by id and checked against total (98%), as reportGap
+ *   does elsewhere; a failed page fails the pull.
+ * - `location` is sometimes a US STATE ("Washington", "Florida") and sometimes
+ *   "USA"; the loc is "<location>, <country>" so HUB_MATCH sees both.
+ * The job page is /jobs/<id> (measured: /jobs/3186 renders that role's title).
+ */
+interface LgeJob {
+  id?: string | number;
+  title?: string;
+  location?: string | null;
+  cntryNm?: string | null;
+  jobFamily?: string | null;
+}
+
+async function fetchLgeGlobal(site: SiteDef): Promise<PortalJob[]> {
+  const label = `lge ${site.key ?? site.id}`;
+  const get = async (n: number) => {
+    const u = new URL(site.endpoint);
+    u.searchParams.set("page", String(n));
+    const r = await getJson<{ successOrNot?: string; data?: { total?: number; list?: LgeJob[] } }>(
+      u.toString(),
+    );
+    return r?.successOrNot === "Y" && Array.isArray(r.data?.list) ? r.data : null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const total = Number(first.total ?? 0);
+  const rest = await allPages(
+    Math.max(0, Math.ceil(total / 20) - 1),
+    async (i) => (await get(i + 2))?.list ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const origin = new URL(site.endpoint).origin;
+  const byId = new Map<string, PortalJob>();
+  for (const r of [...(first.list ?? []), ...rest]) {
+    const id = String(r.id ?? "");
+    const title = clean(r.title ?? "");
+    if (!id || !title || byId.has(id)) continue;
+    const place = [r.location, r.cntryNm]
+      .map((s) => clean(s ?? ""))
+      .filter((s) => s && s !== "None" && s !== "USA");
+    byId.set(id, job(site, title, place.join(", "), `${origin}/jobs/${id}`, "", "Career portal"));
+  }
+  if (!total || byId.size < total * 0.98) {
+    console.log(`${label}: ${byId.size} of ${total} — feed skipped`);
+    return [];
+  }
+  return [...byId.values()];
+}
+
+// ── batch 12: I — readers ────────────────────────────────────────────────────
+
+/** Decode the handful of entities that appear inside HTML attribute values.
+ *  Not `clean`: that also strips tags and collapses whitespace, which would
+ *  corrupt a form token or a JSON blob carried in an attribute. */
+function attrDecode(s: string): string {
+  return s
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_, d: string) => String.fromCodePoint(Number(d)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, d: string) => String.fromCodePoint(parseInt(d, 16)))
+    .replace(/&amp;/g, "&");
+}
+
+/** Lower-case, hyphenated fragment for a synthetic `#anchor` url. */
+function anchorSlug(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/**
+ * A cookie-carrying fetch for the two session-bound boards below (CiAnywhere,
+ * Oracle iRecruitment). Workers' fetch keeps no cookie jar, and both boards
+ * issue their guest session on a REDIRECT, so `redirect: "follow"` would drop
+ * the cookie that the next hop checks. Redirects are followed by hand, up to
+ * eight, collecting Set-Cookie at every hop (a later value replaces an earlier
+ * one of the same name). Returns null on a network error or a non-2xx end.
+ */
+class SessionJar {
+  private jar = new Map<string, string>();
+
+  private take(res: Response) {
+    for (const c of res.headers.getSetCookie?.() ?? []) {
+      const kv = c.split(";")[0];
+      const i = kv.indexOf("=");
+      if (i > 0) this.jar.set(kv.slice(0, i).trim(), kv.slice(i + 1));
+    }
+  }
+
+  get header(): string {
+    return [...this.jar].map(([k, v]) => `${k}=${v}`).join("; ");
+  }
+
+  async fetch(url: string, init?: RequestInit): Promise<{ url: string; body: string } | null> {
+    let u = url;
+    let req: RequestInit = init ?? {};
+    for (let hop = 0; hop < 8; hop++) {
+      let res: Response;
+      try {
+        res = await fetch(u, {
+          ...req,
+          redirect: "manual",
+          headers: { "User-Agent": UA, Cookie: this.header, ...req.headers },
+        });
+      } catch {
+        return null;
+      }
+      this.take(res);
+      if (res.status >= 300 && res.status < 400) {
+        const loc = res.headers.get("location");
+        if (!loc) return null;
+        u = new URL(loc, u).toString();
+        // A redirect after a POST is a GET, as a browser does it (303 and, in
+        // practice, 302).
+        req = { headers: req.headers };
+        continue;
+      }
+      return res.ok ? { url: u, body: await res.text() } : null;
+    }
+    return null;
+  }
+}
+
+// ── Hansen Yuncken (inline WordPress accordion) ─────────────────────────────
+/**
+ * hansenyuncken.com.au/people-culture/positions/ — a WordPress page template
+ * with every position INLINE as an accordion; no ATS, no job post type in
+ * wp-json, and no per-role page (every Apply button goes to the one
+ * /people-culture/apply/ form). So wprest/wploop cannot read it.
+ *
+ * Measured 2026-09-30: 5 blocks `<div class="details positions-details …">`,
+ * each an `<h2>` title then `<span class="location …">`. One is the standing
+ * "Expression of Interest" / "General Expression of Interest" block, which is
+ * not a vacancy — the SiteDef's skipTitles drops it — leaving 4: BIM / VDC
+ * Manager (Melbourne, VIC), Contract Administrator (Brisbane or Cairns, QLD),
+ * Senior Contract Administrator (Sydney, NSW), Site Supervisor (Sydney, NSW).
+ *
+ * THE URL IS SYNTHETIC — the page url plus `#<title>-<location>` — because the
+ * board has none per role. The archive key is title|location, so identity is
+ * exactly what the page shows; the anchor only keeps urls distinct. One page,
+ * no pagination: the template renders every position.
+ */
+async function fetchHansenYuncken(site: SiteDef): Promise<PortalJob[]> {
+  // TRAP — A 200 THAT IS NOT THE PAGE. Measured 2026-09-30: five requests in
+  // quick succession from bun each got a ~12 KB 200 whose only script is
+  // `setTimeout(() => window.location.reload(), 5000)` (the Plesk host's bot
+  // pause), with no positions in it; a few minutes later eight requests 4 s
+  // apart all got the real 75 KB page. Read as-is it would be "no vacancies".
+  // So the stub is recognised and waited out as a browser would, twice at
+  // most; if it persists the pull is [] and yesterday's rows stand.
+  let html: string | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 6000));
+    html = await getText(site.endpoint);
+    if (!html || html.includes("positions-details")) break;
+    if (!/window\.location\.reload\(\)/.test(html)) return [];
+  }
+  if (!html?.includes("positions-details")) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const block of html.split(/class="details positions-details\b/).slice(1)) {
+    const b = block.slice(0, 3000);
+    const t = b.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i);
+    const l = b.match(/<span class="location\b[^"]*">([\s\S]*?)<\/span>/i);
+    if (!t) continue;
+    const title = clean(t[1]);
+    const loc = l ? clean(l[1]) : "";
+    const url = `${site.endpoint}#${anchorSlug(`${title} ${loc}`)}`;
+    if (!title || seen.has(url)) continue;
+    seen.add(url);
+    out.push(job(site, title, loc, url, today(), "Career portal"));
+  }
+  return out;
+}
+
+// ── JetEngine listing grid + JetSmartFilters pager (Leader Computers) ───────
+/**
+ * A WordPress + Elementor + JetEngine listing grid whose items come from a
+ * JetEngine Custom Content Type — which is why wp-json has no job type and
+ * fetchWpRest/fetchWpLoop cannot read it. `endpoint` is the listing page.
+ *
+ * Leader (leadersystems.com.au/careers/), measured 2026-09-30: "Available
+ * Roles: 11" (`jet-engine-query-count … count-type-total`), `data-pages="3"`,
+ * 5 items a page. Each item is `jet-listing-grid__item … data-post-id="N"`
+ * holding two Elementor headings — the title, then "Location: Adelaide, CBD".
+ * Pages 2+ are JetSmartFilters' URL pager, `?jsf=jet-engine&pagenum=N`.
+ *
+ * TRAP — THE PAGE CACHE. The bare /careers/ answered with `age: 810295` (nine
+ * days old) and said "10" / 2 pages while the live query said 11 / 3; every
+ * variant is served `cache-control: max-age=15552000`, so ANY fixed URL goes
+ * stale the same way. Every request therefore carries a `nocache=<time>`
+ * buster — JetEngine's own ajaxlisting url uses the same parameter — and the
+ * measured responses came back `x-cache: MISS` with no `age`.
+ *
+ * Bounded by the advertised total: every page up to data-pages is read, a
+ * page that fails abandons the pull, and a walk whose distinct post ids fall
+ * short of the total returns [] (yesterday's rows stand) rather than a subset.
+ *
+ * Links: 8 of 11 go to a `?page_id=` role page on the site, 3 straight to the
+ * SEEK ad. An off-site link keeps only its path (SEEK's tracking query and
+ * `#sol=` hash vary per render); an item with no link gets `#post-<id>`.
+ */
+async function fetchJetEngine(site: SiteDef): Promise<PortalJob[]> {
+  const page = (n: number) =>
+    getText(`${site.endpoint}?jsf=jet-engine&pagenum=${n}&nocache=${Date.now()}${n}`);
+  const first = await page(1);
+  if (!first) return [];
+  const total = Number(first.match(/count-type-total[^>]*>\s*(\d+)/)?.[1] ?? NaN);
+  const pages = Number(first.match(/data-pages="(\d+)"/)?.[1] ?? NaN);
+  if (!Number.isFinite(total) || !Number.isFinite(pages)) return [];
+  const host = new URL(site.endpoint).host;
+  const rows = new Map<string, PortalJob>();
+  const parse = (html: string) => {
+    const grid = html.split("jet-listing-grid__items").slice(1).join("");
+    for (const item of grid.split(/<div class="jet-listing-grid__item\b/).slice(1)) {
+      const id = item.match(/data-post-id="(\d+)"/)?.[1];
+      if (!id || rows.has(id)) continue;
+      const heads = [
+        ...item.matchAll(/<h2 class="elementor-heading-title[^"]*">([\s\S]*?)<\/h2>/g),
+      ].map((m) => clean(m[1]));
+      const title = heads.find((h) => h && !/^Location:/i.test(h));
+      const loc = (heads.find((h) => /^Location:/i.test(h)) ?? "").replace(/^Location:\s*/i, "");
+      if (!title) continue;
+      let url = `${site.endpoint}#post-${id}`;
+      for (const m of item.matchAll(/href="(https?:\/\/[^"]+)"/g)) {
+        const href = attrDecode(m[1]);
+        if (/\/wp-content\/|\/contact-us\/?$/.test(href)) continue;
+        try {
+          const u = new URL(href);
+          url = u.host === host ? u.toString() : `${u.origin}${u.pathname}`;
+        } catch {
+          continue;
+        }
+        break;
+      }
+      rows.set(id, job(site, title, loc, url, today(), "Career portal"));
+    }
+  };
+  parse(first);
+  for (let n = 2; n <= Math.min(pages, 20); n++) {
+    const html = (await page(n)) ?? (await page(n));
+    if (!html) {
+      console.log(`jetengine ${site.id}: page ${n} of ${pages} could not be read — pull abandoned`);
+      return [];
+    }
+    parse(html);
+  }
+  if (rows.size < total) {
+    console.log(`jetengine ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
+// ── Ritchies Supa IGA (Concrete CMS store accordions) ───────────────────────
+/**
+ * ritchies.com.au/careers/Current-Vacancies — no ATS. A Bootstrap accordion
+ * per store under state `<h3>` headings (Victoria, New South Wales,
+ * Queensland, then a Head Office panel); inside each store's
+ * `<div class="accordion-body">`, one `<h3>` per advertised role, followed by
+ * prose ("email your CV to …").
+ *
+ * Measured 2026-09-30: 84 panels. The great majority are STANDING posts —
+ * "General Positions Available", "General Positions", "General Roles
+ * Available", "General Position" — or an empty `<h3>&nbsp;</h3>` over "we
+ * don't have any open positions"; the SiteDef's skipTitles drops the first
+ * kind and blank headings are skipped here. Four real vacancies remained:
+ * Supermarket Manager (Aspendale Gardens, closes 2 Oct 2026), Service
+ * Supervisor (Hawthorn Square), Service Supervisor (Mt Eliza), Liquor Manager
+ * / Licensee (Kurri Kurri Bottle-O).
+ *
+ * The body is cut at its FIRST `</div>`: the bodies measured hold only
+ * `<h3>`/`<p>`, and without the cut the last store's body ran on into the next
+ * state heading and the footer ("Ritchies Apps", "Our stores"…).
+ *
+ * Location is "<Store>, <State>" — the store name is the only place given, so
+ * the state heading is appended for the reader to see. Placement is by the
+ * SiteDef's hubHints only (metro stores), with the three states hinted to
+ * null so a regional store does not fall to a capital via "new south wales".
+ *
+ * URL is synthetic — page url + `#<panel id>-<role>` (Concrete CMS's
+ * `collapseNNNNN` block id, stable across loads) — since applications are by
+ * email and no role has a page.
+ */
+async function fetchRitchies(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  const titleCase = (s: string) => s.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  // Walk state headings and store panels in document order.
+  let state = "";
+  const parts = html.split(/(<div class="accordion-item">)/);
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === '<div class="accordion-item">') continue;
+    const prev = parts[i - 1] === '<div class="accordion-item">';
+    if (prev) {
+      const store = clean(part.match(/accordion-button[^>]*>([\s\S]*?)<\/button>/)?.[1] ?? "");
+      const panel = part.match(/id="(collapse\d+)"/)?.[1] ?? anchorSlug(store);
+      const body = part.split('<div class="accordion-body">')[1]?.split("</div>")[0] ?? "";
+      for (const m of body.matchAll(/<h3\b[^>]*>([\s\S]*?)<\/h3>/g)) {
+        const title = clean(m[1]);
+        if (!title || !store) continue;
+        const url = `${site.endpoint}#${panel}-${anchorSlug(title)}`;
+        if (seen.has(url)) continue;
+        seen.add(url);
+        const loc = state ? `${titleCase(store)}, ${state}` : titleCase(store);
+        out.push(job(site, title, loc, url, today(), "Career portal"));
+      }
+    }
+    // A state heading sits between accordions, outside any store's body.
+    const tail = prev ? part.slice(part.indexOf("</div>") + 1) : part;
+    for (const h of tail.matchAll(/<h3>\s*(Victoria|New South Wales|Queensland)\s*<\/h3>/g)) {
+      state = h[1];
+    }
+  }
+  return out;
+}
+
+// ── TechnologyOne CiAnywhere — public job board (BAC / Brisbane Airport) ────
+/**
+ * A CiAnywhere tenant's PUBLIC "Available Jobs" function, the guest listing
+ * TechnologyOne serves to anyone. `endpoint` is the portal's public function
+ * link, e.g. …/Web/BACAIR/Public/Function/$ORG.REC.EXJOBB.ENQ/RECRUIT_EXT?suite=CES.
+ *
+ * Measured 2026-09-30 (bacair.t1cloud.com), with a plain client — no browser:
+ *   1. GET endpoint → 302 ×4 through …/SystemSecurity/Guest/LogOn, which sets
+ *      the guest `CiAnywhere.Auth` cookie, ending on
+ *      …/OrganisationManagement/JobBoardEnquiry/Index?f=…&suite=CES&G=<guid>.
+ *      The cookie arrives on a redirect, hence SessionJar.
+ *   2. That page carries its controls' config in `data-t1-control` attributes:
+ *      `DefaultParameters` (4 params, each with a server-signed `Hash`) and,
+ *      on the thumbnail view whose LayoutName is SIMPLE, `RequiredFields`
+ *      (62 signed field names).
+ *   3. POST <controller>/ReadFormSettings {FormSettingsName:"DEFAULT",
+ *      Parameters} → the parameters with values filled in and re-signed
+ *      (RecruitmentSystemCode BAC, RoleMode EXTERNAL).
+ *   4. POST <controller>/ReadMoreThumbnailData {…, DisplayFields:
+ *      RequiredFields, Parameters, PageNumber, PageSize} →
+ *      {Items:[{AllFields:[{FieldName, Value}]}], TotalRecordCount}.
+ * Every step is what the browser sends (captured in headless Chromium, then
+ * replayed from Python and from here). BAC: TotalRecordCount 2 — "Design
+ * Strategy Manager (1557)" at "12-14 The Circuit", "Environment Advisor -
+ * Commercial Property (1622)" at "Head Office". Paging checked with
+ * PageSize 1: PageNumber 1 and 2 returned one role each.
+ *
+ * Titles end in the requisition number in brackets — "(1557)" — which is not
+ * part of the job title, so it is dropped (the reference also rides in the
+ * apply url's token). URL is `ResolvedApplyUrl`, the ad's own public apply
+ * link (a per-ad token). The walk is bounded by TotalRecordCount and returns
+ * [] if it collects fewer distinct ads.
+ *
+ * The signed hashes are timestamped per session, so every run starts from
+ * step 1; nothing is cached between runs.
+ */
+const CI_PAGE = 40;
+
+async function fetchCiAnywhere(site: SiteDef): Promise<PortalJob[]> {
+  const s = new SessionJar();
+  const home = await s.fetch(site.endpoint, { headers: { Accept: "text/html" } });
+  if (!home) return [];
+  const g = home.url.match(/[?&]G=([0-9a-f-]+)/i)?.[1];
+  const ctl = home.url.match(/^(.*\/)Index\?/)?.[1];
+  const fn = decodeURIComponent(home.url.match(/[?&]f=([^&]+)/)?.[1] ?? "");
+  const suite = home.url.match(/[?&]suite=([^&]+)/)?.[1] ?? "CES";
+  if (!g || !ctl || !fn) return [];
+  type Ctl = {
+    DefaultParameters?: unknown[];
+    LayoutName?: string;
+    RequiredFields?: unknown[];
+  };
+  const ctls: Ctl[] = [];
+  for (const m of home.body.matchAll(/data-t1-control=(?:'([^']*)'|"([^"]*)")/g)) {
+    try {
+      ctls.push(JSON.parse(attrDecode(m[1] ?? m[2])) as Ctl);
+    } catch {
+      // Not every control's config is JSON we need.
+    }
+  }
+  const defaults = ctls.find((c) => Array.isArray(c.DefaultParameters))?.DefaultParameters;
+  const fields = (
+    ctls.find((c) => c.LayoutName === "SIMPLE" && Array.isArray(c.RequiredFields)) ??
+    ctls.find((c) => Array.isArray(c.RequiredFields))
+  )?.RequiredFields;
+  if (!defaults || !fields) return [];
+  const requestData = { f: fn, suite, G: g };
+  const post = async (action: string, body: unknown) => {
+    const q = new URLSearchParams({ f: fn, suite, uuid: crypto.randomUUID() });
+    const r = await s.fetch(`${new URL(ctl, home.url).toString()}${action}?${q}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        Referer: home.url,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r) return null;
+    try {
+      return JSON.parse(r.body) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+  const settings = await post("ReadFormSettings", {
+    FormSettingsName: "DEFAULT",
+    Parameters: defaults,
+    StateFieldMap: [],
+    ColumnSize: "GreaterOfDataLengthAndLabelWidth",
+    RequestData: requestData,
+  });
+  const params = settings?.Parameters;
+  if (!Array.isArray(params)) return [];
+  const read = (n: number) =>
+    post("ReadMoreThumbnailData", {
+      NewSearch: n === 1,
+      IsFirstLoad: n === 1,
+      PickListData: { PickListMode: false, IsExtendedPicklistField: false },
+      RequestData: requestData,
+      TabName: "",
+      DisplayFields: fields,
+      Parameters: params,
+      FormData: {
+        Tables: [],
+        Fields: [
+          {
+            FieldName: "EnquiryRelatedDataPortlet_SearchValue",
+            DataType: "String",
+            Value: "",
+            NaturalLanguageSearchFieldReferenceType: "Label",
+          },
+          { FieldName: "RestrictEntitiesCheckbox", Value: "False" },
+        ],
+        Maps: [],
+      },
+      SelectedFilters: [],
+      CustomFiltersData: [],
+      MultiSortFields: [
+        {
+          SortDirection: "A",
+          FieldName: "JOBREQTitle",
+          Width: 0,
+          SequenceNumber: 0,
+          FrozenColumn: false,
+        },
+      ],
+      AnalyserItemNavigatorData: { NavigatorMode: false },
+      ReadToRecord: false,
+      SearchValue: "",
+      ActiveView: 1,
+      ShowBooleanAsCheckbox: true,
+      LayoutName: "SIMPLE",
+      dbPageNumber: 1,
+      PageNumber: n,
+      PageSize: CI_PAGE,
+    });
+  const rows = new Map<string, PortalJob>();
+  let total = Infinity;
+  for (let n = 1; n <= 25 && rows.size < total; n++) {
+    const page = (await read(n)) ?? (await read(n));
+    if (!page || page.Success === false || !Array.isArray(page.Items)) {
+      console.log(`cianywhere ${site.id}: page ${n} could not be read — pull abandoned`);
+      return [];
+    }
+    total = Number(page.TotalRecordCount ?? 0);
+    if (!page.Items.length) break;
+    for (const it of page.Items as { AllFields?: { FieldName?: string; Value?: unknown }[] }[]) {
+      const f = new Map(
+        (it.AllFields ?? []).map((x) => [x.FieldName ?? "", String(x.Value ?? "")]),
+      );
+      const title = clean(f.get("JOBREQTitle") ?? "").replace(/\s*\(\d+\)$/, "");
+      const url = f.get("ResolvedApplyUrl") ?? "";
+      const key = f.get("JOBREQJobId") || url;
+      if (!title || !url || rows.has(key)) continue;
+      const posted = (f.get("PublishDate") ?? "").split(" ")[0];
+      rows.set(
+        key,
+        job(
+          site,
+          title,
+          clean(f.get("LocationDescriptionsSummary") ?? ""),
+          url,
+          posted ? isoDay(posted) : today(),
+          "Career portal",
+        ),
+      );
+    }
+  }
+  if (rows.size < total) {
+    console.log(`cianywhere ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
+// ── Borg group careers, one brand (Australian Panels → Porta) ───────────────
+/**
+ * careers.borgs.com.au — Borg's own PHP board (no ATS) for all its brands.
+ * `endpoint` is the brand-filtered page, …/jobs/?brands=<logo>.png; the brand
+ * is the file name of the logo the board shows on each card, and it is also
+ * the board's own facet value.
+ *
+ * Listing: POST /jobs.php, form `action=ajax-get-jobs&search[brands][]=<logo>`
+ * → HTML `<section class='job-card'>` cards: `<h3><a href='/job/NNNNN/'>title`,
+ * `<img src='/img/jobs-logos/<logo>'>`, and one or more
+ * `<div class='locations'>Suburb, State-in-full</div>`. All matching cards
+ * come back in one response — there is no pager.
+ *
+ * Bound: the unfiltered /jobs/ page prints each brand facet's count
+ * (`<li data-jobs='13'><a href='/jobs/?brands=porta.png'>`). Measured
+ * 2026-09-30: 30 cards in all (porta 13, crossmuller 7, borg 4,
+ * group-logistics 3, polytec 2, techplas 1; 17 porta on 2026-09-29), and the
+ * filtered POST returned exactly the 13. A pull that returns fewer distinct
+ * jobs than the facet says is returned as [] rather than as a subset. Cards
+ * are also checked against the logo, so a filter the server ever ignores
+ * cannot let another brand's roles through.
+ *
+ * A role listed at several sites ("Production Opportunities": Somersby,
+ * Charmhaven, West Gosford) is ONE vacancy and takes its FIRST location, as
+ * technologyone-to-d1.py does for its state lists.
+ */
+async function fetchBorgCareers(site: SiteDef): Promise<PortalJob[]> {
+  const brand = new URL(site.endpoint).searchParams.get("brands");
+  if (!brand) return [];
+  const origin = new URL(site.endpoint).origin;
+  const facetPage = await getText(`${origin}/jobs/`);
+  const esc = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const want = Number(
+    facetPage?.match(new RegExp(`data-jobs='(\\d+)'><a href='/jobs/\\?brands=${esc}'`))?.[1] ?? NaN,
+  );
+  if (!Number.isFinite(want)) return [];
+  const body = new URLSearchParams({ action: "ajax-get-jobs" });
+  body.append("search[brands][]", brand);
+  const html = await getText(`${origin}/jobs.php`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" },
+    body: body.toString(),
+  });
+  if (html === null) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<section class='job-card/).slice(1)) {
+    const a = card.match(/<h3><a href='([^']+)'>([\s\S]*?)<\/a>/);
+    if (!a || !card.includes(`/img/jobs-logos/${brand}`)) continue;
+    const url = new URL(a[1], origin).toString();
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const loc = clean(card.match(/<div class='locations'>([\s\S]*?)<\/div>/)?.[1] ?? "");
+    out.push(job(site, clean(a[2]), loc, url, today(), "Career portal"));
+  }
+  if (out.length < want) {
+    console.log(`borgcareers ${site.id}: ${out.length} of ${want} — pull incomplete, not written`);
+    return [];
+  }
+  return out;
+}
+
+// ── Oracle E-Business Suite iRecruitment, visitor search (UTS) ──────────────
+/**
+ * Oracle EBS iRecruitment's EXTERNAL VISITOR flow — the guest job search, no
+ * login. Not the `oracle` reader, which is Oracle Recruiting Cloud (HCM);
+ * this is the older OA Framework product, driven entirely by form posts that
+ * carry per-session MAC'd tokens. `endpoint` is the tenant's visitor RF.jsp
+ * link (the one its "Jobs at …" page links to).
+ *
+ * Measured 2026-09-30 on recruitment.uts.edu.au, plain client:
+ *   1. GET endpoint → 200, the VisHomePG form `DefaultFormName` (sets the
+ *      session cookie).
+ *   2. POST the form's action with EVERY hidden input resubmitted verbatim
+ *      (_AM_TX_ID_FIELD, _FORM, FORM_MAC_LIST, _fwkActBtnName_* … — their
+ *      values end in per-session MACs) plus DatePosted2 = the <option> whose
+ *      label is "All Current" (its value is MAC'd too, e.g. "36519NByGPGB"),
+ *      IrcAction=Go, event=update, source=Search → "Available Jobs", 10 rows.
+ *   3. Next page: the new page's hidden inputs + event=goto,
+ *      source=JobSearchTable, value/size = the two MAC'd arguments of the
+ *      `_navBarSubmit('DefaultFormName', 'goto','JobSearchTable',1,'<value>',
+ *      '<size>',…)` call on the "Next 10" link.
+ * Rows are read by id: `JobSearchTable:JobName:<i>` is the IRCnnnnnn
+ * reference, `JobSearchTable:JobTitle:<i>` the title. The pager's options
+ * print the total ("21-26 of 26") and the walk is bounded by it: 3 pages,
+ * 10+10+6 = 26 distinct references in ~4 s. Pages are posted SERIALLY — each
+ * one's tokens come from the page before.
+ *
+ * Traps: the page's help text quotes a sample reference, "IRC123456", which
+ * is not a row (the id-anchored match skips it). The RSS link on the results
+ * page needs an authenticated session (it redirects to the Okta sign-in), so
+ * it is not an alternative. There is no location column — UTS is one campus
+ * (Broadway) — so rows carry "" and fall to the SiteDef's homeHub. No role
+ * has a public url outside the session, so the url is the entry link plus
+ * `#<IRC reference>`.
+ */
+async function fetchIRecruitment(site: SiteDef): Promise<PortalJob[]> {
+  const s = new SessionJar();
+  const base = new URL(site.endpoint).origin;
+  const hidden = (html: string) => {
+    const f = new URLSearchParams();
+    for (const m of html.matchAll(/<input\b[^>]*>/g)) {
+      const tag = m[0];
+      if (!/type="hidden"/.test(tag)) continue;
+      const name = tag.match(/name="([^"]*)"/)?.[1];
+      if (name) f.set(attrDecode(name), attrDecode(tag.match(/value="([^"]*)"/)?.[1] ?? ""));
+    }
+    return f;
+  };
+  const action = (html: string) => {
+    const a = html.match(/<form id="DefaultFormName"[^>]*action="([^"]*)"/)?.[1];
+    return a ? new URL(attrDecode(a), base).toString() : null;
+  };
+  const submit = async (html: string, extra: Record<string, string>) => {
+    const to = action(html);
+    if (!to) return null;
+    const f = hidden(html);
+    for (const [k, v] of Object.entries(extra)) f.set(k, v);
+    const r = await s.fetch(to, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "text/html" },
+      body: f.toString(),
+    });
+    return r?.body ?? null;
+  };
+  const home = await s.fetch(site.endpoint, { headers: { Accept: "text/html" } });
+  const allCurrent = home?.body.match(/<option value="([^"]*)">All Current/)?.[1];
+  if (!home || !allCurrent) return [];
+  let html = await submit(home.body, {
+    DatePosted2: attrDecode(allCurrent),
+    IrcAction: "Go",
+    event: "update",
+    source: "Search",
+    evtSrcRowIdx: "",
+    evtSrcRowId: "",
+  });
+  if (!html) return [];
+  // The pager prints "1-10 of 26". A board of ten or fewer may print no pager
+  // at all; then there is no Next link either, and the one page is the board.
+  const total = Number(html.match(/\d+-\d+ of (\d+)/)?.[1] ?? 0);
+  const rows = new Map<string, PortalJob>();
+  for (let page = 1; page <= 30; page++) {
+    for (const m of html.matchAll(/id="JobSearchTable:JobName:(\d+)"[^>]*>(IRC\d+)</g)) {
+      const ref = m[2];
+      if (rows.has(ref)) continue;
+      const t = html.match(new RegExp(`id="JobSearchTable:JobTitle:${m[1]}"[^>]*>([^<]*)`));
+      const title = clean(t?.[1] ?? "");
+      if (title)
+        rows.set(ref, job(site, title, "", `${site.endpoint}#${ref}`, today(), "Career portal"));
+    }
+    if (total && rows.size >= total) break;
+    const nav = html.match(
+      /_navBarSubmit\('DefaultFormName',\s*'goto',\s*'JobSearchTable',\s*1,\s*'([^']*)',\s*'([^']*)'[^)]*\)[^>]*>(?:<[^>]*>)*\s*Next/,
+    );
+    if (!nav) break;
+    const next = await submit(html, {
+      event: "goto",
+      source: "JobSearchTable",
+      value: nav[1],
+      size: nav[2],
+      evtSrcRowIdx: "",
+      evtSrcRowId: "",
+    });
+    if (!next) {
+      console.log(`irecruitment ${site.id}: page ${page + 1} could not be read — pull abandoned`);
+      return [];
+    }
+    html = next;
+  }
+  if (rows.size < total) {
+    console.log(`irecruitment ${site.id}: ${rows.size} of ${total} — walk incomplete, not written`);
+    return [];
+  }
+  return [...rows.values()];
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  sonar: fetchSonar,
+  axol: fetchAxol,
+  mitsuicareer: fetchMitsuiCareer,
+  fanuc: fetchFanuc,
+  hyundaitalent: fetchHyundaiTalent,
+  lgeglobal: fetchLgeGlobal,
   meituan: fetchMeituan,
   jdzhaopin: fetchJdZhaopin,
   cmbchina: fetchCmbChina,
@@ -33096,6 +34595,13 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   ibmsearch: fetchIbmSearch,
   applyflow: fetchApplyFlow,
   foxcareers: fetchFoxCareers,
+  // batch 12: I
+  hansenyuncken: fetchHansenYuncken,
+  jetengine: fetchJetEngine,
+  ritchies: fetchRitchies,
+  cianywhere: fetchCiAnywhere,
+  borgcareers: fetchBorgCareers,
+  irecruitment: fetchIRecruitment,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -33238,6 +34744,23 @@ export const SOURCE_TAG: Record<Platform, string> = {
   silkroad: "silkroad",
   readyemploy: "readyemploy",
   jobvite: "jobvite",
+  // batch 12: I. Hansen Yuncken, Ritchies and Borg are the employers' own
+  // pages, named for the employer; the other three are vendor platforms.
+  // CiAnywhere is NOT "t1": scripts/technologyone-to-d1.py already writes
+  // `portal-t1` for TechnologyOne's own board.
+  hansenyuncken: "hy",
+  jetengine: "jetengine",
+  ritchies: "ritchies",
+  cianywhere: "t1ci",
+  borgcareers: "borg",
+  irecruitment: "irec",
+  // batch 12 G: named for the ATS (Sonar, axol) or the employer's own board.
+  sonar: "sonar",
+  axol: "axol",
+  mitsuicareer: "mitsui",
+  fanuc: "fanuc",
+  hyundaitalent: "hyundai",
+  lgeglobal: "lge",
   // Batch 12 F. The employer's own board, named for the employer as batch 11
   // D's were; Hotjob (Wecruit) is a vendor platform, named for the platform,
   // as is Feishu/Lark Hire ("atsx", its own product name in its API paths) for
