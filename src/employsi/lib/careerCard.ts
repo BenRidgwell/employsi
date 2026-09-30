@@ -607,6 +607,23 @@ export interface CareerGoalSummary {
   title: string;
   /** "STAGE 3 OF 6 · SENIOR / PARTNER" on the core; "SPECIALIST · …" off it. */
   stageOf: string;
+  /**
+   * Is this rung on the family's CORE track?
+   *
+   * The profile card draws a six-step ladder with the goal marked, which only
+   * means anything on the core track — a specialist track is a sideways move,
+   * not stage N of six. Off it, the card says "SPECIALIST" and draws no ladder.
+   */
+  onCore: boolean;
+  /**
+   * The level, ready to print: "Executive" on the core, the track's own name
+   * ("People Analytics") off it.
+   *
+   * Derived here rather than by splitting `stageOf` on the client. That string
+   * is upper-cased display text with a "·" in it, and parsing it back into
+   * parts is how a label starts depending on the punctuation of another label.
+   */
+  levelLabel: string;
   payLabel: string;
   /** Live roles in this market. */
   ads: number;
@@ -644,6 +661,8 @@ export function careerGoalSummary(
       track === core
         ? `STAGE ${rung} OF 6 · ${RUNG_LABEL[rung].toUpperCase()}`
         : `SPECIALIST · ${trackLabel(p, family, track).toUpperCase()}`,
+    onCore: track === core,
+    levelLabel: track === core ? RUNG_LABEL[rung] : trackLabel(p, family, track),
     payLabel: payLabel(n.pay[country]?.median ?? null, country),
     ads: m.live,
     employers: m.employers,
