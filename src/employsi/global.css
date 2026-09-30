@@ -6206,11 +6206,15 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  /* 72px, not 56: at the 288px panel the bars are ~50px wide, and a shorter
-     strip made even the tallest step wider than it is high — the ladder read
-     as a row of blocks rather than a climb. */
-  height: 72px;
-  margin-bottom: 10px;
+  /* 58px. It was 56, then 72 — at the 288px panel the bars are ~50px wide and
+     56 made even the tallest step wider than it was high, so the ladder read
+     as a row of blocks rather than a climb. 72 fixed that and made the profile
+     panel taller than it needed to be, which is what this is trimming: 58 is
+     the shortest that keeps the top step taller than it is wide at the NARROW
+     panel, where the bars are widest relative to the strip. Below that the
+     climb flattens again. */
+  height: 58px;
+  margin-bottom: 8px;
 }
 .cgstep {
   flex: 1 1 0;
@@ -15565,9 +15569,55 @@ body {
 }
 /* The list is the panel's last child now that the footer is gone, so the final
    row's divider would draw a line across the rounded bottom edge with nothing
-   under it. */
-.nbrow:last-child {
+   under it. Selected through the wrapper: each row is inside .nbrowwrap, so
+   `.nbrow:last-child` would match EVERY row (each is the last child of its own
+   wrapper) and remove every divider in the list. */
+.nbrowwrap:last-child .nbrow {
   border-bottom: 0;
+}
+
+/* ── The delete strip revealed by a swipe ──────────────────────────────────
+   The wrapper clips: the row slides right off its own width, and without this
+   .nblist would grow a horizontal scrollbar mid-gesture. */
+.nbrowwrap {
+  position: relative;
+  overflow: hidden;
+}
+.nbswipe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  background: var(--red-500, #c4463b);
+  color: #fff;
+  transition: background 120ms ease;
+}
+/* The space opens on the side the row came FROM, so the strip and the label
+   sit against the travelling edge rather than stranded at the far end. */
+.nbswipe[data-side="right"] {
+  right: 0;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+.nbswipe[data-side="left"] {
+  left: 0;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+/* Past the threshold, letting go deletes — so the strip deepens. The commit
+   point is felt before the finger lifts instead of discovered after it. */
+.nbswipe.armed {
+  background: var(--red-700, #97332b);
+}
+.nbswipelbl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 12.5px/1 "Inter", system-ui, sans-serif;
+  /* The strip is only as wide as the swipe so far; the label must not wrap or
+     reflow the strip as it grows. It is simply clipped until there is room. */
+  white-space: nowrap;
 }
 
 /* ── Swipe a row away ──────────────────────────────────────────────────────

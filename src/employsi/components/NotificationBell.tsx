@@ -399,132 +399,171 @@ export function NotificationBell() {
                 const shut = isRead && !expanded[r.id];
                 const key = occKey(r);
                 const dx = drag?.key === key ? drag.dx : 0;
+                // Past the threshold, letting go deletes. The strip says so:
+                // it deepens and the label sharpens, so the commit point is
+                // felt before the finger lifts rather than discovered after.
+                const armed = Math.abs(dx) >= SWIPE_PX;
                 return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    className={`nbrow${shut ? " shut" : ""}${dx ? " swiping" : ""}`}
-                    aria-expanded={!shut}
-                    style={
-                      dx
-                        ? {
-                            transform: `translateX(${dx}px)`,
-                            // Fades out as it goes, so the gesture reads as
-                            // removal rather than as the row sliding sideways.
-                            opacity: Math.max(0, 1 - Math.abs(dx) / (SWIPE_PX * 2)),
-                          }
-                        : undefined
-                    }
-                    // SWIPE TO DISMISS. Pointer events rather than touch ones,
-                    // so a mouse drag works the same way — the gesture is not
-                    // only for phones, and there is no second code path.
-                    //
-                    // The axis is decided once, at 6px, and a vertical gesture
-                    // is then left alone: .nblist scrolls, and stealing a
-                    // downward drag would make the list unscrollable on touch.
-                    // `touch-action: pan-y` on the row tells the browser the
-                    // same thing, so it keeps handling the scroll itself.
-                    onPointerDown={(e) => {
-                      if (e.pointerType === "mouse" && e.button !== 0) return;
-                      gesture.current = { key, x0: e.clientX, y0: e.clientY, axis: "" };
-                      swiped.current = false;
-                    }}
-                    onPointerMove={(e) => {
-                      const g = gesture.current;
-                      if (!g || g.key !== key) return;
-                      const mx = e.clientX - g.x0;
-                      const my = e.clientY - g.y0;
-                      if (!g.axis) {
-                        if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
-                        g.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
-                        if (g.axis === "x") e.currentTarget.setPointerCapture(e.pointerId);
-                      }
-                      if (g.axis !== "x") return;
-                      swiped.current = true;
-                      setDrag({ key, dx: mx });
-                    }}
-                    onPointerUp={() => {
-                      const g = gesture.current;
-                      gesture.current = null;
-                      const far = Math.abs(drag?.key === key ? drag.dx : 0) >= SWIPE_PX;
-                      setDrag(null);
-                      if (g?.axis === "x" && far) dismiss(key, allRows);
-                    }}
-                    // A cancelled gesture (the browser took over, the pointer
-                    // left the window) springs back rather than dismissing.
-                    onPointerCancel={() => {
-                      gesture.current = null;
-                      setDrag(null);
-                    }}
-                    // The keyboard's way to the same thing. A swipe-only
-                    // dismiss would be unreachable without a pointer, and this
-                    // list is otherwise fully keyboard-operable.
-                    onKeyDown={(e) => {
-                      if (e.key !== "Delete" && e.key !== "Backspace") return;
-                      e.preventDefault();
-                      dismiss(key, allRows);
-                    }}
-                    // Unread: reading it is what collapses it. Read: the click
-                    // is the way back in, and out again — otherwise marking
-                    // something read would hide its figures for good.
-                    //
-                    // A drag ends in a click, so a swipe that fell short of the
-                    // threshold would otherwise also toggle the row on its way
-                    // back. `swiped` is set the moment a gesture commits to the
-                    // horizontal axis, and cleared here.
-                    onClick={() => {
-                      if (swiped.current) {
+                  <div className="nbrowwrap" key={r.id}>
+                    {/* The delete strip, revealed by the row sliding off it.
+                        Rendered only while a swipe is in progress — a red
+                        panel sitting permanently behind every row would show
+                        at the edges on any sub-pixel rounding, and this list
+                        is mostly read at rest.
+
+                        `side` follows the direction of travel, because the
+                        space that opens up is on the side the row came from. */}
+                    {!!dx && (
+                      <div
+                        className={`nbswipe${armed ? " armed" : ""}`}
+                        data-side={dx < 0 ? "right" : "left"}
+                        aria-hidden
+                        style={{ width: `${Math.min(Math.abs(dx), 240)}px` }}
+                      >
+                        <span className="nbswipelbl">
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="15"
+                            height="15"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={1.9}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M4 7h16M10 7V5h4v2M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+                          </svg>
+                          {/* THE WORD APPEARS WITH THE COMMIT POINT. Measured: the
+                              icon-and-word group needs 84px of strip, and the
+                              dismiss threshold is 88px — so once letting go would
+                              delete, "Delete" always fits. Below that it would be
+                              clipped mid-word ("Del"), which reads as a rendering
+                              fault rather than a label, so only the bin shows. */}
+                          {armed && "Delete"}
+                        </span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      className={`nbrow${shut ? " shut" : ""}${dx ? " swiping" : ""}`}
+                      aria-expanded={!shut}
+                      // NO OPACITY FADE. The row used to fade as it travelled,
+                      // which was right when there was nothing behind it; over
+                      // the red strip a translucent row just muddies both. It
+                      // slides off at full opacity and the strip does the
+                      // talking.
+                      style={dx ? { transform: `translateX(${dx}px)` } : undefined}
+                      // SWIPE TO DISMISS. Pointer events rather than touch ones,
+                      // so a mouse drag works the same way — the gesture is not
+                      // only for phones, and there is no second code path.
+                      //
+                      // The axis is decided once, at 6px, and a vertical gesture
+                      // is then left alone: .nblist scrolls, and stealing a
+                      // downward drag would make the list unscrollable on touch.
+                      // `touch-action: pan-y` on the row tells the browser the
+                      // same thing, so it keeps handling the scroll itself.
+                      onPointerDown={(e) => {
+                        if (e.pointerType === "mouse" && e.button !== 0) return;
+                        gesture.current = { key, x0: e.clientX, y0: e.clientY, axis: "" };
                         swiped.current = false;
-                        return;
-                      }
-                      if (isRead) {
-                        setExpanded((prev) => {
-                          const next = { ...prev };
-                          if (next[r.id]) delete next[r.id];
-                          else next[r.id] = true;
-                          return next;
-                        });
-                      } else {
-                        persist({ ...read, [r.id]: true });
-                      }
-                    }}
-                  >
-                    <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
-                    <span className="nbbody">
-                      <span className="nbtop">
-                        <span className="nbco">{r.company}</span>
-                        <span className={`nbpill ${PILL[r.kind] ?? "spike"}`}>{r.kind}</span>
-                        <span className="nbwhen">{r.week} ads</span>
-                        {!read[r.id] && <span className="nbdot" />}
-                      </span>
-                      <span className="nbheadlinerow">
-                        <SkillGlyph skill={r.skill} />
-                        <span className="nbheadline">{r.headline}</span>
-                      </span>
-                      <span className="nbbars">
-                        <span className="nbbar">
-                          <span className="nbbarlbl">This wk</span>
-                          <span className="nbbartrack">
-                            <span
-                              className="nbbarfill"
-                              style={{ width: `${Math.round((r.week / max) * 100)}%` }}
-                            />
-                          </span>
-                          <span className="nbbarv">{r.week}</span>
+                      }}
+                      onPointerMove={(e) => {
+                        const g = gesture.current;
+                        if (!g || g.key !== key) return;
+                        const mx = e.clientX - g.x0;
+                        const my = e.clientY - g.y0;
+                        if (!g.axis) {
+                          if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+                          g.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+                          if (g.axis === "x") e.currentTarget.setPointerCapture(e.pointerId);
+                        }
+                        if (g.axis !== "x") return;
+                        swiped.current = true;
+                        setDrag({ key, dx: mx });
+                      }}
+                      onPointerUp={() => {
+                        const g = gesture.current;
+                        gesture.current = null;
+                        const far = Math.abs(drag?.key === key ? drag.dx : 0) >= SWIPE_PX;
+                        setDrag(null);
+                        if (g?.axis === "x" && far) dismiss(key, allRows);
+                      }}
+                      // A cancelled gesture (the browser took over, the pointer
+                      // left the window) springs back rather than dismissing.
+                      onPointerCancel={() => {
+                        gesture.current = null;
+                        setDrag(null);
+                      }}
+                      // The keyboard's way to the same thing. A swipe-only
+                      // dismiss would be unreachable without a pointer, and this
+                      // list is otherwise fully keyboard-operable.
+                      onKeyDown={(e) => {
+                        if (e.key !== "Delete" && e.key !== "Backspace") return;
+                        e.preventDefault();
+                        dismiss(key, allRows);
+                      }}
+                      // Unread: reading it is what collapses it. Read: the click
+                      // is the way back in, and out again — otherwise marking
+                      // something read would hide its figures for good.
+                      //
+                      // A drag ends in a click, so a swipe that fell short of the
+                      // threshold would otherwise also toggle the row on its way
+                      // back. `swiped` is set the moment a gesture commits to the
+                      // horizontal axis, and cleared here.
+                      onClick={() => {
+                        if (swiped.current) {
+                          swiped.current = false;
+                          return;
+                        }
+                        if (isRead) {
+                          setExpanded((prev) => {
+                            const next = { ...prev };
+                            if (next[r.id]) delete next[r.id];
+                            else next[r.id] = true;
+                            return next;
+                          });
+                        } else {
+                          persist({ ...read, [r.id]: true });
+                        }
+                      }}
+                    >
+                      <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
+                      <span className="nbbody">
+                        <span className="nbtop">
+                          <span className="nbco">{r.company}</span>
+                          <span className={`nbpill ${PILL[r.kind] ?? "spike"}`}>{r.kind}</span>
+                          <span className="nbwhen">{r.week} ads</span>
+                          {!read[r.id] && <span className="nbdot" />}
                         </span>
-                        <span className="nbbar">
-                          <span className="nbbarlbl">Mo avg</span>
-                          <span className="nbbartrack">
-                            <span
-                              className="nbbarfill muted"
-                              style={{ width: `${Math.round((r.month / max) * 100)}%` }}
-                            />
+                        <span className="nbheadlinerow">
+                          <SkillGlyph skill={r.skill} />
+                          <span className="nbheadline">{r.headline}</span>
+                        </span>
+                        <span className="nbbars">
+                          <span className="nbbar">
+                            <span className="nbbarlbl">This wk</span>
+                            <span className="nbbartrack">
+                              <span
+                                className="nbbarfill"
+                                style={{ width: `${Math.round((r.week / max) * 100)}%` }}
+                              />
+                            </span>
+                            <span className="nbbarv">{r.week}</span>
                           </span>
-                          <span className="nbbarv muted">{r.month}</span>
+                          <span className="nbbar">
+                            <span className="nbbarlbl">Mo avg</span>
+                            <span className="nbbartrack">
+                              <span
+                                className="nbbarfill muted"
+                                style={{ width: `${Math.round((r.month / max) * 100)}%` }}
+                              />
+                            </span>
+                            <span className="nbbarv muted">{r.month}</span>
+                          </span>
                         </span>
                       </span>
-                    </span>
-                  </button>
+                    </button>
+                  </div>
                 );
               })}
 
