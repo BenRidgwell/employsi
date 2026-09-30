@@ -515,6 +515,16 @@ const GOOGLE_HUB_HINTS: [string, string | null][] = [
   [" washington, usa", null], // 3 — the STATE; DC is "Washington D.C., DC, USA"
 ];
 
+/**
+ * DaVita's placement, shared by its nine state-group feeds (see the DaVita
+ * entry in SITES). The board writes full US state names, so without these
+ * all of New York state went to newyork, all of Washington state to DC, and
+ * Charlottesville, Londonderry and Paris KY to charlotte, london and paris.
+ * Suburbs are mapped to their metro; the rest of each state maps to no hub.
+ * Measured 2026-09-30 against all 3,462 rows.
+ */
+const DVA_HUB_HINTS: [string, string | null][] = [[" federal way, washington,", "seattle"], [" tacoma, washington,", "seattle"], [" marysville, washington,", "seattle"], [" sumner, washington,", "seattle"], [" parkland, washington,", "seattle"], [" graham, washington,", "seattle"], [" burien, washington,", "seattle"], [" bronx, new york,", "newyork"], [" brooklyn, new york,", "newyork"], [" carmel, new york,", "newyork"], [" deer park, new york,", "newyork"], [" east islip, new york,", "newyork"], [" garden city, new york,", "newyork"], [" great neck, new york,", "newyork"], [" hicksville, new york,", "newyork"], [" huntington station, new york,", "newyork"], [" jamaica, new york,", "newyork"], [" little neck, new york,", "newyork"], [" long island city, new york,", "newyork"], [" lynbrook, new york,", "newyork"], [" middletown, new york,", "newyork"], [" mt kisco, new york,", "newyork"], [" nanuet, new york,", "newyork"], [" patchogue, new york,", "newyork"], [" purchase, new york,", "newyork"], [" queens, new york,", "newyork"], [" riverhead, new york,", "newyork"], [" selden, new york,", "newyork"], [" smithtown, new york,", "newyork"], [" springfield gardens, new york,", "newyork"], [" white plains, new york,", "newyork"], [" woodbury, new york,", "newyork"], [" yonkers, new york,", "newyork"], [" bayonne, new jersey,", "newyork"], [" belleville, new jersey,", "newyork"], [" bound brook, new jersey,", "newyork"], [" east orange, new jersey,", "newyork"], [" eatontown, new jersey,", "newyork"], [" elizabeth, new jersey,", "newyork"], [" englewood, new jersey,", "newyork"], [" fair lawn, new jersey,", "newyork"], [" hazlet, new jersey,", "newyork"], [" hillside, new jersey,", "newyork"], [" irvington, new jersey,", "newyork"], [" jackson, new jersey,", "newyork"], [" jersey city, new jersey,", "newyork"], [" manahawkin, new jersey,", "newyork"], [" matawan, new jersey,", "newyork"], [" millburn, new jersey,", "newyork"], [" monroe township, new jersey,", "newyork"], [" morristown, new jersey,", "newyork"], [" neptune, new jersey,", "newyork"], [" new brunswick, new jersey,", "newyork"], [" newark, new jersey,", "newyork"], [" newton, new jersey,", "newyork"], [" north bergen, new jersey,", "newyork"], [" north plainsfield, new jersey,", "newyork"], [" parsippany, new jersey,", "newyork"], [" paterson, new jersey,", "newyork"], [" plainfield, new jersey,", "newyork"], [" plainsboro, new jersey,", "newyork"], [" rahway, new jersey,", "newyork"], [" red bank, new jersey,", "newyork"], [" south plainfield, new jersey,", "newyork"], [" toms river, new jersey,", "newyork"], [" westwood, new jersey,", "newyork"], [" wayne, new jersey,", "newyork"], [" west orange, new jersey,", "newyork"], [" woodbridge, new jersey,", "newyork"], [" chadds ford, pennsylvania,", "philadelphia"], [" cheltenham, pennsylvania,", "philadelphia"], [" chester, pennsylvania,", "philadelphia"], [" king of prussia, pennsylvania,", "philadelphia"], [" lansdale, pennsylvania,", "philadelphia"], [" malvern, pennsylvania,", "philadelphia"], [" morton, pennsylvania,", "philadelphia"], [" newtown, pennsylvania,", "philadelphia"], [" thorndale, pennsylvania,", "philadelphia"], [" warminster, pennsylvania,", "philadelphia"], [" west chester, pennsylvania,", "philadelphia"], [" west grove, pennsylvania,", "philadelphia"], [" willow grove, pennsylvania,", "philadelphia"], [" woodlyn, pennsylvania,", "philadelphia"], [" brooklawn, new jersey,", "philadelphia"], [" browns mills, new jersey,", "philadelphia"], [" burlington, new jersey,", "philadelphia"], [" delran, new jersey,", "philadelphia"], [" marlton, new jersey,", "philadelphia"], [" mount laurel, new jersey,", "philadelphia"], [" pennsauken, new jersey,", "philadelphia"], [" willingboro, new jersey,", "philadelphia"], [" wilmington, delaware,", "philadelphia"], [" bowie, maryland,", "washington"], [" brandywine, maryland,", "washington"], [" capitol heights, maryland,", "washington"], [" forestville, maryland,", "washington"], [" lanham, maryland,", "washington"], [" largo, maryland,", "washington"], [" oxon hill, maryland,", "washington"], [" hyattsville, maryland,", "washington"], [" gaithersburg, maryland,", "washington"], [" rockville, maryland,", "washington"], [" frederick, maryland,", "washington"], [" alexandria, virginia,", "washington"], [" arlington, virginia,", "washington"], [" ashburn, virginia,", "washington"], [" chantilly, virginia,", "washington"], [" culpeper, virginia,", "washington"], [" fairfax, virginia,", "washington"], [" fredericksburg, virginia,", "washington"], [" front royal, virginia,", "washington"], [" leesburg, virginia,", "washington"], [" lorton, virginia,", "washington"], [" manassas, virginia,", "washington"], [" sterling, virginia,", "washington"], [" vienna, virginia,", "washington"], [" warrenton, virginia,", "washington"], [" carol stream, illinois,", "chicago"], [" cicero, illinois,", "chicago"], [" downers grove, illinois,", "chicago"], [" elgin, illinois,", "chicago"], [" harvey, illinois,", "chicago"], [" hazel crest, illinois,", "chicago"], [" hinsdale, illinois,", "chicago"], [" homer glen, illinois,", "chicago"], [" huntley, illinois,", "chicago"], [" joliet, illinois,", "chicago"], [" la grange, illinois,", "chicago"], [" lake barrington, illinois,", "chicago"], [" lake villa, illinois,", "chicago"], [" melrose park, illinois,", "chicago"], [" new lenox, illinois,", "chicago"], [" oak brook, illinois,", "chicago"], [" oak lawn, illinois,", "chicago"], [" orland park, illinois,", "chicago"], [" skokie, illinois,", "chicago"], [" south holland, illinois,", "chicago"], [" vernon hills, illinois,", "chicago"], [" woodridge, illinois,", "chicago"], [" gary, indiana,", "chicago"], [" hammond, indiana,", "chicago"], [" merrillville, indiana,", "chicago"], [" munster, indiana,", "chicago"], [" portage, indiana,", "chicago"], [" whiting, indiana,", "chicago"], [" alpharetta, georgia,", "atlanta"], [" austell, georgia,", "atlanta"], [" buford, georgia,", "atlanta"], [" canton, georgia,", "atlanta"], [" cartersville, georgia,", "atlanta"], [" college park, georgia,", "atlanta"], [" conyers, georgia,", "atlanta"], [" covington, georgia,", "atlanta"], [" cumming, georgia,", "atlanta"], [" dallas, georgia,", "atlanta"], [" decatur, georgia,", "atlanta"], [" douglasville, georgia,", "atlanta"], [" east point, georgia,", "atlanta"], [" fayetteville, georgia,", "atlanta"], [" forest park, georgia,", "atlanta"], [" griffin, georgia,", "atlanta"], [" hiram, georgia,", "atlanta"], [" jasper, georgia,", "atlanta"], [" jonesboro, georgia,", "atlanta"], [" lawrenceville, georgia,", "atlanta"], [" lilburn, georgia,", "atlanta"], [" lithia springs, georgia,", "atlanta"], [" lithonia, georgia,", "atlanta"], [" loganville, georgia,", "atlanta"], [" marietta, georgia,", "atlanta"], [" mcdonough, georgia,", "atlanta"], [" monroe, georgia,", "atlanta"], [" newnan, georgia,", "atlanta"], [" palmetto, georgia,", "atlanta"], [" peach tree city, georgia,", "atlanta"], [" powder springs, georgia,", "atlanta"], [" riverdale, georgia,", "atlanta"], [" sandy springs, georgia,", "atlanta"], [" smyrna, georgia,", "atlanta"], [" snellville, georgia,", "atlanta"], [" stockbridge, georgia,", "atlanta"], [" stone mountain, georgia,", "atlanta"], [" arlington, texas,", "dallas"], [" carrollton, texas,", "dallas"], [" cedar hill, texas,", "dallas"], [" desoto, texas,", "dallas"], [" flower mound, texas,", "dallas"], [" fort worth, texas,", "dallas"], [" garland, texas,", "dallas"], [" irving, texas,", "dallas"], [" mansfield, texas,", "dallas"], [" mckinney, texas,", "dallas"], [" plano, texas,", "dallas"], [" weatherford, texas,", "dallas"], [" wylie, texas,", "dallas"], [" angleton, texas,", "houston"], [" channelview, texas,", "houston"], [" cleveland, texas,", "houston"], [" conroe, texas,", "houston"], [" cypress, texas,", "houston"], [" humble, texas,", "houston"], [" jersey village, texas,", "houston"], [" katy, texas,", "houston"], [" kingwood, texas,", "houston"], [" missouri city, texas,", "houston"], [" pasadena, texas,", "houston"], [" pearland, texas,", "houston"], [" richmond, texas,", "houston"], [" rosenberg, texas,", "houston"], [" sealy, texas,", "houston"], [" shenandoah, texas,", "houston"], [" spring, texas,", "houston"], [" sugar land, texas,", "houston"], [" the woodlands, texas,", "houston"], [" tomball, texas,", "houston"], [" round rock, texas,", "austin"], [" aurora, colorado,", "denver"], [" brighton, colorado,", "denver"], [" englewood, colorado,", "denver"], [" lakewood, colorado,", "denver"], [" littleton, colorado,", "denver"], [" parker, colorado,", "denver"], [" thornton, colorado,", "denver"], [" anaheim, california,", "losangeles"], [" arcadia, california,", "losangeles"], [" bellflower, california,", "losangeles"], [" brea, california,", "losangeles"], [" burbank, california,", "losangeles"], [" cudahy, california,", "losangeles"], [" el segundo, california,", "losangeles"], [" encino, california,", "losangeles"], [" fountain valley, california,", "losangeles"], [" fullerton, california,", "losangeles"], [" gardena, california,", "losangeles"], [" glendale, california,", "losangeles"], [" hawthorne, california,", "losangeles"], [" inglewood, california,", "losangeles"], [" irvine, california,", "losangeles"], [" laguna hills, california,", "losangeles"], [" lakewood, california,", "losangeles"], [" lancaster, california,", "losangeles"], [" long beach, california,", "losangeles"], [" lynwood, california,", "losangeles"], [" mission viejo, california,", "losangeles"], [" newport beach, california,", "losangeles"], [" north hollywood, california,", "losangeles"], [" norwalk, california,", "losangeles"], [" orange, california,", "losangeles"], [" palmdale, california,", "losangeles"], [" pasadena, california,", "losangeles"], [" santa monica, california,", "losangeles"], [" south gate, california,", "losangeles"], [" torrance, california,", "losangeles"], [" tustin, california,", "losangeles"], [" van nuys, california,", "losangeles"], [" vernon, california,", "losangeles"], [" whittier, california,", "losangeles"], [" woodland hills, california,", "losangeles"], [" antioch, california,", "sanfrancisco"], [" burlingame, california,", "sanfrancisco"], [" castro valley, california,", "sanfrancisco"], [" concord, california,", "sanfrancisco"], [" daly city, california,", "sanfrancisco"], [" danville, california,", "sanfrancisco"], [" el cerrito, california,", "sanfrancisco"], [" hayward, california,", "sanfrancisco"], [" livermore, california,", "sanfrancisco"], [" oakland, california,", "sanfrancisco"], [" pinole, california,", "sanfrancisco"], [" pleasanton, california,", "sanfrancisco"], [" redwood city, california,", "sanfrancisco"], [" richmond, california,", "sanfrancisco"], [" san bruno, california,", "sanfrancisco"], [" san leandro, california,", "sanfrancisco"], [" san rafael, california,", "sanfrancisco"], [" walnut creek, california,", "sanfrancisco"], [" los gatos, california,", "sanjose"], [" encinitas, california,", "sandiego"], [" escondido, california,", "sandiego"], [" beaverton, oregon,", "portland"], [" gresham, oregon,", "portland"], [" milwaukie, oregon,", "portland"], [" oregon city, oregon,", "portland"], [" tualatin, oregon,", "portland"], [" brookline, massachusetts,", "boston"], [" cambridge, massachusetts,", "boston"], [" jamaica plain, massachusetts,", "boston"], [" lawrence, massachusetts,", "boston"], [" medford, massachusetts,", "boston"], [" newburyport, massachusetts,", "boston"], [" plymouth, massachusetts,", "boston"], [" salem, massachusetts,", "boston"], [" weymouth, massachusetts,", "boston"], [" winchester, massachusetts,", "boston"], [" woburn, massachusetts,", "boston"], [" londonderry, new hampshire,", "boston"], [" apple valley, minnesota,", "minneapolis"], [" arden hills, minnesota,", "minneapolis"], [" blaine, minnesota,", "minneapolis"], [" bloomington, minnesota,", "minneapolis"], [" burnsville, minnesota,", "minneapolis"], [" cottage grove, minnesota,", "minneapolis"], [" eden prairie, minnesota,", "minneapolis"], [" edina, minnesota,", "minneapolis"], [" hastings, minnesota,", "minneapolis"], [" lakeville, minnesota,", "minneapolis"], [" maple grove, minnesota,", "minneapolis"], [" maplewood, minnesota,", "minneapolis"], [" new hope, minnesota,", "minneapolis"], [" richfield, minnesota,", "minneapolis"], [" roseville, minnesota,", "minneapolis"], [" saint paul, minnesota,", "minneapolis"], [" st paul, minnesota,", "minneapolis"], [" st. paul, minnesota,", "minneapolis"], [" st. louis park, minnesota,", "minneapolis"], [" stillwater, minnesota,", "minneapolis"], [" woodbury, minnesota,", "minneapolis"], [" wyoming, minnesota,", "minneapolis"], [" hudson, wisconsin,", "minneapolis"], [" anderson, indiana,", "indianapolis"], [" carmel, indiana,", "indianapolis"], [" fairfield, ohio,", "cincinnati"], [" hamilton, ohio,", "cincinnati"], [" montgomery, ohio,", "cincinnati"], [" middletown, ohio,", "cincinnati"], [" florence, kentucky,", "cincinnati"], [" cold spring, kentucky,", "cincinnati"], [" greendale, indiana,", "cincinnati"], [" council bluffs, iowa,", "omaha"], [" bellevue, nebraska,", "omaha"], [" huntersville, north carolina,", "charlotte"], [" kannapolis, north carolina,", "charlotte"], [" salisbury, north carolina,", "charlotte"], [" ft mill, south carolina,", "charlotte"], [" lancaster, south carolina,", "charlotte"], [" charlottesville, virginia,", null], [" washington, missouri,", null], [" washington, pennsylvania,", null], [" new london, connecticut,", null], [" paris, kentucky,", null], [" seattle, washington,", "seattle"], [", washington,", null], [" new york, new york,", "newyork"], [", new york,", null]];
+
 export const SITES: SiteDef[] = [
   {
     id: "bhp",
@@ -19781,6 +19791,255 @@ export const SITES: SiteDef[] = [
       ["plano, tx", "dallas"],
     ],
   },
+  // ── The 2026-09-30 ninth batch — scraper-gap ranks 321-360 ─────────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge; packed several boards to a tick. Takeda uses the Radancy
+  // `class="location"` fix of the same day; DaVita is nine one-request
+  // phenomSelected partitions by state group (its unfiltered walk drifts by
+  // 2-7 roles a run under every sort), sharing DVA_HUB_HINTS above.
+  // Sony Group — 2026-09-29: Sony Group's global Workday tenant sonyglobal/SonyGlobalCareers
+  // (Company facet: Sony Corporation of America, Sony Electronics, Sony Music Publishing, Sony
+  // China, Sony Europe, SEPS, Peanuts, Aniplex...). 109 advertised, 109 walked twice, ~5s. No
+  // Japan-domestic roles on this board (Sony Japan recruits elsewhere), so the Tokyo home hub
+  // only catches blanks (none measured; HOME_COUNTRY has no tokyo entry). hubHints: 'culver
+  // city' -> losangeles (7; two read 'NA / Culver City 10202 W. Washington' and HUB_MATCH filed
+  // them on washington DC), 'santa monica' -> losangeles (1), 'kowloon' -> hongkong (1, Kowloon
+  // Bay). 'Weybridge' (Surrey), Pencoed, Budapest left unplaced. PlayStation and Sony Pictures
+  // run separate boards not covered here.
+  {"id": "tokyo-6758", "name": "Sony Group", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://sonyglobal.wd1.myworkdayjobs.com/wday/cxs/sonyglobal/SonyGlobalCareers/jobs", "origin": "https://sonyglobal.wd1.myworkdayjobs.com/en-US/SonyGlobalCareers", "homeHub": "tokyo", "maxPages": 20, "hubHints": [["culver city", "losangeles"], ["santa monica", "losangeles"], ["kowloon", "hongkong"]]},
+  // Comcast — 2026-09-29: Comcast's Workday tenant is on wd115
+  // (comcast.wd115.myworkdayjobs.com/Comcast_Careers — the wd5 host answers 422). 656
+  // advertised, 656 walked twice, ~12.5s. jobs.comcast.com is a Radancy front end over the same
+  // reqs (data-total-results 682 the same day); Workday chosen because its pager is stable and
+  // reports a total. Locations are 'ST - City, street address' (e.g. 'PA - Philadelphia, 1701
+  // John F Kennedy Blvd'), so STREET NAMES hit HUB_MATCH: 'Washington St' in Claremont NH/East
+  // Peoria IL/Manitowoc WI -> washington (4), 'San Jose BLVD' Jacksonville FL -> sanjose (1),
+  // 'VA - Charlottesville' -> charlotte (1); nulled by hints. 'WA - Vancouver' (Clark County,
+  // Portland MSA) -> portland (2), else HUB_MATCH files it on Vancouver BC. Remaining hints are
+  // same-metro 'ST - City,' needles (trailing comma so 'nj - union,' cannot catch Union City):
+  // Philadelphia MSA PA/NJ suburbs 27, Reston/Alexandria/Woodbridge VA + Gaithersburg/Riverdale
+  // Park MD -> washington 20, Chicago suburbs 26, Seattle eastside/north 8, Denver suburbs 13,
+  // Boston MSA 7, SF Bay (Concord, Daly City, Richmond, San Mateo, San Rafael, Union City,
+  // Livermore) 9, Sunnyvale -> sanjose 1, Irvine/Universal City -> losangeles 2, Portland OR
+  // suburbs 4, Twin Cities 7, Atlanta 5, Plano -> dallas 1, Missouri City/Spring -> houston 3,
+  // Union/East Brunswick/Toms River NJ -> newyork 5, Greenwood IN 1, Isleworth (Sky Osterley)
+  // -> london 2. 392 left unplaced: 73 Workday 'N Locations' placeholders, 8 'Virtual', Chennai
+  // 29, and US towns outside any hub metro.
+  {"id": "philadelphia-cmcsa", "name": "Comcast", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://comcast.wd115.myworkdayjobs.com/wday/cxs/comcast/Comcast_Careers/jobs", "origin": "https://comcast.wd115.myworkdayjobs.com/en-US/Comcast_Careers", "homeHub": "philadelphia", "maxPages": 60, "hubHints": [["washington st", null], ["san jose blvd", null], ["va - charlottesville", null], ["wa - vancouver,", "portland"], ["isleworth", "london"], ["pa - aston,", "philadelphia"], ["pa - havertown,", "philadelphia"], ["pa - king of prussia,", "philadelphia"], ["pa - langhorne,", "philadelphia"], ["pa - north wales,", "philadelphia"], ["pa - plymouth meeting,", "philadelphia"], ["pa - trevose,", "philadelphia"], ["pa - west chester,", "philadelphia"], ["pa - dresher,", "philadelphia"], ["nj - cherry hill,", "philadelphia"], ["nj - deptford,", "philadelphia"], ["nj - mount laurel,", "philadelphia"], ["nj - pennsauken,", "philadelphia"], ["nj - voorhees,", "philadelphia"], ["va - reston,", "washington"], ["va - alexandria,", "washington"], ["va - woodbridge,", "washington"], ["md - gaithersburg,", "washington"], ["md - riverdale park,", "washington"], ["il - arlington heights,", "chicago"], ["il - batavia,", "chicago"], ["il - bolingbrook,", "chicago"], ["il - gurnee,", "chicago"], ["il - homewood,", "chicago"], ["il - joliet,", "chicago"], ["il - libertyville,", "chicago"], ["il - mchenry,", "chicago"], ["il - morton grove,", "chicago"], ["il - naperville,", "chicago"], ["il - oak brook,", "chicago"], ["il - romeoville,", "chicago"], ["il - wheaton,", "chicago"], ["schaumburg,", "chicago"], ["wa - bellevue,", "seattle"], ["wa - everett,", "seattle"], ["wa - federal way,", "seattle"], ["wa - lynnwood,", "seattle"], ["wa - redmond,", "seattle"], ["co - arvada,", "denver"], ["co - centennial,", "denver"], ["co - englewood,", "denver"], ["co - lakewood,", "denver"], ["co - parker,", "denver"], ["co - thornton,", "denver"], ["ma - allston,", "boston"], ["ma - brockton,", "boston"], ["ma - methuen,", "boston"], ["ma - plymouth,", "boston"], ["ma - somerville,", "boston"], ["ma - westwood,", "boston"], ["ca - concord,", "sanfrancisco"], ["ca - daly city,", "sanfrancisco"], ["ca - richmond,", "sanfrancisco"], ["ca - san mateo,", "sanfrancisco"], ["ca - san rafael,", "sanfrancisco"], ["ca - union city,", "sanfrancisco"], ["ca - livermore,", "sanfrancisco"], ["ca - sunnyvale,", "sanjose"], ["ca - irvine,", "losangeles"], ["ca - universal city,", "losangeles"], ["or - clackamas,", "portland"], ["or - gresham,", "portland"], ["or - tigard,", "portland"], ["mn - brooklyn park,", "minneapolis"], ["mn - eagan,", "minneapolis"], ["mn - roseville,", "minneapolis"], ["mn - st paul,", "minneapolis"], ["mn - woodbury,", "minneapolis"], ["ga - alpharetta,", "atlanta"], ["ga - decatur,", "atlanta"], ["ga - snellville,", "atlanta"], ["tx - plano,", "dallas"], ["tx - missouri city,", "houston"], ["tx - spring,", "houston"], ["nj - union,", "newyork"], ["nj - east brunswick,", "newyork"], ["nj - toms river,", "newyork"], ["in - greenwood,", "indianapolis"]]},
+  // Palantir Technologies — 2026-09-29: Lever board jobs.lever.co/palantir — one unpaged call,
+  // 318 postings, 318 twice, ~2s. Roster domain palantirtechnologies.com is wrong;
+  // palantir.com. hubHints: 'kitsap, wa' -> null (2; ' wa,' would file Kitsap County,
+  // Washington on PERTH, and Kitsap is its own MSA, not Seattle's), 'palo alto, ca' -> sanjose
+  // (28, Santa Clara County). Unplaced 32: Honolulu 8, Abu Dhabi 3, Fayetteville NC 3, Tel
+  // Aviv, Vilnius, Oslo, Madrid, Copenhagen, Miami, Colorado Springs, Warsaw, Amsterdam,
+  // Munich, Stockholm, Huntsville. Denver HQ shows only 5 roles; New York 98 and Washington DC
+  // 72 are the real centres.
+  {"id": "denver-pltr", "name": "Palantir Technologies", "sector": "Technology, Media and Telecommunications", "platform": "lever", "endpoint": "palantir", "origin": "https://jobs.lever.co/palantir", "homeHub": "denver", "hubHints": [["kitsap, wa", null], ["palo alto, ca", "sanjose"]]},
+  // Kering — 2026-09-29: Kering's board careers.kering.com is Eightfold PCSX
+  // (/api/apply/v2/jobs answers 'Not authorized for PCSX'); endpoint
+  // /api/pcsx/search?domain=kering.com. count 1,051; walked 1,048 unique twice (~15s) — 3 ids
+  // repeat across page boundaries, the Lam Research pattern. Group-wide board (Gucci, Saint
+  // Laurent, Bottega, Balenciaga, McQueen, Boucheron, Kering Eyewear, Kering Beauté). homeHub
+  // NULL on purpose: 4 postings have a blank location and one of them is 'GUCCI Senior Client
+  // Advisor - Honolulu', so the blank->home fallback would file it in Paris; nothing else
+  // consults homeHub for this board (HOME_COUNTRY has no paris entry). hubHints: 'fukuoka' ->
+  // null (3; the board writes 'Fukuoka, Tokyo, Japan'); Île-de-France Courbevoie 6, Serris 4,
+  // Roissy en France 2, Bonneuil sur Marne 1, Tremblay-en-France 1 -> paris; Beverly Hills 13,
+  // Costa Mesa 6, Glendale CA 1 -> losangeles; Wayne 6, East Rutherford 2, Short Hills 2,
+  // Bridgewater NJ 2 -> newyork; Oakbrook 2, Rosemont 2 -> chicago; McLean 5 -> washington; The
+  // Woodlands 4 -> houston; King of Prussia 3 -> philadelphia; Halton Hills 2 -> toronto;
+  // Gyeonggi-do 6, Incheon 3 -> seoul; Santa Clara CA 2 -> sanjose; Fort Worth 1 -> dallas.
+  // 'Central Valley, New York' (Woodbury Common, Orange County — in the NY MSA since the 2023
+  // delineation) already resolves to newyork via HUB_MATCH. 487 unplaced: Italy (Milan 65,
+  // Florence-area production sites, Padova, Novara) is the bulk, plus Miami, Las Vegas,
+  // Germany, Korea regions, Taiwan, Mexico.
+  {"id": "paris-ker", "name": "Kering", "sector": "Consumer and Retail", "platform": "eightfoldpcs", "endpoint": "https://careers.kering.com/api/pcsx/search?domain=kering.com", "origin": "https://careers.kering.com", "homeHub": null, "maxPages": 400, "hubHints": [["fukuoka", null], ["courbevoie", "paris"], ["serris", "paris"], ["roissy en france", "paris"], ["bonneuil sur marne", "paris"], ["tremblay-en-france", "paris"], ["beverly hills", "losangeles"], ["costa mesa", "losangeles"], ["glendale, california", "losangeles"], ["wayne, new jersey", "newyork"], ["east rutherford", "newyork"], ["short hills", "newyork"], ["bridgewater, new jersey", "newyork"], ["oakbrook", "chicago"], ["rosemont, illinois", "chicago"], ["mclean", "washington"], ["the woodlands", "houston"], ["king of prussia", "philadelphia"], ["halton hills", "toronto"], ["gyeonggi-do", "seoul"], ["incheon", "seoul"], ["santa clara, california", "sanjose"], ["fort worth", "dallas"]]},
+  // Cadence Design Systems — 2026-09-29: Workday cadence.wd1.myworkdayjobs.com/External_Careers
+  // (roster domain cadencedesignsystems.com is wrong; cadence.com, whose site 403s this
+  // sandbox). 618 advertised, 618 walked twice, ~21s. Locations are upper-case site codes ('SAN
+  // JOSE', 'BANGALORE 05', 'GYEONGGI-DO (Seoul)', 'VELIZY (Paris)'). hubHints: 'burlington, ma'
+  // -> boston (9, Middlesex County), 'irvine' -> losangeles (3; 'IRVINE'/'IRVINE 04' are
+  // Cadence's Irvine CA office — scoped to this site because Irvine is also in Scotland). 301
+  // unplaced: Workday 'N Locations' placeholders 82, Noida 47, Pune 24, Belo Horizonte 23, Cork
+  // 17, Hsinchu 16, Zhubei 14, Nanjing 9, Hyderabad 9, remote 'HOME <state>' 8, Dublin 6,
+  // Yokohama 6, 'CAMBRIDGE' (UK or MA — ambiguous, left).
+  {"id": "sanjose-cdns", "name": "Cadence Design Systems", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://cadence.wd1.myworkdayjobs.com/wday/cxs/cadence/External_Careers/jobs", "origin": "https://cadence.wd1.myworkdayjobs.com/en-US/External_Careers", "homeHub": "sanjose", "maxPages": 60, "hubHints": [["burlington, ma", "boston"], ["irvine", "losangeles"]]},
+  // Takeda Pharmaceutical — 2026-09-29: jobs.takeda.com is Radancy TalentBrew (org 1113);
+  // /search-jobs/results advertises data-total-results=868 and the reader walks 868 of 868,
+  // twice, same ids. Global board (Boston/Cambridge/Lexington MA 164, Bengaluru 98, Lodz 49,
+  // Mexico City 27, Japan ~100), so homeHub null: 45 postings have a blank location and 110 say
+  // 'Remote' — sending those to Tokyo would invent Tokyo roles. hubHints (all measured on this
+  // pull): cambridge, ma 47 and lexington, ma 31 -> boston; fujisawa, kanagawa 21, chiba, chiba
+  // 7, narita, chiba 1 -> tokyo (Greater Tokyo); brooklyn park, mn 7 -> minneapolis; round lake
+  // beach, il 6 and libertyville, il 2 -> chicago; social circle, ga 6 -> atlanta (Walton Co.,
+  // Atlanta MSA); paddington, england 2 -> london; spokane, wa 1 -> null (HUB_MATCH ', wa' put
+  // it in Perth). Osaka/Hikari/Lodz/Vienna/Berlin have no hub and stay unplaced. Ready as soon
+  // as the fetchRadancy fix is in; without it the feed archives 868 rows with no location.
+  {"id": "tokyo-4502", "name": "Takeda Pharmaceutical", "sector": "Healthcare and Life Sciences", "platform": "radancy", "endpoint": "https://jobs.takeda.com/search-jobs/results", "origin": "https://jobs.takeda.com", "homeHub": null, "pageSize": 100, "maxPages": 20, "hubHints": [[" cambridge, ma,", "boston"], [" lexington, ma,", "boston"], [" spokane, wa,", null], [" brooklyn park, mn,", "minneapolis"], [" round lake beach, il,", "chicago"], [" libertyville, il,", "chicago"], [" social circle, ga,", "atlanta"], [" paddington, england,", "london"], [" fujisawa, fujisawa, kanagawa,", "tokyo"], [" chiba, chiba,", "tokyo"], [" narita, chiba,", "tokyo"]]},
+  // DaVita — 2026-09-29: careers.davita.com is Phenom (totalHits 3,462, all United States;
+  // roles apply on Workday davita.wd1 DKC_External, whose locationsText is a clinic name like
+  // '05649 - Dialysis Center of Hutchinson', useless for placement, and whose board is >2,000
+  // so it would need partitioning anyway). An unfiltered Phenom walk is UNSTABLE: '' sort gave
+  // 3,458 then 3,456 (3,455 shared); 'Most recent' gave 3,454 then 3,459 (3,452 shared). The
+  // widget caps size at 500 (asked 1000/4000, got 500). So the board is read as 9
+  // phenomSelected {state:[...]} partitions of one request each (pageSize 500, maxPages 1),
+  // states bin-packed to <=400 by the measured facet counts (CA 315, FL 302, TX 244 ...); all
+  // 50 states + DC + Puerto Rico are listed so a new state cannot fall outside every partition.
+  // If a partition grows past 500 the one-request read truncates — re-pack then. homeHub null:
+  // every posting has 'City, State' and none is blank. hubHints (344, generated from the
+  // measured list, CBSA metros): the board writes full state names, so HUB_MATCH put ALL of New
+  // York state (Syracuse, Elmira, Ithaca, Buffalo suburbs) in newyork, ALL of Washington state
+  // (Kennewick, Yakima, Spokane) in washington DC, Charlottesville VA in charlotte, Londonderry
+  // NH / New London CT in london, Paris KY in paris, Washington MO/PA in DC. Fixed with site
+  // needles: metro suburbs -> their hub (NYC incl. north NJ 136, Philadelphia incl. south NJ +
+  // Wilmington DE 94, DC incl. MD/VA suburbs 82, Chicago incl. NW Indiana 78, Atlanta 103,
+  // Houston 90, Dallas-Fort Worth 37, LA+Orange Co 119, SF East Bay 45, Denver 105, Seattle-
+  // Tacoma 25, Minneapolis-St Paul 44, Cincinnati incl. N. KY 50, etc.), then catch-alls ',
+  // washington,' -> null and ', new york,' -> null after the metro needles; Dallas GA ->
+  // atlanta (Paulding Co.), Londonderry NH -> boston (Rockingham Co., Boston MSA). 2,338 rows
+  // stay unplaced because their metro has no hub (Baltimore 44, Richmond 29, Orlando 28,
+  // Phoenix 19 ...), which is correct.
+  {"id": "denver-dva", "key": "denver-dva-a", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["California", "Tennessee", "Montana", "Wyoming", "Vermont", "South Dakota", "Puerto Rico", "Hawaii", "Alaska"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-b", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Florida", "New Jersey"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-c", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Texas", "North Carolina", "Louisiana"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-d", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Pennsylvania", "Georgia", "Rhode Island"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-e", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Virginia", "Ohio", "Iowa", "North Dakota"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-f", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Illinois", "Maryland", "Colorado", "Kansas"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-g", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Arizona", "New York", "Indiana", "Missouri", "District of Columbia"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-h", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Wisconsin", "Michigan", "South Carolina", "Minnesota", "Connecticut", "Oregon", "Washington", "Utah", "Maine"]}, "hubHints": DVA_HUB_HINTS},
+  {"id": "denver-dva", "key": "denver-dva-i", "name": "DaVita", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.davita.com/search-results", "origin": "https://careers.davita.com", "homeHub": null, "pageSize": 500, "maxPages": 1, "phenomSelected": {"state": ["Oklahoma", "Alabama", "Kentucky", "Massachusetts", "Nevada", "New Mexico", "Arkansas", "New Hampshire", "West Virginia", "Nebraska", "Mississippi", "Idaho", "Delaware"]}, "hubHints": DVA_HUB_HINTS},
+  // Eli Lilly — Measured 2026-09-29: careers.lilly.com is Phenom (refNum LILLUS); island
+  // totalHits 675, widget API walked 675 of 675 in ~4s, twice, identical URL sets with the
+  // default phenomSort "" (so no sort needed). No lilly.wd5 Workday site answers (422). Hints:
+  // 'Lebanon, Indiana' (54 rows, Lilly's LEAP manufacturing site in Boone County, Indianapolis
+  // MSA) -> indianapolis; 'Charlottesville, Virginia' was claimed by HUB_MATCH 'charlotte' ->
+  // null; 'Suzhou, Shanghai' (9) — Phenom writes Suzhou (Jiangsu) with a Shanghai state, it is
+  // a separate city -> null; 'Remote, Indiana' -> null (already unplaced, pinned so a future
+  // needle cannot claim it). Unplaced are real non-hub sites (Hyderabad 24, Pleasant Prairie
+  // WI, Concord NC, Richmond VA, Huntsville AL, Katwijk NL, Kobe, Cork, Mexico City,
+  // Alcobendas…).
+  {"id": "indianapolis-lly", "name": "Eli Lilly", "sector": "Healthcare and Life Sciences", "platform": "phenom", "endpoint": "https://careers.lilly.com/us/en/search-results", "origin": "https://careers.lilly.com", "homeHub": "indianapolis", "hubHints": [["lebanon, indiana", "indianapolis"], ["charlottesville", null], ["suzhou", null], ["remote, indiana", null]]},
+  // Intercontinental Exchange — Measured 2026-09-29: careers.ice.com fingerprints as iCIMS but
+  // is Jibe (window._jibe; /api/jobs answers). totalCount 304 requisitions = 304 distinct
+  // req_ids over 4 pages; fetchJibe dedupes by title|location, giving 257 (47 are repeat
+  // openings of the same title in the same city, e.g. 'Senior Developer' Atlanta x7) — the
+  // archive's job_key (source|title|company|location) would collapse them anyway. 257 twice,
+  // ~2s. Jibe's loc is 'city, country' (state dropped), so hints are keyed '<city>, united
+  // states'. Hints: 'Southbank, Australia' (2) -> melbourne; 'Mahwah, United States' (NJ, NYSE
+  // data centre, 2) -> newyork; 'Bedford, United States' (MA, 1) -> boston. Jacksonville FL
+  // (52, ICE Mortgage Technology) and Hyderabad/Pune have no hub and stay unplaced. Multi-
+  // location reqs are placed on their primary city only (full_location lists the others).
+  {"id": "atlanta-ice", "name": "Intercontinental Exchange", "sector": "Financial Services", "platform": "jibe", "endpoint": "https://careers.ice.com/api/jobs", "origin": "https://careers.ice.com", "homeHub": "atlanta", "hubHints": [["southbank, australia", "melbourne"], ["mahwah, united states", "newyork"], ["bedford, united states", "boston"]]},
+  // Legrand — Measured 2026-09-29: careers.legrand.com/en/sites/CX_1001 is Oracle Recruiting
+  // Cloud on pod iadugs.fa.ocs.oraclecloud.com, siteNumber CX_1001 (CX, CX_1,
+  // CX_1002/1003/2001/3001 return nothing). legrand.com's 'our job offers' page links only this
+  // site, so it is the group board. TotalJobsCount 333; walked 333 twice, ~5s. No location
+  // facet — Legrand is the whole group. Job links: origin + /job/<Id> on the custom domain.
+  // Hints (same metro): 'ile-de-france' (Bagnolet 6, Boulogne-Billancourt 2) -> paris; Thane ->
+  // mumbai (5); Minnetonka MN -> minneapolis (9); Anaheim CA -> losangeles (9); Farmingdale NY
+  // / Fairfield NJ -> newyork (5); Richardson TX -> dallas (3); Kenosha WI -> chicago (3); Blue
+  // Ash OH -> cincinnati; Fort Mill SC and Concord NC -> charlotte; Arvada CO -> denver; Union
+  // City CA -> sanfrancisco. HQ Limoges (13) is not Paris and stays unplaced; Warsaw IN,
+  // Syracuse NY ('NY' abbreviation, no 'new york' text) correctly unplaced. Largest unplaced:
+  // Canonsburg PA 24, West Hartford CT 17, Limoges 13, Chennai, Blumenau, Reno.
+  {"id": "paris-lr", "name": "Legrand", "sector": "Industrial Manufacturing", "platform": "oracle", "endpoint": "https://iadugs.fa.ocs.oraclecloud.com", "origin": "https://careers.legrand.com/en/sites/CX_1001", "homeHub": "paris", "siteNumber": "CX_1001", "hubHints": [["ile-de-france", "paris"], ["thane, maharashtra", "mumbai"], ["minnetonka, mn", "minneapolis"], ["anaheim, ca", "losangeles"], ["farmingdale, ny", "newyork"], ["fairfield, nj", "newyork"], ["richardson, tx", "dallas"], ["kenosha, wi", "chicago"], ["blue ash, oh", "cincinnati"], ["fort mill, sc", "charlotte"], ["concord, nc", "charlotte"], ["arvada, co", "denver"], ["union city, ca", "sanfrancisco"]]},
+  // HP Inc. — Measured 2026-09-29: hp.wd5 / ExternalCareerSite, total 935 (<2,000, no
+  // partition). 935 of 935 twice, ~46s. Traps fixed by hints: 'Vancouver, Washington' (39) was
+  // going to washington (DC) via the bare 'washington' needle -> portland (Vancouver WA is
+  // Portland metro); 'All Cities, <State>' statewide/remote postings (~45, incl. 'All Cities,
+  // Washington' -> DC and 'All Cities, New York' -> newyork) -> null. Same-metro: Spring, Texas
+  // (62, HP's Houston campus) -> houston; Palo Alto (12, HQ) -> sanjose; Alpharetta GA (9) ->
+  // atlanta; Tustin CA (3) -> losangeles. ~220 rows are Workday '2 Locations'/'3 Locations'
+  // multi-site cards with no place and stay unplaced (reader limitation). Other unplaced: Sant
+  // Cugat (Barcelona) 56, Tlaquepaque (Guadalajara) 40, Corvallis OR 23, Taipei 22, Reading UK
+  // 21, Rio Rancho NM 17.
+  {"id": "sanjose-hpq", "name": "HP Inc.", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://hp.wd5.myworkdayjobs.com/wday/cxs/hp/ExternalCareerSite/jobs", "origin": "https://hp.wd5.myworkdayjobs.com/en-US/ExternalCareerSite", "homeHub": "sanjose", "maxPages": 60, "hubHints": [["vancouver, washington", "portland"], ["all cities, ", null], ["spring, texas", "houston"], ["palo alto, california", "sanjose"], ["alpharetta, georgia", "atlanta"], ["tustin, california", "losangeles"]]},
+  // Expedia Group — Measured 2026-09-29: expedia.wd108 / site 'search', total 153; 153 of 153
+  // twice, ~4s. Placement is clean ('Washington - Seattle Campus' -> seattle via 'seattle'
+  // before 'washington'). Hint: West Hollywood (1) -> losangeles. 30 rows are '2/3/4 Locations'
+  // multi-site cards (unplaced); others unplaced: Prague 11, Gurgaon 10, Madrid 4, Dublin,
+  // Mexico City, Rome.
+  {"id": "seattle-expe", "name": "Expedia Group", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://expedia.wd108.myworkdayjobs.com/wday/cxs/expedia/search/jobs", "origin": "https://expedia.wd108.myworkdayjobs.com/en-US/search", "homeHub": "seattle", "maxPages": 20, "hubHints": [["west hollywood", "losangeles"]]},
+  // Premier Investments — Measured 2026-09-29: Premier Retail (Smiggle + Peter Alexander) runs
+  // PageUp instance 470 with THREE classic listings: careers.smiggle.com (code 'smiggle', 90
+  // roles), careers.peteralexander.com.au ('pa', 114) and careers.premierretail.com.au =
+  // careers.pageuppeople.com/470/prs ('prs', 58). prs is an aggregate that re-lists 56 NZ roles
+  // from the other two; only 2 of its 58 are unique (a 'Service Desk Specialist' Melbourne
+  // support role and one PA NZ Queen St casual). Wired: smiggle + pa (union 204 by job id; 1
+  // role, the DC 'Christmas Casual Warehouse Assistant', is on both boards with the same
+  // title/location so the archive key collapses it). prs deliberately NOT wired — adding it
+  // would duplicate 56 rows across feeds for 2 new ones; add it later only if feed-level dedupe
+  // exists. The old Just Group board (careers.justgroup.com.au/caw) is empty and Just Group is
+  // no longer Premier's (sold to Myer). No total printed; page-items=500 returns 90 and 114,
+  // matching the walks; stable twice, ~2-9s each. Location cells are PageUp region names
+  // ('Melbourne - Central', 'Waikato', 'South West UK'). Hints (same metro / SEQ): 'act - all'
+  // -> canberra, 'hills district', 'central coast', 'illawarra' -> sydney, 'mornington
+  // peninsula' -> melbourne, 'bellerive' -> hobart, 'gold coast', 'sunshine coast' -> brisbane.
+  // Unplaced: UK regions (Smiggle UK), NZ regions without a hub (Bay of Plenty, Otago,
+  // Manawatu…), regional AU (Toowoomba, Rockhampton, Ballarat, Wagga, Newcastle Metro).
+  {"id": "melbourne-pmv", "key": "melbourne-pmv-smiggle", "name": "Premier Investments", "sector": "Consumer and Retail", "platform": "pageupclassic", "endpoint": "https://careers.smiggle.com/en/listing/", "origin": "https://careers.smiggle.com", "homeHub": "melbourne", "hubHints": [["act - all", "canberra"], ["hills district", "sydney"], ["central coast", "sydney"], ["illawarra", "sydney"], ["mornington peninsula", "melbourne"], ["bellerive", "hobart"], ["gold coast", "brisbane"], ["sunshine coast", "brisbane"]]},
+  {"id": "melbourne-pmv", "key": "melbourne-pmv-pa", "name": "Premier Investments", "sector": "Consumer and Retail", "platform": "pageupclassic", "endpoint": "https://careers.peteralexander.com.au/en/listing/", "origin": "https://careers.peteralexander.com.au", "homeHub": "melbourne", "hubHints": [["act - all", "canberra"], ["hills district", "sydney"], ["central coast", "sydney"], ["illawarra", "sydney"], ["mornington peninsula", "melbourne"], ["bellerive", "hobart"], ["gold coast", "brisbane"], ["sunshine coast", "brisbane"]]},
+  // Amgen — Measured 2026-09-29: careers.amgen.com fronts Workday amgen.wd1 / 'Careers'
+  // (discover-boards also sees an Eightfold talent-network form, which is not the board). total
+  // 1,729 (<2,000, so no appliedFacets partition — re-check if it crosses 2,000). 1,728 twice
+  // (same set), ~75s; the one-row gap is stable across runs, consistent with a duplicated
+  // externalPath rather than a dropped page. Hints: Thousand Oaks (119, HQ; Conejo Valley,
+  // Greater LA) -> losangeles; 'US - New York - Syracuse' was claimed by 'new york' -> null;
+  // 'US - Washington - Seattle' -> seattle then 'us - washington - ' -> null, so a future
+  // Washington-STATE site cannot land on DC (DC is written 'US - Washington D.C.' and still
+  // resolves). Unplaced: India - Hyderabad 797 (Amgen India tech centre, no hub), 'United
+  // States - Remote' 104, ~140 multi-location cards, Holly Springs NC 58, Lisbon 38, New Albany
+  // OH 18, Breda 18.
+  {"id": "losangeles-amgn", "name": "Amgen", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://amgen.wd1.myworkdayjobs.com/wday/cxs/amgen/Careers/jobs", "origin": "https://amgen.wd1.myworkdayjobs.com/en-US/Careers", "homeHub": "losangeles", "maxPages": 100, "hubHints": [["thousand oaks", "losangeles"], ["us - new york - syracuse", null], ["us - washington - seattle", "seattle"], ["us - washington - ", null]]},
+  // Logitech International — 2026-09-29: Workday logitech/wd5/Logitech, found from
+  // careers.logitech.com and logitech.com/careers. total 219, walked 219 of 219 unique twice,
+  // ~8s. homeHub NULL deliberately: the roster hub is Zurich but the board has no Zurich role
+  // at all — Logitech's Swiss site is Lausanne (6, its own metro, left unplaced) — and
+  // HOME_COUNTRY has no zurich entry, so a hub would only catch blank locations (none
+  // measured). Largest sites Suzhou 33 and Hsinchu 33 are on no hub; 'N Locations' multi-site
+  // placeholders (33) name nowhere and stay unplaced. hubHints: 'alexandria, australia' ->
+  // sydney (2; the only Alexandria in Australia is the Sydney suburb). 'Offsite - Australia -
+  // Queensland' (1) resolves to brisbane via HUB_MATCH 'queensland', the table's own rule for
+  // regional QLD. Doral FL (2), Offsite - USA - TX (2) left unplaced.
+  {"id": "zurich-logn", "name": "Logitech International", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://logitech.wd5.myworkdayjobs.com/wday/cxs/logitech/Logitech/jobs", "origin": "https://logitech.wd5.myworkdayjobs.com/Logitech", "homeHub": null, "maxPages": 20, "hubHints": [["alexandria, australia", "sydney"]]},
+  // LyondellBasell — 2026-09-29: SuccessFactors table theme at careers.lyondellbasell.com
+  // ('Results 1 – 20 of 199'), page size 20. Walked 199 of 199 unique twice, ~3s. Global board
+  // of one employer, so unfiltered. Location cells are 'City, ST, CC, postcode'. hubHints for
+  // Houston-MSA plant towns in Harris County that name no 'houston': channelview, tx 9, deer
+  // park, tx 8, pasadena, tx 6, la porte, tx 1 -> houston; mansfield, tx 1 -> dallas (Tarrant,
+  // DFW); 'pudong' 2 -> shanghai ('Pudong New District, SH, CN'). Left unplaced as their own
+  // metros: Bay City and Victoria TX, Corpus Christi, Westlake LA, Edison NJ,
+  // European/Indian/Mexican sites. Quirk: multi-location cells carry a literal '+N
+  // more&hellip;' (the reader's clean() does not decode &hellip;) — harmless for placement,
+  // stable across runs so job_key does not drift. Senai, MY -> johorbahru via HUB_MATCH
+  // (correct).
+  {"id": "houston-lyb", "name": "LyondellBasell", "sector": "Industrial Manufacturing", "platform": "successfactors", "endpoint": "https://careers.lyondellbasell.com", "origin": "https://careers.lyondellbasell.com", "homeHub": "houston", "maxPages": 30, "hubHints": [["channelview, tx", "houston"], ["deer park, tx", "houston"], ["pasadena, tx", "houston"], ["la porte, tx", "houston"], ["mansfield, tx", "dallas"], ["pudong", "shanghai"]]},
+  // Brookfield Asset Management — 2026-09-29: Workday brookfield/wd5/brookfield, linked from
+  // brookfield.com/careers/career-opportunities — the joint Brookfield board. total 129: 115 in
+  // jobFamily 'Global BAM - *', 11 'PSG' (hiringOrganization on every one checked is a
+  // Brookfield Asset Management / Brookfield Investment Management entity) and 3 'Real Estate
+  // OpCos - Technology/Finance' whose hiringOrganization is Brookfield Properties (USA II) LLC
+  // / (Canada) Inc — Brookfield Corporation's property arm, not BAM. appliedFacets jobFamily =
+  // the 22 Global BAM + PSG ids (everything except the two Real Estate OpCos ids), filtered
+  // total 126 = the facets' own counts; walked 126 of 126 twice, ~6s. DUPLICATE WARNING: roster
+  // toronto-bn 'Brookfield Corporation' shares this tenant — do not wire the unfiltered board
+  // under it; at most the Real Estate OpCos families (3) belong there. Unplaced 6: 'N
+  // Locations' 3, São Paulo 2, bare 'Brookfield Place' 1 (Toronto and New York both have one;
+  // left unplaced).
+  {"id": "toronto-bam", "name": "Brookfield Asset Management", "sector": "Financial Services", "platform": "workday", "endpoint": "https://brookfield.wd5.myworkdayjobs.com/wday/cxs/brookfield/brookfield/jobs", "origin": "https://brookfield.wd5.myworkdayjobs.com/brookfield", "homeHub": "toronto", "maxPages": 20, "appliedFacets": {"jobFamily": ["3653fa437add1001ec0b3c489a170000", "34b4fd925ceb1001eb56d9e6dc510000", "8d5b9123d198014fb96e6c273741ed93", "34b4fd925ceb1001eb56f343a1d00000", "34b4fd925ceb1001eb56a600453f0000", "34b4fd925ceb1001eb56fc4f8b830000", "34b4fd925ceb1001eb56826aa74b0000", "34b4fd925ceb1001eb5653f479b20000", "34b4fd925ceb1001eb57163fadea0000", "3653fa437add1001ec0b19f44fd00000", "34b4fd925ceb1001eb56cdd945ac0000", "34b4fd925ceb1001eb57271ab3820000", "3653fa437add1001ec0aef2738230000", "3653fa437add1001ec0ac62f33560000", "3653fa437add1001ec0a8650625f0000", "34b4fd925ceb1001eb56b04296cf0000", "28347e57c9c21000fd1b6efb5e2b0000", "34b4fd925ceb1001eb571fdf5b410000", "34b4fd925ceb1001eb56ea37f9200000", "34b4fd925ceb1001eb56c56af1a00000", "3653fa437add1001ec0a9731cf750000", "34b4fd925ceb1001eb569cfa095a0000"]}},
+  // Barclays — 2026-09-29: Workday barclays/wd3/External_Career_Site_Barclays
+  // (search.jobs.barclays is a Radancy front end over it). total 767 (< 2,000, one feed),
+  // walked 767 of 767 unique twice, ~22-25s. Locations are Barclays site names without a
+  // country ('Canary Wharf, 1 Churchill Place'), so HOME_COUNTRY's UK pattern rarely fires.
+  // hubHints: 'canary wharf' -> london (63), 'whippany' -> newyork (33; Morris County NJ, NY
+  // MSA; 'Building 300/400-Whippany Campus', '115 South Jefferson Rd Campus, Whippany'),
+  // 'wilmington, 125 south west street' -> philadelphia (4; Wilmington DE, Philadelphia MSA),
+  // 'working from home, washington' -> null (1; the US state beside 'Working From Home,
+  // TEXAS/NEW JERSEY', not DC). Biggest unplaced: Pune 198, Gurugram 30, Chennai 23, Noida 13
+  // (no hub), UK regional campuses Glasgow 40, Knutsford 26, Northampton 11, Manchester 7 — own
+  // metros, left unplaced; 'N Locations' 89. One posting has no location at all (externalPath
+  // with no location segment) and falls to london.
+  {"id": "london-barc", "name": "Barclays", "sector": "Financial Services", "platform": "workday", "endpoint": "https://barclays.wd3.myworkdayjobs.com/wday/cxs/barclays/External_Career_Site_Barclays/jobs", "origin": "https://barclays.wd3.myworkdayjobs.com/External_Career_Site_Barclays", "homeHub": "london", "maxPages": 60, "hubHints": [["canary wharf", "london"], ["whippany", "newyork"], ["wilmington, 125 south west street", "philadelphia"], ["working from home, washington", null]]},
 ];
 
 /**
