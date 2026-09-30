@@ -23322,6 +23322,13 @@ export const PORTAL_GROUPS: string[][] = [
     "tokyo-6981",
     "beach",
     "sanfrancisco-dbx",
+    "paris-mc",
+    "shenzhen-00700",
+    "beijing-ntes",
+    "shenzhen-300760",
+    "priv-programmed",
+    "newyork-foxa",
+    "shenzhen-000001",
   ],
   // Groups 209-214 — the 2026-09-29 fifth batch, PACKED: several boards to
   // a tick, up to ~150 s of measured walk each, which is only sound because
@@ -23390,6 +23397,9 @@ export const PORTAL_GROUPS: string[][] = [
     "priv-nrma-motoring-services",
     "priv-bowens-timber-hardware",
     "johannesburg-val",
+    "seattle-amzn",
+    "beijing-09888",
+    "beijing-bytedance",
   ],
   // Groups 218-220 — the 2026-09-30 seventh batch, PACKED: several boards to
   // a tick, up to ~150 s of measured walk each, which is only sound because
@@ -23420,6 +23430,12 @@ export const PORTAL_GROUPS: string[][] = [
     "sanfrancisco-docu",
     "priv-mort-co",
     "newyork-mco",
+    "paris-aca",
+    "charlotte-hon",
+    "zurich-holn",
+    "newyork-pm",
+    "minneapolis-ecl",
+    "newyork-ibm",
   ],
   // Groups 221-224 — the 2026-09-30 eighth batch, PACKED: several boards to
   // a tick, up to ~150 s of measured walk each, which is only sound because
@@ -23458,6 +23474,17 @@ export const PORTAL_GROUPS: string[][] = [
     "johannesburg-vod-tz",
     "johannesburg-vod-ls",
     "melbourne-hsn",
+    "melbourne-arb",
+    "perth-vau",
+    "priv-defence-health",
+    "priv-teys-australia",
+    "priv-raa",
+    "uni-university-of-notre-dame-australia",
+    "tokyo-7751",
+    "mumbai-hdfcbank",
+    "melbourne-sig",
+    "aow",
+    "perth-mad",
   ],
   // Groups 225-226 — the 2026-09-30 ninth batch, PACKED: several boards to
   // a tick, up to ~150 s of measured walk each, which is only sound because
@@ -23524,6 +23551,11 @@ export const PORTAL_GROUPS: string[][] = [
     "shenzhen-300059",
     "shanghai-600276",
   ],
+  // Group 230 — batch 11 (2026-09-30), Safran and L'Oréal: the two longest walks
+  // of the batch (72 s and 79 s measured). The rest of batch 11 joined the
+  // four lightest packed groups (208, 217, 220, 224), each left under ~150 s
+  // of measured walk, so the batch cost one cron trigger.
+  ["paris-saf", "paris-or"],
 ];
 
 const UA =
