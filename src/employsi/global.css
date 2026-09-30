@@ -17833,18 +17833,13 @@ body {
   color: var(--text-primary, #1c1c1e);
   white-space: nowrap;
 }
-.cponetnote,
+/* .cponetnote and .cponetcredit removed with the O*NET credit line
+   (2026-09-30) — see lib/onet.ts. .cponetnone stays: it is the "no single
+   O*NET occupation matches this role" message, which is a different thing. */
 .cponetnone {
   margin: 0;
-  font: 400 11.5px/1.45 "Inter", system-ui, sans-serif;
-  color: var(--text-tertiary, #8e8e93);
-}
-.cponetnone {
-  font-size: 12.5px;
+  font: 400 12.5px/1.45 "Inter", system-ui, sans-serif;
   color: var(--text-secondary, #636366);
-}
-.cponetcredit a {
-  color: inherit;
 }
 
 /* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
