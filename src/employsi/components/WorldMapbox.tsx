@@ -1053,7 +1053,6 @@ export function WorldMapbox() {
   const zoomingIn = useAppStore((s) => s.zoomingIn);
   const globalOut = useAppStore((s) => s.globalOut);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
-  const placeLabels = useAppStore((s) => s.placeLabels);
   const localCity = useAppStore((s) => s.localCity);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -1837,11 +1836,16 @@ export function WorldMapbox() {
     return () => clearTimeout(t);
   }, [marketMode, heatMarket]);
 
-  // Place labels (Settings → Appearance). Mapbox paints city and region names
-  // into the canvas, so there is no CSS way to hide them — the style's own
-  // symbol layers have to be toggled. Every label layer in the Mapbox standard
-  // styles ends in "-label", and only label layers do, so that suffix is the
-  // selector rather than a hand-listed set that would rot on a style update.
+  // Place labels. ALWAYS ON since the Settings toggle was removed
+  // (2026-09-30) — but this effect is not dead code and must not be deleted
+  // with it: `showPlaceLabels: false` is set on the basemap config at
+  // style.load, so this is what turns the city and region names back ON.
+  //
+  // Mapbox paints those names into the canvas, so there is no CSS way to reach
+  // them — the style's own symbol layers have to be set. Every label layer in
+  // the Mapbox standard styles ends in "-label", and only label layers do, so
+  // that suffix is the selector rather than a hand-listed set that would rot
+  // on a style update.
   //
   // Guarded on isStyleLoaded: setLayoutProperty throws if the style has not
   // arrived, and this effect can run before the first `load`. The same code
@@ -1855,7 +1859,7 @@ export function WorldMapbox() {
       for (const layer of map.getStyle()?.layers ?? []) {
         if (layer.type !== "symbol" || !layer.id.endsWith("-label")) continue;
         try {
-          map.setLayoutProperty(layer.id, "visibility", placeLabels ? "visible" : "none");
+          map.setLayoutProperty(layer.id, "visibility", "visible");
         } catch {
           /* a layer removed between listing and setting — nothing to do */
         }
@@ -1866,7 +1870,7 @@ export function WorldMapbox() {
     return () => {
       map.off("styledata", apply);
     };
-  }, [placeLabels]);
+  }, []);
 
   // Recolour / re-dim markers when the metric, selection or sector filter change
   // — markers only, no camera move (so toggling a metric doesn't snap the view).

@@ -17,11 +17,17 @@ import { IconClose } from "./ActionIcons";
  * `.setpanel` block in global.css.
  *
  * WHAT IS AND ISN'T WIRED, AND WHY THAT IS VISIBLE
- * The design ships seven controls. Three of them we can honestly back today:
+ * The design ships seven controls. Two of them we can honestly back today:
  *
  *   Reduce motion   — sets .reduce-motion on <html>; the CSS already respects it
- *   Place labels    — toggles Mapbox's own *-label symbol layers (WorldMapbox)
  *   Use my location — asks the browser, then jumps to the nearest tracked hub
+ *
+ * "Place labels" was a third, and was removed on 2026-09-30. The labels are
+ * simply always on now; WorldMapbox still has the effect that makes that true
+ * (the basemap config hides them, the effect turns them back on), and its
+ * comment says so. The persisted flag went with the control — leaving it would
+ * have stranded anyone who had turned labels OFF with no way to turn them
+ * back on.
  *
  * The other four cannot be backed without inventing something:
  *
@@ -113,15 +119,14 @@ export function SettingsPanel() {
   const closeSettings = useAppStore((s) => s.closeSettings);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const setReduceMotion = useAppStore((s) => s.setReduceMotion);
-  const placeLabels = useAppStore((s) => s.placeLabels);
-  const setPlaceLabels = useAppStore((s) => s.setPlaceLabels);
   const locating = useAppStore((s) => s.locating);
   const useMyLocation = useAppStore((s) => s.useMyLocation);
   const isAdmin = useAppStore((s) => s.role) === "admin";
 
+  // Place labels used to be reset here too. They are always on now and have no
+  // stored flag, so there is nothing left to put back.
   const resetDefaults = () => {
     setReduceMotion(false);
-    setPlaceLabels(true);
   };
 
   return (
@@ -152,10 +157,6 @@ export function SettingsPanel() {
 
           <Row title="Reduce motion" sub="Minimise map and interface animations.">
             <Switch on={reduceMotion} onChange={setReduceMotion} label="Toggle reduce motion" />
-          </Row>
-
-          <Row title="Place labels" sub="Show city and region names on the map.">
-            <Switch on={placeLabels} onChange={setPlaceLabels} label="Toggle place labels" />
           </Row>
 
           {/* Read-only, and only when it applies: an admin sees markets that are

@@ -94,7 +94,6 @@ export interface AppState {
       controls for one panel cannot each own its state. */
   alertsOpen: boolean;
   reduceMotion: boolean;
-  placeLabels: boolean;
   /** Geolocation is in flight (the browser is showing its permission prompt). */
   locating: boolean;
   useMyLocation: boolean;
@@ -284,7 +283,6 @@ export interface AppState {
   closeAlerts: () => void;
   openAlerts: () => void;
   setReduceMotion: (v: boolean) => void;
-  setPlaceLabels: (v: boolean) => void;
   setUseMyLocation: (v: boolean) => void;
   setNightMode: (v: boolean) => void;
   closePanel: () => void;
@@ -379,9 +377,6 @@ interface Persisted {
   followedSkills: string[];
   reduceMotion: boolean;
   nightMode: boolean;
-  /** Show Mapbox's own city/region labels. On by default — the map is harder
-   *  to read without them, so hiding is the deliberate choice, not the default. */
-  placeLabels: boolean;
   /** The company card's news column, tucked or not. See AppState.newsCollapsed. */
   newsCollapsed: boolean;
   /** The skills ticker, collapsed to its pill. See AppState.tickerCollapsed. */
@@ -392,7 +387,6 @@ const PERSIST_DEFAULTS: Persisted = {
   followedSkills: [],
   reduceMotion: false,
   nightMode: false,
-  placeLabels: true,
   newsCollapsed: false,
   tickerCollapsed: false,
 };
@@ -411,7 +405,6 @@ function loadPersisted(): Persisted {
       followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,
-      placeLabels: p.placeLabels ?? true,
       newsCollapsed: p.newsCollapsed ?? false,
       tickerCollapsed: p.tickerCollapsed ?? false,
     };
@@ -603,7 +596,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   settingsOpen: false,
   alertsOpen: false,
   reduceMotion: persisted.reduceMotion,
-  placeLabels: persisted.placeLabels,
   // NOT persisted: a location permission belongs to the browser, and re-asking
   // on every load because a stored boolean said so would be rude.
   locating: false,
@@ -875,11 +867,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (typeof document !== "undefined")
       document.documentElement.classList.toggle("reduce-motion", v);
     set({ reduceMotion: v });
-  },
-  // The map components watch this and toggle Mapbox's own label layers; there
-  // is no CSS equivalent, because those labels are painted into the canvas.
-  setPlaceLabels: (v) => {
-    set({ placeLabels: v });
   },
   // Asks the browser once, then jumps to the nearest hub we actually track.
   // Turning it OFF does not move the map — undoing a navigation the user asked
@@ -1273,7 +1260,6 @@ useAppStore.subscribe((s, prev) => {
     s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode ||
-    s.placeLabels !== prev.placeLabels ||
     s.newsCollapsed !== prev.newsCollapsed ||
     s.tickerCollapsed !== prev.tickerCollapsed
   ) {
@@ -1282,7 +1268,6 @@ useAppStore.subscribe((s, prev) => {
       followedSkills: s.followedSkills,
       reduceMotion: s.reduceMotion,
       nightMode: s.nightMode,
-      placeLabels: s.placeLabels,
       newsCollapsed: s.newsCollapsed,
       tickerCollapsed: s.tickerCollapsed,
     });
