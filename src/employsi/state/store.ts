@@ -29,6 +29,21 @@ export interface Account {
 export interface AppState {
   account: Account | null;
   /**
+   * Whether the server has answered "who is signed in?" yet.
+   *
+   * `account` alone cannot tell you: it is null both before the session query
+   * lands and when nobody is signed in, and those two need opposite UI. The
+   * app is signed-in-only (see getAppAccess), so inside it null-and-known
+   * means the cookie expired mid-visit rather than "a guest is browsing" —
+   * while null-and-unknown is the ordinary first few hundred milliseconds of
+   * every load, including for a signed-in user.
+   *
+   * Conflating them is what made the old signed-out prompts flash on boot.
+   * Anything rendering account-shaped chrome should wait for this rather than
+   * treat a missing account as an invitation to sign in.
+   */
+  sessionKnown: boolean;
+  /**
    * What this session may see, as told by the server (lib/roles.ts).
    *
    * PRESENTATION ONLY. Anyone can set this to "admin" in their own browser, so
@@ -227,6 +242,8 @@ export interface AppState {
   closeAuth: () => void;
   /** Adopt (or clear) the session the server reported. */
   setSession: (a: Account | null) => void;
+  /** Mark the session question answered without changing the answer. */
+  markSessionKnown: () => void;
   setRole: (r: Role) => void;
   /** Sign-in buttons this deployment can offer; empty = not configured. */
   authProviders: ("google" | "linkedin")[];
@@ -537,6 +554,7 @@ function solo(flag: PanelFlag, open: boolean): Partial<Record<PanelFlag, boolean
 
 export const useAppStore = create<AppState>((set, get) => ({
   account: null,
+  sessionKnown: false,
   role: "user" as Role,
   authProviders: [],
   authOpen: false,
@@ -640,29 +658,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         followedIds: on ? [...s.followedIds, id] : s.followedIds.filter((x) => x !== id),
       };
     }),
-  // Following is the account feature: signed-out visitors are prompted to
-  // create an account first, and the company they tapped is saved for them the
-  // moment they do (see signUp/signIn).
-  requestFollow: (id) => {
-    const s = get();
-    if (!s.account) {
-      // Not signed in — notify with a toast and open the account panel (with the
-      // tapped company remembered so it's saved the moment they sign up).
-      set({
-        authOpen: true,
-        pendingFollowId: id,
-        searchOpen: false,
-        filterOpen: false,
-        toast: "Create a free account or sign in to follow companies",
-      });
-      return;
-    }
-    set({
-      followedIds: s.followedIds.includes(id)
-        ? s.followedIds.filter((x) => x !== id)
-        : [...s.followedIds, id],
-    });
-  },
+  // Following, from the UI. The app is signed-in-only (getAppAccess), so there
+  // is no longer a signed-out case to prompt: this used to open the account
+  // panel with a toast and remember the tap, and now it just follows.
+  //
+  // IT ALSO WRITES TO THE SERVER NOW, which it did not before. Every Follow
+  // button in the app goes through here — `toggleFollow` above has no callers —
+  // and this branch set local state ONLY. A follow therefore reached D1 only on
+  // the NEXT load, when claimLocalFollows handed the localStorage mirror over,
+  // so following and then signing in elsewhere lost it. Delegating keeps one
+  // write path rather than two that disagree.
+  requestFollow: (id) => get().toggleFollow(id),
   toggleFollowSkill: (skill) =>
     set((s) => {
       const on = !s.followedSkills.includes(skill);
@@ -673,46 +679,28 @@ export const useAppStore = create<AppState>((set, get) => ({
           : s.followedSkills.filter((x) => x !== skill),
       };
     }),
-  // Following a skill is gated exactly like following a company: signed-out
-  // visitors are prompted to create an account first, and the skill they tapped
-  // is saved for them the moment they do (see signUp/signIn).
-  requestFollowSkill: (skill) => {
+  // Following a skill behaves exactly like following a company, for the same
+  // reasons: no signed-out prompt, and the server write goes through the one
+  // path above rather than being skipped here.
+  requestFollowSkill: (skill) => get().toggleFollowSkill(skill),
+  // A career goal is an account feature, and the app is signed-in-only, so it
+  // just saves. The signed-out branch that opened the sign-in sheet with the
+  // role named is gone.
+  //
+  // `title` is now unused — it existed only to name the role in that prompt's
+  // copy ("Sign in to save Data Analyst as your career goal"). It is kept in the
+  // signature because six call sites pass it and because the prompt is retired
+  // "for now"; dropping the parameter would be the larger edit to undo.
+  requestCareerGoal: (id) => {
     const s = get();
-    if (!s.account) {
-      set({
-        authOpen: true,
-        pendingFollowSkill: skill,
-        searchOpen: false,
-        filterOpen: false,
-        toast: "Create a free account or sign in to follow skills",
-      });
-      return;
-    }
-    set({
-      followedSkills: s.followedSkills.includes(skill)
-        ? s.followedSkills.filter((x) => x !== skill)
-        : [...s.followedSkills, skill],
-    });
-  },
-  // A career goal is an account feature, gated like following: signed out,
-  // the sign-in sheet opens with the role named, and the goal is saved the
-  // moment a session appears (useAuthSession applies it — it needs a server
-  // write, which setSession does not do).
-  requestCareerGoal: (id, title) => {
-    const s = get();
+    // The session query has not landed yet. Hold the goal the way an OAuth
+    // round trip used to, so a fast click on boot is applied rather than
+    // written against nobody — useAuthSession picks it up.
     if (!s.account) {
       if (!id) return;
-      const pending = { id, title: title ?? "this role" };
+      const pending = { id, title: "this role" };
       savePendingGoal(pending);
-      // The card closes: it sits above the header, so the sign-in panel would
-      // open behind it. Nothing is lost — the goal is pending, and once saved
-      // the profile's goal opens the map straight back on it.
-      set({
-        authOpen: true,
-        careerOpen: false,
-        pendingCareerGoal: pending,
-        toast: "Create a free account or sign in to save a career goal",
-      });
+      set({ pendingCareerGoal: pending, careerGoal: id });
       return;
     }
     if (id === s.careerGoal) return;
@@ -747,15 +735,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   // redirect (see lib/authClient.ts), so there is no "submit these credentials"
   // action here any more — the app simply learns who came back.
   //
-  // A pending follow, saved when a signed-out visitor tapped Follow, is applied
-  // the moment a session appears, so the thing they were trying to do actually
-  // happens rather than being forgotten across the redirect.
+  // EITHER WAY IT SETS sessionKnown. This is the only caller, and it runs once
+  // the query has an answer, so "known" means answered — including answered
+  // with nobody. Components tell the boot gap from a real absence by that flag,
+  // never by `account` being null.
+  //
+  // A pending follow carried across an OAuth redirect is still applied here.
+  // The app no longer lets a signed-out visitor tap Follow at all (the route
+  // gate sends them to /login first), so nothing new sets those fields — but a
+  // browser that queued one before this change still holds it, and honouring it
+  // costs two comparisons.
   setRole: (r) => set({ role: r }),
+  // Settle sessionKnown without touching who is signed in. For the one caller
+  // that has an answer but not an account: useAuthSession, when the session
+  // read fails outright.
+  markSessionKnown: () => set({ sessionKnown: true }),
   setSession: (a) =>
     set((s) => {
       // Signing out drops the role with the account: leaving it behind would
       // keep the admin surface visible to the next person at this browser.
-      if (!a) return { account: null, role: "user" as Role, authOpen: false, careerGoal: null };
+      if (!a) {
+        return {
+          account: null,
+          sessionKnown: true,
+          role: "user" as Role,
+          authOpen: false,
+          careerGoal: null,
+        };
+      }
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
           ? [...s.followedIds, s.pendingFollowId]
@@ -766,6 +773,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : s.followedSkills;
       return {
         account: a,
+        sessionKnown: true,
         authOpen: false,
         pendingFollowId: null,
         pendingFollowSkill: null,
@@ -810,8 +818,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       careerGoal: null,
     });
     if (typeof window !== "undefined") {
-      // Same URL, so the person lands where they were rather than being sent
-      // to the default view for having signed out.
+      // Reloading the same URL is still right, but what it does has changed:
+      // since the app became signed-in-only, /app's beforeLoad gate answers the
+      // cookieless reload with a redirect to /login. So this no longer "lands
+      // the person where they were" — signing out of the app leaves the app,
+      // which is the correct destination for a product that has no signed-out
+      // view. The reload is what hands that decision to the server rather than
+      // this function guessing a route.
       window.location.reload();
     }
   },

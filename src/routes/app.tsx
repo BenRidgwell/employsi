@@ -25,10 +25,16 @@ function useMobileFrameHost(): boolean {
 }
 
 export const Route = createFileRoute("/app")({
-  // THE PAYWALL — see getAppAccess in employsi/lib/billingFn.ts. Runs on the
-  // server for a first load (so a gated visitor gets a redirect, not the app
-  // shell) and again on client-side navigation. Open wherever payments are not
-  // configured, so the app preview and production behave as before until then.
+  // THE GATE — see getAppAccess in employsi/lib/billingFn.ts. Two checks:
+  // signed in (always, wherever sign-in is configured) and subscribed (only
+  // where Stripe is). Runs on the server for a first load, so a gated visitor
+  // gets a redirect rather than the app shell, and again on client-side
+  // navigation.
+  //
+  // THE APP BEHIND THIS IS WRITTEN FOR A SIGNED-IN USER and has no signed-out
+  // state to fall back on — the in-app sign-in prompts were retired once this
+  // gate became unconditional (2026-09-30). So this is not merely a redirect
+  // for tidiness: it is what makes the components' assumption true.
   beforeLoad: async ({ location }) => {
     const sid = (location.search as Record<string, unknown>).session_id;
     const access = await getAppAccess({

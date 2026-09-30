@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useAppStore } from "../state/store";
 import { isReleasedCompany } from "../lib/markets";
-import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
 import { Avatar } from "./Avatar";
 import { COMPANIES } from "../data/companies";
@@ -110,7 +109,6 @@ const XMark = () => (
 export function AccountButton() {
   const account = useAppStore((s) => s.account);
   const authOpen = useAppStore((s) => s.authOpen);
-  const pendingFollowId = useAppStore((s) => s.pendingFollowId);
   const openAuth = useAppStore((s) => s.openAuth);
   const closeAuth = useAppStore((s) => s.closeAuth);
   const signOut = useAppStore((s) => s.signOut);
@@ -127,7 +125,6 @@ export function AccountButton() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const openAlerts = useAppStore((s) => s.openAlerts);
   const toggleSettings = useAppStore((s) => s.toggleSettings);
-  const pendingCareerGoal = useAppStore((s) => s.pendingCareerGoal);
 
   /** Which counter is expanded, if any. Null is the design's default state. */
   const [openList, setOpenList] = useState<"companies" | "skills" | null>(null);
@@ -150,7 +147,6 @@ export function AccountButton() {
   const saved = COMPANIES.filter(
     (c) => followedIds.includes(c.id) && (seesAllMarkets || isReleasedCompany(c.id)),
   );
-  const pending = pendingFollowId ? COMPANIES.find((c) => c.id === pendingFollowId) : undefined;
   const isEmpty = saved.length === 0 && followedSkills.length === 0;
 
   const stats: { key: "companies" | "skills"; label: string; value: number }[] = [
@@ -171,9 +167,12 @@ export function AccountButton() {
             <span>{account.name.split(" ")[0]}</span>
           </>
         ) : (
+          // Before the session query lands. It read "Sign in" until the app
+          // became signed-in-only (getAppAccess) — there is nobody to offer that
+          // to now, so it names what the button opens instead.
           <>
             <PersonIcon />
-            <span>Sign in</span>
+            <span>Account</span>
           </>
         )}
       </button>
@@ -289,27 +288,16 @@ export function AccountButton() {
             </div>
           </>
         ) : (
-          <>
-            <div className="acchead accheadout">
-              <span className="accwho">
-                <span className="acctitle">Save what you follow</span>
-                <span className="accsub">
-                  Sign in to keep your companies, skills and regions across devices.
-                </span>
-              </span>
-            </div>
-            {pendingCareerGoal && !pending && (
-              <div className="accpending">
-                Sign in to save <b>{pendingCareerGoal.title}</b> as your career goal.
-              </div>
-            )}
-            {pending && (
-              <div className="accpending">
-                Sign in to save <b>{pending.name}</b> to your favourites.
-              </div>
-            )}
-            <SignInOptions />
-          </>
+          // Waiting on the session query — not signed out. The sign-in card that
+          // stood here ("Save what you follow", the pending-follow and
+          // pending-goal lines, and the provider buttons) is retired with the
+          // rest of the in-app prompts: the route gate means this card is only
+          // ever rendered for someone already signed in. See getAppAccess.
+          <div className="acchead accheadout">
+            <span className="accwho">
+              <span className="acctitle">Loading your account…</span>
+            </span>
+          </div>
         )}
       </div>
     </div>

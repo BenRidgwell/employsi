@@ -59,7 +59,14 @@ export interface AlertsResult {
   ok: boolean;
   /** Set when there is nothing to compute yet, for the panel to show verbatim. */
   notice?: string;
-  /** True when the caller is signed out — the bell sends them to sign in. */
+  /**
+   * True when the caller has no session.
+   *
+   * The bell used to render this as "sign in for alerts"; the app is
+   * signed-in-only now (getAppAccess) and the query is not even issued without
+   * an account, so nothing reads it. Kept because it is the honest answer for a
+   * direct call to this handler, which stays callable — the gate is on the page.
+   */
   signedOut?: boolean;
   rows: AlertRow[];
   /** How many followed companies were examined. */

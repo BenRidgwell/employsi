@@ -99,7 +99,7 @@ function Row({
           aria-label="Upvote"
           aria-pressed={mine === 1}
           disabled={!canVote}
-          title={canVote ? "Upvote" : "Sign in to vote"}
+          title="Upvote"
           onClick={() => onVote(item.id, 1)}
         >
           <Chevron up />
@@ -111,7 +111,7 @@ function Row({
           aria-label="Downvote"
           aria-pressed={mine === -1}
           disabled={!canVote}
-          title={canVote ? "Downvote" : "Sign in to vote"}
+          title="Downvote"
           onClick={() => onVote(item.id, -1)}
         >
           <Chevron />
@@ -176,7 +176,6 @@ function Row({
 export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const account = useAppStore((s) => s.account);
   const isAdmin = useAppStore((s) => s.role) === "admin";
-  const openAuth = useAppStore((s) => s.openAuth);
   const [draft, setDraft] = useState("");
   const [detail, setDetail] = useState("");
   const [tab, setTab] = useState<Tab>("top");
@@ -249,7 +248,10 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
     return all.filter((i) => i.status === "planned" || i.status === "shipped");
   }, [items, tab]);
 
-  const canPost = !!draft.trim() && !post.isPending;
+  // `account` gates posting only for the moment before the session query lands:
+  // the app is signed-in-only, so it arrives. Posting without it would write a
+  // row against nobody, and the board is shared.
+  const canPost = !!draft.trim() && !post.isPending && !!account;
   const initial = (account?.name || account?.email || "?").trim().charAt(0).toUpperCase();
 
   return (
@@ -318,72 +320,54 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
             <span className="fbemptysub">
               {tab === "planned"
                 ? "Requests move here once they are picked up."
-                : account
-                  ? "Post the first one — every request here is read."
-                  : "Sign in to post the first one."}
+                : "Post the first one — every request here is read."}
             </span>
           </div>
         )}
       </div>
 
-      {account ? (
-        <div className="fbcompose">
-          <div className="fbcomposetop">
-            <span className="fbavatar" aria-hidden>
-              {initial}
-            </span>
-            <input
-              className="fbtitleinput"
-              placeholder="Idea title"
-              value={draft}
-              maxLength={140}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (error) setError("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && canPost) post.mutate();
-              }}
-            />
-          </div>
-          <textarea
-            className="fbdetail"
-            rows={2}
-            maxLength={400}
-            placeholder="Describe the problem it solves — one or two lines is plenty."
-            value={detail}
-            onChange={(e) => setDetail(e.target.value)}
-          />
-          <div className="fbcomposerow">
-            {error ? (
-              <span className="fbsent show fberr">{error}</span>
-            ) : (
-              <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Posted — thanks!</span>
-            )}
-            <button className="fbsend" disabled={!canPost} onClick={() => post.mutate()}>
-              {post.isPending ? "Posting…" : "Post idea"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        // Posting AND voting need an account, because both write to a shared
-        // board — an anonymous vote on a durable score is just a click counter.
-        <div className="fbsignedout">
-          <div className="fbsignedouttext">
-            <span className="fbsignedouttitle">Have a say in what gets built</span>
-            <span className="fbsignedoutsub">Sign in to vote and post ideas.</span>
-          </div>
-          <button
-            className="fbsend"
-            onClick={() => {
-              onClose();
-              openAuth();
+      {/* The compose box is always here: the app is signed-in-only, so there is
+          no signed-out panel to swap in ("Have a say in what gets built" / Sign
+          in, which is retired). Post stays disabled until the session query
+          lands — see canPost — because the row is written against the account. */}
+      <div className="fbcompose">
+        <div className="fbcomposetop">
+          <span className="fbavatar" aria-hidden>
+            {initial}
+          </span>
+          <input
+            className="fbtitleinput"
+            placeholder="Idea title"
+            value={draft}
+            maxLength={140}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (error) setError("");
             }}
-          >
-            Sign in
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canPost) post.mutate();
+            }}
+          />
+        </div>
+        <textarea
+          className="fbdetail"
+          rows={2}
+          maxLength={400}
+          placeholder="Describe the problem it solves — one or two lines is plenty."
+          value={detail}
+          onChange={(e) => setDetail(e.target.value)}
+        />
+        <div className="fbcomposerow">
+          {error ? (
+            <span className="fbsent show fberr">{error}</span>
+          ) : (
+            <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Posted — thanks!</span>
+          )}
+          <button className="fbsend" disabled={!canPost} onClick={() => post.mutate()}>
+            {post.isPending ? "Posting…" : "Post idea"}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

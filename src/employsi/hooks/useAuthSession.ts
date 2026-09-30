@@ -19,6 +19,7 @@ import { useAppStore } from "../state/store";
  */
 export function useAuthSession(): void {
   const setSession = useAppStore((s) => s.setSession);
+  const markSessionKnown = useAppStore((s) => s.markSessionKnown);
   const setAuthProviders = useAppStore((s) => s.setAuthProviders);
   const setFollows = useAppStore((s) => s.setFollows);
   const setRole = useAppStore((s) => s.setRole);
@@ -27,12 +28,29 @@ export function useAuthSession(): void {
   const qc = useQueryClient();
   const claimed = useRef(false);
 
-  const { data } = useQuery({
+  const { data, isError } = useQuery({
     queryKey: ["session"],
     queryFn: () => getSession(),
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  // A FAILED SESSION READ STILL HAS TO SETTLE sessionKnown. `retry: false` means
+  // one network error leaves `data` undefined for the rest of the load, and the
+  // effect below returns early on it — so nothing would ever call setSession and
+  // every surface waiting on the session would wait forever. That was harmless
+  // while a missing account rendered a sign-in prompt; now that the app is
+  // signed-in-only those surfaces show "Loading your account…" instead, and the
+  // failure would read as a hang.
+  //
+  // It settles the FLAG ONLY, and deliberately not through setSession(null):
+  // that also clears the account, the role and the career goal, so a failed
+  // REFETCH — this query goes stale after five minutes — would sign a working
+  // session out of the UI over one dropped request. markSessionKnown leaves
+  // whatever is already there alone.
+  useEffect(() => {
+    if (isError) markSessionKnown();
+  }, [isError, markSessionKnown]);
 
   useEffect(() => {
     if (!data) return;

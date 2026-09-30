@@ -104,10 +104,15 @@ export function MobileMenu() {
         </div>
 
         <div className="mmsec">Account</div>
+        {/* Always the account. This row used to read "Sign in or create account"
+            / "Save companies you follow" when there was none; the app is
+            signed-in-only now, so the only accountless moment is before the
+            session query lands, and it says so rather than inviting a sign-in
+            that has already happened. */}
         <Row
           icon={<Person />}
-          label={account ? account.name : "Sign in or create account"}
-          sub={account ? account.email : "Save companies you follow"}
+          label={account ? account.name : "Your account"}
+          sub={account ? account.email : "Loading…"}
           onClick={openAuth}
         />
 

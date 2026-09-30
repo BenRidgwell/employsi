@@ -84,7 +84,16 @@ function App() {
   // colours by comes over the wire — so "the index has landed" is the honest
   // answer to "has this finished loading". IntroLoader caps the wait itself, so
   // a slow or failed fetch delays the handoff rather than blocking it forever.
-  const introReady = !!skillIndex;
+  //
+  // THE SESSION IS THE SECOND THING. The app is signed-in-only (getAppAccess)
+  // and its chrome is written for an account — the avatar, the alert bell, the
+  // feedback composer. Each of those has a correct-but-empty state for the few
+  // hundred milliseconds before the session query answers, and waiting here
+  // means the veil covers that gap instead of the user watching the controls
+  // fill in. `sessionKnown` rather than `account`, so a failed session read
+  // lifts the veil too — see the note on it in state/store.ts.
+  const sessionKnown = useAppStore((s) => s.sessionKnown);
+  const introReady = !!skillIndex && sessionKnown;
 
   return (
     <div className="app">

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { getAuth, type AuthEnv } from "./auth";
+import { authAvailable, getAuth, type AuthEnv } from "./auth";
 import { roleForEmail } from "./roles";
 import {
   LIVE_STATUSES,
@@ -213,21 +213,39 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
 /**
  * Who may open /app, decided on the server.
  *
- * THE PAYWALL. employsi is a subscription product: with payments configured
- * on this Worker, the map is for signed-in users with a live subscription
- * (active / trialing, per Stripe, as recorded by the webhook). Everyone else
- * is sent to /login — to sign in, or to the Payment step if they are signed in
- * without one (never subscribed, cancelled, or lapsed).
+ * TWO GATES, IN ORDER, and they are configured independently:
  *
- * THE GATE ONLY CLOSES WHERE IT CAN BE PASSED. On a Worker without Stripe
- * configured — the app preview, and production until its live keys are set —
- * there is no way to subscribe, so there is nothing to gate on and the app
- * stays open exactly as before. Administrators (ADMIN_EMAILS) always pass, so
- * the people running the product can use it without paying for it.
+ *  1. SIGN-IN, always. The app is for signed-in users only — every surface
+ *     inside it (follows, alerts, the career goal, the feedback board) writes
+ *     against an account, and the subscription model has no anonymous tier to
+ *     serve. A signed-out visitor is sent to /login.
+ *  2. THE SUBSCRIPTION, where Stripe is configured on this Worker. A signed-in
+ *     visitor without a live subscription (active / trialing, per Stripe, as
+ *     recorded by the webhook) goes to the Payment step — never subscribed,
+ *     cancelled, or lapsed.
+ *
+ * Until 2026-09-30 there was only gate 2, and gate 1 rode along inside it: the
+ * handler returned `allowed` outright when payments were not configured, so a
+ * Worker without Stripe keys — the app preview, and production until its live
+ * keys are set — let anonymous visitors all the way in. Requiring sign-in was
+ * therefore a property of having set up BILLING, which is not what it should
+ * depend on. The two are now asked separately, so the app is signed-in-only on
+ * every deployment whether or not it can take money yet.
+ *
+ * EACH GATE ONLY CLOSES WHERE IT CAN BE PASSED. Gate 2 is skipped without
+ * Stripe, as before. Gate 1 is skipped where Better Auth is not configured
+ * (authAvailable) — on such a Worker there is no way to sign in, so requiring
+ * it would lock the app with no door, and /login already says sign-in is not
+ * configured rather than offering a button that 500s. That is the same rule
+ * gate 2 follows, not an exemption: a gate nobody can pass is a wall.
+ *
+ * Administrators (ADMIN_EMAILS) skip gate 2, so the people running the product
+ * can use it without paying. They do NOT skip gate 1 — an admin is still a
+ * signed-in user, and there is no way to know they are one until they are.
  *
  * This gates the PAGE. The data server functions the map calls stay callable
- * without a subscription, as several of them already are from the public
- * marketing pages (the landing counters, the skills ticker).
+ * without a session, as several of them already are from the public marketing
+ * pages (the landing counters, the skills ticker).
  */
 export type AppAccess = { allowed: true } | { allowed: false; to: "signin" | "subscribe" };
 
@@ -237,9 +255,26 @@ export const getAppAccess = createServerFn({ method: "GET" })
   .validator((data?: { checkoutSessionId?: string }) => data ?? {})
   .handler(async ({ data }): Promise<AppAccess> => {
     const e = await billingEnv();
-    if (!paymentsConfigured(e)) return { allowed: true };
     const user = await sessionUser();
-    if (!user) return { allowed: false, to: "signin" };
+
+    // Gate 1 — sign-in.
+    if (!user) {
+      // Wherever signing in is possible, it is required.
+      if (authAvailable(e as AuthEnv | undefined)) return { allowed: false, to: "signin" };
+      // Auth is not configured here, so there is no door — but if this Worker is
+      // set up to CHARGE, an anonymous visitor is not let into a paid product
+      // just because its sign-in is half-configured. /login says sign-in is not
+      // configured on this deployment, which is the true answer and the one that
+      // gets it fixed. This is also exactly what the old single gate did, so
+      // this branch keeps a Stripe-configured Worker no more open than before.
+      if (paymentsConfigured(e)) return { allowed: false, to: "signin" };
+      // Neither gate can be passed and nothing is being sold: an unconfigured
+      // deployment, which stays open as it always has.
+      return { allowed: true };
+    }
+
+    // Gate 2 — the subscription, wherever it can be bought.
+    if (!paymentsConfigured(e)) return { allowed: true };
     if (roleForEmail(e as never, user.email) === "admin") return { allowed: true };
     const db = billingDb(e);
     // The subscription table is the source of truth. If it cannot be read the

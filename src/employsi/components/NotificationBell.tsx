@@ -12,11 +12,13 @@ import { IconClose } from "./ActionIcons";
  * the rule and, more importantly, for the coverage gate that stops it speaking
  * before the archive can support the comparison.
  *
- * ── SIGNED OUT ─────────────────────────────────────────────────────────────
+ * ── THE ACCOUNT ────────────────────────────────────────────────────────────
  * The bell is an account feature twice over: the follows it watches live
- * against an account, and there is nothing to show without them. Clicking it
- * signed out opens sign-in rather than a panel explaining an empty state —
- * the same move the Follow button already makes.
+ * against an account, and there is nothing to show without them. That used to
+ * need handling — clicking it signed out opened sign-in instead of a panel.
+ * The app is signed-in-only now (getAppAccess), so the bell always opens its
+ * panel; the only account-shaped case left is the moment before the session
+ * query lands, when the alerts query has not run and the panel is empty.
  *
  * ── THE BADGE ──────────────────────────────────────────────────────────────
  * Counts UNREAD alerts, and "read" is per browser. The design rings the bell
@@ -85,7 +87,6 @@ function weekLabel(iso: string): string {
 
 export function NotificationBell() {
   const account = useAppStore((s) => s.account);
-  const openAuth = useAppStore((s) => s.openAuth);
   // Panel visibility lives in the store: the account card's "Alerts" row opens
   // this same panel, and two controls cannot each own one panel's state.
   const open = useAppStore((s) => s.alertsOpen);
@@ -147,24 +148,20 @@ export function NotificationBell() {
     [rows],
   );
 
-  const onBell = () => {
-    // Signed out: the whole feature is the follows, so send them to sign in.
-    if (!account) {
-      openAuth();
-      return;
-    }
-    toggleAlerts();
-  };
+  // The app is signed-in-only, so the bell always opens its panel. It used to
+  // send a signed-out visitor to the sign-in sheet and label itself "Sign in for
+  // alerts"; there is no such visitor now. Before the session query lands the
+  // label reads as the empty state, which is what it is — the alerts query is
+  // keyed on the account and has not run yet.
+  const label = `Alerts${unread ? `, ${unread} new` : account ? ", all clear" : ""}`;
 
   return (
     <div className="nbwrap">
       <button
         type="button"
         className={`dockbtn nbbtn${open ? " on" : ""}${ringing ? " ringing" : ""}`}
-        onClick={onBell}
-        aria-label={
-          account ? `Alerts, ${unread ? `${unread} new` : "all clear"}` : "Sign in for alerts"
-        }
+        onClick={toggleAlerts}
+        aria-label={label}
         aria-expanded={open}
       >
         <span className="nbicon">
@@ -172,7 +169,7 @@ export function NotificationBell() {
           {!!unread && !open && <span className="nbbadge">{unread > 9 ? "9+" : unread}</span>}
         </span>
         <span className="docktip">
-          {account ? `Alerts · ${unread ? `${unread} new` : "all clear"}` : "Sign in for alerts"}
+          {`Alerts${unread ? ` · ${unread} new` : account ? " · all clear" : ""}`}
         </span>
       </button>
 

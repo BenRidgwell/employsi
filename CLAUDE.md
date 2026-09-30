@@ -803,16 +803,52 @@ blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
   `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
   are not set up; without the third the webhook answers 503 and Stripe retries.
 - **Previews write the production D1**, so use TEST keys on them.
-- **`/app` is paywalled where payments are configured** (`getAppAccess` in
-  `billingFn.ts`, run by the route's `beforeLoad`): signed-out visitors go to
-  `/login`, signed-in ones without an `active`/`trialing` subscription to the
-  Payment step. A Worker without Stripe keys stays open (the app preview, and
-  production until its live keys are set); `ADMIN_EMAILS` always pass. It
-  gates the PAGE only — the data server functions stay callable.
+- **`/app` HAS TWO GATES, configured independently** (`getAppAccess` in
+  `billingFn.ts`, run by the route's `beforeLoad`). It gates the PAGE only — the
+  data server functions stay callable, as the marketing pages need.
+  1. **Signed in — always.** Enforced wherever Better Auth is configured
+     (`authAvailable`). Signed-out visitors go to `/login`.
+  2. **Subscribed — where Stripe is configured.** Signed-in visitors without an
+     `active`/`trialing` subscription go to the Payment step. Skipped on a Worker
+     without Stripe keys; `ADMIN_EMAILS` always pass this one (not gate 1 —
+     nobody is an admin until they are signed in).
 - **The success URL carries `session_id`**, and the paywall confirms that
   Checkout Session with Stripe directly (`recordCheckoutSession`), because the
   customer arrives before the webhook and would otherwise be bounced back to
   pay again.
+
+**THIS FILE SAID "A WORKER WITHOUT STRIPE KEYS STAYS OPEN" UNTIL 2026-09-30, AND
+IT WAS TRUE OF SIGN-IN TOO.** There was one gate, not two: the handler returned
+`allowed` outright when `paymentsConfigured` was false, so requiring a session was
+a side effect of having set up BILLING. Both live Workers had no Stripe keys, so
+**the app was fully usable signed out** — `employsi-preview` and production's
+workers.dev host included. Asking for sign-in and asking for money are now asked
+separately, and the app is signed-in-only on every deployment whether or not it
+can take money yet.
+
+**THE APP BEHIND THE GATE NO LONGER HAS A SIGNED-OUT STATE.** The in-app sign-in
+prompts were retired in the same change — the Follow/alerts/career-goal toasts,
+the feedback board's "Have a say in what gets built" panel, the account panels'
+Create account / Sign in control, and `Toast`'s hardcoded "Sign in" button. So
+the gate is not cosmetic: it is what makes those components' assumption true, and
+**re-opening the app to anonymous visitors means putting the prompts back**, not
+just editing `getAppAccess`. `components/SignInOptions.tsx` is deliberately kept
+and deliberately unimported for that reason; its header says so.
+
+The thing that makes this fiddly is that **`account === null` does NOT mean
+signed out** — the session is an httpOnly cookie read by a client query, so it
+is null for the first few hundred milliseconds of every load, for a signed-in
+user. Deleting the `!account` branches on their own would have flashed
+signed-out chrome on boot and crashed on `account.name`. The store carries
+`sessionKnown` to separate the two, `IntroLoader` waits on it (inside its
+existing 3800ms floor, so it costs nothing), and `useAuthSession` settles it even
+when the session read FAILS — with `retry: false`, a dropped request would
+otherwise leave every account-shaped control saying "Loading…" forever, which
+was harmless only while a missing account rendered a sign-in prompt.
+
+The retired prompts' CSS is still in `global.css` (`.fbsignedout`, `.toastact`,
+`.gsauthtip`, `.accpending` and four neighbours), unused. Left on purpose: the
+gate is "for now", and this is the file two sessions have already collided in.
 
 ### Map layers
 
