@@ -162,6 +162,21 @@ export function NotificationBell() {
   const closeAlerts = useAppStore((s) => s.closeAlerts);
   const [tab, setTab] = useState<Tab>("all");
   const [read, setRead] = useState<Record<string, true>>({});
+  /**
+   * Read alerts collapsed back open by hand, for this session only.
+   *
+   * A READ ALERT RENDERS MINIMISED — that is the rule, and "Mark all read"
+   * minimising the whole list is what falls out of it. It is derived from
+   * `read` rather than held as its own "collapsed" flag on purpose: a separate
+   * flag has to be reset when new alerts arrive, and forgetting that would
+   * deliver tomorrow's unread alerts already collapsed, which is the one thing
+   * a notification panel must not do.
+   *
+   * Not persisted. `read` survives a reload because a badge that re-lights
+   * overnight is wrong; whether a row happened to be expanded is not worth
+   * carrying, and starting minimised is the correct state for something read.
+   */
+  const [expanded, setExpanded] = useState<Record<string, true>>({});
   const [muted, setMuted] = useState(false);
   const [ringing, setRinging] = useState(false);
   const prevUnread = useRef(0);
@@ -248,21 +263,16 @@ export function NotificationBell() {
             <div className="nbhd">
               <span className="nbtitle">Alerts</span>
               <div className="nbhdbtns">
-                {/* Marking everything read CLOSES the panel. `rows` is every
-                    alert across all three tabs, not just the visible one, so
-                    after this there is nothing left to read — staying open
-                    leaves the person looking at a list they have just told us
-                    they are done with, and dismissing it by hand afterwards.
-
-                    Clicking a SINGLE row deliberately does not close: that is
-                    reading them one at a time, and closing after each would
-                    make the panel unusable for its main job. */}
+                {/* Marks every alert across all three tabs read, which
+                    collapses them all — the panel STAYS OPEN. Also drops any
+                    rows the person had re-expanded, so "all read" really does
+                    leave the list uniformly minimised rather than mostly. */}
                 <button
                   type="button"
                   className="nbsmall"
                   onClick={() => {
+                    setExpanded({});
                     persist(Object.fromEntries(rows.map((r) => [r.id, true as const])));
-                    closeAlerts();
                   }}
                 >
                   Mark all read
@@ -319,12 +329,28 @@ export function NotificationBell() {
                 // Both bars are scaled to the larger of the pair, so the two
                 // read as a comparison rather than two separate meters.
                 const max = Math.max(r.week, r.month, 1);
+                // Read => minimised, unless the person has opened it again.
+                const isRead = !!read[r.id];
+                const shut = isRead && !expanded[r.id];
                 return (
                   <button
                     key={r.id}
                     type="button"
-                    className="nbrow"
-                    onClick={() => persist({ ...read, [r.id]: true })}
+                    className={`nbrow${shut ? " shut" : ""}`}
+                    aria-expanded={!shut}
+                    // Unread: reading it is what collapses it. Read: the click
+                    // is the way back in, and out again — otherwise marking
+                    // something read would hide its figures for good.
+                    onClick={() =>
+                      isRead
+                        ? setExpanded((e) => {
+                            const next = { ...e };
+                            if (next[r.id]) delete next[r.id];
+                            else next[r.id] = true;
+                            return next;
+                          })
+                        : persist({ ...read, [r.id]: true })
+                    }
                   >
                     <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
                     <span className="nbbody">

@@ -15430,6 +15430,38 @@ body {
 .nbrow:last-child {
   border-bottom: 0;
 }
+
+/* ── A read alert is minimised ─────────────────────────────────────────────
+   "Mark all read" collapses the whole list and leaves the panel open; the row
+   keeps who and what, and drops the two comparison meters, which are the bulk
+   of its height. The headline clamps to one line so a long one cannot make a
+   collapsed row taller than an open one next to it.
+
+   Height is not animated. The row's open height depends on how many lines the
+   headline wraps to, so a max-height transition would need a guessed ceiling —
+   too small clips the text, too large makes the collapse drift. The figures
+   simply go, and the padding and colour shift carries the change. */
+.nbrow.shut {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.nbrow.shut .nbbars {
+  display: none;
+}
+.nbrow.shut .nbheadline {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Read, so it should not compete with anything still unread above it. The
+   badge and glyph keep their own colour — dimming a company's logo reads as
+   the logo being broken rather than as the row being finished. */
+.nbrow.shut .nbco,
+.nbrow.shut .nbheadline {
+  color: var(--text-secondary, #636366);
+}
 /* The alert row's company badge. ROUND, not the 9px-rounded square it was:
    this is an employer's logo now rather than its initials, and the round crop
    is the shape the map pin and the follow list already give a company. The
