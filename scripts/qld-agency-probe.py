@@ -67,35 +67,62 @@ CHALLENGE = ('Just a moment', 'Security Checkpoint', 'Checking your browser',
 
 # live ads at 2026-09-29, for whoever picks this up next
 SITES = {
-    'qcaa':       ('https://www.qcaa.qld.edu.au/', 8),
-    # TWO HOSTS FOR ONE BODY, and both refuse this sandbox: oir.qld.gov.au
-    # answers 403 (2,789 bytes) and worksafe.qld.gov.au — where its
-    # operational content lives — answers 403 as well. The question for OIR
-    # is not a head count but WHICH DEPARTMENT it sits in: its reason records
-    # that it is an office inside one and that which one is not established.
+    # ── STAGE ONE: WHERE IS THE DOCUMENT ────────────────────────────────────
+    # Kept for the three hosts still unread, and as the re-check for the five
+    # the browser opened on 2026-09-29. Each `ads` figure is live ads that day.
+    'pubguardian':('https://www.publicguardian.qld.gov.au/', 2),
     'oir':        ('https://www.oir.qld.gov.au/our-role', 6),
     'oir-worksafe':('https://www.worksafe.qld.gov.au/about/careers/'
                    'people-and-careers', 0),
-    'pubguardian':('https://www.publicguardian.qld.gov.au/', 2),
-    'parlserv':   ('https://www.parliament.qld.gov.au/', 2),
-    'qleave':     ('https://www.qleave.qld.gov.au/', 1),
-    'qric':       ('https://www.qric.qld.gov.au/', 1),
     'oic':        ('https://www.oic.qld.gov.au/', 1),
-    'niisq':      ('https://niis.qld.gov.au/news-and-research/annual-reports/', 1),
-    'qmhc':       ('https://www.qmhc.qld.gov.au/about/publications/browse/annual-reports', 1),
-    'ombudsman':  ('https://www.ombudsman.qld.gov.au/', 0),
-    'stadiums':   ('https://stadiums.qld.gov.au/', 0),
-    'ewoq':       ('https://www.ewoq.com.au/', 0),
     'qao':        ('https://www.qao.qld.gov.au/', 0),
+    'stadiums':   ('https://stadiums.qld.gov.au/', 0),
     'pharmcouncil':('https://www.health.qld.gov.au/system-governance/licences/pharmacy', 0),
-    # NOT A CARD — the document that would settle the PUBLIC GUARDIAN's. Its own
-    # report gives 372 people at 30 June 2025; what is unknown is whether they
-    # are inside the Department of Justice's 4,629, and a department's workforce
-    # note is where that is stated (DCCEEW's Table 7 note is the model). This
-    # resource answers `202 and zero bytes` to a plain fetch.
-    'doj':        ('https://www.publications.qld.gov.au/dataset/'
-                   '2025-26-doj-annual-report', 0),
 }
+
+# ── STAGE TWO: WHAT DOES THE DOCUMENT SAY ───────────────────────────────────
+# The browser opened five of these hosts on the runner and none of them opens
+# here, so the figures cannot be read where the spec is written. That is the
+# South Australian and Tasmanian shape exactly: print the document's own
+# workforce lines to the log, write the parser against them, and let CI re-read
+# the document every run.
+#
+# `follow` PICKS THE LINK, IT DOES NOT GUESS A PATH. Stage one already printed
+# what each listing page links; this takes the first href whose label or URL
+# matches, which is the current year's report on every one of these pages.
+# A probe that invented a filename would be measuring the guess again.
+DOCS = {
+    'qcaa':      ('https://www.qcaa.qld.edu.au/news-data/annual-report',
+                  r'(?i)annual.report.*202[56]|202[56].*annual.report', 8),
+    'qleave':    ('https://www.qleave.qld.gov.au/about-us/corporate-publications/'
+                  'annual-report',
+                  r'(?i)annual.report.*202[56]|202[56].*annual.report', 1),
+    'qric':      ('https://www.qric.qld.gov.au/',
+                  r'(?i)Annual-Report-2025', 1),
+    'ombudsman': ('https://www.ombudsman.qld.gov.au/publications/annual-reports',
+                  r'(?i)annual.report.*202[56]|202[56].*annual.report', 0),
+    'ewoq':      ('https://www.ewoq.com.au/news-and-publications/publications/'
+                  'annual-reports',
+                  r'(?i)annual.report.*202[56]|202[56].*annual.report', 0),
+    # NOT A CARD. This settles the PUBLIC GUARDIAN's, whose own report gives 372
+    # people at 30 June 2025 — what is unknown is whether they are inside the
+    # Department of Justice's 4,629. A department's workforce note is where that
+    # is stated; DCCEEW's Table 7 note is the model.
+    'doj':       ('https://www.publications.qld.gov.au/dataset/'
+                  '2025-26-doj-annual-report', r'(?i)\.pdf|DoJ annual report', 0),
+}
+
+# What to print out of a document once it is open. The employee-expenses note is
+# where Queensland Treasury's reporting requirements put the figure, so that
+# wording is first; the rest catch a body that reports somewhere else.
+DOC_PATS = [
+    r'(?i)full[- ]?time equivalent employees',
+    r'(?i)(head ?count|full[- ]time equivalent|\bFTE\b)[^.]{0,60}\d',
+    r'(?i)(total )?(staffing|workforce|employees)[^.]{0,40}\d',
+    r'(?i)\b\d[\d,]{1,5}(?:\.\d+)?\b[^.]{0,40}(?:staff|employees|FTE)\b',
+    r'(?i)employed (a total of|by)',
+    r'(?i)(establishment|approved workforce)[^.]{0,40}\d',
+]
 
 # THE PORTAL THAT WOULD ANSWER ALL OF THEM AT ONCE, asked here because the
 # runner is where the WAF challenge can be executed. If this works, the per-site
@@ -199,12 +226,66 @@ def probe(key, url, ads):
         print(f'    {href[:118]}  |{lab[:40]}|', flush=True)
 
 
+def doc_probe(key, url, pat, ads):
+    """Follow one listing page to its report, then print what the report says."""
+    print(f'\n{"=" * 70}\nDOC {key} ({ads} live ads): {url}', flush=True)
+    st, body = get(url)
+    if st != 200 or len(body) < 400:
+        print(f'  HTTP {st}, {len(body):,} bytes — no listing page, no document',
+              flush=True)
+        return
+    html = body.decode('utf-8', 'replace')
+    hit = next(((h, l) for h, l in report_links(url, html)
+                if re.search(pat, h + ' ' + l)), None)
+    if hit is None:
+        print(f'  the page opened and NO link matches {pat!r} — a finding about '
+              f'the page; stage one printed what it does link', flush=True)
+        return
+    href, lab = hit
+    print(f'  -> {href[:120]}  |{lab[:40]}|', flush=True)
+    st2, doc = get(href, timeout=180)
+    print(f'     HTTP {st2}, {len(doc):,} bytes, starts {doc[:8]!r}', flush=True)
+    if doc[:4] != b'%PDF':
+        # A resource PAGE rather than the file — one more hop, the same way.
+        if st2 == 200 and len(doc) > 400:
+            inner = next(((h, l) for h, l in report_links(
+                href, doc.decode('utf-8', 'replace')) if h.lower().endswith('.pdf')), None)
+            if inner:
+                print(f'     -> {inner[0][:118]}', flush=True)
+                st2, doc = get(inner[0], timeout=180)
+                print(f'        HTTP {st2}, {len(doc):,} bytes', flush=True)
+    if doc[:4] != b'%PDF':
+        print('     NOT A PDF — nothing to read', flush=True)
+        return
+    import io as _io
+    import pdfplumber
+    with pdfplumber.open(_io.BytesIO(doc)) as pdf:
+        print(f'     {len(pdf.pages)} pages', flush=True)
+        n = 0
+        for i, pg in enumerate(pdf.pages, 1):
+            for line in (pg.extract_text() or '').split('\n'):
+                if len(line) > 200 or not any(re.search(q, line) for q in DOC_PATS):
+                    continue
+                print(f'     p{i:>3} {line[:190]}', flush=True)
+                n += 1
+                if n > 22:
+                    print('     … 22 lines is enough to write a spec from', flush=True)
+                    return
+        if not n:
+            print('     opened and NOT ONE line matches — a finding about the '
+                  'document, not the body', flush=True)
+
+
 def main():
     want = [a for a in sys.argv[1:] if not a.startswith('-')]
     for key, (url, ads) in SITES.items():
         if want and key not in want:
             continue
         probe(key, url, ads)
+    for key, (url, pat, ads) in DOCS.items():
+        if want and key not in want:
+            continue
+        doc_probe(key, url, pat, ads)
     if want and 'portal' not in want:
         return
     base, queries = PORTAL

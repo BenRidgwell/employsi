@@ -95,7 +95,20 @@ jobs:
   generate:
     name: gov workforce
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # RAISED FROM 15, BECAUSE EVERY RUN WAS BEING CANCELLED BY IT. Measured
+    # 2026-09-29 on run 36566510270: the generation step alone took 12m56s (51
+    # agency reports, several through a warmed browser, some tens of megabytes
+    # each) and the probes after it another 5m. Every step reported success and
+    # the RUN reported `cancelled`, because the ceiling fired while the
+    # `if: always()` steps were still going.
+    #
+    # THE DANGER IS NOT THE LOST TIME, IT IS THAT THE SIGNAL STOPPED MEANING
+    # ANYTHING. A genuinely failing run and a run that simply took too long both
+    # end up marked cancelled, so the conclusion can no longer be read at all —
+    # the same class of problem as a guard that cannot fire. 35 leaves room for
+    # the jurisdiction to keep growing without the number needing revisiting
+    # every few specs.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
 
