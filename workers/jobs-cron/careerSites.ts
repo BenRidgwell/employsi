@@ -441,6 +441,14 @@ interface SiteDef {
    */
   phenomSort?: string;
   /**
+   * Phenom `selected_fields` — a filter on the board's own facets. Orange's
+   * widget pages in no fixed order under ANY sort (measured 2026-09-30: 555-728
+   * unique of 738 across seven sort values), but it honours `size` up to 500
+   * and this filter, so the board is read as partitions of one request each:
+   * {country: ["FRANCE"]} 332 + the other 29 countries 407 = 738, twice.
+   */
+  phenomSelected?: Record<string, string[]>;
+  /**
    * Postings on this board that are not vacancies, matched on the title and
    * dropped before anything is archived. For standing "send us your CV" posts
    * that a board lists alongside real roles: archived, they would count in the
@@ -21043,6 +21051,7 @@ async function avatureFromDetails(site: SiteDef, blocks: string[]): Promise<Port
 interface PhenomJob {
   title?: string;
   cityState?: string;
+  location?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -21098,6 +21107,8 @@ async function phenomWidget(
         pageName: "search-results",
         ddoKey: "refineSearch",
         sortBy: site.phenomSort ?? "",
+        // Sent only when set, so every other tenant's request is unchanged.
+        ...(site.phenomSelected ? { selected_fields: site.phenomSelected } : {}),
         subsearch: "",
         from,
         jobs: true,
@@ -21134,17 +21145,20 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
   const rows: PhenomJob[] = [];
   // Probe the widget API with the first page before committing to it, so a
   // tenant that has it closed falls back rather than returning nothing.
-  const probe = await phenomWidget(site, 0, PH_PAGE);
+  // pageSize: the widget honours `size` up to 500 (measured on Orange), so a
+  // partition of the board (phenomSelected) can be read in one request.
+  const size = site.pageSize ?? PH_PAGE;
+  const probe = await phenomWidget(site, 0, size);
   if (probe?.length) {
     rows.push(...probe);
-    const pages = Math.min(Math.ceil(total / PH_PAGE), max);
+    const pages = Math.min(Math.ceil(total / size), max);
     if (pages > 1) {
       rows.push(
         ...(await pagedParallel<PhenomJob>(
           // phenomWidget already answers null for a page it could not read,
           // and that null now reaches pagedParallel instead of becoming [].
-          async (i) => await phenomWidget(site, (i + 1) * PH_PAGE, PH_PAGE),
-          PH_PAGE,
+          async (i) => await phenomWidget(site, (i + 1) * size, size),
+          size,
           pages - 1,
         )),
       );
@@ -21185,8 +21199,17 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
     const key = String(r.jobId ?? r.reqId ?? "") || title;
     if (seen.has(key)) continue;
     seen.add(key);
+    // "UN SPECIFIED" is Orange's cityState for a role whose city is not given
+    // (82 of 738, measured 2026-09-30); its `location` names the country, which
+    // is what the board itself shows. Only that literal is replaced, so no
+    // other tenant's stored location — and so no job_key — changes.
+    const unspecified = (r.cityState ?? "").trim().toUpperCase() === "UN SPECIFIED";
     const loc = clean(
-      String(r.cityState ?? [r.city, r.state].filter(Boolean).join(", ") ?? r.country ?? ""),
+      String(
+        unspecified
+          ? (r.location ?? "")
+          : (r.cityState ?? [r.city, r.state].filter(Boolean).join(", ") ?? r.country ?? ""),
+      ),
     );
     // NO PHENOM TENANT ACTUALLY SERVES applyUrl. Measured 2026-08-05 across all
     // three: Coles returns "", Newmont and Ventia omit the field entirely — so
@@ -24765,6 +24788,10 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
     // `<h3>` title and `class="search-results-job-location"` whose text starts
     // "Location: ". Reading only the first shape returned 0 of BAT's 283. A
     // `<li>` without the data-job-id anchor is not a job and is still skipped.
+    // Veolia (2026-09-30) opens the location span with an EMPTY icon span,
+    // `<span class="job-location"><span class="location-icon-red"></span>
+    // Bengaluru, India</span>`, where the lazy match stopped at the icon's
+    // close and stored "" for all 2,900 roles; one empty inner span is skipped.
     for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
@@ -24780,7 +24807,7 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
           title,
           clean(
             li.match(
-              /class="(?:job-location|search-results-job-location)"[^>]*>([\s\S]*?)<\/span>/i,
+              /class="(?:job-location|search-results-job-location)"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
             )?.[1] ?? "",
           ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
