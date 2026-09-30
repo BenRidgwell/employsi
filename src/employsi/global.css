@@ -15542,7 +15542,19 @@ body {
   text-align: left;
   font: inherit;
   cursor: pointer;
-  transition: background 140ms ease;
+  /* `pan-y` is the load-bearing line for swipe-to-dismiss: it hands VERTICAL
+     gestures back to the browser so .nblist still scrolls under a finger,
+     while horizontal ones reach the pointer handlers. Without it the row
+     swallows the drag and the list cannot be scrolled on touch. */
+  touch-action: pan-y;
+  /* The row springs back on release, so transform and opacity are animated —
+     and `background` STAYS in this list. It was briefly in a second .nbrow
+     rule below, which overrode this one wholesale and silently dropped the
+     hover fade: `transition` is one property, not three. */
+  transition:
+    background 140ms ease,
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 180ms ease;
 }
 .nbrow:hover {
   background: var(--surface-subtle);
@@ -15552,6 +15564,24 @@ body {
    under it. */
 .nbrow:last-child {
   border-bottom: 0;
+}
+
+/* ── Swipe a row away ──────────────────────────────────────────────────────
+   `pan-y` is the load-bearing line: it hands VERTICAL gestures back to the
+   browser so .nblist still scrolls under a finger, while horizontal ones come
+   to the pointer handlers. Without it the row would swallow the drag and the
+   list would be unscrollable on touch.
+
+   The row springs back on release, so the transition lives here — and is
+   removed while a finger is down, or every pointermove would animate toward
+   the last position instead of tracking it. */
+.nbrow.swiping {
+  transition: none;
+  cursor: grabbing;
+  /* Above its neighbours while it travels, so the shadowless row does not slide
+     under the divider of the one below. */
+  position: relative;
+  z-index: 1;
 }
 
 /* ── A read alert is minimised ─────────────────────────────────────────────

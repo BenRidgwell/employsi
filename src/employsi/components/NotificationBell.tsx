@@ -97,6 +97,39 @@ function SkillGlyph({ skill }: { skill: string }) {
 
 const READ_KEY = "employsi.alerts.read";
 
+/**
+ * Alerts the person has swiped away.
+ *
+ * KEYED ON THE OCCURRENCE, NOT THE ALERT. An alert's id is
+ * `company:skill:kind` with no date in it, so the same id comes back every
+ * time that signal fires — dismissing by id alone would silence a company's
+ * IT & Systems spike for good, and a genuinely new spike next month would
+ * never be shown. The row's `at` (the day the window ends) is appended, so a
+ * swipe dismisses THIS week's instance and a later one arrives as normal.
+ *
+ * Pruned on every write to the ids currently in play, so the store cannot grow
+ * without bound as weeks roll past.
+ */
+const DISMISS_KEY = "employsi.alerts.dismissed";
+
+/** The storage key for one row: the alert, scoped to the week it fired. */
+function occKey(r: { id: string; at: string }): string {
+  return `${r.id}@${r.at}`;
+}
+
+function loadDismissed(): Record<string, true> {
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    const v = raw ? (JSON.parse(raw) as Record<string, true>) : {};
+    return v && typeof v === "object" ? v : {};
+  } catch {
+    return {};
+  }
+}
+
+/** How far a row must travel before letting go dismisses it. */
+const SWIPE_PX = 88;
+
 function loadRead(): Record<string, true> {
   try {
     const raw = localStorage.getItem(READ_KEY);
@@ -145,14 +178,6 @@ function MuteIcon() {
   );
 }
 
-function weekLabel(iso: string): string {
-  const t = Date.parse(iso + "T00:00:00Z");
-  if (Number.isNaN(t)) return "";
-  return new Date(t)
-    .toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" })
-    .toLowerCase();
-}
-
 export function NotificationBell() {
   const account = useAppStore((s) => s.account);
   // Panel visibility lives in the store: the account card's "Alerts" row opens
@@ -177,12 +202,28 @@ export function NotificationBell() {
    * carrying, and starting minimised is the correct state for something read.
    */
   const [expanded, setExpanded] = useState<Record<string, true>>({});
+  const [dismissed, setDismissed] = useState<Record<string, true>>({});
+  /**
+   * The row being swiped, and how far.
+   *
+   * One at a time — a pointer gesture is singular — so this is a single slot
+   * rather than a map keyed by row.
+   */
+  const [drag, setDrag] = useState<{ key: string; dx: number } | null>(null);
+  /** Gesture bookkeeping that must not re-render on every pointermove. */
+  const gesture = useRef<{ key: string; x0: number; y0: number; axis: "" | "x" | "y" } | null>(
+    null,
+  );
+  /** Set when a gesture turned into a drag, so the click it ends with is not
+   *  treated as a tap on the row. */
+  const swiped = useRef(false);
   const [muted, setMuted] = useState(false);
   const [ringing, setRinging] = useState(false);
   const prevUnread = useRef(0);
 
   useEffect(() => {
     setRead(loadRead());
+    setDismissed(loadDismissed());
   }, []);
 
   const persist = (next: Record<string, true>) => {
@@ -191,6 +232,26 @@ export function NotificationBell() {
       localStorage.setItem(READ_KEY, JSON.stringify(next));
     } catch {
       /* private mode — the badge just won't survive a reload */
+    }
+  };
+
+  /**
+   * Swipe a row away, and remember it.
+   *
+   * Pruned to the occurrences the server still sends, so last month's keys do
+   * not accumulate. `all` is every row the API returned, not the visible tab's,
+   * or switching tabs would drop the others' dismissals.
+   */
+  const dismiss = (key: string, all: AlertRow[]) => {
+    const live = new Set(all.map(occKey));
+    const next: Record<string, true> = { [key]: true };
+    for (const k of Object.keys(dismissed)) if (live.has(k)) next[k] = true;
+    setDismissed(next);
+    try {
+      localStorage.setItem(DISMISS_KEY, JSON.stringify(next));
+    } catch {
+      /* private mode — it comes back on the next load, which is the honest
+         failure: nothing was stored, so nothing is hidden. */
     }
   };
 
@@ -203,7 +264,19 @@ export function NotificationBell() {
     queryFn: () => getAlerts(),
   });
 
-  const rows: AlertRow[] = useMemo(() => data?.rows ?? [], [data]);
+  /** Everything the server sent, before dismissals — what `dismiss` prunes against. */
+  const allRows: AlertRow[] = useMemo(() => data?.rows ?? [], [data]);
+  /**
+   * The rows the panel works from.
+   *
+   * Dismissals are filtered HERE rather than at render, so the unread badge,
+   * the tab counts and "Mark all read" all agree with what is on screen — a
+   * swiped-away alert must not keep the bell lit.
+   */
+  const rows: AlertRow[] = useMemo(
+    () => allRows.filter((r) => !dismissed[occKey(r)]),
+    [allRows, dismissed],
+  );
   const unread = useMemo(() => rows.filter((r) => !read[r.id]).length, [rows, read]);
 
   // Ring once when the unread count RISES, never on a re-poll that returns the
@@ -302,14 +375,6 @@ export function NotificationBell() {
               </div>
             </div>
 
-            {/* Was the line under the title: what is being counted and over
-                which week. It says what the list below holds, so it sits with
-                the list. */}
-            <p className="panecap nbcap">
-              {data?.companies ?? 0} {data?.companies === 1 ? "company" : "companies"}
-              {rows.length && rows[0].at ? ` · week of ${weekLabel(rows[0].at)}` : ""}
-            </p>
-
             <div className="nbtabs">
               {TABS.map((t) => (
                 <button
@@ -332,25 +397,97 @@ export function NotificationBell() {
                 // Read => minimised, unless the person has opened it again.
                 const isRead = !!read[r.id];
                 const shut = isRead && !expanded[r.id];
+                const key = occKey(r);
+                const dx = drag?.key === key ? drag.dx : 0;
                 return (
                   <button
                     key={r.id}
                     type="button"
-                    className={`nbrow${shut ? " shut" : ""}`}
+                    className={`nbrow${shut ? " shut" : ""}${dx ? " swiping" : ""}`}
                     aria-expanded={!shut}
+                    style={
+                      dx
+                        ? {
+                            transform: `translateX(${dx}px)`,
+                            // Fades out as it goes, so the gesture reads as
+                            // removal rather than as the row sliding sideways.
+                            opacity: Math.max(0, 1 - Math.abs(dx) / (SWIPE_PX * 2)),
+                          }
+                        : undefined
+                    }
+                    // SWIPE TO DISMISS. Pointer events rather than touch ones,
+                    // so a mouse drag works the same way — the gesture is not
+                    // only for phones, and there is no second code path.
+                    //
+                    // The axis is decided once, at 6px, and a vertical gesture
+                    // is then left alone: .nblist scrolls, and stealing a
+                    // downward drag would make the list unscrollable on touch.
+                    // `touch-action: pan-y` on the row tells the browser the
+                    // same thing, so it keeps handling the scroll itself.
+                    onPointerDown={(e) => {
+                      if (e.pointerType === "mouse" && e.button !== 0) return;
+                      gesture.current = { key, x0: e.clientX, y0: e.clientY, axis: "" };
+                      swiped.current = false;
+                    }}
+                    onPointerMove={(e) => {
+                      const g = gesture.current;
+                      if (!g || g.key !== key) return;
+                      const mx = e.clientX - g.x0;
+                      const my = e.clientY - g.y0;
+                      if (!g.axis) {
+                        if (Math.abs(mx) < 6 && Math.abs(my) < 6) return;
+                        g.axis = Math.abs(mx) > Math.abs(my) ? "x" : "y";
+                        if (g.axis === "x") e.currentTarget.setPointerCapture(e.pointerId);
+                      }
+                      if (g.axis !== "x") return;
+                      swiped.current = true;
+                      setDrag({ key, dx: mx });
+                    }}
+                    onPointerUp={() => {
+                      const g = gesture.current;
+                      gesture.current = null;
+                      const far = Math.abs(drag?.key === key ? drag.dx : 0) >= SWIPE_PX;
+                      setDrag(null);
+                      if (g?.axis === "x" && far) dismiss(key, allRows);
+                    }}
+                    // A cancelled gesture (the browser took over, the pointer
+                    // left the window) springs back rather than dismissing.
+                    onPointerCancel={() => {
+                      gesture.current = null;
+                      setDrag(null);
+                    }}
+                    // The keyboard's way to the same thing. A swipe-only
+                    // dismiss would be unreachable without a pointer, and this
+                    // list is otherwise fully keyboard-operable.
+                    onKeyDown={(e) => {
+                      if (e.key !== "Delete" && e.key !== "Backspace") return;
+                      e.preventDefault();
+                      dismiss(key, allRows);
+                    }}
                     // Unread: reading it is what collapses it. Read: the click
                     // is the way back in, and out again — otherwise marking
                     // something read would hide its figures for good.
-                    onClick={() =>
-                      isRead
-                        ? setExpanded((e) => {
-                            const next = { ...e };
-                            if (next[r.id]) delete next[r.id];
-                            else next[r.id] = true;
-                            return next;
-                          })
-                        : persist({ ...read, [r.id]: true })
-                    }
+                    //
+                    // A drag ends in a click, so a swipe that fell short of the
+                    // threshold would otherwise also toggle the row on its way
+                    // back. `swiped` is set the moment a gesture commits to the
+                    // horizontal axis, and cleared here.
+                    onClick={() => {
+                      if (swiped.current) {
+                        swiped.current = false;
+                        return;
+                      }
+                      if (isRead) {
+                        setExpanded((prev) => {
+                          const next = { ...prev };
+                          if (next[r.id]) delete next[r.id];
+                          else next[r.id] = true;
+                          return next;
+                        });
+                      } else {
+                        persist({ ...read, [r.id]: true });
+                      }
+                    }}
                   >
                     <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
                     <span className="nbbody">
