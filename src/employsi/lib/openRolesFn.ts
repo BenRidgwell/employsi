@@ -499,6 +499,18 @@ const NZ_GOV_ID_SET = new Set(NZ_GOV_IDS);
 async function currentFromArchive(
   id: string,
   liveJobs: AdvertisedJob[],
+  /**
+   * Also count the archive's own Adzuna/Muse rows.
+   *
+   * Normally false: those two boards are fetched LIVE a few lines above, and
+   * counting the archive's copy as well would double them. Passed true when
+   * the live fetch produced no answer at all — a failed page-1 request reads
+   * as `az === null`, "couldn't check" — because then the archive's rows are
+   * the only record of those vacancies and excluding them turns an outage
+   * into a reported zero. Overlap is impossible in that case, and the title
+   * dedup below would absorb it anyway.
+   */
+  includeLiveBoards = false,
 ): Promise<{ added: number; jobs: AdvertisedJob[]; sources: string[] }> {
   const db = await getArchiveDb();
   if (!db) return { added: 0, jobs: [], sources: [] };
@@ -516,7 +528,7 @@ async function currentFromArchive(
         `SELECT title, source, location, salary, url, posted, skills
            FROM jobs
           WHERE company_id = ?1
-            AND source NOT IN ('adzuna', 'muse')
+            ${includeLiveBoards ? "" : "AND source NOT IN ('adzuna', 'muse')"}
             AND last_seen >= date('now', '-1 day')`,
       )
       .bind(COMPANY_ID_ALIAS[id] ?? id)
@@ -692,10 +704,15 @@ export const getOpenRoles = createServerFn({ method: "GET" })
     //    normalised title so the same ad on both boards is only counted once.
     //    For markets Adzuna doesn't cover (country ''), The Muse is the sole
     //    source.
+    // Did the live boards actually answer? `fromAdzuna` returns null when page
+    // 1 failed — "couldn't check" — and {count: 0} when Adzuna genuinely holds
+    // nothing. The archive fallback below needs to tell those apart.
+    let liveBoardsAnswered = false;
     if (!out) {
       const az = country ? await fromAdzuna(company, country, where) : null;
       const museJobs = await fromMuse(company, region);
       if (az || museJobs.length) {
+        liveBoardsAnswered = true;
         // DISTINCT ROLES, counted from the listings we actually hold — not
         // Adzuna's reported total.
         //
@@ -740,7 +757,21 @@ export const getOpenRoles = createServerFn({ method: "GET" })
     // vacancies come from Zhaopin, or any employer Adzuna/Muse don't index —
     // still surfaces its listings instead of showing a false zero.
     if (data.id) {
-      const extra = await currentFromArchive(data.id, out ? out.jobs : []);
+      // WHEN THE LIVE BOARDS DID NOT ANSWER, COUNT THEIR ARCHIVED ROWS TOO.
+      //
+      // This fallback used to exclude adzuna/muse unconditionally, on the
+      // reasoning that those are fetched live just above. True when the fetch
+      // works; when it does not, the exclusion threw away the only record we
+      // had and the card asserted a zero. Measured 2026-09-30 on Edith Cowan
+      // University: 10 current rows in the archive, every one of them adzuna,
+      // so the fallback contributed nothing and the headline read "0 — no live
+      // vacancies" while the card's own vacancy chart, which counts every
+      // source, plotted 9 for the same day. 23 roster companies were in that
+      // state at the time, covering 313 current rows.
+      //
+      // The two numbers are meant to agree by construction (see the dedup note
+      // above); this is the branch where they could not.
+      const extra = await currentFromArchive(data.id, out ? out.jobs : [], !liveBoardsAnswered);
       if (extra.added > 0) {
         // Every `portal-<platform>` source is the employer's own careers site;
         // the platform suffix is an implementation detail of how we read it,
