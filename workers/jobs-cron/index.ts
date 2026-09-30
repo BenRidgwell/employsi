@@ -1472,6 +1472,8 @@ const PORTAL_TICKS: Record<string, number> = {
   "0 16 * * *": 229,
   // Batch 11 (group 230), Safran and L'Oréal — see PORTAL_GROUPS.
   "10 16 * * *": 230,
+  // Batch 13 (group 231) — see PORTAL_GROUPS.
+  "20 16 * * *": 231,
 };
 
 const NEWS_TICKS: Record<string, number> = {

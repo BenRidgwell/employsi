@@ -217,7 +217,18 @@ type Platform =
   | "sgquantum"
   | "wisetech"
   | "x0pa"
-  | "workdaystores";
+  | "workdaystores"
+  | "applynow"
+  | "hutchies"
+  | "inploi"
+  | "brassring"
+  | "alibabatalent"
+  | "naverrecruit"
+  | "swireprops"
+  | "frcareersjp"
+  | "avaturetable"
+  | "exalead3ds"
+  | "mcloud";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -402,6 +413,22 @@ interface SiteDef {
    */
   portalNo?: string;
   /**
+   * Taleo only: the languages to walk, merged by requisition id. Default
+   * ["en"]. For a career section that posts some roles in ONE language only —
+   * MTR's says so on its own list page ("There are other job vacancies posted
+   * in the Chinese version of this website"): measured 2026-09-30, en 37,
+   * zh_TW 14, with Chinese-only roles among the 14.
+   */
+  taleoLangs?: string[];
+  /**
+   * HRMOS only: complete a card that shows no location from its job page's
+   * 勤務地 row. For tenants whose list leaves `sg-tag-location` empty — measured
+   * 2026-09-30, SMBC (214 roles) and Mizuho (154) print an empty tag on every
+   * card while the job page states 東京 / 東京都. Canon's cards carry the
+   * address, so it does not set this.
+   */
+  hrmosDetailPlace?: boolean;
+  /**
    * Avature only: where the location and category sit in a result card's text
    * cells, zero-based, when the tenant does not use Macquarie's ordering.
    *
@@ -532,6 +559,21 @@ interface SiteDef {
    */
   skipTitles?: RegExp;
   /**
+   * Postings dropped by their stored LOCATION, for a board shared with another
+   * roster company that is already read from it by location.
+   *
+   * Vodafone Group is the case (measured 2026-09-30): jobs.vodafone.com is the
+   * group's Eightfold board, and Vodacom Group (`johannesburg-vod`) is read from
+   * the SAME board narrowed by PCSX `location` to South Africa, Tanzania and
+   * Lesotho. Unfiltered, Vodafone's feed would file those roles a second time
+   * under a second company. Dropping every row whose location names one of the
+   * three countries is exactly the complement of Vodacom's three feeds, so each
+   * role is archived once. Tested against `loc` as stored (all sites joined),
+   * so a role that ALSO names a Vodacom country goes to Vodacom, as it does
+   * there. Unset on every other site, where it changes nothing.
+   */
+  skipLocations?: RegExp;
+  /**
    * Eightfold PCSX only: store and place a multi-site role by its FIRST listed
    * site, as "<first> (+N other locations)", instead of every site joined.
    *
@@ -548,6 +590,75 @@ interface SiteDef {
    * every multi-site role on a board that already has rows.
    */
   firstLocationOnly?: boolean;
+  /**
+   * Radancy only: send an EMPTY SearchFiltersModuleName, so the response
+   * carries no `filters` block.
+   *
+   * UnitedHealth Group is why (measured 2026-09-30): one 100-row page is 8.8 MB
+   * with the filters module named — 8.27 MB of it the facet tree, which nothing
+   * here reads — and 82 KB without; 56 such pages would be ~490 MB of JSON to
+   * parse. Its data-total-results is 5,594 either way.
+   *
+   * Opt-in, NOT a default, because the module is not inert everywhere: on
+   * AstraZeneca the same request answers 860 with it named and 797 without
+   * (the site's own page says 863), so dropping it silently shrank that board.
+   * Set this only after checking the total is identical both ways.
+   */
+  radancyNoFilters?: boolean;
+  /**
+   * Oracle only: extra finder parameters, comma-separated, placed INSIDE the
+   * finder next to the site number (the service ignores search parameters
+   * anywhere else — see oracleLocationFacet).
+   *
+   * For a board over the finder's 10,000-offset ceiling (OR_OFFSET_CAP), which
+   * must be read in parts. Kroger's is split by the board's own posting-date
+   * facet (measured 2026-09-30): `selectedPostingDatesFacet=30` ("Less than 30
+   * days", 7,101) and `=31` ("Greater than 30 days", 3,833) sum to its 10,935.
+   */
+  oracleFinder?: string;
+  /**
+   * Phenom only: store Phenom's `location` field ("Montreal, Quebec") rather
+   * than cityState / city+state.
+   *
+   * Bell (BCE) is the case: measured 2026-09-30, every one of its 83 roles has
+   * `city` and `cityState` null and `state` set, so the default read stored the
+   * PROVINCE alone ("Quebec" 54, "Ontario" 13) and nothing could be placed.
+   * `location` carries the city. Bouygues is the other: its cityState is a bare
+   * upper-case town ("DUNCAN", "PERTH", "LONDON") with no country, where
+   * `location` is "DUNCAN, United States". Opt-in, because it changes the
+   * stored location (and so the archive key) of a board that already has rows.
+   */
+  phenomUseLocation?: boolean;
+  /**
+   * Phenom only: the widget request's `lang` and `country`. Defaults to
+   * en_us / us, which every earlier tenant answers. Bouygues' board
+   * (refNum BOBBOUGLOBAL) answers totalHits 0 to en_us / us and 4,123 to
+   * en_global / global (measured 2026-09-30).
+   */
+  phenomLocale?: { lang: string; country: string };
+  /**
+   * Phenom only: the NESTED form of `phenomFacet` — partition the board by the
+   * first facet, and split only a value too big for one request (over the
+   * widget's 500) by the next facet, and so on. Every leaf is one request, so
+   * nothing is paged.
+   *
+   * Bouygues needs three levels (measured 2026-09-30, 4,123 roles): offset
+   * paging holds 3,370-3,524 unique under all ten sort values tried; by
+   * country, France is 2,443; France by category leaves Works at 1,185; and
+   * France/Works by city is at most 28. Each level's counts are checked to
+   * cover their parent (a facet some roles lack would lose them), and a value
+   * still over 500 when the list runs out fails the pull.
+   */
+  phenomFacets?: string[];
+  /**
+   * Radancy only: the `SortCriteria` sent with every page. The reader sends
+   * "0" (relevance), and on Vinci's 5,785-role board relevance does not hold
+   * its order between pages: measured 2026-09-30, one walk read 5,785 unique
+   * ids and the next 5,764, the same 21 repeated across page boundaries and
+   * as many never served. SortCriteria 1, 2 and 3 each read 5,785 of 5,785,
+   * twice. Prove any value with two identical walks before setting it.
+   */
+  radancySort?: string;
 }
 
 // Google's own board places by METRO, not by city name — the county rule
@@ -3430,6 +3541,13 @@ export const SITES: SiteDef[] = [
     // are open (Chevron Australia's own careers page links to a /job/perth/...
     // URL on this board, now expired), so this is a real zero rather than a
     // parser that found nothing. See fetchRadancy.
+    //
+    // NOT WIRED A SECOND TIME AS `houston-cvx` (batch 13 K, 2026-09-30). The
+    // Houston roster's CVX entry is the same employer and this is its only
+    // board, already read here: the archive holds 404 portal-radancy rows under
+    // `chevron` (plus Adzuna/Jora/JobStreet ones) and none under houston-cvx.
+    // A second feed would archive every role twice under two ids; which id
+    // should carry the US roles is a roster decision, not a scraper one.
     homeHub: "perth",
     pageSize: 100,
     // 155 at 100 a page is 2; 6 leaves room to triple before the bound bites,
@@ -20066,8 +20184,9 @@ export const SITES: SiteDef[] = [
   // recognisably Vodacom (VodaPay, VB Connected Products, M-PESA Tanzania, Vodacom Lesotho
   // regulatory). Mozambique, DRC and Kenya: 0 on the board. Egypt (35) deliberately EXCLUDED
   // although Vodafone Egypt is Vodacom-owned: its rows are mostly _VOIS (Vodafone Group shared
-  // services) and cannot be told apart from Vodacom Egypt. If Vodafone itself is ever wired
-  // from this board, exclude these three countries there or these rows double. Vodacom's early-
+  // services) and cannot be told apart from Vodacom Egypt. Vodafone itself (`london-vod`, batch
+  // 13) reads this board whole and drops these three countries (skipLocations), so these rows
+  // are not filed twice — keep the two lists in step. Vodacom's early-
   // careers board (vodacom.com/early-careers.php) is behind the same WAF and is not covered.
   // homeHub johannesburg; the TZ/LS rows state their country so they stay unplaced, correctly.
   {
@@ -23912,6 +24031,1807 @@ export const SITES: SiteDef[] = [
       ["norwell, ma", "boston"],
     ],
   })),
+  // ── batch 13: K ──
+  // Sixteen large US employers that read as zero on the map. Placement for all of
+  // them goes through b13kUsHints() (see its note: Washington state, namesakes,
+  // and metro suburbs by CBSA). Measured 2026-09-30 with the real fetchPortal.
+  //
+  // NOT WIRED, and why:
+  //  - Walmart (bentonville-wmt). careers.walmart.com has no ATS board; its
+  //    search is an AI assistant (POST /api/graphql, queryId b0467c1f…, a
+  //    `chatRequest` with a `job_search_context`) over 50,574 jobs, 10 a page.
+  //    `direct_search: true` skips the model and lat/lon/radius is an exact
+  //    filter (974 within 30 mi of Bentonville, matching its store
+  //    aggregation), but the pager merges two indexes (4 campus + 6 field rows
+  //    a page) and overlaps once one runs short: two full walks of the 98
+  //    pages read 840 and 958 unique of 974. No partition was found that it
+  //    honours alongside the radius (`filters` is dropped when lat/lon is set).
+  //  - Costco (seattle-cost). careers.costco.com is Jibe (fetchJibe reads it)
+  //    with 20,125 postings, but every one sampled — 600 of 600 across six
+  //    pages and all categories, Issaquah head office included — carries
+  //    "The listing does not mean that any positions are currently open or
+  //    available at Costco": a standing applicant pool, not vacancies.
+  //  - Delta Air Lines (atlanta-dal). delta.avature.net answers a plain fetch
+  //    with 202 and an empty body (the Avature bot interstitial getText already
+  //    treats as a failure); only a real browser gets the 156-role list.
+  //  - Chevron (houston-cvx) — already read as `chevron`; see the note there.
+  {
+    // McKesson — Workday mckesson.wd3 External_Careers, 597 advertised, under the 2,000 cap:
+    // one walk, 592-596 read (live churn; 592 of 593 on the last), ~29-35 s, ~1.3 s CPU. Global (US 387, Canada 171,
+    // Ireland 29, UK 4, India 4). Locations are "USA, TX, Irving" — the head office, with the
+    // "Irving, TX, USA - 6555 …" form — and "CAN, ON, Mississauga" (Toronto CMA).
+    id: "dallas-mck",
+    name: "McKesson",
+    sector: "Healthcare & Life Sciences",
+    platform: "workday",
+    endpoint: "https://mckesson.wd3.myworkdayjobs.com/wday/cxs/mckesson/External_Careers/jobs",
+    origin: "https://mckesson.wd3.myworkdayjobs.com/External_Careers",
+    homeHub: null,
+    maxPages: 60,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // AT&T — Workday att.wd1 ATTGeneral, 1,125 advertised (US 1,097, India 20, Slovakia 6),
+    // one walk: four reads 1,122, 1,124, 1,123, 1,113 (the last against 1,127 advertised —
+    // fetchWorkday logs the gap), ~54-62 s, ~2-2.5 s CPU. Most are CWA, retail and direct
+    // sales roles; the corporate and retail boards are this one site.
+    id: "dallas-t",
+    name: "AT&T",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    endpoint: "https://att.wd1.myworkdayjobs.com/wday/cxs/att/ATTGeneral/jobs",
+    origin: "https://att.wd1.myworkdayjobs.com/ATTGeneral",
+    homeHub: null,
+    maxPages: 100,
+    // Store rows read "USA:<ST>:<City>:<street>:RET/RET", and the street is
+    // full of hub names: "USA:CT:Orange:91 Boston Post Rd" went to Boston and
+    // "USA:TN:Nashville:6702 Charlotte Pike" to Charlotte. The table places
+    // the "USA:<ST>:<City>:" prefix; a USA row it does not know stays unplaced
+    // rather than falling through to HUB_MATCH's reading of the street.
+    hubHints: [...b13kUsHints(), ["usa:", null]],
+  },
+  // T-Mobile US — Workday tmobile.wd1 External. The unfiltered board reports `total` 2,000
+  // and wraps (offset 2,000 serves page 0 again) while its facets sum to 2,203, so it is read
+  // as two timeType partitions, each checked against its own filtered total: Part time 1,642,
+  // Full time 561 (single-valued: they sum to 2,203). Read 1,642 + 560-561, ~61 s + ~22 s.
+  // Part time is ~360 under the cap; if a walk ever reads ~1,900, re-partition (e.g. by
+  // locationRegionStateProvince), because at 2,000 Workday caps silently.
+  // "Bellevue, Washington" is the head office — HUB_MATCH alone read it as DC.
+  ...(
+    [
+      ["pt", "00e635b327af1034ee747b132575005b"],
+      ["ft", "00e635b327af1034ee747b165ed6005c"],
+    ] as [string, string][]
+  ).map(([k, id]): SiteDef => ({
+    id: "seattle-tmus",
+    key: `seattle-tmus-${k}`,
+    name: "T-Mobile US",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    endpoint: "https://tmobile.wd1.myworkdayjobs.com/wday/cxs/tmobile/External/jobs",
+    origin: "https://tmobile.wd1.myworkdayjobs.com/External",
+    homeHub: null,
+    appliedFacets: { timeType: [id] },
+    maxPages: 100,
+    hubHints: b13kUsHints(),
+  })),
+  // Sysco — Workday sysco.wd5 syscocareers. Capped and wrapping like T-Mobile (total 2,000;
+  // workerSubType/timeType facets sum to 2,172). timeType and workerSubType each have one value
+  // over 2,000, so it is split by jobFamilyGroup (31 values, single-valued, sum 2,168): g1 =
+  // "USA Supply Chain and Logistics" 803 + "USA Sales Group" 529 = 1,332 (filtered total read
+  // back: 1,332); g2 = the other 29 families, 836. Read 1,332-1,333 + 836 = 2,168-2,169 of
+  // 2,172 — the ~4 postings with no family fall outside every partition. A NEW family would
+  // too, so if g1+g2 drifts well below the facet total, re-read the facet list.
+  // ~58 s + ~35 s. Locations are opco names ("Sysco Boston", "Sysco Seattle - Kent"); see
+  // the hints for what that means for placement.
+  ...(
+    [
+      ["g1", ["b014cc62fe66012f9cdbcd7cc928be27", "b014cc62fe66014a3935b77cc928bc27"]],
+      [
+        "g2",
+        [
+          "ff9b973fe5191022b20f1a4237210000",
+          "ff9b973fe5191022b20f1f171cdc0000",
+          "ff9b973fe5191022b20f1e7c801a0000",
+          "b014cc62fe66014dddc16a7cc928aa27",
+          "b014cc62fe6601e773d7027cc9289027",
+          "b014cc62fe66019a776de67bc9288a27",
+          "b014cc62fe66014c40e2507cc928a027",
+          "b014cc62fe660117247fd57cc928c027",
+          "b014cc62fe66014bee64397cc9289c27",
+          "ff9b973fe5191022b20f1fb21b210000",
+          "b014cc62fe6601f87cd8a37cc928b827",
+          "ff9b973fe5191022b20f1add172d0000",
+          "b014cc62fe660159730c9e7cc928b627",
+          "ff9b973fe5191022b20f20e783bb0000",
+          "b014cc62fe66017574ad8f7cc928b227",
+          "b014cc62fe66019d138a617cc928a627",
+          "b014cc62fe6601ae29f9967cc928b427",
+          "b014cc62fe66019f8dbb7b7cc928ac27",
+          "ff9b973fe5191022b20f2182197d0000",
+          "b014cc62fe6601f56e45857cc928ae27",
+          "ff9b973fe5191022b20f1d47038f0000",
+          "ff9b973fe5191022b20f1de1b0de0000",
+          "ff9b973fe5191022b20f1cac58a60000",
+          "b014cc62fe66015d04d5227cc9289a27",
+          "b014cc62fe66017bab291d7cc9289827",
+          "ff9b973fe5191022b20f1b76d1af0001",
+          "b014cc62fe660144aa0ce17cc928c227",
+          "b014cc62fe6601a060475c7cc928a427",
+          "b014cc62fe660185e3dd0f7cc9289427",
+        ],
+      ],
+    ] as [string, string[]][]
+  ).map(([k, ids]): SiteDef => ({
+    id: "houston-syy",
+    key: `houston-syy-${k}`,
+    name: "Sysco",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: "https://sysco.wd5.myworkdayjobs.com/wday/cxs/sysco/syscocareers/jobs",
+    origin: "https://sysco.wd5.myworkdayjobs.com/syscocareers",
+    homeHub: null,
+    appliedFacets: { jobFamilyGroup: ids },
+    maxPages: 100,
+    hubHints: [
+      // Sysco names an OPERATING COMPANY, not a town: "Sysco Atlanta" (College
+      // Park), "Sysco Chicago" (Des Plaines), "Sysco Seattle - Kent". HUB_MATCH
+      // reads the metro in the name, which is right for the opco itself; its
+      // outlying shuttle yards and depots are named "<opco> - <town>" and are
+      // not in that metro, so they are nulled here (measured 2026-09-30).
+      ["sysco corporate", "houston"], // 1390 Enclave Pkwy, Houston — the head office
+      ["sysco north texas", "dallas"], // Lewisville, DFW
+      ["sygma dallas", "dallas"],
+      ["gainesville shuttle", null],
+      ["birmingham", null],
+      ["circleville", null],
+      ["troy shuttle", null],
+      ["piketon", null],
+      ["south point", null],
+      ["fort collins", null],
+      ["colorado springs", null],
+      ["silt", null],
+      ["avon domicile", null],
+      ["platteville", null],
+      ["portland  -  bend", null],
+      ["portland - bend", null],
+      ["portland - redmond", null], // Redmond, OREGON
+      ["greenville", null],
+      ["terre haute", null],
+      ["tri-cities", null],
+      ["pasco", null],
+      ["fitchburg", null],
+      ["epping", null],
+      ["sygma pennsylvania", null],
+      ["stockton", null],
+      ["gilroy", "sanjose"], // Santa Clara County
+      ...b13kUsHints(),
+    ],
+  })),
+  // Lowe's — Workday lowes.wd5 LWS_External_CS, the WHOLE board: 12,738 advertised, 96% of it
+  // Store Operations. Like TJX, not Citigroup: `total` is 12,738 on every page, offsets 2,000,
+  // 5,000 and 12,720 serve distinct rows and 12,740 is empty — so no facet partition, just
+  // SEVEN 92-page windows (~1,840 roles, ~60-70 s, ~4-5 s CPU each; the last open-ended for
+  // growth). SCHEDULE ALL SEVEN IN ONE TICK, as for TJX: a window read hours after its
+  // neighbour sees the list shifted by the day's postings. Locations are store labels,
+  // "Mooresville, NC (SSC) 1999" (the head office, Charlotte CBSA), "Kent, WA 2456" — whose
+  // four-digit store number hubFor's postcode rule turns into " wa," and so Perth, which the
+  // hints catch. Three whole-board reads (all seven windows back to back): 12,735, 12,724 and
+  // 12,736 unique of 12,738-12,742; the last two share 12,720.
+  ...(
+    [
+      ["w1", 0, 92],
+      ["w2", 92, 92],
+      ["w3", 184, 92],
+      ["w4", 276, 92],
+      ["w5", 368, 92],
+      ["w6", 460, 92],
+      ["w7", 552, 140],
+    ] as [string, number, number][]
+  ).map(([k, from, pages]): SiteDef => ({
+    id: "charlotte-low",
+    key: `charlotte-low-${k}`,
+    name: "Lowe's",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: "https://lowes.wd5.myworkdayjobs.com/wday/cxs/lowes/LWS_External_CS/jobs",
+    origin: "https://lowes.wd5.myworkdayjobs.com/LWS_External_CS",
+    homeHub: null,
+    pageFrom: from,
+    maxPages: pages,
+    hubHints: b13kUsHints(),
+  })),
+  {
+    // UnitedHealth Group (and Optum) — Radancy careers.unitedhealthgroup.com, 5,594 advertised,
+    // 56 pages of 100: 5,594 of 5,594 on three reads, 22-71 s, 7-8 s CPU. radancyNoFilters:
+    // with the filters module named each page is 8.8 MB (see the field). The location span is numbered
+    // (`class="job-location 1"`), which fetchRadancy now accepts. Global (India, Ireland, UK,
+    // Philippines…), homeHub null.
+    id: "minneapolis-unh",
+    name: "UnitedHealth Group",
+    sector: "Healthcare & Life Sciences",
+    platform: "radancy",
+    endpoint: "https://careers.unitedhealthgroup.com/search-jobs/results",
+    origin: "https://careers.unitedhealthgroup.com",
+    homeHub: null,
+    radancyNoFilters: true,
+    maxPages: 80,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // UPS — Phenom www.jobs-ups.com/us/en, the US site (748 advertised by the widget; the
+    // island says 1 — see fetchPhenom's walkTotal). pageSize 500 (honoured), so two
+    // requests; a plain script read 748 of 748 three times (sizes 100 and 500), the reader
+    // 744, 740 and 748 unique with no duplicates (~3 s, ~1 s CPU).
+    // No facet partitions it: `category` and `type` are single-valued but have a value over
+    // the widget's 500 (Operations 560, Full time 519), and `state` is multi-valued.
+    id: "atlanta-ups",
+    name: "United Parcel Service",
+    sector: "Industrial Manufacturing",
+    platform: "phenom",
+    endpoint: "https://www.jobs-ups.com/us/en/search-results",
+    origin: "https://www.jobs-ups.com/us/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 4,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // United Airlines — Phenom careers.united.com/us/en, 135 advertised, global (US 93, India
+    // 27, Mexico 3 …). pageSize 500 so it is ONE request: at 100 a page the second page
+    // overlapped the first on one read in three (124 unique of 135), in the reader and in a
+    // plain script alike.
+    id: "chicago-ual",
+    name: "United Airlines Holdings",
+    sector: "Consumer & Retail",
+    platform: "phenom",
+    endpoint: "https://careers.united.com/us/en/search-results",
+    origin: "https://careers.united.com/us/en",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 2,
+    hubHints: b13kUsHints(),
+  },
+  // Kroger — Oracle eluq.fa.us2 CX_2001 (krogerfamilycareers.com), the WHOLE board: 10,935
+  // advertised, all US, 94% "Store Operations". Over the finder's 10,000-offset ceiling (see
+  // OR_OFFSET_CAP — one unpartitioned walk read exactly 10,000), so it is read as the board's
+  // own two posting-date buckets, which are exact and disjoint: "Less than 30 days" 7,101 and
+  // "Greater than 30 days" 3,833 (sum 10,934-10,935). Read twice: new 7,104 / 7,105 (~70 s,
+  // ~8 s CPU), old 3,808 / 3,808 (~36 s, ~4 s CPU) — 10,912 / 10,913 unique, 10,911 in both.
+  // The old bucket's 25-row shortfall is the SERVICE's: a plain script walking it serves
+  // 3,808 distinct Ids against TotalJobsCount 3,833 (24-row pages at offsets 3,050, 3,150 and
+  // 3,375, and the list ends at 3,808), the Honeywell short-page behaviour oracleByTotal
+  // already describes. A role crossing the 30-day line between the two reads can be missed
+  // or read twice, so SCHEDULE BOTH IN ONE TICK. maxPages 400 is the finder's own ceiling;
+  // the recent bucket is the one that grows, so re-partition (selectedPostingDatesFacet=7 is
+  // "Less than 7 days") before it nears 10,000.
+  ...(
+    [
+      ["new", "selectedPostingDatesFacet=30", 400],
+      ["old", "selectedPostingDatesFacet=31", 400],
+    ] as [string, string, number][]
+  ).map(([k, finder, pages]): SiteDef => ({
+    id: "cincinnati-kr",
+    key: `cincinnati-kr-${k}`,
+    name: "Kroger",
+    sector: "Consumer & Retail",
+    platform: "oracle",
+    endpoint: "https://eluq.fa.us2.oraclecloud.com",
+    origin: "https://www.krogerfamilycareers.com/en/sites/CX_2001",
+    siteNumber: "CX_2001",
+    oracleFinder: finder,
+    homeHub: null,
+    maxPages: pages,
+    hubHints: b13kUsHints(),
+  })),
+  {
+    // JPMorgan Chase — Oracle jpmc.fa CX_1001, 7,313 advertised, global (US 5,319, UK 686,
+    // India 311, Singapore 156 …): 7,318 then 7,331 read (the board growing; 7,314 in both),
+    // 82-90 s, 14-15 s CPU (mostly the skills matcher over 7,300 titles).
+    id: "newyork-jpm",
+    name: "JPMorgan Chase",
+    sector: "Financial Services",
+    platform: "oracle",
+    endpoint: "https://jpmc.fa.oraclecloud.com",
+    origin: "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
+    siteNumber: "CX_1001",
+    homeHub: null,
+    maxPages: 360,
+    hubHints: b13kUsHints(),
+  },
+  {
+    // American Airlines — jobs.aa.com is SuccessFactors RMK behind Akamai (403, sensor_data
+    // challenge); the classic portal's XML for the same tenant (americairP, career4) answers a
+    // plain fetch: 102 roles, the count jobs.aa.com's own rendered search shows. The only place
+    // filter is "Posting Country" (United States 93, Mexico 4 …) — the XML's [[location]] is
+    // an unrendered template token and the per-job page redirects to the blocked RMK host — so
+    // rows carry a country and stay unplaced. No Posted-Date in this tenant's XML: dated today.
+    id: "dallas-aal",
+    name: "American Airlines Group",
+    sector: "Consumer & Retail",
+    platform: "sfclassicxml",
+    endpoint:
+      "https://career4.successfactors.com/career?company=americairP&career_ns=job_listing_summary&resultType=XML",
+    origin: "https://career4.successfactors.com",
+    homeHub: null,
+  },
+  // The Home Depot — careers.homedepot.com's CWS index (fetchMcloud), Organization 1814:
+  // 25,343 postings, 23,980 of them store hourly roles from Kenexa BrassRing (ats_portalid
+  // KBR-5032). Too big to read whole (254 pages of ~0.95 MB), so it is split by the board's
+  // own facets:
+  //  - corp: every NON-store portal — Workday (the corporate/DC board, 987), Paycom (242,
+  //    subsidiaries) and seven THD-GH-* Greenhouse subsidiaries — nationwide: 1,363-1,364
+  //    of 1,363, ~5 s. A portal id added later falls outside this list until added here.
+  //  - atl-stores: KBR-5032 within 50 miles of Atlanta by the board's own radius filter
+  //    (latitude/longitude/LocationRadius, what its own location search sends): 727 of 727,
+  //    ~2 s. A radius, not the CBSA: Gainesville and Flowery Branch are inside it and stay
+  //    unplaced, which is honest.
+  ...(
+    [
+      [
+        "corp",
+        "facet%5B%5D=ats_portalid%3AWorkday~Paycom~THD-GH-Construction~THD-GH-Umi~THD-GH-Bell~THD-GH-Cancostile~THD-GH-Jarrell~THD-GH-Victoria~THD-GH-MVP",
+      ],
+      [
+        "atl-stores",
+        "facet%5B%5D=ats_portalid%3AKBR-5032&latitude=33.7489954&longitude=-84.3879824&LocationRadius=50",
+      ],
+    ] as [string, string][]
+  ).map(([k, q]): SiteDef => ({
+    id: "atlanta-hd",
+    key: `atlanta-hd-${k}`,
+    name: "The Home Depot",
+    sector: "Consumer & Retail",
+    platform: "mcloud",
+    endpoint: `https://jobsapi-internal.m-cloud.io/api/job?Organization=1814&${q}`,
+    origin: "https://careers.homedepot.com",
+    homeHub: null,
+    maxPages: 30,
+    hubHints: b13kUsHints(),
+  })),
+  // ── batch 13: M ──
+  // Seven French groups and eleven Canadian ones, every one of them at zero
+  // ads before this block. Measured 2026-09-30; each walk was run twice
+  // through fetchPortal and both runs agreed. Placement: naHubHints (Canada /
+  // US namesakes and CMA suburbs) and idfHubHints (Île-de-France towns) are
+  // declared among the batch 13 readers, above FETCHERS. homeHub is null
+  // throughout — every one of these boards states a location per role, and
+  // a blank must not become head office.
+  //
+  // NOT WIRED: Carrefour (paris-ca). Its board, recrute.carrefour.fr, answers
+  // 403 to this sandbox on every path tried (/, /liste-des-offres,
+  // /sitemap.xml; robots.txt alone answers), and its ATS host is not
+  // discoverable from here — nothing measured, so nothing wired.
+  {
+    // Workday, tenant `alliancewd` (the Renault-Nissan alliance's), site
+    // renault-group-careers: 436 roles, 436 collected, ~21 s. The location is
+    // a bare site name — "Guyancourt" 188 (the Technocentre), "Boulogne
+    // Billancourt" 39, "Lardy" 10 — so idfHubHints does the placing; "Le
+    // Mans", "Le Havre", "Chennai", "São José dos Pinhais" stay unplaced.
+    id: "paris-rno",
+    name: "Renault",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint:
+      "https://alliancewd.wd3.myworkdayjobs.com/wday/cxs/alliancewd/renault-group-careers/jobs",
+    origin: "https://alliancewd.wd3.myworkdayjobs.com/renault-group-careers",
+    homeHub: null,
+    maxPages: 40,
+    hubHints: idfHubHints(),
+  },
+  {
+    // Oracle Recruiting Cloud behind talents.hermes.com (site CX_12001 on
+    // fa-eoic-saasfaprod1): TotalJobsCount 744, 743-744 collected. 188 roles
+    // are "PANTIN, Île-de-France, France" (the leather workshops) and 135
+    // PARIS, so the region needle places both. US boutiques by metro; the
+    // US ", WA" guard from naHubHints stops "Bellevue, WA" landing on Perth.
+    id: "paris-rms",
+    name: "Hermès International",
+    sector: "Consumer & Retail",
+    platform: "oracle",
+    endpoint: "https://fa-eoic-saasfaprod1.fa.ocs.oraclecloud.com",
+    origin: "https://talents.hermes.com/en/sites/CX",
+    homeHub: null,
+    siteNumber: "CX_12001",
+    hubHints: [
+      ...idfHubHints(),
+      ["manhattan, ny", "newyork"],
+      ["short hills, nj", "newyork"],
+      ["east rutherford, nj", "newyork"],
+      ["dayton, nj", "newyork"],
+      ["beverly hills, ca", "losangeles"],
+      ["costa mesa, ca", "losangeles"],
+      ["palo alto, ca", "sanjose"],
+      ...naHubHints(),
+    ],
+  },
+  {
+    // Radancy TalentBrew: 5,784 roles across VINCI Construction, Energies,
+    // Autoroutes and Airports. RecordsPerPage is honoured at 500, so the board
+    // is 12 requests of ~2.5 MB (most of it the filter tree, sent on every
+    // page) — ~25 s, ~7 s CPU. Sorted by SortCriteria 1, not the default
+    // relevance, which re-orders between pages (see radancySort): 5,764 and
+    // 5,785 unique on two relevance walks, 5,785 of 5,785 on every sorted
+    // one. Places are "<town>, <region>", so ", Ile-de-France" is what places
+    // Nanterre (160), Rueil-Malmaison (40) and the rest of the region.
+    id: "paris-dg",
+    name: "Vinci",
+    sector: "Infrastructure & Government",
+    platform: "radancy",
+    endpoint: "https://jobs.vinci.com/en/search-jobs/results",
+    origin: "https://jobs.vinci.com",
+    homeHub: null,
+    pageSize: 500,
+    maxPages: 20,
+    radancySort: "1",
+    hubHints: idfHubHints(),
+  },
+  {
+    // careers.3ds.com's own Exalead search — see fetchExalead3ds. 669 roles
+    // (per language), one request. "France, Vélizy-Villacoublay" (283) is the
+    // campus; Meudon and Saint-Cloud are the other Paris sites. US needles by
+    // MSA: Waltham -> boston, Iselin/Ridgewood NJ -> newyork, Santa Clara ->
+    // sanjose, Woodland Hills -> losangeles, Pleasanton -> sanfrancisco,
+    // Plano -> dallas, Broomfield -> denver; "United States, WA, Bellevue"
+    // -> seattle (it reached Perth through " wa," before).
+    id: "paris-dsy",
+    name: "Dassault Systèmes",
+    sector: "Technology, Media & Telecom",
+    platform: "exalead3ds",
+    endpoint: "https://www.3ds.com/apisearch/card_search_api",
+    origin: "https://www.3ds.com",
+    homeHub: null,
+    hubHints: [
+      ["france, saint-cloud", "paris"],
+      ...idfHubHints(),
+      ["ma, waltham", "boston"],
+      ["nj, iselin", "newyork"],
+      ["nj, ridgewood", "newyork"],
+      ["ca, santa clara", "sanjose"],
+      ["ca, woodland hills", "losangeles"],
+      ["ca, pleasanton", "sanfrancisco"],
+      ["tx, plano", "dallas"],
+      ["co, broomfield", "denver"],
+      ["wa, bellevue", "seattle"],
+      ["united states, wa,", null],
+    ],
+  },
+  {
+    // SmartRecruiters company `AccorHotel` — where careers.accor.com's own
+    // "Apply" buttons go (checked on Novotel, Fairmont and Sofitel roles).
+    // The careers site itself is Attrax, and Attrax serves at most 25 pages
+    // of 48 (page 26 repeats page 25), so it cannot show more than 1,200 of
+    // its 7,208; the brand facet that would partition it has one value
+    // ("ACCOR", 2,004) that no second facet splits under the cap. The
+    // SmartRecruiters API has no cap: totalFound 6,354, all 64 pages read,
+    // 6,352-6,354 unique, ~42 s. The ~850 gap to the Attrax figure is not
+    // explained from here; collected is what the ATS publishes.
+    //
+    // Locations are "<city>, <region>, <country code>", so Saudi Arabia is
+    // ", sa" — which HUB_MATCH's " sa," filed on ADELAIDE (272 roles in
+    // Umluj, Makkah, Red Sea, Riyadh). Australian SA rows are ", SA, au" and
+    // are kept first. "Hamilton, Pembroke Parish, bm" reached paris through
+    // "parish"; "Washington, England, gb" reached washington.
+    id: "paris-ac",
+    name: "Accor",
+    sector: "Consumer & Retail",
+    platform: "smartrecruiters",
+    endpoint: "AccorHotel",
+    origin: "https://careers.accor.com",
+    homeHub: null,
+    maxPages: 80,
+    hubHints: [
+      [", sa, au,", "adelaide"],
+      [", sa,", null],
+      ["parish", null],
+      ["washington, england", null],
+      [", idf,", "paris"],
+      ...idfHubHints(),
+      ...naHubHints(),
+    ],
+  },
+  {
+    // Phenom, joining.bouygues.com (refNum BOBBOUGLOBAL): 4,123 roles across
+    // Colas, Equans, Bouygues Construction, Immobilier, Telecom and TF1. Read
+    // by nested facet partition (phenomFacets) — offset paging held only
+    // 3,370-3,524 unique under every sort tried, and no single facet fits the
+    // widget's 500 (France 2,443; France/Works 1,185). country -> category ->
+    // city read 4,123 of 4,123, ~85 s, ~9 s CPU. `location` is "<TOWN>,
+    // <Country>"; cityState is the town alone and would put "PERTH" and
+    // "LONDON" wherever HUB_MATCH likes. Namesakes guarded: "BOSTON ,
+    // United Kingdom" (Lincolnshire), "WEYMOUTH AND PORTLAND", "PORT SYDNEY,
+    // Canada", and "WASHINGTON, United States" (state or DC, unsaid).
+    id: "paris-en",
+    name: "Bouygues",
+    sector: "Infrastructure & Government",
+    platform: "phenom",
+    endpoint: "https://joining.bouygues.com/global/en/search-results",
+    origin: "https://joining.bouygues.com",
+    homeHub: null,
+    phenomUseLocation: true,
+    phenomLocale: { lang: "en_global", country: "global" },
+    phenomFacets: ["country", "category", "city"],
+    hubHints: [
+      ["boston , united kingdom", null],
+      ["boston, united kingdom", null],
+      ["weymouth and portland", null],
+      ["port sydney", null],
+      ["washington, united states", null],
+      ...idfHubHints(),
+      ...naHubHints(),
+    ],
+  },
+  {
+    // Workday: 1,585 roles, 1,585 collected in ~91 s (80 pages of 20) — the
+    // longest single walk in this block, still inside the budget. Canadian
+    // rows are "City, Province" in full; US rows "City, State" in full, which
+    // puts every New York STATE branch on newyork through "new york". Latham
+    // and Greenwich (Capital Region) are guarded, with the Capital Region's
+    // other towns; South Jersey is the Philadelphia MSA and the northern and
+    // shore counties the New York one.
+    id: "toronto-td",
+    name: "Toronto-Dominion Bank",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://td.wd3.myworkdayjobs.com/wday/cxs/td/TD_Bank_Careers/jobs",
+    origin: "https://td.wd3.myworkdayjobs.com/TD_Bank_Careers",
+    homeHub: null,
+    maxPages: 90,
+    hubHints: [
+      ...naHubHints(),
+      ["latham, new york", null],
+      ["greenwich, new york", null],
+      ["albany, new york", null],
+      ["troy, new york", null],
+      ["schenectady, new york", null],
+      ["saratoga springs, new york", null],
+      ["clifton park, new york", null],
+      ["glens falls, new york", null],
+      ["queensbury, new york", null],
+      ["colonie, new york", null],
+      ["delmar, new york", null],
+      ["cohoes, new york", null],
+      ["ballston spa, new york", null],
+      ["mount laurel, new jersey", "philadelphia"],
+      ["cherry hill, new jersey", "philadelphia"],
+      ["marlton, new jersey", "philadelphia"],
+      ["moorestown, new jersey", "philadelphia"],
+      ["medford, new jersey", "philadelphia"],
+      ["willingboro, new jersey", "philadelphia"],
+      ["pennsauken, new jersey", "philadelphia"],
+      ["haddonfield, new jersey", "philadelphia"],
+      ["berlin, new jersey", "philadelphia"],
+      ["sicklerville, new jersey", "philadelphia"],
+      ["sewell, new jersey", "philadelphia"],
+      ["mullica hill, new jersey", "philadelphia"],
+      ["williamstown, new jersey", "philadelphia"],
+      ["woodbury, new jersey", "philadelphia"],
+      ["edison, new jersey", "newyork"],
+      ["bridgewater, new jersey", "newyork"],
+      ["ramsey, new jersey", "newyork"],
+      ["union city, new jersey", "newyork"],
+      ["east brunswick, new jersey", "newyork"],
+      ["east hanover, new jersey", "newyork"],
+      ["east rutherford, new jersey", "newyork"],
+      ["elmwood park, new jersey", "newyork"],
+      ["fair lawn, new jersey", "newyork"],
+      ["franklin lakes, new jersey", "newyork"],
+      ["hackensack, new jersey", "newyork"],
+      ["hillsborough, new jersey", "newyork"],
+      ["metuchen, new jersey", "newyork"],
+      ["newark, new jersey", "newyork"],
+      ["passaic, new jersey", "newyork"],
+      ["pompton plains, new jersey", "newyork"],
+      ["scotch plains, new jersey", "newyork"],
+      ["summit, new jersey", "newyork"],
+      ["wayne, new jersey", "newyork"],
+      ["wyckoff, new jersey", "newyork"],
+      ["bergenfield, new jersey", "newyork"],
+      ["berkeley heights, new jersey", "newyork"],
+      ["bernardsville, new jersey", "newyork"],
+      ["cranford, new jersey", "newyork"],
+      ["lakewood, new jersey", "newyork"],
+      ["ocean twp., new jersey", "newyork"],
+      ["eatontown, new jersey", "newyork"],
+      ["neptune, new jersey", "newyork"],
+    ],
+  },
+  {
+    // Workday: 926 roles, 926 collected, ~50 s. "City, ON, CAN" / "City, IL,
+    // USA"; "London, ON, CAN" was on london.
+    id: "toronto-bmo",
+    name: "Bank of Montreal",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://bmo.wd3.myworkdayjobs.com/wday/cxs/bmo/External/jobs",
+    origin: "https://bmo.wd3.myworkdayjobs.com/External",
+    homeHub: null,
+    maxPages: 60,
+    hubHints: naHubHints(),
+  },
+  {
+    // SuccessFactors (jobs.scotiabank.com, the table theme
+    // fetchSuccessFactors reads): "Results 1 – 25 of 1677", 1,677 collected
+    // in ~24 s. Five walks the same afternoon read 1,677, 1,676, 1,676,
+    // 1,660 and 1,664 against 1,676-1,677 advertised — the default order
+    // shifts while the board is being edited, so a late walk can lose ~1%. Rows are "City, ON, CA, <postcode>"; the bank's Latin
+    // American roles (Bogotá 88, Lima, Santiago, Mexico City) are unplaced.
+    // "London (ON)" is its own spelling of the namesake.
+    id: "toronto-bns",
+    name: "Scotiabank",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://jobs.scotiabank.com",
+    origin: "https://jobs.scotiabank.com",
+    homeHub: null,
+    maxPages: 200,
+    hubHints: naHubHints(),
+  },
+  {
+    // Workday, site `search`: 476 roles, 476 collected, ~24 s. "City, ON";
+    // "Montréal, QC" (19) needed the accent needle, "Charlottetown, PE" was
+    // on charlotte and "London, ON" on london.
+    id: "toronto-cm",
+    name: "Canadian Imperial Bank of Commerce",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://cibc.wd3.myworkdayjobs.com/wday/cxs/cibc/search/jobs",
+    origin: "https://cibc.wd3.myworkdayjobs.com/search",
+    homeHub: null,
+    maxPages: 40,
+    hubHints: naHubHints(),
+  },
+  {
+    // Avature, table template — see fetchAvatureTable. 383 roles.
+    id: "montreal-na",
+    name: "National Bank of Canada",
+    sector: "Financial Services",
+    platform: "avaturetable",
+    endpoint: "https://emplois.bnc.ca/en_CA/careers/SearchJobs",
+    origin: "https://emplois.bnc.ca",
+    homeHub: null,
+    hubHints: naHubHints(),
+  },
+  {
+    // Workday, site enbridge_careers (careers.enbridge.com redirects there):
+    // 50 roles, 50 collected. 15 are Workday's "N Locations" placeholder.
+    id: "calgary-enb",
+    name: "Enbridge",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://enbridge.wd3.myworkdayjobs.com/wday/cxs/enbridge/enbridge_careers/jobs",
+    origin: "https://enbridge.wd3.myworkdayjobs.com/enbridge_careers",
+    homeHub: null,
+    hubHints: naHubHints(),
+  },
+  {
+    // Workday, site Suncor_External: 34 roles, 34 collected. Fort McMurray
+    // (the oil sands) and St. John's are their own places, unplaced.
+    // "Commerce City, CO" is the refinery, in the Denver MSA.
+    id: "calgary-su",
+    name: "Suncor Energy",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    endpoint: "https://suncor.wd1.myworkdayjobs.com/wday/cxs/suncor/Suncor_External/jobs",
+    origin: "https://suncor.wd1.myworkdayjobs.com/Suncor_External",
+    homeHub: null,
+    hubHints: [["commerce city, co", "denver"], ...naHubHints()],
+  },
+  {
+    // Oracle Recruiting Cloud, site CNRL-Professional on ehaa.fa.ca2 — the
+    // only site cnrl.com's careers pages link to: 95 roles, 95 collected.
+    // Calgary 69; Fort McMurray 22, Grande Prairie and Nisku unplaced.
+    id: "calgary-cnq",
+    name: "Canadian Natural Resources",
+    sector: "Energy & Natural Resources",
+    platform: "oracle",
+    endpoint: "https://ehaa.fa.ca2.oraclecloud.com",
+    origin:
+      "https://ehaa.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CNRL-Professional",
+    homeHub: null,
+    siteNumber: "CNRL-Professional",
+    hubHints: naHubHints(),
+  },
+  {
+    // SuccessFactors "NES" theme on careers.cn.ca (no rows in the HTML), so
+    // the RMK JSON service. The board is partitioned BY LOCALE: en_US 45,
+    // fr_CA 36, en_GB/en_CA 0 — and every fr_CA id is also an en_US id (the
+    // same requisition posted in both languages), so the merged walk is 45.
+    // "date" is the deterministic sort (see sfRmkSort).
+    id: "montreal-cnr",
+    name: "Canadian National Railway",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://careers.cn.ca",
+    origin: "https://careers.cn.ca",
+    homeHub: null,
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_US", "fr_CA"],
+    hubHints: naHubHints(),
+  },
+  {
+    // Phenom, jobs.bell.ca: totalHits 83, 83 collected. `location` is read
+    // (phenomUseLocation) because city and cityState are null on every role
+    // and the default read stored the province alone.
+    id: "montreal-bce",
+    name: "BCE Inc.",
+    sector: "Technology, Media & Telecom",
+    platform: "phenom",
+    endpoint: "https://jobs.bell.ca/ca/en/search-results",
+    origin: "https://jobs.bell.ca",
+    homeHub: null,
+    phenomUseLocation: true,
+    hubHints: naHubHints(),
+  },
+  {
+    // SuccessFactors (jobs.rogers.com, table theme): "Results 1 – 25 of 169",
+    // 169 collected. Multi-site rows read "Toronto, ON, CA +1 more…", which is
+    // the card's own text.
+    id: "toronto-rcib",
+    name: "Rogers Communications",
+    sector: "Technology, Media & Telecom",
+    platform: "successfactors",
+    endpoint: "https://jobs.rogers.com",
+    origin: "https://jobs.rogers.com",
+    homeHub: null,
+    maxPages: 40,
+    hubHints: naHubHints(),
+  },
+  // ── batch 13: N ──
+  // DBS Group Holdings — Workday dbs.wd3 / DBS_Careers. Measured 2026-09-30: total 1,393,
+  // Market facet (locationCountry) Singapore 304, Hong Kong 312, India 368, Taiwan 215,
+  // Indonesia 108, China 75, Australia 6, Vietnam 4 (sum 1,392 — one posting carries no
+  // Market and is in none of the three feeds). locationsText is a BUILDING, not a city: "One
+  // Island East", "Kwun Tong", "Mira Place Tower A" (HK), "Singapore - Central", "DBS Asia
+  // Central" (SG), "Jakarta Head Office", "Regional Office Mumbai". So the board is read in
+  // three Market partitions, each walked in full: in the Singapore and Hong Kong ones the
+  // Market facet itself says where the role is, which is what makes assumeHomeHub honest there
+  // (the HK Market's one "Macau Branch" row is hinted to null). The rest-of-Asia partition has
+  // no home: HUB_MATCH places Mumbai/Bangalore/Sydney/Shanghai/Shenzhen/Beijing, hints add the
+  // measured same-metro branch names (Vikhroli, Kanjurmarg = Mumbai; Bellandur, Basaweshwara
+  // Nagar = Bengaluru), and Taipei 184, Jakarta, Delhi, Guangzhou, Pune etc. stay unplaced.
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-sg",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: "singapore",
+    assumeHomeHub: true,
+    appliedFacets: { locationCountry: ["80938777cac5440fab50d729f9634969"] },
+  },
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-hk",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: "hongkong",
+    assumeHomeHub: true,
+    hubHints: [["macau", null]],
+    appliedFacets: { locationCountry: ["d4afdeb461d446e4babd204bd102dba8"] },
+  },
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-asia",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: null,
+    hubHints: [
+      ["vikhroli", "mumbai"],
+      ["kanjurmarg", "mumbai"],
+      ["bellandur", "bengaluru"],
+      ["basaweshwara nagar", "bengaluru"],
+    ],
+    // Australia, China, India, Indonesia, Taiwan, Vietnam.
+    appliedFacets: {
+      locationCountry: [
+        "d903bb3fedad45039383f6de334ad4db",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    maxPages: 60,
+  },
+  // Singapore Airlines — the group board careers.singaporeair.com (SIA, SIA Engineering
+  // "/siaec/" and Scoot roles in one list), classic SuccessFactors table theme, 10 a page.
+  // Measured 2026-09-30: "Results 1 – 10 of 79", walked 79/79 twice, ~5 s. Every row's
+  // location cell is the bare country code "SG", which HUB_MATCH does not read; the
+  // site hint places exactly that string. homeHub null: nothing blank to default.
+  {
+    id: "singapore-c6l",
+    name: "Singapore Airlines",
+    sector: "Consumer & Retail",
+    platform: "successfactors",
+    endpoint: "https://careers.singaporeair.com",
+    origin: "https://careers.singaporeair.com",
+    homeHub: null,
+    hubHints: [[" sg,", "singapore"]],
+  },
+  // ST Engineering — careers.stengg.com is SuccessFactors on the NES theme (the page is
+  // the xweb/rmk-jobs-search widget and server-renders no rows), so it is read through
+  // the RMK JSON service like Bendigo's. Measured 2026-09-30: totalJobs 341. Locations
+  // are "Singapore, 01, SGP, 619523" — 331 Singapore — plus 9 with no location, which
+  // stay unplaced (homeHub null) rather than being assumed Singapore: the group also
+  // hires in the US, China and Europe.
+  {
+    id: "singapore-s63",
+    name: "ST Engineering",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://careers.stengg.com",
+    origin: "https://careers.stengg.com",
+    homeHub: null,
+    // The default "recent" walk re-shuffles per request: four walks on 2026-09-30 gave
+    // 341, 340, 324 and 332 unique of 341. "date" + one locale is the deterministic
+    // parallel walk Standard Chartered/Colgate use.
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_GB"],
+  },
+  // Mitsubishi UFJ Financial Group — MUFG's global Workday board, mufgub.wd3/MUFG-Careers
+  // (linked from careers.mufgamericas.com). Measured 2026-09-30: total 692, walked 692/692
+  // twice, ~44 s (35 pages). No Japan roles on it: India 206, US 198, UK 76, Singapore 58,
+  // HK 35, … by its Country facet. MUFG Bank's Japanese mid-career hiring is on its own
+  // site (mufg.jp/careers links only to graduate/career-tasu pages) and is NOT wired.
+  // Placement: "MUFG Global Service Private Ltd. - Bengaluru (BCIT)" 164 -> bengaluru,
+  // London 74, New York 51; hints for the same-metro offices Jersey City (35, and "210
+  // Hudson Street") -> newyork and Irving, TX (14) -> dallas. "2 Locations"/"3
+  // Locations" (80), Jakarta, Taipei, Amsterdam, Tempe AZ, Tampa etc. stay unplaced.
+  {
+    id: "tokyo-8306",
+    name: "Mitsubishi UFJ Financial Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mufgub.wd3.myworkdayjobs.com/wday/cxs/mufgub/MUFG-Careers/jobs",
+    origin: "https://mufgub.wd3.myworkdayjobs.com/MUFG-Careers",
+    homeHub: null,
+    hubHints: [
+      ["jersey city, nj", "newyork"],
+      ["210 hudson street", "newyork"],
+      ["irving, tx", "dallas"],
+    ],
+    maxPages: 50,
+  },
+  // Mizuho Financial Group — three boards, none of them complete on its own:
+  //  - americas: Workday mizuho.wd1/mizuhoamericas (linked from mizuhogroup.com/americas).
+  //    2026-09-30: total 116, 116/116 twice, ~5 s. "New York, NY (1271 AOA/6th Ave)" 50,
+  //    "NYC (1285)" 48 -> newyork (hint), MetroPark (Iselin NJ) 9 -> newyork, Menlo Park CA
+  //    -> sanfrancisco; Madrid, Stockholm and "Offsite - NY" unplaced.
+  //  - emea: careers.mizuhoemea.com, classic SuccessFactors, "1 – 12 of 12"; London 11.
+  //  - jp: HRMOS hrmos.co/pages/mizuho ("全 154 件"), Mizuho Bank/Trust/Securities roles in
+  //    Japan. The list prints an empty location on every card, so the place is read off
+  //    each job page (hrmosDetailPlace): 東京都 104, 東京 10, … -> tokyo; 大阪府 4 and 4
+  //    with no 勤務地 row stay unplaced.
+  // careers.mizuhobankaustralia.com (SF) listed 0 roles on the day and is not wired.
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-americas",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mizuho.wd1.myworkdayjobs.com/wday/cxs/mizuho/mizuhoamericas/jobs",
+    origin: "https://mizuho.wd1.myworkdayjobs.com/mizuhoamericas",
+    homeHub: null,
+    hubHints: [
+      ["nyc (1285)", "newyork"],
+      ["metropark", "newyork"],
+      ["menlo park, ca", "sanfrancisco"],
+    ],
+  },
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-emea",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://careers.mizuhoemea.com",
+    origin: "https://careers.mizuhoemea.com",
+    homeHub: null,
+  },
+  // Nintendo — careers.nintendo.com is Nintendo of America's Next.js site over the
+  // Greenhouse board "nintendo". 2026-09-30: meta.total 49, 49 read. Redmond, WA 40 is the
+  // " wa," (Perth) trap and is hinted to seattle, as is North Bend, WA (NoA's warehouse,
+  // King County); Austin 5. Nintendo Co.'s own Kyoto mid-career roles are single e2r
+  // (portal.e2r.jp) pages linked from nintendo.co.jp/jobs/career with no list to walk,
+  // and Kyoto is not a hub — NOT wired.
+  {
+    id: "tokyo-7974",
+    name: "Nintendo",
+    sector: "Technology, Media & Telecom",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/nintendo/jobs",
+    origin: "https://careers.nintendo.com",
+    homeHub: null,
+    hubHints: [
+      ["redmond, wa", "seattle"],
+      ["north bend, wa", "seattle"],
+      ["manhattan, ny", "newyork"],
+    ],
+  },
+  // SK Hynix — careers.skhynix.com and recruit.skhynix.com did not answer from here on
+  // 2026-09-30 (the proxy's CONNECT got 502), so the Korean board is NOT wired. This is
+  // SK hynix America's Greenhouse board "skhynixamerica": 54 of meta.total 54 — San Jose
+  // 43, West Lafayette IN 9 (Purdue packaging plant; no hub), Austin 2.
+  {
+    id: "seoul-000660",
+    name: "SK Hynix",
+    sector: "Technology, Media & Telecom",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/skhynixamerica/jobs",
+    origin: "https://job-boards.greenhouse.io/skhynixamerica",
+    homeHub: null,
+  },
+  // Kia Corporation — Kia America/Canada's board, careers-americas.kia.com, classic
+  // SuccessFactors table, 25 a page. 2026-09-30: "1 – 25 of 57", 57/57 twice, ~2 s. Irvine
+  // CA (Kia America HQ) 30 -> losangeles (Orange County), West Point GA plant 10 (no hub),
+  // Mississauga 5 -> toronto, Downers Grove 4 -> chicago; "Renton, WA" is hinted to
+  // seattle before HUB_MATCH's " wa," can file it on Perth. Kia's Korean board
+  // (career.kia.com, "Kia Talent Lounge") sits behind a NetFunnel queue and its API
+  // answers the queue page, not JSON — NOT wired.
+  {
+    id: "seoul-000270",
+    name: "Kia Corporation",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://careers-americas.kia.com",
+    origin: "https://careers-americas.kia.com",
+    homeHub: null,
+    hubHints: [
+      ["irvine, ca", "losangeles"],
+      ["renton, wa", "seattle"],
+      ["seattle, wa", "seattle"],
+      ["mississauga, on", "toronto"],
+      ["downers grove, il", "chicago"],
+      ["kennesaw, ga", "atlanta"],
+    ],
+  },
+  // Alibaba Group — talent.alibaba.com social recruitment (see fetchAlibabaTalent).
+  // 2026-09-30: totalCount 3,959, 3,959 unique in 25 s; first-listed city: Hangzhou (no
+  // hub) most, beijing 1,001, shanghai 418, shenzhen 167, hongkong 5. homeHub null — see
+  // the reader for why a Hong Kong fallback would be wrong.
+  {
+    id: "hongkong-09988",
+    name: "Alibaba Group Holding",
+    sector: "Technology, Media & Telecom",
+    platform: "alibabatalent",
+    endpoint: "https://talent.alibaba.com/position/search",
+    origin: "https://talent.alibaba.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Naver — recruit.navercorp.com (see fetchNaverRecruit). 2026-09-30: totalSize 27, 27
+  // read, all work area 0010 = 분당 (Bundang, Seongnam) -> seoul.
+  {
+    id: "seoul-035420",
+    name: "Naver",
+    sector: "Technology, Media & Telecom",
+    platform: "naverrecruit",
+    endpoint: "https://recruit.navercorp.com/rcrt/loadJobList.do",
+    origin: "https://recruit.navercorp.com",
+    homeHub: null,
+    hubHints: [["분당", "seoul"]],
+  },
+  // Swire Pacific — Swire Properties (82%-owned) is the subsidiary with a readable board:
+  // see fetchSwireProps. 2026-09-30: 38 roles, HK districts hinted (a bare " taikoo," only,
+  // so a mainland "Taikoo Li" cannot match); Singapore 1; 8 blank stay unplaced.
+  // NOT wired: careers.swire.com / mycareers.swire.com is John Swire & Sons (the PARENT,
+  // SuccessFactors JSSHK) and its programmes; careers.swirecocacola.com renders its list
+  // client-side with no API found; Cathay Pacific is an associate, not a subsidiary.
+  {
+    id: "hongkong-00019",
+    key: "hongkong-00019-swireprops",
+    name: "Swire Pacific",
+    sector: "Infrastructure & Government",
+    platform: "swireprops",
+    endpoint:
+      "https://careers.swireproperties.com/api/jobs/talentlink?region=hk&lang=en-HK&database=web",
+    origin: "https://careers.swireproperties.com",
+    homeHub: null,
+    hubHints: [
+      ["quarry bay", "hongkong"],
+      ["admiralty", "hongkong"],
+      ["taikoo shing", "hongkong"],
+      [" taikoo,", "hongkong"],
+      ["tung chung", "hongkong"],
+      ["chai wan", "hongkong"],
+      ["north point", "hongkong"],
+      ["mid-levels", "hongkong"],
+    ],
+  },
+  // Fast Retailing — Japan mid-career roles (see fetchFastRetailingJp): 2026-09-30, 167
+  // roles, twice, ~24 s; 有明本部/六本木本部 (Tokyo) 153 -> tokyo; Yamaguchi HQ, Osaka
+  // warehouse and "海外拠点" roles stay unplaced.
+  //
+  // And its Workday tenant fastretailing.wd3, which has one SITE PER COUNTRY AND BRAND —
+  // there is no tenant-wide list. The sites were read off fastretailing.com/employment
+  // (en, zh_chs, zh_cht, ko pages) and each counted on 2026-09-30; the twenty below had
+  // roles (their count that day beside them), and are one feed each. Listed but EMPTY
+  // that day, so not wired: graduates_hk_Theory, headquarter_roles_au_Uniqlo,
+  // headquarter_roles_india_Uniqlo, headquarters_cn_FastRetailing, headquarters_hk_Theory,
+  // headquarters_us_FastRetailing, headquarters_useu_JBrand, store_staff_hk_Theory;
+  // corporate_us_HelmutLang answers 403. Japan's store staff and graduate hiring are on
+  // other systems and are not here.
+  {
+    id: "tokyo-9983",
+    key: "tokyo-9983-jp",
+    name: "Fast Retailing",
+    sector: "Consumer & Retail",
+    platform: "frcareersjp",
+    endpoint: "https://www.fastretailing.com/careers/ja/mid-career/",
+    origin: "https://www.fastretailing.com",
+    homeHub: null,
+    hubHints: [["東京", "tokyo"]],
+  },
+  ...(
+    [
+      ["EU_Theory", 18],
+      ["headquarters_eu_Uniqlo", 17],
+      ["store_staff_eu_Uniqlo", 106],
+      ["graduates_au_Uniqlo", 2],
+      ["graduates_eu_Uniqlo", 11],
+      ["headquarter_roles_vn_Uniqlo", 11],
+      ["headquarters_hk_GU", 2],
+      ["headquarters_hkm_Uniqlo", 8],
+      ["headquarters_id_Uniqlo", 4],
+      ["headquarters_my_Uniqlo", 5],
+      ["headquarters_ph_Uniqlo", 3],
+      ["headquarters_sg_Uniqlo", 3],
+      ["headquarters_th_Uniqlo", 2],
+      ["headquarters_tw_Uniqlo", 3],
+      ["headquarters_us_GU", 2],
+      ["headquarters_us_Uniqlo", 9],
+      ["retail_us_GU", 6],
+      ["retail_us_Theory", 6],
+      ["retail_us_Uniqlo", 336],
+      ["store_staff_au_Uniqlo", 70],
+    ] as const
+  ).map(([board]): SiteDef => ({
+    id: "tokyo-9983",
+    key: `tokyo-9983-${board}`,
+    name: "Fast Retailing",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: `https://fastretailing.wd3.myworkdayjobs.com/wday/cxs/fastretailing/${board}/jobs`,
+    origin: `https://fastretailing.wd3.myworkdayjobs.com/${board}`,
+    homeHub: null,
+    // Same-metro store towns, read off retail_us_Uniqlo's 336 locations on
+    // 2026-09-30, and the US-state trap: "Tacoma, WA" matches HUB_MATCH's
+    // " wa," (Perth). Seattle-metro towns are named; any other ", WA" is null.
+    hubHints: [
+      ["bellevue", "seattle"],
+      ["tacoma, wa", "seattle"],
+      ["lynnwood, wa", "seattle"],
+      ["issaquah,wa", "seattle"],
+      ["tukwila,wa", "seattle"],
+      [", wa,", null],
+      ["brooklyn, ny", "newyork"],
+      ["bronx, ny", "newyork"],
+      ["flushing, ny", "newyork"],
+      ["staten island, ny", "newyork"],
+      ["yonkers, ny", "newyork"],
+      ["white plains, ny", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["paramus, nj", "newyork"],
+      ["east rutherford, nj", "newyork"],
+      ["elizabeth, nj", "newyork"],
+      ["mclean, va", "washington"],
+      ["fairfax, va", "washington"],
+      ["arlington,va", "washington"],
+      ["bethesda", "washington"],
+      ["silver spring, md", "washington"],
+      ["chestnut hill, ma", "boston"],
+      ["framingham, ma", "boston"],
+      ["braintree, massachusetts", "boston"],
+      ["burlington", "boston"],
+      ["santa clara, ca", "sanjose"],
+      ["milpitas, ca", "sanjose"],
+      ["valley fair", "sanjose"],
+      ["daly city, ca", "sanfrancisco"],
+      ["san mateo, ca", "sanfrancisco"],
+      ["emeryville, ca", "sanfrancisco"],
+      ["culver city", "losangeles"],
+      ["santa monica, ca", "losangeles"],
+      ["sherman oaks, ca", "losangeles"],
+      ["torrance, ca", "losangeles"],
+      ["glendale, ca", "losangeles"],
+      ["arcadia, ca", "losangeles"],
+      ["cerritos, ca", "losangeles"],
+      ["topanga", "losangeles"],
+      ["frisco,tx", "dallas"],
+      ["arlington,tx", "dallas"],
+      ["first colony mall", "houston"],
+      ["oak brook, il", "chicago"],
+      ["schaumburg, il", "chicago"],
+      ["king of prussia, pa", "philadelphia"],
+    ],
+  })),
+  // MTR Corporation — careers.mtr.com.hk is on-premise Taleo (career sections
+  // mtr_external and mtr_external_pt). The REST job board answers with portal
+  // 10115100333, found by trying the long numbers printed in jobsearch.ftl (the page
+  // carries no FacetedSearchSettings). 2026-09-30: en totalCount 37 of which 30 are
+  // served anonymously (the Sonic/Ansell/RACQ gap), zh_TW 14 of which 13; merged by
+  // requisition id 31, one of them Chinese-only — which is why taleoLangs is set: the
+  // English list page itself says other vacancies are posted in the Chinese version.
+  // All Hong Kong ("Hong Kong" / "香港").
+  {
+    id: "hongkong-00066",
+    name: "MTR Corporation",
+    sector: "Infrastructure & Government",
+    platform: "taleo",
+    endpoint: "https://careers.mtr.com.hk",
+    origin: "https://careers.mtr.com.hk",
+    portalNo: "10115100333",
+    taleoLangs: ["en", "zh_TW"],
+    homeHub: "hongkong",
+    hubHints: [["香港", "hongkong"]],
+  },
+  // Sumitomo Mitsui Financial Group — SMBC's mid-career board is HRMOS
+  // hrmos.co/pages/smbc (linked from smbc-careers.com). 2026-09-30: "全 214 件", 214 read;
+  // every card's location tag is empty, so the place comes from each job page
+  // (hrmosDetailPlace): 東京 175, 東京・大阪 9, … -> tokyo. Hints: ニューヨーク before 東京
+  // (a New York posting says it starts with some months in Tokyo; the ※ note is cut, the
+  // hint is belt and braces), and a role listing 大阪 FIRST is left unplaced, on the
+  // first-listed rule. 首都圏・関西圏 and 全国 stay unplaced.
+  {
+    id: "tokyo-8316",
+    name: "Sumitomo Mitsui Financial Group",
+    sector: "Financial Services",
+    platform: "hrmos",
+    endpoint: "https://hrmos.co/pages/smbc/jobs",
+    origin: "https://hrmos.co/pages/smbc/jobs",
+    homeHub: null,
+    hrmosDetailPlace: true,
+    hubHints: [
+      ["ニューヨーク", "newyork"],
+      ["大阪府、", null],
+      ["大阪、", null],
+      ["東京", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+  },
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-jp",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "hrmos",
+    endpoint: "https://hrmos.co/pages/mizuho/jobs",
+    origin: "https://hrmos.co/pages/mizuho/jobs",
+    homeHub: null,
+    hrmosDetailPlace: true,
+    hubHints: [
+      ["ニューヨーク", "newyork"],
+      ["大阪府、", null],
+      ["大阪、", null],
+      ["東京", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+  }, // ── batch 13: N — employers NOT wired ──
+  // SoftBank Group (tokyo-9984): group.softbank/careers links only to a HERP page
+  // (herp.careers/v1/sbgcareer) holding ONE "オープンポジション" open-application form
+  // on 2026-09-30 — not a vacancy, so nothing to archive.
+  // Recruit Holdings (tokyo-6098): Indeed's careers site (indeed.com/careers) answers 401
+  // to a plain request and the Greenhouse board "indeed" is empty; Recruit Co.'s Japanese
+  // mid-career site (recruit-mid-career.my.salesforce-sites.com) also answers 401.
+  // Tata Consultancy Services (mumbai-tcs) and Infosys (bengaluru-infy) are already fed by
+  // scripts/tcs-to-d1.py and scripts/infosys-to-d1.py (portal-ibegin, portal-brassring).
+  // ── batch 13: L ──
+  //
+  // Eighteen FTSE/SMI employers the gap report showed at zero. Measured
+  // 2026-09-30. Wired below: Shell (global line), Lloyds, NatWest, Rolls-Royce,
+  // Aviva, Legal & General, Vodafone, Compass Group UK & Ireland, Julius Baer,
+  // Swisscom, Lonza, Richemont, Kühne + Nagel, UBS.
+  //
+  // NOT WIRED, and why:
+  //   HSBC (`hongkong-00005`) — deliberately. HSBC's global Eightfold board is
+  //     already archived once under the LSE line `london-hsba` (4,365 rows), and
+  //     COMPANY_ID_ALIAS in lib/openRolesFn.ts points `hongkong-00005` at it so
+  //     both cards show the same roles. A second feed under the HKEX id would
+  //     file every role twice in market-wide totals. The gap report reads zero
+  //     because it counts rows by company_id; the card does not.
+  //   Rio Tinto (`london-rio`) — the same shape without the alias. The global
+  //     Symphony board jobs.riotinto.com is archived under `rio` (Perth; 707
+  //     portal-sy rows) and places its Pilbara/Perth/Brisbane sites through
+  //     HUB_MATCH (" wa,", "pilbara", "queensland"…). `london-rio` is the LSE
+  //     listing of the same company; it wants a COMPANY_ID_ALIAS entry
+  //     (london-rio -> rio), not a second walk of the same board.
+  //   Tesco — careers.tesco.com is Avature, ~2,000-2,200 store roles (jobOffset
+  //     2000 full, 2200 empty) at a fixed 10 a page with no exact total ("of
+  //     999+"), and the location cell is a bare store name ("Solihull",
+  //     "Caterham Superstore") that places nowhere. Over 200 serial pages with
+  //     nothing to bound them by and nothing to put on the map.
+  //   National Grid — jobs.nationalgrid.com (UK and US boards) and
+  //     careers.nationalgrid.com answer 403 to every request from here; the ATS
+  //     behind them could not be identified, so nothing was measured.
+  //     careers.nationalgrid.co.uk is National Grid Electricity Distribution's
+  //     own site and loads its list client-side from careershub.* — not read.
+  {
+    id: "london-shel",
+    name: "Shell",
+    sector: "Energy & Natural Resources",
+    platform: "workday",
+    // Shell's global Workday board, MINUS AUSTRALIA. The roster carries Shell
+    // twice: `shell` (Perth, the Australian business) already reads this board
+    // filtered to Australia's locationCountry facet, and this is the LSE line.
+    // Measured 2026-09-30: total 125 across 22 countries, Australia 2; these
+    // are the other 21 country facet ids, read off the board, and the filtered
+    // total is 123 = 125 - 2, so nothing is lost and nothing is filed twice.
+    //
+    // A COUNTRY THE BOARD ADDS LATER IS NOT READ until its id is added here —
+    // Workday cannot negate a facet. The facet sum equalled the board total
+    // (125), so today no role is outside the list. A role listed in Australia
+    // AND another country ("2 Locations") would match both feeds; none did.
+    endpoint: "https://shell.wd3.myworkdayjobs.com/wday/cxs/shell/ShellCareers/jobs",
+    origin: "https://shell.wd3.myworkdayjobs.com/ShellCareers",
+    appliedFacets: {
+      locationCountry: [
+        "1a29bb1357b240ab99a2fa755cc87c0e", // Brazil
+        "a30a87ed25634629aa6c3958aa2b91ea", // Canada
+        "6cb77610a8a543aea2d6bc10457e35d4", // China
+        "49ab063f422741e2aef271de00efeac8", // Denmark
+        "d865e83093ad42319653b08e61f7db49", // Egypt
+        "54c5b6971ffb4bf0b116fe7651ec789a", // France
+        "dcc5b7608d8644b3a93716604e78e995", // Germany
+        "d4afdeb461d446e4babd204bd102dba8", // Hong Kong
+        "c4f78be1a8f14da0ab49ce1162348a5e", // India
+        "972dc4ba8d454bc0b893ff84b1529077", // Malaysia
+        "9696868b09c64d52a62ee13b052383cc", // Netherlands
+        "e56f1daf83e04bacae794ba5c5593560", // Philippines
+        "131d5ac7e3ee4d7b962bdc96e498e412", // Poland
+        "f5ff182c7fab406bbb110cc1f7e99064", // Qatar
+        "80938777cac5440fab50d729f9634969", // Singapore
+        "873d0f604e3b458c990cb4d83a5c0f14", // Thailand
+        "db69e418446c11de98360015c5e6daf6", // Trinidad and Tobago
+        "c2e3bac5bbbb47b29dfc6e8b56a1586e", // Türkiye
+        "29247e57dbaf46fb855b224e03170bc7", // United Kingdom
+        "bc33aa3152ec42d4995f4791a106ed09", // United States of America
+        "635d2e106177441f9100b9d8688fbb39", // Venezuela
+      ],
+    },
+    // Locations are site names ("London - Shell Centre", "Bangalore RMZ-ECO
+    // WORLD", "Texas - Houston - One Thousand Main"); HUB_MATCH places the
+    // cities it knows and "Rotterdam - Weena", "Scotford - Refinery" stay
+    // unplaced. homeHub is only the blank-location fallback.
+    homeHub: "london",
+  },
+  {
+    id: "london-lloy",
+    name: "Lloyds Banking Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // lbg/wd3/lbg_Careers, linked from every lloydsbankinggroup.com careers
+    // page. Measured 2026-09-30: total 85, all UK and Crown dependencies
+    // (Edinburgh, Bristol, Halifax, Chester, St Helier…). Branch/contact-centre
+    // volume hiring is not on this site today; this is what it advertises.
+    endpoint: "https://lbg.wd3.myworkdayjobs.com/wday/cxs/lbg/lbg_Careers/jobs",
+    origin: "https://lbg.wd3.myworkdayjobs.com/lbg_Careers",
+    homeHub: "london",
+    // "Leeds Wellington Place" (4) is an office in Leeds — HUB_MATCH's
+    // "wellington" filed it on Wellington NZ.
+    hubHints: [["wellington place", null]],
+  },
+  {
+    id: "london-nwg",
+    name: "NatWest Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // jobs.natwestgroup.com is a TalentBrew front end that 403s this sandbox;
+    // its apply button goes to Workday, tenant rbs/wd3, site RBS. Measured
+    // 2026-09-30: total 141 — UK 65, India 45 (Bengaluru, Gurugram, Chennai),
+    // Jersey 9, Luxembourg 5, US 7. Locations are bare cities ("London",
+    // "Edinburgh", "Gurugram"); only the hub cities place.
+    endpoint: "https://rbs.wd3.myworkdayjobs.com/wday/cxs/rbs/RBS/jobs",
+    origin: "https://rbs.wd3.myworkdayjobs.com/RBS",
+    homeHub: "london",
+  },
+  // Rolls-Royce — careers.rolls-royce.com is a Vue page over its own API
+  // (rollsroyceats-prod-api.connectid.cloud, anonymous JWT), which reports
+  // totalCount 587 by seniority: professional 479, Intern_Graduate 101,
+  // Apprentice 7. Every row's applyUrl is on Workday tenant rollsroyce/wd3,
+  // one SITE per seniority with exactly those names — so the three Workday
+  // sites are read directly, and their totals (479 / 101 / 7, measured
+  // 2026-09-30) sum to the API's 587. Global: Friedrichshafen (Power Systems)
+  // 114, Indianapolis 63, Singapore 53, Dahlewitz, Aiken, Bristol, Derby…
+  //
+  // Hints: the UK sites are written "Bristol Filton (UK-B)", "Ansty (UK-AA)",
+  // and HOME_COUNTRY london reads that "uk" as London. And "Washington" alone is
+  // Washington, Tyne and Wear ("Washington (UK-BR)", United Kingdom, in the
+  // API), while the US office is "Washington D.C. RRNA Headquarters".
+  {
+    id: "london-rr",
+    key: "london-rr",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/professional/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/professional",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  {
+    id: "london-rr",
+    key: "london-rr-grad",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/Intern_Graduate/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/Intern_Graduate",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  {
+    id: "london-rr",
+    key: "london-rr-appr",
+    name: "Rolls-Royce Holdings",
+    sector: "Industrial Manufacturing",
+    platform: "workday",
+    endpoint: "https://rollsroyce.wd3.myworkdayjobs.com/wday/cxs/rollsroyce/Apprentice/jobs",
+    origin: "https://rollsroyce.wd3.myworkdayjobs.com/Apprentice",
+    homeHub: "london",
+    hubHints: [
+      ["london", "london"],
+      ["washington d.c.", "washington"],
+      ["washington", null],
+      ["(uk-", null],
+    ],
+  },
+  // Aviva — Workday tenant aviva/wd1. Site External: measured 2026-09-30,
+  // total 132 — Canada 96, Poland 15, UK 14, US 4 — and Aviva_Investors_External
+  // 4. THIS IS NOT AVIVA'S WHOLE UK HIRING: careers.aviva.co.uk lists ~116 UK
+  // roles on its own search (per the page), but it is Akamai-blocked (403) from
+  // here and the Workday site behind it was not found (a dozen site names
+  // probed). So the card is the group/Canada/Investors board, not UK retail.
+  //
+  // Hints: "UK - Leeds - The Wharf" reads as London through HOME_COUNTRY's
+  // "uk"; Aviva Canada could list London, Ontario.
+  {
+    id: "london-av",
+    name: "Aviva",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://aviva.wd1.myworkdayjobs.com/wday/cxs/aviva/External/jobs",
+    origin: "https://aviva.wd1.myworkdayjobs.com/External",
+    homeHub: "london",
+    hubHints: [
+      ["london, on", null],
+      ["london on", null],
+      ["london", "london"],
+      ["uk - ", null],
+    ],
+  },
+  {
+    id: "london-av",
+    key: "london-av-investors",
+    name: "Aviva",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://aviva.wd1.myworkdayjobs.com/wday/cxs/aviva/Aviva_Investors_External/jobs",
+    origin: "https://aviva.wd1.myworkdayjobs.com/Aviva_Investors_External",
+    homeHub: "london",
+    hubHints: [
+      ["london, on", null],
+      ["london on", null],
+      ["london", "london"],
+      ["uk - ", null],
+    ],
+  },
+  {
+    id: "london-lgen",
+    name: "Legal & General",
+    sector: "Financial Services",
+    platform: "smartrecruiters",
+    // SmartRecruiters company `LegalAndGeneral`. Measured 2026-09-30: 75
+    // postings; careers.legalandgeneral.com (its own front end) said "73
+    // results" the same hour. London 40, Chicago 14 (L&G Asset Management
+    // America), Cardiff 12, Brighton 9.
+    endpoint: "LegalAndGeneral",
+    origin: "https://careers.legalandgeneral.com",
+    homeHub: "london",
+    // Locations read "Brighton and Hove, England, gb" — HOME_COUNTRY london
+    // matches "england" and filed Brighton on London. Only London is London.
+    hubHints: [
+      ["london", "london"],
+      [", england", null],
+      [", scotland", null],
+      [", wales", null],
+      ["united kingdom", null],
+    ],
+  },
+  {
+    id: "london-vod",
+    name: "Vodafone Group",
+    sector: "Technology, Media & Telecom",
+    platform: "eightfoldpcs",
+    // jobs.vodafone.com, Eightfold PCSX — the board johannesburg-vod already
+    // reads, narrowed to Vodacom's three countries. Measured 2026-09-30: count
+    // 1,293 (Pune 291, Düsseldorf 206, Bucharest, Istanbul, Budapest, London
+    // 44, Newbury 28 …). Read whole and every row naming South Africa, Tanzania
+    // or Lesotho dropped (skipLocations), so those stay Vodacom's alone.
+    // Egypt stays here: it is _VOIS (Vodafone Group shared services), which is
+    // why the Vodacom note excludes it there.
+    endpoint: "https://jobs.vodafone.com/api/pcsx/search?domain=vodafone.com&query=&location=",
+    origin: "https://jobs.vodafone.com",
+    homeHub: "london",
+    skipLocations: /south africa|tanzania|lesotho/i,
+    // "Newbury, United Kingdom" (Vodafone UK's head office), "N/A, United
+    // Kingdom" and "Home Based, United Kingdom" all read as London through
+    // HOME_COUNTRY; only a location that names London is London.
+    hubHints: [
+      ["london", "london"],
+      ["united kingdom", null],
+      [", uk,", null],
+    ],
+  },
+  {
+    id: "london-cpg",
+    key: "london-cpg-uk",
+    name: "Compass Group",
+    sector: "Consumer & Retail",
+    platform: "inploi",
+    // Compass Group UK & IRELAND — jobs.compass-group.co.uk, an inploi site
+    // (see fetchInploi). NOT the board `london-cpg` already archives:
+    // scripts/compass-to-d1.py reads Compass Group AUSTRALIA's PageUp board
+    // (portal-pu); this is a different board in a different country with no
+    // overlap. Measured 2026-09-30: 2,733 roles — Defence 366, Chartwells 334,
+    // Medirest 268 … Compass Group Ireland 59 — read in 28 pages of 100, 6 s.
+    //
+    // The endpoint is the site's PUBLISHABLE key (window.__reactRouterContext
+    // `apiKey`), shipped to every browser, not a secret.
+    endpoint: "pk_edce29b92c2773898c482851",
+    origin: "https://jobs.compass-group.co.uk",
+    homeHub: "london",
+    // Rows are "<town>, <city>, United Kingdom" across every UK region;
+    // HOME_COUNTRY would put all 2,300 non-London rows on London. Only a row
+    // that names London is London; Perth (Scotland), Wellington (Somerset) and
+    // Boston (Lincolnshire) are kept off the AU/NZ/US hubs by the same rule.
+    hubHints: [
+      ["london", "london"],
+      ["united kingdom", null],
+    ],
+  },
+  {
+    id: "zurich-baer",
+    name: "Julius Baer Group",
+    sector: "Financial Services",
+    platform: "workday",
+    // juliusbaer/wd3/External, the portal juliusbaer.com/careers links.
+    // Measured 2026-09-30: total 192 — Zurich 75, Singapore 56, Madrid 26,
+    // Hong Kong 12, Luxembourg, Guernsey, Dubai.
+    endpoint: "https://juliusbaer.wd3.myworkdayjobs.com/wday/cxs/juliusbaer/External/jobs",
+    origin: "https://juliusbaer.wd3.myworkdayjobs.com/External",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-scmn",
+    name: "Swisscom",
+    sector: "Technology, Media & Telecom",
+    platform: "workday",
+    // swisscom/wd103/SwisscomExternalCareers. Measured 2026-09-30: total 47,
+    // all Switzerland (Bern 24, Lausanne 10, Zurich, Geneva…); 29 are
+    // "N Locations", which name no place and stay unplaced.
+    endpoint:
+      "https://swisscom.wd103.myworkdayjobs.com/wday/cxs/swisscom/SwisscomExternalCareers/jobs",
+    origin: "https://swisscom.wd103.myworkdayjobs.com/SwisscomExternalCareers",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-lonn",
+    name: "Lonza Group",
+    sector: "Healthcare & Life Sciences",
+    platform: "workday",
+    // lonza/wd3/Lonza_Careers. Measured 2026-09-30: total 613 — US 201
+    // (Portsmouth NH, Bend OR, Houston TX, Walkersville MD), Switzerland 199
+    // (Visp 158, Stein, Basel), India 54, Singapore 35, China 31, UK 31.
+    // Locations are "CC - Site" ("CH - Visp", "US - Houston, TX"); Visp and
+    // Basel are not hubs and stay unplaced.
+    endpoint: "https://lonza.wd3.myworkdayjobs.com/wday/cxs/lonza/Lonza_Careers/jobs",
+    origin: "https://lonza.wd3.myworkdayjobs.com/Lonza_Careers",
+    homeHub: "zurich",
+  },
+  {
+    id: "zurich-cfr",
+    name: "Compagnie Financière Richemont",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    // richemont/wd3/Richemont (careers.richemont.com). Measured 2026-09-30:
+    // total 1,385 across 25+ countries — France 268, Switzerland 177, Korea 93,
+    // Japan 79, Hong Kong 48, Singapore 49, Australia 43 — one walk of 70
+    // pages in ~73 s, under the tick budget and under Workday's 2,000-row
+    // offset cap. maxPages 90 leaves room for ~1,800 before it bites.
+    //
+    // Locations are upper-case cities ("PARIS", "MEYRIN", "SYDNEY"); the 42
+    // on Australian hubs (Sydney 31, Perth 5, Melbourne 5, Brisbane 1) match the
+    // board's own Australia facet (43), i.e. they are Richemont's Australian
+    // boutiques, not a foreign Perth.
+    endpoint: "https://richemont.wd3.myworkdayjobs.com/wday/cxs/richemont/Richemont/jobs",
+    origin: "https://richemont.wd3.myworkdayjobs.com/Richemont",
+    homeHub: "zurich",
+    maxPages: 90,
+  },
+  {
+    id: "zurich-knin",
+    name: "Kühne + Nagel International",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    // jobs.kuehne-nagel.com is Phenom (totalHits 1,115) and CANNOT be read
+    // whole: its widget pages in no fixed order — two "Most recent" walks held
+    // 1,041 and 1,009 unique of 1,115 — and the one exact partition
+    // (category, 14 values summing to 1,115) has "Freight Forwarding &
+    // Operations" at 559, over the 500 a single request returns.
+    //
+    // Behind it is SuccessFactors (careers.kuehne-nagel.com, NES theme, RMK
+    // service), which PARTITIONS BY LOCALE. Measured 2026-09-30, sort "date":
+    // en_US 679, de_DE 269, fr_FR 56, en_GB 40, es_ES 31, nl_NL 27, pl_PL 7,
+    // pt_PT 4, hu_HU 4, it_IT 3, fr_CA 1 = 1,121, against Phenom's 1,115; the
+    // other three locales the site offers (zh_CN, tr_TR, ja_JP) are 0 today and
+    // listed so a role posted in them is read. 1,117 unique ids collected.
+    //
+    // Multi-site roles are joined "; " and placed by the first HUB_MATCH needle
+    // anywhere in the string, as every sfRmkLocales board is.
+    endpoint: "https://careers.kuehne-nagel.com",
+    origin: "https://careers.kuehne-nagel.com",
+    homeHub: "zurich",
+    // "Brisbane, CA, USA" (K+N's San Francisco-area office) and "Renton, WA,
+    // USA" were filed on Brisbane and Perth.
+    hubHints: [
+      ["brisbane, ca, usa", null],
+      [", wa, usa", null],
+    ],
+    sfRmkSort: "date",
+    sfRmkLocales: [
+      "en_US",
+      "de_DE",
+      "fr_FR",
+      "en_GB",
+      "es_ES",
+      "nl_NL",
+      "pl_PL",
+      "pt_PT",
+      "hu_HU",
+      "it_IT",
+      "fr_CA",
+      "zh_CN",
+      "tr_TR",
+      "ja_JP",
+    ],
+  },
+  {
+    id: "zurich-ubsg",
+    name: "UBS Group",
+    sector: "Financial Services",
+    platform: "brassring",
+    // jobs.ubs.com, BrassRing partner 25008 site 5012 — the English search
+    // jobs.ubs.com's own home page links (see fetchBrassRing). Measured
+    // 2026-09-30: JobsCount 521 — New York 61, Singapore 42, Zürich 32, Poland
+    // 28, India 23, Hong Kong 23. Sister site 5155 lists 527, 508 of them the
+    // same requisitions; it is not read, so its ~19 others are not covered.
+    // Locations read "United States - New York", "Schweiz - Zürich".
+    endpoint:
+      "https://jobs.ubs.com/TgNewUI/Search/Ajax/ProcessSortAndShowMoreJobs?partnerid=25008&siteid=5012&loc=formtext23",
+    origin: "https://jobs.ubs.com",
+    homeHub: "zurich",
+    // "United States - Washington" is the STATE (Wealth Management offices
+    // in Bellevue/Seattle), not DC.
+    hubHints: [["united states - washington", null]],
+  },
+  // ── batch 13: J ──
+  //
+  // Measured 2026-09-30. Wired below: Domino's, Regis Healthcare, Alliance
+  // Aviation, Amplitude Energy (Cooper Energy), Hutchies, Mainfreight (NZ),
+  // Fonterra, Todd Corporation. Checked and NOT wired, each for a measured
+  // reason:
+  //   NAB, Stockland, TechnologyOne, Dyno Nobel, Sandfire, EVT, BMD, Uniting,
+  //     Avant Mutual, Built — ALREADY FED, by GitHub Actions writing under the
+  //     roster id (portal-cl, portal-sf, portal-t1, portal-tl, portal-dayforce,
+  //     portal-pu), with live rows in D1 on 2026-09-30. No Worker duplicate.
+  //   Opal HealthCare — Dayforce (jobs.dayforcehcm.com/en-AU/opalhealthcare/
+  //     CANDIDATEPORTAL). /api/geo/opalhealthcare/jobposting/search answers
+  //     this sandbox a bare 403, the same wall scripts/dayforce-to-d1.py
+  //     documents; its PORTALS table is where Opal belongs, not here.
+  //   Kane Constructions — ELMO tenant `kane`, boards KaneVIC/KaneNSW/KaneQLD,
+  //     8 posts each and all 24 are standing "(EOI - Kane VIC)" expressions of
+  //     interest closing 31/12/2030. No vacancies to read.
+  //   Mainfreight AU — ConnX tenant mainfreightaucareers: 5 rows, 4 flagged
+  //     isExpressionOfInterest and the fifth a graduate programme with no
+  //     place. Americas/Europe/Asia pages are static role descriptions and an
+  //     open-application form. Only the NZ Teamtailor board is wired.
+  //   Pro Medicus (Visage Imaging) — visageimaging.com/about/careers is a
+  //     static WordPress accordion (Berlin / San Diego roles, apply by email),
+  //     no ids, no dates: nothing distinguishes an open role from a filled one.
+  //   Resolute Mining, Magellan Financial Group, Atlas Arteria — no careers
+  //     board on rml.com.au, magellaninvestmentpartners.com or
+  //     atlasarteria.com (LinkedIn / recruiters only).
+  //   ABC Tissue — abctissue.com (the .com.au certificate is for another host)
+  //     has no careers page at all.
+  //   NGP Group — unidentified; the roster's own privateLogos note says no
+  //     domain identifies it, so there is no board to find.
+  //   Infratil — externally managed (Morrison), no staff of its own.
+  //
+  // Domino's Pizza Enterprises — applynow.net.au, the ANZ store + support
+  // board; 1,315 roles in one GET (see fetchApplyNow). CAVEAT FOR THE READER
+  // OF THE CARD: this is the network's store recruitment, and most Domino's
+  // ANZ stores are franchised; the board does not say which store is
+  // corporate, so these are Domino's-branded store roles rather than DPE's
+  // own payroll. The support-office board (dominos-supportoffice.
+  // applynow.net.au) prints "no vacancies" today, so whether its roles also
+  // appear on this board could not be measured; it is not a feed yet.
+  // homeHub null: the board is national and trans-Tasman, and 154 rows name a
+  // bare place with no state, which must stay unplaced rather than default.
+  {
+    id: "brisbane-dmp",
+    name: "Domino's Pizza Enterprises",
+    sector: "Consumer & Retail",
+    platform: "applynow",
+    endpoint: "https://dpe-jobs-portal.applynow.net.au/",
+    origin: "https://dpe-jobs-portal.applynow.net.au",
+    homeHub: null,
+    hubHints: [
+      // Measured NZ stores in Auckland's own suburbs.
+      ["new lynn, new zealand", "auckland"],
+      ["onehunga, new zealand", "auckland"],
+    ],
+  },
+  // Regis Healthcare — Avature (regis.avature.net), 6 a page, aria-label
+  // "112 results" and 112 read. The location cell is a BARE SUBURB, the
+  // facility's ("Toowong", "Kippa-Ring", "Tiwi"), across every state, and the
+  // job page adds nothing ("Office Location: Toowong"). So homeHub is null and
+  // hubHints name only suburbs MEASURED on this board that sit inside a hub
+  // metro; regional homes (Drysdale, Torquay, Mildura, Redlynch, Kirwan,
+  // Whitfield, Kuluin, Port Macquarie, Elermore Vale, Legana…) stay unplaced.
+  // Salisbury, Armadale and Woodlands exist in two states each and the board
+  // does not say which — left unplaced. Camp Hill's own job slugs read
+  // "Queensland-Australia-…", and Camberwell is Regis's Victorian office.
+  {
+    id: "melbourne-reg",
+    name: "Regis Healthcare",
+    sector: "Healthcare & Life Sciences",
+    platform: "avature",
+    endpoint: "https://regis.avature.net/en_US/careers/SearchJobs",
+    origin: "https://regis.avature.net",
+    pageSize: 6,
+    homeHub: null,
+    hubHints: [
+      ["kippa-ring", "brisbane"],
+      ["holland park west", "brisbane"],
+      ["sandgate", "brisbane"],
+      ["toowong", "brisbane"],
+      ["aspley", "brisbane"],
+      ["the gap", "brisbane"],
+      ["greenbank", "brisbane"],
+      ["wynnum west", "brisbane"],
+      ["camp hill", "brisbane"],
+      ["ferny grove", "brisbane"],
+      ["morayfield", "brisbane"],
+      ["chelmer", "brisbane"],
+      ["birkdale", "brisbane"],
+      ["lutwyche", "brisbane"],
+      ["mill park", "melbourne"],
+      ["camberwell", "melbourne"],
+      ["frankston", "melbourne"],
+      ["east malvern", "melbourne"],
+      ["blackburn south", "melbourne"],
+      ["davoren park", "adelaide"],
+      ["marleston", "adelaide"],
+      ["linden park", "adelaide"],
+      ["tiwi", "darwin"],
+    ],
+  },
+  // Alliance Aviation Services — AdLogic widget on careers.allianceairlines
+  // .com.au (page_id=4, read off the inline adlogicJobSearch config). 6 roles
+  // in one request, every one "…, Queensland, Australia" (Pinkenba, Nundah,
+  // Rockhampton). The standing "Expression of Interest Rockhampton" is dropped.
+  {
+    id: "brisbane-aqz",
+    name: "Alliance Aviation Services",
+    sector: "Consumer & Retail",
+    platform: "adlogic",
+    endpoint: "https://careers.allianceairlines.com.au/adlogic-jobs?action=searchJobs&page_id=4",
+    origin: "https://careers.allianceairlines.com.au",
+    homeHub: "brisbane",
+    skipTitles: /expression of interest/i,
+  },
+  // Amplitude Energy (formerly Cooper Energy; roster id adelaide-coe) —
+  // amplitudeenergy.com.au/work-with-us/careers links this ELMO board, which
+  // printed "No jobs found" on 2026-09-30. Wired anyway: the ELMO reader is
+  // the one Steadfast and Regis Resources use, an empty pull is never
+  // written, and the day it advertises the roles arrive without a new look.
+  {
+    id: "adelaide-coe",
+    name: "Cooper Energy",
+    sector: "Energy & Natural Resources",
+    platform: "elmo",
+    endpoint: "https://cooperenergy.elmotalent.com.au/careers/careers-1724882256/jobs",
+    origin: "https://cooperenergy.elmotalent.com.au",
+    homeHub: "adelaide",
+  },
+  // Hutchies (Hutchinson Builders) — its own CMS opportunities page; see
+  // fetchHutchies. 18 roles after the standing "General Applications" card.
+  // homeHub null: Hutchies is national and every role states its place.
+  {
+    id: "priv-hutchies-builders",
+    name: "Hutchies Builders",
+    sector: "Commercial construction",
+    platform: "hutchies",
+    endpoint: "https://www.hutchinsonbuilders.com.au/careers/opportunities",
+    origin: "https://www.hutchinsonbuilders.com.au",
+    homeHub: null,
+    skipTitles: /^general applications$/i,
+  },
+  // Mainfreight — NZ board only: Teamtailor, mainfreightnewzealand.au
+  // .teamtailor.com, linked as "Current Vacancies" from the NZ careers page.
+  // The board prints "14 jobs" and 14 are read. Places are branch names
+  // ("Mainfreight Transport Palmerston North", "Daily Freight Christchurch");
+  // the two Savill IT roles carry no place and their titles say Auckland,
+  // which is also the home fallback. Palmerston North, Blenheim, Timaru and
+  // Cromwell stay unplaced; Christchurch is HUB_MATCH's -> wellington.
+  {
+    id: "nz-mainfreight",
+    name: "Mainfreight",
+    sector: "Transport & Logistics",
+    platform: "teamtailor",
+    endpoint: "https://mainfreightnewzealand.au.teamtailor.com/jobs",
+    origin: "https://mainfreightnewzealand.au.teamtailor.com",
+    homeHub: "auckland",
+  },
+  // Fonterra — Avature (careers.fonterra.com), 6 a page, "31 results" and 31
+  // read. The LISTING's location span is REGION-level and prefixed with a
+  // hidden "location:" label that the listing parser reads past to the
+  // "posted:" label, so the job-page path (avatureDetail) is used: its
+  // Location field reads "Auckland", "Canterbury", "Hamilton & North
+  // Waikato", "Netherlands". 31 detail pages, ~17 s. Regions outside a hub
+  // metro (Canterbury, Taranaki, Otago, Southland, Northland, Manawatu) stay
+  // unplaced; Waikato/Taupo resolve through HUB_MATCH.
+  {
+    id: "nz-fonterra-co-operative-group",
+    name: "Fonterra Co-operative Group",
+    sector: "Dairy & Food",
+    platform: "avature",
+    endpoint: "https://careers.fonterra.com/careers/SearchJobs",
+    origin: "https://careers.fonterra.com",
+    pageSize: 6,
+    avatureDetail: true,
+    homeHub: "auckland",
+  },
+  // Todd Corporation (Todd Energy, Nova Energy, Todd Corporate Services) —
+  // JobAdder widget. todd.co.nz/working-at-todd lists three roles whose
+  // apply.jobadder.com/18221/<id>/pxhqmizqpzxunmxrolokdmnvi4?site=au2 links
+  // ALL 302 to /closed/ — the CMS list is stale. The widget keyed by that
+  // same board (AU2_pxhq…) is the live list: 2 roles, "Page 1 of 1",
+  // both apply links 200. homeHub null: one row is "Taranaki", which the
+  // widget reader cannot place and would otherwise default to Wellington.
+  {
+    id: "nz-todd-corporation",
+    name: "Todd Corporation",
+    sector: "Energy & Investment",
+    platform: "jobadder",
+    endpoint: "AU2_pxhqmizqpzxunmxrolokdmnvi4",
+    origin: "https://todd.co.nz/working-at-todd",
+    homeHub: null,
+  },
 ];
 
 /**
@@ -24486,10 +26406,18 @@ export const PORTAL_GROUPS: string[][] = [
     "shanghai-603288",
     "beijing-01810",
   ],
-  [],
+  [
+    "charlotte-low-w1",
+    "charlotte-low-w2",
+    "charlotte-low-w3",
+    "charlotte-low-w4",
+    "charlotte-low-w5",
+    "charlotte-low-w6",
+    "charlotte-low-w7",
+  ],
   ["newyork-c-r2a", "newyork-c-r2b", "newyork-c-r2c"],
-  [],
-  [],
+  ["cincinnati-kr-new", "cincinnati-kr-old", "zurich-cfr", "paris-rms", "tokyo-7974"],
+  ["houston-syy-g1", "houston-syy-g2", "newyork-jpm", "singapore-c6l"],
   ["houston-hpe-1"],
   ["houston-hpe-2"],
   ["houston-hpe-3"],
@@ -24519,14 +26447,87 @@ export const PORTAL_GROUPS: string[][] = [
   ["paris-ai-d"],
   ["minneapolis-mmm-a"],
   ["minneapolis-mmm-b"],
-  ["washington-noc-a"],
-  ["washington-noc-b"],
-  ["washington-noc-c"],
-  ["washington-noc-d"],
-  ["washington-noc-e"],
-  ["washington-noc-f"],
-  ["washington-noc-g"],
-  ["washington-noc-h"],
+  ["washington-noc-a", "washington-noc-b", "washington-noc-c", "washington-noc-d"],
+  ["toronto-td", "paris-en", "toronto-bns", "chicago-ual"],
+  [
+    "seattle-tmus-pt",
+    "seattle-tmus-ft",
+    "tokyo-9983-jp",
+    "tokyo-9983-EU_Theory",
+    "tokyo-9983-headquarters_eu_Uniqlo",
+    "tokyo-9983-store_staff_eu_Uniqlo",
+    "tokyo-9983-graduates_au_Uniqlo",
+    "tokyo-9983-graduates_eu_Uniqlo",
+    "tokyo-9983-headquarter_roles_vn_Uniqlo",
+    "tokyo-9983-headquarters_hk_GU",
+    "tokyo-9983-headquarters_hkm_Uniqlo",
+    "tokyo-9983-headquarters_id_Uniqlo",
+    "tokyo-9983-headquarters_my_Uniqlo",
+    "tokyo-9983-headquarters_ph_Uniqlo",
+    "tokyo-9983-headquarters_sg_Uniqlo",
+    "tokyo-9983-headquarters_th_Uniqlo",
+    "tokyo-9983-headquarters_tw_Uniqlo",
+    "tokyo-9983-headquarters_us_GU",
+    "tokyo-9983-headquarters_us_Uniqlo",
+    "tokyo-9983-retail_us_GU",
+    "tokyo-9983-retail_us_Theory",
+    "tokyo-9983-retail_us_Uniqlo",
+    "tokyo-9983-store_staff_au_Uniqlo",
+    "singapore-d05-sg",
+    "singapore-d05-hk",
+    "singapore-d05-asia",
+    "paris-dsy",
+    "seoul-000660",
+  ],
+  [
+    "dallas-t",
+    "toronto-bmo",
+    "tokyo-8306",
+    "london-rr",
+    "london-rr-grad",
+    "london-rr-appr",
+    "atlanta-hd-corp",
+    "atlanta-hd-atl-stores",
+  ],
+  ["washington-noc-e", "washington-noc-f", "washington-noc-g", "washington-noc-h"],
+  [
+    "paris-ac",
+    "zurich-lonn",
+    "dallas-mck",
+    "toronto-cm",
+    "paris-rno",
+    "hongkong-09988",
+    "minneapolis-unh",
+    "zurich-baer",
+    "brisbane-aqz",
+  ],
+  [
+    "tokyo-8411-americas",
+    "tokyo-8411-emea",
+    "tokyo-8411-jp",
+    "tokyo-8316",
+    "nz-fonterra-co-operative-group",
+    "london-vod",
+    "hongkong-00019-swireprops",
+    "zurich-knin",
+    "montreal-na",
+    "london-nwg",
+    "london-av",
+    "london-av-investors",
+    "singapore-s63",
+    "brisbane-dmp",
+    "paris-dg",
+    "melbourne-reg",
+    "london-shel",
+    "london-lloy",
+    "london-cpg-uk",
+    "hongkong-00066",
+    "calgary-cnq",
+    "atlanta-ups",
+    "seoul-035420",
+    "seoul-000270",
+  ],
+  [],
   ["cincinnati-pg-a"],
   ["cincinnati-pg-b"],
   ["cincinnati-pg-c"],
@@ -24868,6 +26869,28 @@ export const PORTAL_GROUPS: string[][] = [
   // four lightest packed groups (208, 217, 220, 224), each left under ~150 s
   // of measured walk, so the batch cost one cron trigger.
   ["paris-saf", "paris-or"],
+  // Group 231 and the reuse of 139, 141, 142, 171-173, 175, 176 — batch 13
+  // (2026-09-30). Northrop's eight windows, each sized for the old 30 s
+  // waitUntil, now share two awaited ticks (170: a-d, 174: e-h), freeing five;
+  // with the three spares and one new cron that is nine ticks, packed to
+  // ~200 s of measured walk each. Lowe's seven windows share ONE tick (139)
+  // so their seams cannot drift; Kroger's two buckets likewise (141). Group
+  // 177, Northrop's last old window, is left EMPTY as a spare tick.
+  [
+    "zurich-ubsg",
+    "calgary-enb",
+    "toronto-rcib",
+    "zurich-scmn",
+    "nz-mainfreight",
+    "dallas-aal",
+    "calgary-su",
+    "montreal-cnr",
+    "priv-hutchies-builders",
+    "montreal-bce",
+    "adelaide-coe",
+    "london-lgen",
+    "nz-todd-corporation",
+  ],
 ];
 
 const UA =
@@ -26008,6 +28031,22 @@ async function oracleByTotal(
   return out;
 }
 
+/**
+ * THE FINDER SERVES NOTHING AT AN OFFSET OF 10,000 OR MORE. Measured 2026-09-30
+ * on Kroger (CX_2001, TotalJobsCount 10,930): offset 9,975 serves 25 rows,
+ * offset 10,000 and 10,900 answer `TotalJobsCount: 0` with no rows — so a walk
+ * of a bigger board ends at exactly 10,000 on an "empty page" that is not the
+ * end of the board, and oracleByTotal takes it for one.
+ *
+ * Reading the rest from the other end does not work: POSTING_DATES_DESC is the
+ * only sortBy this finder honours — POSTING_DATES_ASC, TITLES_ASC/DESC and
+ * RELEVANCY all return the same default order, whose first 10,000 were all
+ * already in the descending walk. Such a board has to be PARTITIONED with
+ * `oracleFinder` (Kroger: by posting-date facet) so each part is under the cap;
+ * a walk that reaches it anyway is logged here rather than passed off as whole.
+ */
+const OR_OFFSET_CAP = 10_000;
+
 async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
   const readPage = async (i: number): Promise<{ rows: OracleReq[]; total: number } | null> => {
@@ -26022,7 +28061,9 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
     const loc = site.oracleLocationFacet
       ? `,selectedLocationsFacet=${site.oracleLocationFacet}`
       : "";
-    const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"}${loc},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
+    // Same rule for any other finder parameter (see SiteDef.oracleFinder).
+    const extra = site.oracleFinder ? `,${site.oracleFinder}` : "";
+    const finder = `findReqs;siteNumber=${site.siteNumber ?? "CX_1"}${loc}${extra},limit=${OR_PAGE},offset=${i * OR_PAGE},sortBy=POSTING_DATES_DESC`;
     const url =
       `${site.endpoint}/hcmRestApi/resources/latest/recruitingCEJobRequisitions` +
       `?onlyData=true&expand=requisitionList.secondaryLocations&finder=${encodeURIComponent(finder)}`;
@@ -26045,6 +28086,12 @@ async function fetchOracle(site: SiteDef): Promise<PortalJob[]> {
   const list =
     (await oracleByTotal(readPage, max, site.key ?? site.id)) ??
     (await pagedParallel<OracleReq>(async (i) => (await readPage(i))?.rows ?? null, OR_PAGE, max));
+  if (list.length >= OR_OFFSET_CAP) {
+    console.log(
+      `oracle ${site.key ?? site.id}: walk reached the finder's ${OR_OFFSET_CAP}-offset ceiling ` +
+        `— the board is bigger than one walk can read; partition it (oracleFinder)`,
+    );
+  }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   for (const r of list) {
@@ -26664,9 +28711,10 @@ async function phenomRefine(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      lang: "en_us",
+      // en_us / us unless the tenant needs its own — see SiteDef.phenomLocale.
+      lang: site.phenomLocale?.lang ?? "en_us",
       deviceType: "desktop",
-      country: "us",
+      country: site.phenomLocale?.country ?? "us",
       pageName: "search-results",
       ddoKey: "refineSearch",
       sortBy: site.phenomSort ?? "",
@@ -26760,6 +28808,75 @@ async function phenomByFacet(
   return out;
 }
 
+/**
+ * The whole board as one request per LEAF of a nested facet partition (see
+ * SiteDef.phenomFacets), or null when it could not be read whole. A value
+ * over PH_MAX is split by the next facet; the plan is built from the board's
+ * own aggregations on every run, so a new value is a new request.
+ */
+async function phenomNested(
+  site: SiteDef,
+  facets: string[],
+  boardTotal: number,
+): Promise<PhenomJob[] | null> {
+  const label = site.key ?? site.id;
+  const leaves: Record<string, string[]>[] = [];
+  const plan = async (
+    sel: Record<string, string[]>,
+    count: number,
+    depth: number,
+  ): Promise<boolean> => {
+    if (count <= PH_MAX) {
+      leaves.push(sel);
+      return true;
+    }
+    const facet = facets[depth];
+    if (!facet) {
+      console.log(`phenom ${label}: ${JSON.stringify(sel)} has ${count} roles and no facet left`);
+      return false;
+    }
+    const agg = await phenomRefine(site, 0, 1, sel, [facet]);
+    const values = agg?.data?.aggregations?.find((a) => a.field === facet)?.value ?? {};
+    const entries = Object.entries(values).filter(([, n]) => n > 0);
+    const sum = entries.reduce((a, [, n]) => a + n, 0);
+    // Under the parent's count means some roles carry no value for this facet
+    // and would be read by no leaf.
+    if (sum < count) {
+      console.log(
+        `phenom ${label}: ${facet} under ${JSON.stringify(sel)} sums to ${sum} of ${count} — not read`,
+      );
+      return false;
+    }
+    for (const [v, n] of entries) {
+      if (!(await plan({ ...sel, [facet]: [v] }, n, depth + 1))) return false;
+    }
+    return true;
+  };
+  if (!(await plan({}, boardTotal, 0))) return null;
+  const read = async (sel: Record<string, string[]>): Promise<PhenomJob[] | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const r = await phenomRefine(site, 0, PH_MAX, sel);
+      const jobs = r?.data?.jobs;
+      if (jobs && jobs.length >= (Number(r?.totalHits) || 0)) return jobs;
+    }
+    return null;
+  };
+  const out: PhenomJob[] = [];
+  for (let i = 0; i < leaves.length; i += PAGE_CONCURRENCY) {
+    const batch = leaves.slice(i, i + PAGE_CONCURRENCY);
+    const got = await Promise.all(batch.map(read));
+    for (let k = 0; k < got.length; k++) {
+      const jobs = got[k];
+      if (!jobs) {
+        console.log(`phenom ${label}: ${JSON.stringify(batch[k])} could not be read whole`);
+        return null;
+      }
+      out.push(...jobs);
+    }
+  }
+  return out;
+}
+
 async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
   const first = await getText(`${site.endpoint}?keywords=`);
   const island = first ? phenomIsland(first) : null;
@@ -26781,14 +28898,27 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
   // phenomFacet reads the board as one request per facet value instead of
   // paging it at all — see the field. Null means it could not read the board
   // whole, and a partial board is not returned.
-  const byFacet = site.phenomFacet ? await phenomByFacet(site, site.phenomFacet, total) : null;
-  if (site.phenomFacet && !byFacet) return [];
-  const probe = byFacet ? null : await phenomWidget(site, 0, size);
+  const byFacet = site.phenomFacets
+    ? await phenomNested(site, site.phenomFacets, total)
+    : site.phenomFacet
+      ? await phenomByFacet(site, site.phenomFacet, total)
+      : null;
+  if ((site.phenomFacet || site.phenomFacets) && !byFacet) return [];
+  const probeRes = byFacet ? null : await phenomRefine(site, 0, size);
+  const probe = probeRes?.data?.jobs ?? null;
+  // THE ISLAND'S TOTAL CAN BE WRONG, and low. UPS is the case (measured
+  // 2026-09-30): jobs-ups.com serves an island of `hits: 1, totalHits: 1`
+  // with or without ?keywords=, while the widget reports 748 and pages them
+  // all. The walk takes the larger of the two. On every tenant read before
+  // this they agree; under phenomSelected the widget's figure is the
+  // partition's and the island's the board's, so the island's still wins
+  // there and nothing changes.
+  const walkTotal = Math.max(total, Number(probeRes?.totalHits) || 0);
   if (byFacet) {
     rows.push(...byFacet);
   } else if (probe?.length) {
     rows.push(...probe);
-    const pages = Math.min(Math.ceil(total / size), max);
+    const pages = Math.min(Math.ceil(walkTotal / size), max);
     if (pages > 1) {
       rows.push(
         ...(await pagedParallel<PhenomJob>(
@@ -26843,7 +28973,7 @@ async function fetchPhenom(site: SiteDef): Promise<PortalJob[]> {
     const unspecified = (r.cityState ?? "").trim().toUpperCase() === "UN SPECIFIED";
     const loc = clean(
       String(
-        unspecified
+        (site.phenomUseLocation && r.location) || unspecified
           ? (r.location ?? "")
           : (r.cityState ?? [r.city, r.state].filter(Boolean).join(", ") ?? r.country ?? ""),
       ),
@@ -27098,10 +29228,29 @@ async function fetchSmartRecruiters(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  // A FAILED PAGE USED TO END THE WALK AS IF IT WERE THE LAST ONE (`?? []`
+  // then `!rows.length`). With Accor's 6,354 postings (64 pages, measured
+  // 2026-09-30) one dropped request would archive a random prefix of the
+  // board. Now a page that does not arrive is retried, and a page the board's
+  // own totalFound says exists that still cannot be read fails the pull.
+  let total = 0;
   for (let page = 0; page < max; page++) {
     const url = `https://api.smartrecruiters.com/v1/companies/${site.endpoint}/postings?limit=${SR_PAGE}&offset=${page * SR_PAGE}`;
-    const data = await getJson<{ content?: SrPosting[]; totalFound?: number }>(url);
-    const rows = data?.content ?? [];
+    let data: { content?: SrPosting[]; totalFound?: number } | null = null;
+    for (let attempt = 0; attempt < 3 && !data; attempt++) {
+      data = await getJson<{ content?: SrPosting[]; totalFound?: number }>(url);
+    }
+    if (!data) {
+      if (page * SR_PAGE < total) {
+        console.log(
+          `smartrecruiters ${site.key ?? site.id}: page ${page + 1} unreadable at ${out.length} of ${total} — not written`,
+        );
+        return [];
+      }
+      break;
+    }
+    if (page === 0) total = Number(data.totalFound ?? 0);
+    const rows = data.content ?? [];
     if (!rows.length) break;
     for (const r of rows) {
       const title = (r.name || "").trim();
@@ -27426,83 +29575,95 @@ async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  let advertised = 0;
-  for (let page = 1; page <= max; page++) {
-    const json = await getJson<TaleoPage>(
-      `${site.endpoint}/careersection/rest/jobboard/searchjobs?lang=en&portal=${site.portalNo ?? ""}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          tz: "GMT+10:00",
-          tzname: "Australia/Sydney",
+  // One walk per language (SiteDef.taleoLangs; "en" alone by default), merged
+  // by requisition id. The end-of-list test counts ids new to THIS language's
+  // walk, not to the merged set: a second language's first page is mostly
+  // roles the first already read, and "nothing added" there is not the end.
+  for (const lang of site.taleoLangs ?? ["en"]) {
+    const walked = new Set<string>();
+    let langAdvertised = 0;
+    for (let page = 1; page <= max; page++) {
+      const json = await getJson<TaleoPage>(
+        `${site.endpoint}/careersection/rest/jobboard/searchjobs?lang=${lang}&portal=${site.portalNo ?? ""}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tz: "GMT+10:00",
+            tzname: "Australia/Sydney",
+          },
+          body: JSON.stringify({
+            multilineEnabled: false,
+            sortingSelection: { sortBySelectionParam: "3", ascendingSortingOrder: "false" },
+            fieldData: { fields: { KEYWORD: "", LOCATION: "" }, valid: true },
+            filterSelectionParam: { searchFilterSelections: [] },
+            advancedSearchFiltersSelectionParam: { searchFilterSelections: [] },
+            pageNo: page,
+          }),
         },
-        body: JSON.stringify({
-          multilineEnabled: false,
-          sortingSelection: { sortBySelectionParam: "3", ascendingSortingOrder: "false" },
-          fieldData: { fields: { KEYWORD: "", LOCATION: "" }, valid: true },
-          filterSelectionParam: { searchFilterSelections: [] },
-          advancedSearchFiltersSelectionParam: { searchFilterSelections: [] },
-          pageNo: page,
-        }),
-      },
-    );
-    const rows = json?.requisitionList;
-    if (!rows || !rows.length) break;
-    advertised = json?.pagingData?.totalCount ?? advertised;
-    let added = 0;
-    for (const r of rows) {
-      const id = r.jobId ?? r.contestNo ?? "";
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      const cells = r.column ?? [];
-      const title = clean(cells[r.linkedColumn ?? 0] ?? "");
-      if (!title) continue;
-      // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
-      // prefixes each with country/state codes, which hubFor cannot read, so
-      // the trailing segment is what gets matched to a hub.
-      let loc = "";
-      const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
-      if (rawLoc) {
-        try {
-          const parsed = JSON.parse(rawLoc) as string[];
-          loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
-        } catch {
-          loc = clean(rawLoc);
-        }
-      }
-      // Tenants disagree on how the date cell is written and there is no header
-      // to say which column it is, so the cell is found by shape. Measured
-      // 2026-08-05: Sonic HealthPlus prints "04-Aug-2026", Ansell prints
-      // "Aug 5, 2026". Date.parse reads both, but only once the right cell has
-      // been picked out — matching one shape alone silently dated a whole board
-      // to the day it was scraped.
-      const posted =
-        cells.find((c) => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ??
-        cells.find((c) => /^[A-Za-z]{3}\.? \d{1,2}, \d{4}$/.test(c ?? "")) ??
-        "";
-      out.push(
-        job(
-          site,
-          title,
-          loc,
-          `${site.origin}/careersection/jobdetail.ftl?job=${encodeURIComponent(id)}`,
-          posted ? isoDay(posted) : today(),
-          "Career portal",
-        ),
       );
-      added++;
+      const rows = json?.requisitionList;
+      if (!rows || !rows.length) break;
+      langAdvertised = json?.pagingData?.totalCount ?? langAdvertised;
+      let added = 0;
+      for (const r of rows) {
+        const id = r.jobId ?? r.contestNo ?? "";
+        if (!id || walked.has(id)) continue;
+        walked.add(id);
+        added++;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const cells = r.column ?? [];
+        const title = clean(cells[r.linkedColumn ?? 0] ?? "");
+        if (!title) continue;
+        // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
+        // prefixes each with country/state codes, which hubFor cannot read, so
+        // the trailing segment is what gets matched to a hub.
+        let loc = "";
+        const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
+        if (rawLoc) {
+          try {
+            const parsed = JSON.parse(rawLoc) as string[];
+            loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
+          } catch {
+            loc = clean(rawLoc);
+          }
+        }
+        // Tenants disagree on how the date cell is written and there is no header
+        // to say which column it is, so the cell is found by shape. Measured
+        // 2026-08-05: Sonic HealthPlus prints "04-Aug-2026", Ansell prints
+        // "Aug 5, 2026". Date.parse reads both, but only once the right cell has
+        // been picked out — matching one shape alone silently dated a whole board
+        // to the day it was scraped.
+        const posted =
+          cells.find((c) => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ??
+          cells.find((c) => /^[A-Za-z]{3}\.? \d{1,2}, \d{4}$/.test(c ?? "")) ??
+          "";
+        out.push(
+          job(
+            site,
+            title,
+            loc,
+            `${site.origin}/careersection/jobdetail.ftl?job=${encodeURIComponent(id)}`,
+            posted ? isoDay(posted) : today(),
+            "Career portal",
+          ),
+        );
+      }
+      // Clamped page (every id already seen in this walk) = end of list.
+      if (added === 0) break;
     }
-    // Clamped page (every id already seen) = end of list.
-    if (added === 0) break;
-  }
-  // The board's own total routinely exceeds what it will serve anonymously
-  // (Sonic HealthPlus: 22 advertised, 18 returned, stable across pages and
-  // across multiline on/off). Collected is what we archive; the gap is logged
-  // rather than back-filled, because inventing the difference is exactly the
-  // failure mode this codebase is built to avoid.
-  if (advertised && out.length < advertised) {
-    console.log(`[taleo] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+    // The board's own total routinely exceeds what it will serve anonymously
+    // (Sonic HealthPlus: 22 advertised, 18 returned, stable across pages and
+    // across multiline on/off). Collected is what we archive; the gap is logged
+    // rather than back-filled, because inventing the difference is exactly the
+    // failure mode this codebase is built to avoid. Each language states its own
+    // total, so the gap is checked per language.
+    if (langAdvertised && walked.size < langAdvertised) {
+      console.log(
+        `[taleo] ${site.name}${lang === "en" ? "" : ` (${lang})`}: collected ${walked.size} of ${langAdvertised} advertised`,
+      );
+    }
   }
   return out;
 }
@@ -30459,15 +32620,35 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
       FacetTerm: "",
       FacetType: "0",
       SearchResultsModuleName: "Search Results",
-      SearchFiltersModuleName: "Search Filters",
-      SortCriteria: "0",
+      // See SiteDef.radancyNoFilters: left named for every tenant but the ones
+      // that opt out, because on some tenants naming it CHANGES the result set.
+      SearchFiltersModuleName: site.radancyNoFilters ? "" : "Search Filters",
+      // "0" unless the site says otherwise — see SiteDef.radancySort.
+      SortCriteria: site.radancySort ?? "0",
       SortDirection: "0",
       SearchType: "5",
       PostalCode: "",
     });
-    const json = await getJson<{ results?: string }>(`${site.endpoint}?${params.toString()}`);
+    // A PAGE THAT COULD NOT BE READ IS NOT THE END OF THE BOARD. `if (!html)
+    // break` ended the walk on a timeout exactly as on the last page, and the
+    // rows read so far were archived as the board. Once the total is known
+    // (page 1), a failed page is retried and then fails the pull — an empty
+    // pull is never written, so yesterday's rows stand. Added 2026-09-30 for
+    // Vinci, whose 5,784 roles are twelve ~2.5 MB pages.
+    let json: { results?: string } | null = null;
+    for (let attempt = 0; attempt < 3 && !json?.results; attempt++) {
+      json = await getJson<{ results?: string }>(`${site.endpoint}?${params.toString()}`);
+    }
     const html = json?.results;
-    if (!html) break;
+    if (!html) {
+      if (page > 1 && out.length < total) {
+        console.log(
+          `radancy ${site.key ?? site.id}: page ${page} unreadable at ${out.length} of ${total} — not written`,
+        );
+        return [];
+      }
+      break;
+    }
     if (page === 1) {
       total = Number(html.match(/data-total-results="(\d+)"/i)?.[1] ?? 0);
       // No total means the section shape changed. Stopping is right: paging on
@@ -30488,12 +32669,22 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
     // close and stored "" for all 2,900 roles; one empty inner span is skipped.
     // Takeda (2026-09-30) names the span plain `class="location"`, which the
     // two names above missed — "" for all 868 roles — so it is the third name.
+    // UnitedHealth Group (2026-09-30) numbers the span, `class="job-location 1"`
+    // ("Overland Park, Kansas"), which the exact-class match read as "" for
+    // 5,583 of 5,594 roles; a trailing number after the name is accepted.
     for (const li of html.split(/<li[\s>]/i).slice(1)) {
       const a = li.match(/<a href="([^"]+)"[^>]*data-job-id="([^"]*)"/i);
       if (!a) continue;
       const href = clean(a[1]);
       const id = clean(a[2]) || href;
-      const title = clean(li.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)?.[1] ?? "");
+      // Vinci (2026-09-30) has no heading in the card: the title is
+      // `<span class="search-results--link-jobtitle">`, read only when there
+      // is no <h2>/<h3>, so no earlier tenant's title can change.
+      const title = clean(
+        li.match(/<h[23][^>]*>([\s\S]*?)<\/h[23]>/i)?.[1] ??
+          li.match(/<span class="search-results--link-jobtitle">([\s\S]*?)<\/span>/i)?.[1] ??
+          "",
+      );
       if (!title || seen.has(id)) continue;
       seen.add(id);
       added++;
@@ -30503,7 +32694,11 @@ async function fetchRadancy(site: SiteDef): Promise<PortalJob[]> {
           title,
           clean(
             li.match(
-              /class="(?:job-location|search-results-job-location|location)"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
+              // Vinci's is `class="job-location search-results--link-location"`,
+              // added as that exact value. A general "known name followed by
+              // anything" was tried and changed 46 stored locations on Takeda
+              // and Capital One (their `location <modifier>` spans), so no.
+              /class="(?:job-location|search-results-job-location|location|job-location search-results--link-location)(?:\s+\d+)?"[^>]*>(?:\s*<span[^>]*>\s*<\/span>)?([\s\S]*?)<\/span>/i,
             )?.[1] ?? "",
           ).replace(/^Location:\s*/i, ""),
           href.startsWith("http") ? href : `${site.origin}${href}`,
@@ -33527,6 +35722,7 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
   );
   if (rest.some((p) => p === null)) return [];
   const byUrl = new Map<string, PortalJob>();
+  const cards = new Map<string, { title: string; loc: string; cat: string }>();
   for (const { html } of [first, ...rest] as { html: string }[]) {
     for (const card of html.split(/<li class="pg-list-cassette/).slice(1)) {
       const href = /<a href="(https:\/\/hrmos\.co\/pages\/[^"]+\/jobs\/[^"]+)"/.exec(card)?.[1];
@@ -33538,6 +35734,7 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
       const loc = clean(
         /<li class="sg-tag-location">([\s\S]*?)<\/li>/.exec(tags)?.[1] ?? "",
       ).replace(/\s*他(?:\s*\(\d+\))?\s*$/, "");
+      cards.set(href, { title, loc, cat: cat || "Career portal" });
       byUrl.set(href, job(site, title, loc, href, "", cat || "Career portal"));
     }
   }
@@ -33545,6 +35742,35 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
     console.log(`hrmos ${site.key ?? site.id}: ${byUrl.size} of ${first.total} — feed skipped`);
     return [];
   }
+  if (!site.hrmosDetailPlace) return [...byUrl.values()];
+  // SiteDef.hrmosDetailPlace: a card with no location is completed from its
+  // own job page's 勤務地 row — `<th>勤務地</th><td><ul></ul><pre>東京都\n
+  // （就業場所の変更の範囲）…</pre></td>` — first line only, the rest being the
+  // statutory "may be transferred" note. A page that cannot be read fails the
+  // pull, as fanuc's does: the place is only there.
+  const blank = [...cards.entries()].filter(([, c]) => !c.loc);
+  const places = await b11ePool(blank, PAGE_CONCURRENCY, async ([href]) => {
+    const page = await getText(href);
+    if (!page) return null;
+    const cell = /<th>\s*勤務地\s*<\/th>\s*<td>([\s\S]*?)<\/td>/.exec(page)?.[1] ?? "";
+    const first =
+      cell
+        .replace(/<\/?(?:pre|br\s*\/?)>/gi, "\n")
+        .split(/\n/)
+        .map(clean)
+        .find(Boolean) ?? "";
+    // "ニューヨーク ※入行後数か月東京にて勤務後…" (SMBC): the note after ※
+    // names a city the role is NOT in; so does the statutory
+    // "（就業場所の変更の範囲）…" when it shares the line (Mizuho).
+    return first.replace(/\s*(?:※|（就業場所の変更の範囲）)[\s\S]*$/, "");
+  });
+  if (places.some((p) => p === null)) {
+    console.log(`hrmos ${site.key ?? site.id}: a job page could not be read — feed skipped`);
+    return [];
+  }
+  blank.forEach(([href, c], i) => {
+    byUrl.set(href, job(site, c.title, places[i] ?? "", href, "", c.cat));
+  });
   return [...byUrl.values()];
 }
 
@@ -33676,6 +35902,10 @@ const SF_CLASSIC_PLACE: RegExp[] = [
   /^(?:job\s+search\s+)?location$/i,
   /^(?:job\s+search\s+)?state$/i,
   /^(?:job\s+search\s+)?country$/i,
+  // American Airlines (americairP) labels its only place filter "Posting
+  // Country" (measured 2026-09-30, "United States" on all 102 roles). Last, so
+  // it is read only by a tenant that labels nothing more specific.
+  /^posting\s+country$/i,
 ];
 
 async function fetchSfClassicXml(site: SiteDef): Promise<PortalJob[]> {
@@ -36008,7 +38238,1594 @@ async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
   });
 }
 
+// ── batch 13: K — readers ────────────────────────────────────────────────────
+
+// ── m-cloud (Symphony Talent CWS job API) — The Home Depot ──────────────────
+/**
+ * careers.homedepot.com is a WordPress site whose search page reads Symphony
+ * Talent's CWS index directly from the browser:
+ *
+ *   GET https://jobsapi-internal.m-cloud.io/api/job?Organization=1814
+ *       &facet[]=ats_portalid:<a>~<b>   (tilde = OR within one facet)
+ *       &latitude=&longitude=&LocationRadius=<miles>
+ *       &sortfield=id&sortorder=ascending&Limit=100&offset=<1-based>
+ *   → {totalHits, queryResult:[{id, title, primary_city, primary_state,
+ *       primary_country, url, open_date, primary_category, ats_portalid, …}]}
+ *
+ * A different API from the one fetchSymphony reads (jobsapi-google…/api/job/
+ * search, 10 a page, 0-based) — same vendor, different index and paging.
+ *
+ * Measured 2026-09-30 on Organization 1814 (The Home Depot):
+ * - `Limit=100` is honoured (a page of 100 is ~0.95 MB, descriptions included —
+ *   there is no field selector, so the CPU cost is in the JSON parse).
+ * - `offset` is ONE-BASED. offset=0 and offset=1 return the same first row, and
+ *   offset=5 starts at the fifth. A 0-based walk (offset = i*100) repeats one
+ *   row per page boundary and never reads the last one.
+ * - The default order is not a stable pager; `sortfield=id&sortorder=ascending`
+ *   is (the id is unique), so the walk is sorted by it.
+ * - `totalHits` is the filtered count and bounds the walk. A page that cannot
+ *   be read after one retry abandons the pull (allPages), so a transient
+ *   failure never archives a truncated board.
+ * - The location is `primary_city` + `primary_state` ("Atlanta", "GA"); a
+ *   role's other sites are in addtnl_locations and are not read.
+ */
+interface McloudJob {
+  id?: number | string;
+  title?: string;
+  primary_city?: string;
+  primary_state?: string;
+  primary_country?: string;
+  url?: string;
+  open_date?: string;
+  primary_category?: string;
+}
+
+const MC_PAGE = 100;
+
+async function fetchMcloud(site: SiteDef): Promise<PortalJob[]> {
+  const label = `mcloud ${site.key ?? site.id}`;
+  const url = (i: number) =>
+    `${site.endpoint}&sortfield=id&sortorder=ascending&Limit=${MC_PAGE}&offset=${1 + i * MC_PAGE}`;
+  const read = async (i: number) =>
+    await getJson<{ totalHits?: number; queryResult?: McloudJob[] }>(url(i), {
+      headers: { Referer: site.origin + "/" },
+    });
+  const first = (await read(0)) ?? (await read(0));
+  const total = Number(first?.totalHits) || 0;
+  if (!first || !total) return [];
+  const pages = Math.min(Math.ceil(total / MC_PAGE), site.maxPages ?? DEFAULT_MAX_PAGES);
+  const rest = await allPages<McloudJob>(
+    pages - 1,
+    async (i) => (await read(i + 1))?.queryResult ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...(first.queryResult ?? []), ...rest]) {
+    const title = clean(j.title ?? "");
+    const id = String(j.id ?? "");
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const country = (j.primary_country ?? "").trim();
+    const loc = [j.primary_city, j.primary_state, country && country !== "US" ? country : ""]
+      .map((x) => (x ?? "").trim())
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        j.url || `${site.origin}/job/${id}/`,
+        isoDay(j.open_date ?? "") || today(),
+        clean(j.primary_category ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+/**
+ * Placement hints for the US boards wired in batch 13 K, built from one table
+ * so every board spells a place the way it spells it:
+ *
+ *   "Irving, Texas" (AT&T, T-Mobile)      → "<city>, <state name>"
+ *   "USA, TX, Irving" (McKesson)          → "<st>, <city>"
+ *   "Irving, TX" / "Kent, WA 2456" (Lowe's, Home Depot, Oracle) → "<city>, <st>"
+ *   "USA:TX:Hurst:980 …" (AT&T stores)    → "<st>:<city>:"
+ *
+ * THE METROS are Census CBSAs, the county rule cityRosters.ts states for US
+ * hubs, listed only for the hubs these employers' rosters sit on (and New York,
+ * whose boroughs every national board names). A suburb outside the table is
+ * left to HUB_MATCH and usually stays unplaced, which is honest.
+ *
+ * THE TRAPS, all measured on these boards 2026-09-30 before the table existed:
+ *   - Washington STATE. "Kent, WA 2456" (Lowe's store number) has its " wa 2456"
+ *     rewritten to " wa," by hubFor's postcode rule and lands on PERTH; "USA, WA,
+ *     Kent" does the same without the rule (McKesson 7 rows). "Bellevue,
+ *     Washington" — T-Mobile's head office — matches HUB_MATCH "washington",
+ *     i.e. DC. So the Seattle/Portland metro needles come first and every other
+ *     Washington-state spelling is then nulled.
+ *   - Namesakes of hub cities: Melbourne FL, Paris TX/TN/KY, London KY/OH/ON,
+ *     Sydney NS, Wellington FL/KS, Portland ME/TX, Atlanta TX, Dallas GA (which
+ *     IS Atlanta's metro — Paulding County), Newman GA ("newman" is a Pilbara
+ *     needle), Gladstone OR/MO, Brisbane CA (San Francisco's metro), Charlotte
+ *     Hall / Port Charlotte / Charlottesville, Washington PA/MO/NC/…
+ */
+function b13kUsHints(): [string, string | null][] {
+  const METROS: [hub: string, st: string, state: string, cities: string][] = [
+    [
+      "dallas",
+      "tx",
+      "texas",
+      "dallas|fort worth|ft worth|arlington|irving|las colinas|plano|frisco|garland|mckinney|grand prairie|mesquite|carrollton|denton|richardson|lewisville|allen|flower mound|grapevine|coppell|addison|farmers branch|mansfield|euless|bedford|hurst|north richland hills|keller|southlake|rowlett|rockwall|wylie|little elm|the colony|prosper|cedar hill|desoto|duncanville|lancaster|haltom city|weatherford|burleson|waxahachie|forney|sachse|murphy|roanoke|westlake|midlothian|haslet|saginaw|balch springs|red oak|celina|anna|princeton|terrell|seagoville|colleyville|benbrook|crowley|azle|granbury|cleburne|justin|argyle|trophy flower",
+    ],
+    [
+      "houston",
+      "tx",
+      "texas",
+      "houston|the woodlands|sugar land|katy|pasadena|pearland|league city|baytown|conroe|spring|humble|cypress|missouri city|stafford|friendswood|tomball|kingwood|richmond|rosenberg|webster|la porte|deer park|channelview|galveston|texas city|bellaire|seabrook|kemah|magnolia|fulshear|atascocita|clear lake|manvel|alvin|dickinson|la marque|cleveland|dayton|jersey village|shenandoah|porter|new caney|sealy|angleton|lake jackson|freeport|clute|brookshire|waller|hockley",
+    ],
+    [
+      "atlanta",
+      "ga",
+      "georgia",
+      "atlanta|sandy springs|alpharetta|roswell|marietta|smyrna|kennesaw|duluth|norcross|lawrenceville|decatur|dunwoody|johns creek|peachtree corners|peachtree city|stockbridge|mcdonough|conyers|douglasville|buford|suwanee|cumming|woodstock|canton|tucker|chamblee|doraville|brookhaven|east point|college park|hapeville|union city|fayetteville|newnan|snellville|lilburn|lithonia|stone mountain|austell|mableton|powder springs|acworth|cartersville|covington|locust grove|forest park|morrow|jonesboro|riverdale|ellenwood|loganville|dallas|hiram|villa rica|carrollton|fairburn|palmetto|tyrone|dacula|grayson|sugar hill|winder|monroe|hampton|griffin|milton|holly springs|ball ground|braselton|redan|scottdale|south fulton|chattahoochee hills|pennant park|vinings|lithia springs|dawsonville|lovejoy|jasper|stonecrest",
+    ],
+    [
+      "seattle",
+      "wa",
+      "washington",
+      "seattle|bellevue|redmond|kirkland|renton|kent|tacoma|everett|bothell|issaquah|federal way|auburn|tukwila|lynnwood|puyallup|lakewood|sammamish|woodinville|burien|seatac|des moines|shoreline|edmonds|mukilteo|marysville|lake stevens|gig harbor|bonney lake|snoqualmie|mill creek|mountlake terrace|covington|maple valley|kenmore|mercer island|university place|fife|sumner|spanaway|arlington|monroe|dupont|graham|north bend|enumclaw|snohomish",
+    ],
+    ["portland", "wa", "washington", "vancouver|camas|battle ground|ridgefield|washougal"],
+    [
+      "charlotte",
+      "nc",
+      "north carolina",
+      "charlotte|mooresville|concord|gastonia|huntersville|matthews|mint hill|cornelius|davidson|kannapolis|monroe|pineville|belmont|statesville|salisbury|indian trail|waxhaw|harrisburg|mount holly|lincolnton|denver|stallings|albemarle|shelby|troutman|china grove",
+    ],
+    [
+      "charlotte",
+      "sc",
+      "south carolina",
+      "rock hill|fort mill|indian land|lake wylie|tega cay|lancaster|york|clover",
+    ],
+    [
+      "cincinnati",
+      "oh",
+      "ohio",
+      "cincinnati|mason|west chester|fairfield|hamilton|middletown|blue ash|sharonville|loveland|milford|lebanon|springdale|forest park|harrison|monroe|batavia|norwood|cheviot|reading|montgomery|anderson township|kings mills|franklin|trenton|oxford|amelia|mount orab|georgetown|springboro",
+    ],
+    [
+      "cincinnati",
+      "ky",
+      "kentucky",
+      "florence|covington|newport|erlanger|hebron|union|independence|burlington|fort thomas|fort mitchell|highland heights|alexandria|walton|crestview hills|cold spring|dayton|bellevue|wilder",
+    ],
+    ["cincinnati", "in", "indiana", "lawrenceburg|aurora|greendale"],
+    [
+      "chicago",
+      "il",
+      "illinois",
+      "chicago|schaumburg|naperville|aurora|joliet|elgin|evanston|oak brook|des plaines|arlington heights|rosemont|itasca|downers grove|lombard|oak lawn|skokie|northbrook|deerfield|lake forest|waukegan|elk grove village|bolingbrook|romeoville|hoffman estates|palatine|wheeling|glenview|lisle|wheaton|mount prospect|bensenville|franklin park|cicero|orland park|tinley park|lake zurich|bedford park|elmhurst|oak park|addison|bartlett|st. charles|st charles|saint charles|batavia|plainfield|lockport|minooka|channahon|mundelein|vernon hills|libertyville|buffalo grove|woodridge|westmont|burr ridge|hodgkins|mccook|university park|monee|crest hill|crystal lake|algonquin|huntley|mchenry|west chicago|carol stream|glendale heights|hanover park|streamwood|melrose park|northlake|niles|morton grove|park ridge|harvey|calumet city|chicago heights|matteson|frankfort|mokena|new lenox|homer glen|lemont|darien|oswego|montgomery|yorkville|north aurora|gurnee|round lake|antioch|zion|highland park|wilmette|winnetka|lincolnshire|riverwoods|bannockburn|lake bluff|north chicago|forest park|berwyn|summit|bridgeview|alsip|oak forest|countryside|la grange|hinsdale|oakbrook terrace|villa park|roselle|bloomingdale|wood dale|elwood|manhattan|shorewood|dekalb|sycamore",
+    ],
+    [
+      "chicago",
+      "in",
+      "indiana",
+      "hammond|gary|merrillville|east chicago|schererville|crown point|portage|valparaiso|highland|munster|hobart|whiting|griffith|dyer|st. john|chesterton",
+    ],
+    ["chicago", "wi", "wisconsin", "kenosha|pleasant prairie"],
+    [
+      "minneapolis",
+      "mn",
+      "minnesota",
+      "minneapolis|saint paul|st. paul|st paul|bloomington|brooklyn park|plymouth|maple grove|woodbury|eagan|eden prairie|minnetonka|burnsville|apple valley|lakeville|edina|st. louis park|st louis park|roseville|coon rapids|blaine|shakopee|fridley|richfield|golden valley|chaska|chanhassen|maplewood|inver grove heights|cottage grove|oakdale|shoreview|andover|ramsey|elk river|savage|prior lake|stillwater|hopkins|new brighton|white bear lake|arden hills|mendota heights|brooklyn center|crystal|new hope|champlin|rogers|otsego|monticello|buffalo|hastings|forest lake|lino lakes|vadnais heights|anoka|northfield|mounds view|little canada|wayzata|medina|waconia|belle plaine|cambridge|rosemount|farmington|south st. paul|west st. paul|st. michael|albertville|hugo|columbia heights|spring lake park|ham lake|isanti|north branch",
+    ],
+    ["minneapolis", "wi", "wisconsin", "hudson|river falls|new richmond"],
+    [
+      "newyork",
+      "ny",
+      "new york",
+      "new york|manhattan|brooklyn|bronx|queens|staten island|long island city|jamaica|flushing|astoria|elmhurst|college point|yonkers|white plains|new rochelle|mount vernon|garden city|hicksville|melville|uniondale|mineola|hempstead|valley stream|lake success|westbury|jericho|syosset|bethpage|farmingdale|plainview|port washington|great neck|huntington|bay shore|hauppauge|islandia|ronkonkoma|patchogue|riverhead|freeport|levittown|massapequa|east meadow|elmont|rye|harrison|purchase|tarrytown|valhalla|armonk|scarsdale|peekskill|nanuet|nyack|west nyack|suffern|spring valley",
+    ],
+    [
+      "newyork",
+      "nj",
+      "new jersey",
+      "jersey city|newark|hoboken|secaucus|edison|woodbridge|perth amboy|elizabeth|paterson|parsippany|morristown|iselin|piscataway|new brunswick|somerset|whippany|florham park|hackensack|paramus|teterboro|kearny|harrison|bayonne|carteret|rahway|linden|union|mahwah|englewood cliffs|fort lee|clifton|passaic|wayne|totowa|fairfield|east rutherford|rutherford|lyndhurst|north bergen|weehawken|west new york|union city|bridgewater|basking ridge|berkeley heights|summit|short hills|livingston|east hanover|montvale|ramsey|allendale|rochelle park|saddle brook|little falls|cranford|kenilworth|south plainfield|sayreville|old bridge|east brunswick|north brunswick|south brunswick|monroe township|dayton|cranbury|freehold|red bank|holmdel|middletown|matawan|toms river|lakewood|jackson|brick|neptune|wall|eatontown|long branch|asbury park|dover|rockaway|denville|mount olive|flanders|budd lake|hillsborough|branchburg|raritan|clark|westfield|scotch plains|springfield|millburn|west orange|east orange|orange|bloomfield|belleville|nutley|montclair|verona|caldwell|roseland|west caldwell",
+    ],
+    ["newyork", "pa", "pennsylvania", "milford|matamoras"],
+    [
+      "bentonville",
+      "ar",
+      "arkansas",
+      "bentonville|rogers|springdale|fayetteville|bella vista|lowell|centerton|siloam springs|pea ridge|cave springs|gentry|gravette|farmington|prairie grove|elkins|lincoln|tontitown|johnson|elm springs|huntsville|goshen",
+    ],
+    ["bentonville", "mo", "missouri", "pineville|noel|anderson|southwest city"],
+    // The other US hubs, core cities only — enough that a board which states
+    // "<city>, <state>" or "USA:<ST>:<city>:" places there without leaning on
+    // HUB_MATCH's bare city names (which read street names and namesakes).
+    [
+      "boston",
+      "ma",
+      "massachusetts",
+      "boston|east boston|cambridge|somerville|quincy|newton|waltham|burlington|woburn|framingham|braintree|lynn|malden|medford|everett|chelsea|revere|brookline|needham|natick|lexington|wellesley|dedham|norwood|marlborough|lowell|andover|peabody|salem|danvers",
+    ],
+    [
+      "denver",
+      "co",
+      "colorado",
+      "denver|aurora|lakewood|englewood|littleton|centennial|arvada|westminster|thornton|broomfield|highlands ranch|parker|castle rock|greenwood village|commerce city|golden|lone tree|brighton|northglenn",
+    ],
+    [
+      "austin",
+      "tx",
+      "texas",
+      "austin|round rock|cedar park|pflugerville|georgetown|leander|kyle|san marcos|buda|hutto|lakeway",
+    ],
+    [
+      "losangeles",
+      "ca",
+      "california",
+      "los angeles|long beach|anaheim|santa ana|irvine|glendale|burbank|pasadena|torrance|el segundo|santa monica|culver city|carson|compton|downey|costa mesa|huntington beach|fullerton|orange|newport beach|garden grove|norwalk|whittier|west covina|el monte|inglewood|hawthorne|gardena|cerritos|city of industry|van nuys|north hollywood|sherman oaks|woodland hills|chatsworth|northridge|santa clarita|valencia|lancaster|palmdale",
+    ],
+    [
+      "sanfrancisco",
+      "ca",
+      "california",
+      "san francisco|oakland|berkeley|fremont|hayward|san mateo|redwood city|south san francisco|daly city|emeryville|walnut creek|concord|san ramon|pleasanton|richmond|san leandro|brisbane|burlingame|foster city|san bruno|menlo park|dublin|livermore|union city|newark|alameda|antioch|pittsburg",
+    ],
+    [
+      "sanjose",
+      "ca",
+      "california",
+      "san jose|santa clara|sunnyvale|mountain view|palo alto|milpitas|cupertino|campbell|los gatos|gilroy|morgan hill",
+    ],
+    [
+      "sandiego",
+      "ca",
+      "california",
+      "san diego|chula vista|carlsbad|oceanside|escondido|el cajon|la jolla|vista|poway|national city|santee|la mesa",
+    ],
+    [
+      "portland",
+      "or",
+      "oregon",
+      "portland|beaverton|hillsboro|gresham|tigard|lake oswego|wilsonville|tualatin|clackamas|happy valley|oregon city",
+    ],
+    [
+      "philadelphia",
+      "pa",
+      "pennsylvania",
+      "philadelphia|king of prussia|conshohocken|norristown|wayne|malvern|bensalem|media|horsham|fort washington|blue bell|plymouth meeting",
+    ],
+    ["philadelphia", "nj", "new jersey", "cherry hill|camden|mount laurel|westampton|voorhees"],
+    ["philadelphia", "de", "delaware", "wilmington|newark"],
+    ["washington", "dc", "district of columbia", "washington"],
+    [
+      "washington",
+      "va",
+      "virginia",
+      "arlington|alexandria|reston|herndon|mclean|tysons|fairfax|chantilly|falls church|vienna|sterling|ashburn|leesburg|manassas|springfield|woodbridge",
+    ],
+    [
+      "washington",
+      "md",
+      "maryland",
+      "bethesda|rockville|silver spring|gaithersburg|germantown|college park|hyattsville|landover|largo|bowie|laurel|frederick|waldorf",
+    ],
+    [
+      "indianapolis",
+      "in",
+      "indiana",
+      "indianapolis|fishers|carmel|noblesville|greenwood|avon|plainfield|lawrence|zionsville|brownsburg|westfield|beech grove",
+    ],
+    ["omaha", "ne", "nebraska", "omaha|bellevue|papillion|la vista|elkhorn"],
+    ["omaha", "ia", "iowa", "council bluffs"],
+  ];
+  // Toronto's CMA, for the boards that also carry Canada.
+  const CANADA: [string, string | null][] = [
+    ["mississauga", "toronto"],
+    ["brampton", "toronto"],
+    ["markham", "toronto"],
+    ["vaughan", "toronto"],
+    ["richmond hill, on", "toronto"], // not "South Richmond Hill, NY" or "Richmond Hill, GA"
+    ["richmond hill, ontario", "toronto"],
+  ];
+  const out: [string, string | null][] = [];
+  for (const [hub, st, state, cities] of METROS) {
+    for (const c of cities.split("|")) {
+      // A LEADING SPACE on the "<city>, …" forms: hubFor prepends one, so it is
+      // a word boundary. Without it "allen, tx," matched "Mcallen, TX" and filed
+      // the Rio Grande Valley on Dallas (Home Depot, measured 2026-09-30).
+      out.push([` ${c}, ${st},`, hub], [` ${c}, ${st} `, hub], [` ${c}, ${state}`, hub]);
+      out.push([`, ${st}, ${c},`, hub], [`:${st}:${c}:`, hub]);
+    }
+  }
+  // Namesakes, AFTER the metros (so "Dallas, GA" has already gone to Atlanta and
+  // "Vancouver, WA" to Portland) and BEFORE HUB_MATCH gets a chance.
+  const NAMESAKES: [string, string | null][] = [
+    ["brisbane, ca", "sanfrancisco"],
+    ["brisbane, california", "sanfrancisco"],
+    ["melbourne, fl", null],
+    ["melbourne, florida", null],
+    ["fl, melbourne", null],
+    ["melbourne beach", null],
+    ["west melbourne", null],
+    ["melbourne:", null], // AT&T store names: "USA:TX:Hurst:980 Melbourne:RET/RET"
+    ["paris, tx", null],
+    ["paris, texas", null],
+    ["paris, tn", null],
+    ["paris, tennessee", null],
+    ["paris, ky", null],
+    ["paris, kentucky", null],
+    ["paris, il", null],
+    ["paris, illinois", null],
+    ["tx, paris", null],
+    ["london, ky", null],
+    ["london, kentucky", null],
+    ["london, oh", null],
+    ["london, ohio", null],
+    ["london, on", null],
+    ["london, ontario", null],
+    ["on, london", null],
+    ["ky, london", null],
+    ["oh, london", null],
+    ["new london", null],
+    ["londonderry", null],
+    ["sydney, ns", null],
+    ["sydney, nova scotia", null],
+    ["wellington, fl", null],
+    ["wellington, florida", null],
+    ["wellington, ks", null],
+    ["wellington, kansas", null],
+    ["wellington, co", null],
+    ["wellington, colorado", null],
+    ["wellington, oh", null],
+    ["wellington, ohio", null],
+    ["south portland", null],
+    ["portland, me", null],
+    ["portland, maine", null],
+    ["portland, tx", null],
+    ["portland, texas", null],
+    ["me, portland", null],
+    ["atlanta, tx", null],
+    ["atlanta, texas", null],
+    ["dallas, or", null],
+    ["dallas, oregon", null],
+    ["dallas, pa", null],
+    ["dallastown", null],
+    ["charlottesville", null],
+    ["port charlotte", null],
+    ["charlotte hall", null],
+    ["charlotte, mi", null],
+    ["charlotte, michigan", null],
+    ["charlotte, tn", null],
+    ["newman, ga", null],
+    ["newman, ca", null],
+    ["newman, il", null],
+    ["newman, georgia", null],
+    ["newman, california", null],
+    ["newman, illinois", null],
+    ["gladstone, or", null],
+    ["gladstone, mo", null],
+    ["gladstone, mi", null],
+    ["gladstone, oregon", null],
+    ["gladstone, missouri", null],
+    ["gladstone, michigan", null],
+    ["houston, ms", null],
+    ["houston, mo", null],
+    ["houston, pa", null],
+    ["houston, mississippi", null],
+    ["houston, missouri", null],
+    ["austin, mn", null],
+    ["austin, minnesota", null],
+    ["denver, pa", null],
+    ["denver, pennsylvania", null],
+    ["boston, va", null],
+    ["boston heights", null],
+    ["new philadelphia", null],
+    ["philadelphia, ms", null],
+    ["philadelphia, mississippi", null],
+    ["toronto, oh", null],
+    ["ottawa, il", null],
+    ["ottawa, illinois", null],
+    ["ottawa, ks", null],
+    ["ottawa, kansas", null],
+    ["ottawa, oh", null],
+    ["ottawa, ohio", null],
+    ["hobart, ok", null],
+    ["hobart, ny", null],
+    ["darwin, mn", null],
+    ["manila, ar", null],
+    ["omaha, tx", null],
+    ["omaha, ar", null],
+    ["cincinnatus", null],
+    // Lowe's store labels put a neighbourhood in brackets: "Kansas City, MO
+    // (Gladstone) 2767" went to Brisbane through "gladstone".
+    ["(gladstone)", null],
+    ["austintown", null], // Ohio, was austin
+    ["fishersville", null], // Virginia, was indianapolis ("fishers")
+    ["portland, tn", null],
+    ["portland, tennessee", null],
+    ["washington, mi", null],
+    ["washington, michigan", null],
+    ["mount washington", null],
+    // Washington is a hub (DC) and a state; anything still naming the state
+    // or a namesake town after the Seattle/Portland needles above is neither.
+    ["washington, pa", null],
+    ["washington, pennsylvania", null],
+    ["washington, mo", null],
+    ["washington, missouri", null],
+    ["washington, nc", null],
+    ["washington, north carolina", null],
+    ["washington, in", null],
+    ["washington, indiana", null],
+    ["washington, ut", null],
+    ["washington, utah", null],
+    ["washington, il", null],
+    ["washington, illinois", null],
+    ["washington, ia", null],
+    ["washington, iowa", null],
+    ["washington, nj", null],
+    ["washington, new jersey", null],
+    ["washington, ga", null],
+    ["washington court house", null],
+    ["washington township", null],
+    ["port washington", null],
+    ["washington, wa", null],
+    [", washington,", null],
+    ["usa, wa,", null],
+    [":wa:", null],
+    [", wa,", null],
+    [", wa ", null],
+    ["-wa-", null],
+  ];
+  // A two-letter state is closed off before it is matched, as the metro needles
+  // are: bare, "sydney, ns" nulled "Sydney, NSW, Australia" (JPMorgan, 17 roles),
+  // "on, london" nulled "LONDON, LONDON, United Kingdom" (294), and "paris, il"
+  // would null "Paris, Ile-de-France". "melbourne, fl" becomes "melbourne, fl,"
+  // and "melbourne, fl "; "fl, melbourne" becomes ", fl, melbourne,".
+  const closed = NAMESAKES.flatMap(([n, hub]): [string, string | null][] =>
+    /, [a-z]{2}$/.test(n)
+      ? [
+          [`${n},`, hub],
+          [`${n} `, hub],
+        ]
+      : /^[a-z]{2}, /.test(n)
+        ? [[`, ${n},`, hub]]
+        : [[n, hub]],
+  );
+  return [...out, ...CANADA, ...closed];
+}
+
+// ── batch 13 M: readers ──────────────────────────────────────────────────────
+/**
+ * Placement needles for a board that lists North American roles — the
+ * Canadian banks, telcos and energy companies of batch 13, and the North
+ * American rows of the French groups' global boards.
+ *
+ * A FUNCTION, not a const, because it is declared down here among the readers
+ * and read by SITES far above: a function declaration is hoisted, a const is
+ * not (SITES would meet it in its temporal dead zone at module load).
+ *
+ * Two kinds of needle, both measured 2026-09-30 on TD, BMO, CIBC, Scotiabank,
+ * Rogers, Enbridge, CN, Suncor and CNRL (about 5,700 rows):
+ *
+ * NAMESAKE GUARDS (null). HUB_MATCH is a list of city names, and several of
+ * them are also Canadian or US towns: "London, ON" (CIBC 3, TD 9, Scotiabank
+ * "London (ON)" 9, BMO 1) and "Londonderry, New Hampshire" (TD) were filed on
+ * london; "Charlottetown, PE" (CIBC 2) on charlotte; "Sydney, Nova Scotia"
+ * (TD 1) on sydney; "Portland, Maine" / "South Portland, Maine" (TD 4) on
+ * portland, which is Oregon; and a US ", WA" (Bellevue, Spokane) reaches the
+ * " wa," needle that means Western Australia. Perth ON and Paris ON are the
+ * same trap and are guarded before a board happens to list them.
+ *
+ * SAME-METRO SUBURBS, by Statistics Canada CMA: Toronto (Mississauga 32,
+ * Brampton 37, Markham 21, Scarborough 18, North York 12, Oakville 12, Vaughan
+ * 7, Richmond Hill 8, Etobicoke 6, Newmarket 5, Ajax 4 …), Montreal
+ * ("Montréal" 56 — the accent defeats HUB_MATCH's "montreal" — Laval 30, Anjou
+ * 19, Brossard 9, Saint-Laurent 7, Pointe-Claire 8, Vaudreuil-Dorion 4,
+ * Boucherville 4, Saint-Jérôme 4 …), Vancouver (Surrey 16, Burnaby 9,
+ * Richmond BC 8, Langley 7, Delta 3 …), Ottawa-Gatineau (Gatineau 10, Kanata
+ * 7, Nepean 2, Orléans 2) and Calgary (Airdrie 3). Anything outside a CMA —
+ * Barrie, Oshawa, Hamilton, Burlington, Abbotsford, Saint-Hyacinthe — stays
+ * unplaced, which is what it is.
+ *
+ * Needles naming a common town name carry the province ("laval, q" matches
+ * "Laval, QC", "Laval, Quebec" and "Laval, Québec"; Laval is also a French
+ * prefecture) and ORDER MATTERS: first match wins, so the Toronto address
+ * needle precedes everything (TD writes "TD Centre - 100 Wellington Street
+ * West, Toronto, Ontario", and HUB_MATCH's "wellington" would file it in New
+ * Zealand), and "seattle" precedes the ", wa," guard.
+ */
+function naHubHints(): [string, string | null][] {
+  return [
+    [", toronto,", "toronto"],
+    // Namesake guards.
+    ["london (on)", null],
+    ["london, on", null],
+    ["londonderry", null],
+    ["new london", null],
+    ["charlottetown", null],
+    ["sydney, ns", null],
+    ["sydney, nova scotia", null],
+    ["perth, on", null],
+    ["san jose del cabo", null],
+    ["perth amboy", null],
+    ["paris, on", null],
+    ["portland, me", null],
+    ["portland, maine", null],
+    ["vancouver, wa", null],
+    ["vancouver, washington", null],
+    // King County, WA = the Seattle MSA; every other US ", WA" is Washington
+    // state and on no hub. An Australian ", WA, AU" is kept on Perth first.
+    ["seattle", "seattle"],
+    ["bellevue, wa", "seattle"],
+    ["bellevue, washington", "seattle"],
+    ["redmond, wa", "seattle"],
+    ["kirkland, wa", "seattle"],
+    [", wa, au", "perth"],
+    [", wa,", null],
+    [", washington,", null],
+    // Toronto CMA.
+    ["mississauga", "toronto"],
+    ["brampton, on", "toronto"],
+    ["markham, on", "toronto"],
+    ["unionville, on", "toronto"],
+    ["scarborough, on", "toronto"],
+    ["north york, on", "toronto"],
+    ["etobicoke", "toronto"],
+    ["east york, on", "toronto"],
+    ["vaughan, on", "toronto"],
+    ["woodbridge, on", "toronto"],
+    ["concord, on", "toronto"],
+    [" maple, on", "toronto"],
+    ["thornhill, on", "toronto"],
+    ["richmond hill, on", "toronto"],
+    ["oakville, on", "toronto"],
+    [" milton, on", "toronto"],
+    ["newmarket, on", "toronto"],
+    [" aurora, on", "toronto"],
+    ["pickering, on", "toronto"],
+    [" ajax, on", "toronto"],
+    ["georgetown, on", "toronto"],
+    ["bradford, on", "toronto"],
+    ["stouffville", "toronto"],
+    ["caledon, on", "toronto"],
+    // Montreal CMA.
+    ["montréal", "montreal"],
+    ["laval, q", "montreal"],
+    ["longueuil", "montreal"],
+    ["brossard", "montreal"],
+    ["saint-laurent, q", "montreal"],
+    ["anjou, q", "montreal"],
+    ["pointe-claire", "montreal"],
+    ["pointe claire", "montreal"],
+    ["dorval, q", "montreal"],
+    ["dollard-des-ormeaux", "montreal"],
+    ["vaudreuil-dorion", "montreal"],
+    ["boucherville", "montreal"],
+    ["verdun, q", "montreal"],
+    ["lasalle, q", "montreal"],
+    ["lachine, q", "montreal"],
+    ["mont-royal, q", "montreal"],
+    ["repentigny, q", "montreal"],
+    ["saint-léonard, q", "montreal"],
+    ["saint leonard, q", "montreal"],
+    ["sainte-julie, q", "montreal"],
+    ["beaconsfield, q", "montreal"],
+    ["kirkland, q", "montreal"],
+    ["terrebonne", "montreal"],
+    ["blainville, q", "montreal"],
+    ["boisbriand", "montreal"],
+    ["saint-jérôme, q", "montreal"],
+    ["saint-jerome, q", "montreal"],
+    ["mirabel, q", "montreal"],
+    ["saint-eustache, q", "montreal"],
+    ["saint-lambert, q", "montreal"],
+    ["candiac", "montreal"],
+    ["châteauguay", "montreal"],
+    ["chateauguay", "montreal"],
+    ["mascouche", "montreal"],
+    // Vancouver CMA.
+    ["burnaby", "vancouver"],
+    ["surrey, b", "vancouver"],
+    ["richmond, b", "vancouver"],
+    ["langley, b", "vancouver"],
+    [" delta, b", "vancouver"],
+    ["coquitlam", "vancouver"],
+    ["new westminster", "vancouver"],
+    ["maple ridge, b", "vancouver"],
+    ["white rock, b", "vancouver"],
+    ["port moody", "vancouver"],
+    // Ottawa-Gatineau CMA.
+    ["gatineau", "ottawa"],
+    ["kanata", "ottawa"],
+    ["nepean, on", "ottawa"],
+    ["stittsville", "ottawa"],
+    [" orleans, on", "ottawa"],
+    ["orléans, on", "ottawa"],
+    ["aylmer, q", "ottawa"],
+    // Calgary CMA.
+    ["airdrie, a", "calgary"],
+    ["chestermere", "calgary"],
+    ["cochrane, a", "calgary"],
+  ];
+}
+
+/**
+ * Île-de-France — the Paris hub's region, the convention the other Paris
+ * employers in this file already follow (", ile-de-france," -> paris, and
+ * Boulogne, Courbevoie, Cergy, Massy … one by one) — for the French groups of
+ * batch 13 whose boards name a bare town. Bouygues writes "COURBEVOIE,
+ * France" (60), "GUYANCOURT, France" (58), "MEUDON, France" (38) with no
+ * region; Renault writes "Guyancourt" (188), "Boulogne Billancourt" (39),
+ * "Lardy" (10) with no region or country. Measured 2026-09-30 over Bouygues'
+ * 4,123 roles and Renault's 436; every needle is a town on one of those
+ * boards, classified by département (75, 77, 78, 91, 92, 93, 94, 95).
+ *
+ * Deliberately NOT here: "Saint-Denis" (also the capital of Réunion, where
+ * Colas hires), "Saint-Ouen", "Saint-Maurice", "Méry" and "Vernouillet" —
+ * each also a town outside the region — and "Cesson" beside
+ * Cesson-Sévigné. A function for the same hoisting reason as naHubHints.
+ */
+function idfHubHints(): [string, string | null][] {
+  return [
+    ["ile-de-france", "paris"],
+    ["île-de-france", "paris"],
+    ["ile de france", "paris"],
+    ["la defense", "paris"],
+    ["la défense", "paris"],
+    ["courbevoie", "paris"],
+    ["guyancourt", "paris"],
+    ["meudon", "paris"],
+    ["ivry-sur-seine", "paris"],
+    ["ivry sur seine", "paris"],
+    ["boulogne billancourt", "paris"],
+    ["boulogne-billancourt", "paris"],
+    ["colombes", "paris"],
+    ["issy-les-moulineaux", "paris"],
+    ["malakoff", "paris"],
+    ["velizy", "paris"],
+    ["vélizy", "paris"],
+    ["bry-sur-marne", "paris"],
+    ["les mureaux", "paris"],
+    ["chilly-mazarin", "paris"],
+    ["puteaux", "paris"],
+    ["noisy-le-sec", "paris"],
+    ["noisy le sec", "paris"],
+    ["noisy-le-grand", "paris"],
+    ["noisy le grand", "paris"],
+    ["clichy", "paris"],
+    ["montlhery", "paris"],
+    ["montlhéry", "paris"],
+    ["conflans-sainte-honorine", "paris"],
+    ["magny les hameaux", "paris"],
+    ["magny-les-hameaux", "paris"],
+    ["villeneuve-la-garenne", "paris"],
+    ["cergy", "paris"],
+    ["gennevilliers", "paris"],
+    ["bonneuil-sur-marne", "paris"],
+    ["louvres, france", "paris"],
+    ["nanterre", "paris"],
+    ["neuville-sur-oise", "paris"],
+    ["l'ile-saint-denis", "paris"],
+    ["roissy-en-france", "paris"],
+    ["sucy-en-brie", "paris"],
+    ["bois d'arcy", "paris"],
+    ["bretigny-sur-orge", "paris"],
+    ["bretigny sur orge", "paris"],
+    ["les ulis", "paris"],
+    ["chambourcy", "paris"],
+    ["l'hay-les-roses", "paris"],
+    ["pavillons-sous-bois", "paris"],
+    ["lieusaint", "paris"],
+    ["massy", "paris"],
+    ["pierrelaye", "paris"],
+    ["saclay", "paris"],
+    ["saint-quentin en yvelines", "paris"],
+    ["tremblay-en-france", "paris"],
+    ["villebon-sur-yvette", "paris"],
+    ["villebon sur yvette", "paris"],
+    ["argenteuil", "paris"],
+    ["chaumes-en-brie", "paris"],
+    ["drancy", "paris"],
+    ["dugny", "paris"],
+    ["etampes", "paris"],
+    ["palaiseau", "paris"],
+    ["plaisir, france", "paris"],
+    ["vitry sur seine", "paris"],
+    ["vitry-sur-seine", "paris"],
+    ["arcueil", "paris"],
+    ["athis mons", "paris"],
+    ["athis-mons", "paris"],
+    ["aulnay-sous-bois", "paris"],
+    ["bruyeres le chatel", "paris"],
+    ["collegien", "paris"],
+    ["croissy-beaubourg", "paris"],
+    ["evry", "paris"],
+    ["gif-sur-yvette", "paris"],
+    ["l'isle adam", "paris"],
+    ["la ville du bois", "paris"],
+    ["le chesnay", "paris"],
+    ["levallois", "paris"],
+    ["lognes", "paris"],
+    ["marcoussis", "paris"],
+    ["moisselles", "paris"],
+    ["montge-en-goele", "paris"],
+    ["nogent-sur-marne", "paris"],
+    ["ormesson", "paris"],
+    ["osny", "paris"],
+    ["pantin", "paris"],
+    ["sainte-genevieve-des-bois", "paris"],
+    ["sartrouville", "paris"],
+    ["serris", "paris"],
+    ["soisy sous montmorency", "paris"],
+    ["st germain en laye", "paris"],
+    ["saint-germain-en-laye", "paris"],
+    ["taverny", "paris"],
+    ["thiais", "paris"],
+    ["vigneux sur seine", "paris"],
+    ["villepreux", "paris"],
+    ["villiers en biere", "paris"],
+    ["vincennes", "paris"],
+    ["viry-chatillon", "paris"],
+    ["rueil-malmaison", "paris"],
+    ["lardy", "paris"],
+    ["val de fontenay", "paris"],
+    ["fontenay-sous-bois", "paris"],
+    ["flins", "paris"],
+    ["aubergenville", "paris"],
+    ["plessis-robinson", "paris"],
+    ["puiseux-pontoise", "paris"],
+  ];
+}
+
+// ── Avature, table template (National Bank of Canada) ───────────────────────
+/**
+ * emplois.bnc.ca runs Avature, but the TABLE search template rather than the
+ * card one fetchAvature reads: each role is a `<tr>` whose `<th>` holds the
+ * job link (`data-map="job-detail-link"`) and whose first `<td>` is the
+ * location ("Toronto, Ontario"). There is no `article--result` anywhere, and
+ * the total is written `aria-label="383 result(s)"`, which fetchAvature's
+ * `([\d,]+) results"` does not match — so that reader saw an empty board.
+ *
+ * Measured 2026-09-30: 383 roles; the page size is fixed at 20 whatever
+ * jobRecordsPerPage asks for (50 and 100 both returned 20), so the walk is
+ * ceil(383/20) = 20 pages, bounded by the advertised total and read with
+ * allPages — a page that cannot be read fails the pull rather than
+ * truncating it. The en_CA and fr_CA boards are the same 383 requisitions
+ * (the French total is "383 résultats"); en_CA is read.
+ */
+const AVT_PAGE = 20;
+
+async function fetchAvatureTable(site: SiteDef): Promise<PortalJob[]> {
+  const label = `avaturetable ${site.key ?? site.id}`;
+  const url = (i: number) =>
+    `${site.endpoint}/?jobRecordsPerPage=${AVT_PAGE}&jobOffset=${i * AVT_PAGE}`;
+  const rowsOf = (html: string) =>
+    html
+      .split(/<tr[\s>]/i)
+      .slice(1)
+      .filter((r) => /data-map="job-detail-link"/i.test(r));
+  const first = await getText(url(0));
+  if (!first) return [];
+  const total = Number(first.match(/aria-label="([\d,]+) r[ée]sult/i)?.[1].replace(/,/g, "") ?? 0);
+  if (!total) {
+    console.log(`${label}: no advertised total on page 1 — template changed, not read`);
+    return [];
+  }
+  const rest = await allPages(
+    Math.ceil(total / AVT_PAGE) - 1,
+    async (i) => {
+      const html = await getText(url(i + 1));
+      return html ? rowsOf(html) : null;
+    },
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...rowsOf(first), ...rest]) {
+    const a = r.match(/<a[^>]*data-map="job-detail-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const id = href.match(/\/(\d+)\/?$/)?.[1] ?? href;
+    const title = clean(a[2]);
+    if (!title || seen.has(id)) continue;
+    seen.add(id);
+    const loc = clean(r.match(/<td[^>]*>([\s\S]*?)<\/td>/i)?.[1] ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        href.startsWith("http") ? href : site.origin + href,
+        // The table carries no posting date.
+        today(),
+        "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── Exalead card search (Dassault Systèmes) ─────────────────────────────────
+/**
+ * www.3ds.com/careers/jobs is a Nuxt page whose job list comes from the site's
+ * own Exalead search service (`exaleadApi: https://www.3ds.com/apisearch`, in
+ * the page's public config), queried as
+ *
+ *   card_search_api?q=#all card_content_lang:en (card_content_type="career")
+ *
+ * Every card exists once PER LANGUAGE: measured 2026-09-30, nhits 669 for
+ * `en`, 669 for `fr`, 8,028 with no language clause (12 x 669). So the
+ * language clause is what makes the count a count of roles; `en` is read.
+ *
+ * READ IN ONE REQUEST. `hf` (hits per request) is honoured past the total —
+ * hf=1000 returned all 669, 669 distinct card ids — and the service's default
+ * order is by score, which ties across every career card, so an offset walk
+ * would page through an unspecified order. One request has nothing to be
+ * unstable about. It is ~10 MB (the cards carry their summaries); the count
+ * is probed first with hf=1 and the pull is refused if it comes back short.
+ *
+ * Location is `content_info_2_value`, country first: "France,
+ * Vélizy-Villacoublay", "United States, WA, Bellevue", "Japan, 13, Tokyo".
+ */
+interface ExaleadHit {
+  metas?: { name?: string; value?: string }[];
+}
+
+async function fetchExalead3ds(site: SiteDef): Promise<PortalJob[]> {
+  const label = `exalead3ds ${site.key ?? site.id}`;
+  const q = encodeURIComponent('#all card_content_lang:en (card_content_type="career")');
+  const url = (hf: number) => `${site.endpoint}?q=${q}&b=0&hf=${hf}&output_format=json`;
+  const head = await getJson<{ nhits?: number }>(url(1));
+  const total = Number(head?.nhits ?? 0);
+  if (!total) return [];
+  const all = await getJson<{ nhits?: number; hits?: ExaleadHit[] }>(url(total + 50));
+  const hits = all?.hits ?? [];
+  if (hits.length < total) {
+    console.log(`${label}: ${hits.length} of ${total} in the full request — not written`);
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const h of hits) {
+    const m = new Map<string, string>();
+    for (const x of h.metas ?? []) {
+      if (x.name && x.value != null && !m.has(x.name)) m.set(x.name, String(x.value));
+    }
+    const id = m.get("card_id") ?? "";
+    const title = clean(m.get("content_title") ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    const posted = (m.get("content_start_datetime") ?? "").slice(0, 10).replace(/\//g, "-");
+    out.push(
+      job(
+        site,
+        title,
+        clean(m.get("content_info_2_value") ?? ""),
+        m.get("content_cta_1_url") || `${site.origin}/careers/jobs`,
+        /^\d{4}-\d{2}-\d{2}$/.test(posted) ? posted : today(),
+        clean(m.get("content_type_display_text") ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── batch 13: N — readers ────────────────────────────────────────────────────
+
+// ── Alibaba Group, talent.alibaba.com ────────────────────────────────────────
+/**
+ * The social-recruitment board's own search call:
+ *   POST https://talent.alibaba.com/position/search?_csrf=<XSRF-TOKEN>
+ *   {channel:"group_official_site", language:"zh", pageIndex, pageSize, …}
+ * -> {success, content:{totalCount, datas:[{id, name, categories[],
+ *     workLocations[], publishTime (epoch ms), positionUrl}]}}
+ * `site.endpoint` is that URL without the query; `site.origin` the host.
+ *
+ * Measured 2026-09-30: totalCount 3,959; pageSize 100 IS honoured (100 rows a
+ * page), so the board is 40 pages. The POST needs the SESSION + XSRF-TOKEN
+ * cookies and the token again as `_csrf`, all three handed out by any page GET
+ * (the list page answers 302 and sets them on the redirect, hence
+ * redirect:"manual"). Without them the call answers 403.
+ *
+ * TRAPS:
+ * - language:"zh" not "en": the Chinese list is the whole board; roles are
+ *   written in Chinese and so are places (杭州, 上海, 北京, 深圳, 香港).
+ * - workLocations is a LIST, often several cities ("北京, 杭州"). The row is
+ *   placed on the FIRST listed, the Toyota/Denso precedent, not on whichever
+ *   city a hint happens to match first. 杭州 (Hangzhou, the HQ) is not a hub and
+ *   stays unplaced — which is most of the board.
+ * - homeHub is null on purpose. The roster plots Alibaba on Hong Kong (its
+ *   listing), and HOME_COUNTRY.hongkong matches "china", so any fallback would
+ *   file mainland roles as Hong Kong.
+ * - A page that cannot be read fails the pull (allPages), and the unique count
+ *   is checked against totalCount (reportGap) — the list is ordered by update
+ *   time, so a row can shift a page mid-walk.
+ */
+interface AlibabaPos {
+  id?: number | string;
+  name?: string;
+  categories?: string[] | null;
+  workLocations?: string[] | null;
+  publishTime?: number | null;
+}
+
+async function fetchAlibabaTalent(site: SiteDef): Promise<PortalJob[]> {
+  const label = `alibaba ${site.key ?? site.id}`;
+  let cookie = "";
+  let token = "";
+  try {
+    const seed = await fetch(`${site.origin}/off-campus/position-list?lang=zh`, {
+      headers: { "User-Agent": UA },
+      redirect: "manual",
+    });
+    const jar = (seed.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]);
+    cookie = jar.join("; ");
+    token = jar.find((c) => c.startsWith("XSRF-TOKEN="))?.slice("XSRF-TOKEN=".length) ?? "";
+  } catch {
+    return [];
+  }
+  if (!token) {
+    console.log(`${label}: no XSRF-TOKEN handed out — feed skipped`);
+    return [];
+  }
+  const per = 100;
+  const get = async (n: number) => {
+    const r = await getJson<{
+      success?: boolean;
+      content?: { totalCount?: number; datas?: AlibabaPos[] };
+    }>(`${site.endpoint}?_csrf=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({
+        channel: "group_official_site",
+        language: "zh",
+        batchId: "",
+        categories: "",
+        deptCodes: [],
+        key: "",
+        pageIndex: n,
+        pageSize: per,
+        regions: "",
+        subCategories: "",
+      }),
+    });
+    return r?.success && Array.isArray(r.content?.datas) ? r.content : null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const total = Number(first.totalCount ?? 0);
+  // AN EMPTY PAGE INSIDE THE STATED TOTAL IS A FAILED PAGE. Measured 2026-09-30:
+  // one of four walks came back exactly 100 short (3,859 of 3,959) with every
+  // request "successful" — a page answered success with no rows. So a page
+  // short of what the total says it should hold is treated as unread
+  // (allPages retries it once, then abandons the pull).
+  const pages = Math.max(0, Math.ceil(total / per) - 1);
+  const rest = await allPages(
+    pages,
+    async (i) => {
+      const rows = (await get(i + 2))?.datas ?? null;
+      const want = i + 1 < pages ? per : total - per * pages;
+      return rows && rows.length >= Math.min(want, per) * 0.9 ? rows : null;
+    },
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const p of [...(first.datas ?? []), ...rest]) {
+    const title = clean(p.name ?? "");
+    if (!title || p.id == null) continue;
+    const url = `${site.origin}/off-campus/position-detail?positionId=${p.id}`;
+    byId.set(
+      String(p.id),
+      job(
+        site,
+        title,
+        clean(p.workLocations?.[0] ?? ""),
+        url,
+        cnDate(p.publishTime ?? undefined),
+        clean(p.categories?.[0] ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, byId.size, total);
+  return [...byId.values()];
+}
+
+// ── NAVER, recruit.navercorp.com ─────────────────────────────────────────────
+/**
+ * GET https://recruit.navercorp.com/rcrt/loadJobList.do?firstIndex=N
+ * -> {result:"Y", totalSize, list:[{annoId, annoSubject, sysCompanyCdNm,
+ *     classCdNm, subJobCdNm, workAreaCd, staYmd, jobDetailLink}]}
+ * The list page's own "load more" call. 10 a page, firstIndex 0-based.
+ * Measured 2026-09-30: totalSize 27, 27 distinct annoIds over three pages.
+ * The board is the NAVER group's (NAVER 9, WEBTOON 11, Cloud 6, I&S 2, SNOW 1
+ * that day) — the same postings the site shows, one row each.
+ *
+ * PLACE: the list carries only `workAreaCd`, a code. The page's filter names
+ * five work areas (분당, 서울, 춘천, 세종, 글로벌); all 27 roles were 0010, and
+ * the detail page of one read "경기도 성남시 분당구 정자일로 95 (NAVER 1784 사옥)"
+ * — so 0010 is 분당 (Bundang, Seongnam: the Seoul capital area, the rule the
+ * Hyundai feed follows for Pangyo). Filtering by the other four codes returned
+ * 0 each, so their mapping could not be measured and they are left unnamed:
+ * such a row is unplaced rather than guessed.
+ */
+interface NaverAnno {
+  annoId?: number | string;
+  annoSubject?: string;
+  sysCompanyCdNm?: string;
+  classCdNm?: string;
+  subJobCdNm?: string;
+  workAreaCd?: string;
+  staYmd?: string;
+  jobDetailLink?: string;
+}
+
+const NAVER_WORK_AREA: Record<string, string> = { "0010": "분당" };
+
+async function fetchNaverRecruit(site: SiteDef): Promise<PortalJob[]> {
+  const label = `naver ${site.key ?? site.id}`;
+  const per = 10;
+  const get = async (i: number) => {
+    const r = await getJson<{ result?: string; totalSize?: number; list?: NaverAnno[] }>(
+      `${site.endpoint}?firstIndex=${i * per}`,
+    );
+    return r?.result === "Y" && Array.isArray(r.list) ? r : null;
+  };
+  const first = await get(0);
+  if (!first) return [];
+  const total = Number(first.totalSize ?? 0);
+  const rest = await allPages(
+    Math.max(0, Math.ceil(total / per) - 1),
+    async (i) => (await get(i + 1))?.list ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const a of [...(first.list ?? []), ...rest]) {
+    const title = clean(a.annoSubject ?? "");
+    if (!title || a.annoId == null) continue;
+    const d = /^(\d{4})(\d{2})(\d{2})$/.exec(a.staYmd ?? "");
+    byId.set(
+      String(a.annoId),
+      job(
+        site,
+        title,
+        NAVER_WORK_AREA[a.workAreaCd ?? ""] ?? "",
+        a.jobDetailLink || `${site.origin}/rcrt/view.do?annoId=${a.annoId}`,
+        d ? `${d[1]}-${d[2]}-${d[3]}` : "",
+        [a.sysCompanyCdNm, a.classCdNm]
+          .filter(Boolean)
+          .map((x) => clean(String(x)))
+          .join(" — ") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, byId.size, total);
+  return [...byId.values()];
+}
+
+// ── Swire Properties, careers.swireproperties.com ────────────────────────────
+/**
+ * The careers site's own proxy over its TalentLink (Saba) board:
+ *   GET /api/jobs/talentlink?region=hk&lang=en-HK&database=web&page=N
+ *   header api_key: <the key the page itself ships>
+ * -> {meta:{currentPage, totalPages, itemPerPage:10},
+ *     posts:[{postingTargetId, title, location, jobFunctions, url, endPost}]}
+ *
+ * The api_key is NOT a secret: it is printed in the jobs page's markup as
+ * `data-api-key="QBTFK026203F3"` for the browser to send, and without it the
+ * call answers "Authorization has been denied". `site.endpoint` carries the
+ * url without `page`.
+ *
+ * Measured 2026-09-30: totalPages 4, 38 distinct postingTargetIds; the
+ * `region` parameter changes nothing (hk, cn, us and none all return the same
+ * 38). Places are Hong Kong districts — Quarry Bay 18, Admiralty 2, Taikoo
+ * Shing 2, Taikoo 2, Tung Chung 2, Chai Wan 1, North Point 1, Mid-levels 1 —
+ * plus Singapore 1 and 8 blank.
+ *
+ * TRAPS:
+ * - The host is FLAKY: the same measurement saw a TLS "bad record mac" and two
+ *   read timeouts in seven walks. Each page gets three spaced attempts, and a
+ *   page that still fails fails the pull (allPages) — the board states no row
+ *   total, only a page count, so a short walk could not be detected afterwards.
+ * - The walk is bounded by totalPages, never by an empty page.
+ */
+interface SwirePropsPost {
+  postingTargetId?: string | number;
+  title?: string;
+  location?: string | null;
+  jobFunctions?: string | null;
+  url?: string | null;
+}
+
+async function fetchSwireProps(site: SiteDef): Promise<PortalJob[]> {
+  const label = `swireprops ${site.key ?? site.id}`;
+  // Public: printed in the page's own markup (data-api-key) — see above.
+  const headers = { api_key: "QBTFK026203F3" };
+  const get = async (n: number) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      const r = await getJson<{ meta?: { totalPages?: number }; posts?: SwirePropsPost[] }>(
+        `${site.endpoint}&page=${n}`,
+        { headers },
+      );
+      if (r && Array.isArray(r.posts)) return r;
+    }
+    return null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const pages = Number(first.meta?.totalPages ?? 0);
+  const rest = await allPages(
+    Math.max(0, pages - 1),
+    async (i) => (await get(i + 2))?.posts ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const p of [...(first.posts ?? []), ...rest]) {
+    const title = clean(p.title ?? "");
+    if (!title || p.postingTargetId == null) continue;
+    byId.set(
+      String(p.postingTargetId),
+      job(
+        site,
+        title,
+        clean(p.location ?? ""),
+        `${site.origin}/en-hk/job-detail/?postingTargetId=${p.postingTargetId}`,
+        "",
+        clean(p.jobFunctions ?? "") || "Career portal",
+      ),
+    );
+  }
+  return [...byId.values()];
+}
+
+// ── Fast Retailing Japan mid-career, fastretailing.com/careers/ja ────────────
+/**
+ * Japan's mid-career (中途採用) roles are not on Fast Retailing's Workday
+ * tenant (that carries the overseas subsidiaries — see the SITES note). They
+ * are server-rendered on five category pages:
+ *   /careers/ja/mid-career/{corporate,creative,dx,marketing,scm}/
+ * each an accordion of
+ *   <a href="/careers/ja/job-description/?id=N" aria-label="…"><img … alt="BRAND"><span>TITLE</span></a>
+ * and each role's page states its place in a `<th>勤務地</th><td>…</td>` row
+ * ("有明本部：東京都江東区有明1丁目6-7 UNIQLO CITY<br />※…") and its update date
+ * in `<time datetime="YYYY-MM-DD">`.
+ *
+ * Measured 2026-09-30: corporate 55, creative 29, dx 23, marketing 47, scm 17
+ * = 171 links, 167 distinct ids (a role can sit in two categories; it is one
+ * row, filed under the first). `site.endpoint` is the /mid-career/ base.
+ *
+ * The board states no total, so completeness rests on reading every category
+ * page: one that cannot be read fails the pull, as does any role page (the
+ * place is only there). Role pages are read ≤6 at a time. Only the FIRST line
+ * of the 勤務地 cell is kept — the rest is the "※ may be transferred" note.
+ */
+const FR_JP_CATEGORIES = ["corporate", "creative", "dx", "marketing", "scm"];
+
+async function fetchFastRetailingJp(site: SiteDef): Promise<PortalJob[]> {
+  const label = `frjp ${site.key ?? site.id}`;
+  const roles = new Map<string, { title: string; cat: string }>();
+  for (const cat of FR_JP_CATEGORIES) {
+    const html = await getText(`${site.endpoint}${cat}/`);
+    if (!html) {
+      console.log(`${label}: category ${cat} could not be read — pull abandoned`);
+      return [];
+    }
+    for (const m of html.matchAll(
+      /<a href="\/careers\/ja\/job-description\/\?id=(\d+)"[^>]*>[\s\S]*?<span>([\s\S]*?)<\/span>\s*<\/a>/g,
+    )) {
+      const title = clean(m[2]);
+      if (title && !roles.has(m[1])) roles.set(m[1], { title, cat });
+    }
+  }
+  if (!roles.size) return [];
+  const ids = [...roles.keys()];
+  const pages = await b11ePool(ids, PAGE_CONCURRENCY, async (id) => {
+    const page = await getText(`${site.origin}/careers/ja/job-description/?id=${id}`);
+    if (!page) return null;
+    const cell = /<th>\s*勤務地\s*<\/th>\s*<td>([\s\S]*?)<\/td>/.exec(page)?.[1] ?? "";
+    const place = clean(cell.split(/<br\s*\/?>/i)[0].replace(/※[\s\S]*$/, ""));
+    const date = /<time datetime="(\d{4}-\d{2}-\d{2})"/.exec(page)?.[1] ?? "";
+    return { place, date };
+  });
+  if (pages.some((p) => p === null)) {
+    console.log(`${label}: a role page could not be read — pull abandoned`);
+    return [];
+  }
+  return ids.map((id, i) => {
+    const r = roles.get(id)!;
+    const p = pages[i]!;
+    return job(
+      site,
+      r.title,
+      p.place,
+      `${site.origin}/careers/ja/job-description/?id=${id}`,
+      p.date,
+      r.cat,
+    );
+  });
+}
+
+// ── batch 13 L: readers ──────────────────────────────────────────────────────
+
+// ── inploi (Compass Group UK & Ireland) ──────────────────────────────────────
+/**
+ * jobs.compass-group.co.uk is an inploi career site (React Router SSR; the
+ * listing is NOT in the served HTML). Its bundle calls inploi's search API:
+ *
+ *   GET https://api.inploi.com/search/results?page=N&per_page=100
+ *     headers: x-publishable-key: <pk_…>, Authorization: Bearer <pk_…>
+ *   -> {data: [{id, title, category, town, city, country, created_at,
+ *               company_name, …}], pagination: {total, current_page,
+ *               per_page, last_page}}
+ *
+ * The key is the site's PUBLISHABLE key, shipped in the page's own
+ * `window.__reactRouterContext` (`apiKey: "pk_…"`, `companySlug:
+ * "compass-group-uk"`) — a client key by design, not a secret. It is carried as
+ * the site's `endpoint`, the way SmartRecruiters carries a tenant name. The key
+ * alone scopes the search to the tenant; no company filter is sent.
+ *
+ * Measured 2026-09-30: total 2,733, `per_page` honoured up to 100 (28 pages)
+ * and refused above it (200 -> 422). BOTH headers are needed: without
+ * x-publishable-key the API answers {"error":"Publishable key not provided."};
+ * a request with no browser-like User-Agent is 403 at Cloudflare (the Worker
+ * sends UA). Walks returned 2,733 of 2,733 and, later that day, 2,737 of
+ * 2,737 twice with the same id set (~6 s, 28 requests, 6 at a time).
+ *
+ * Bounded by `pagination.total`/`last_page` from page 1, and read with
+ * allPages, so a page that cannot be read fails the pull rather than
+ * archiving the board minus it.
+ *
+ * Job permalink: <origin>/job/<id> (checked: 200, page names the role).
+ */
+interface InploiJob {
+  id?: number | string;
+  title?: string;
+  category?: string;
+  town?: string;
+  city?: string;
+  country?: string;
+  created_at?: string;
+}
+
+interface InploiPage {
+  data?: InploiJob[];
+  pagination?: { total?: number; last_page?: number };
+}
+
+const INPLOI_PAGE = 100;
+
+async function fetchInploi(site: SiteDef): Promise<PortalJob[]> {
+  const label = `inploi ${site.key ?? site.id}`;
+  const key = site.endpoint;
+  const read = (page: number) =>
+    getJson<InploiPage>(
+      `https://api.inploi.com/search/results?page=${page}&per_page=${INPLOI_PAGE}`,
+      { headers: { "x-publishable-key": key, Authorization: `Bearer ${key}` } },
+    );
+  const first = (await read(1)) ?? (await read(1));
+  const total = first?.pagination?.total ?? 0;
+  const last = Math.min(first?.pagination?.last_page ?? 0, site.maxPages ?? 60);
+  if (!first?.data?.length || !total) return [];
+  const rest = await allPages<InploiJob>(
+    Math.max(0, last - 1),
+    async (i) => (await read(i + 2))?.data ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...first.data, ...rest]) {
+    const title = clean(r.title ?? "");
+    const id = String(r.id ?? "");
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const town = clean(r.town ?? "");
+    const city = clean(r.city ?? "");
+    const loc = [town, city !== town ? city : "", clean(r.country ?? "")]
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/job/${id}`,
+        isoDay(r.created_at ?? ""),
+        clean(r.category ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── BrassRing / Kenexa TalentGateway (UBS) ───────────────────────────────────
+/**
+ * The TGnewUI search's own JSON call — the one scripts/infosys-to-d1.py reads
+ * for Infosys, here in-Worker because UBS's board is a third of the size:
+ *
+ *   POST <host>/TgNewUI/Search/Ajax/ProcessSortAndShowMoreJobs
+ *   {"partnerId","siteId","keyword":"","location":"","Latitude":0,
+ *    "Longitude":0,"facetfilterfields":{"Facet":[]},
+ *    "powersearchoptions":{"PowerSearchOption":[]},"SortType","pageNumber":N}
+ *   -> {"JobsCount": N, "Jobs": {"Job": [{Link, Questions: [{QuestionName, Value}]}]}}
+ *
+ * `endpoint` is that URL with the tenant in its query string —
+ * `?partnerid=&siteid=&loc=<question holding the location>` — because the
+ * location question is per tenant (Infosys `formtext2`, UBS `formtext23`).
+ *
+ * Measured 2026-09-30 on UBS (partner 25008, site 5012): JobsCount 521, 50 a
+ * page whatever is asked (11 pages), `pageNumber` one-based and disjoint,
+ * ~330 KB a page because every row carries its full description — ~3.6 MB for
+ * the board, read PAGE_CONCURRENCY pages at a time.
+ *
+ * THE SORT DECIDES WHETHER THE WALK READS THE BOARD. SortType "LastUpdated"
+ * (Infosys' choice) ties every role updated the same day and the tie-break
+ * moves between requests: two walks held 513 and 516 unique of 521. "reqid"
+ * (a field name in the board's own search.min.js) orders by requisition
+ * number — page 1 comes back ascending — and three walks each held 521 of 521.
+ *
+ * Bounded by JobsCount; read with allPages, so a page that cannot be read
+ * fails the pull rather than archiving the board minus 50 roles.
+ *
+ * Fields are a label/value list, read by NAME: jobtitle, lastupdated
+ * ("30-Sep-2026"), reqid, department, and the tenant's location question.
+ */
+interface BrassRingJob {
+  Link?: string;
+  Questions?: { QuestionName?: string; Value?: unknown }[];
+}
+
+interface BrassRingPage {
+  JobsCount?: number;
+  Jobs?: { Job?: BrassRingJob[] };
+}
+
+const BR_PAGE = 50;
+
+async function fetchBrassRing(site: SiteDef): Promise<PortalJob[]> {
+  const label = `brassring ${site.key ?? site.id}`;
+  const u = new URL(site.endpoint);
+  const partnerId = u.searchParams.get("partnerid") ?? "";
+  const siteId = u.searchParams.get("siteid") ?? "";
+  const locQ = u.searchParams.get("loc") ?? "formtext2";
+  const search = `${u.origin}${u.pathname}`;
+  const read = (pageNumber: number) =>
+    getJson<BrassRingPage>(search, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        partnerId,
+        siteId,
+        keyword: "",
+        location: "",
+        Latitude: 0,
+        Longitude: 0,
+        facetfilterfields: { Facet: [] },
+        powersearchoptions: { PowerSearchOption: [] },
+        SortType: "reqid",
+        pageNumber,
+      }),
+    });
+  const first = (await read(1)) ?? (await read(1));
+  const total = Number(first?.JobsCount) || 0;
+  const head = first?.Jobs?.Job ?? [];
+  if (!total || !head.length) return [];
+  const pages = Math.min(Math.ceil(total / BR_PAGE), site.maxPages ?? 40);
+  const rest = await allPages<BrassRingJob>(
+    Math.max(0, pages - 1),
+    async (i) => (await read(i + 2))?.Jobs?.Job ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of [...head, ...rest]) {
+    const q = new Map<string, string>();
+    for (const x of j.Questions ?? []) {
+      if (x.QuestionName) q.set(x.QuestionName, clean(String(x.Value ?? "")));
+    }
+    const title = q.get("jobtitle") ?? "";
+    const id = q.get("reqid") ?? "";
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    const link = (j.Link ?? "").trim();
+    out.push(
+      job(
+        site,
+        title,
+        q.get(locQ) ?? "",
+        link.startsWith("http")
+          ? link
+          : `${u.origin}/TGnewUI/Search/home/HomeWithPreLoad?partnerid=${partnerId}` +
+              `&siteid=${siteId}&PageType=JobDetails&jobid=${id}`,
+        isoDay(q.get("lastupdated") ?? ""),
+        q.get("department") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── batch 13 J: applynow.net.au job blocks (Domino's), Hutchies' own page ────
+
+/**
+ * applynow.net.au candidate board — the whole board server-rendered as one
+ * page of `<div data-… class="jobblock block">` elements, every field a data-
+ * attribute (data-id, data-title, data-location, data-address_state,
+ * data-created_at, data-url). The page's own React filter bar is fed from
+ * exactly those divs (`staticJobs`), so the divs ARE the board: there is no
+ * pager, no API and no printed total.
+ *
+ * Measured 2026-09-30 on Domino's (dpe-jobs-portal.applynow.net.au): ONE GET,
+ * 1.58 MB, 1,315 blocks, 1,315 distinct data-id.
+ *
+ * TRAPS, all measured on that pull:
+ *   - `data-country` is "Australia" on EVERY row, including the 28 New Zealand
+ *     stores, so it is never read.
+ *   - `data-address_state` is free text typed per store: "QLD" 294 and
+ *     "Queensland" 129, "NSW"/"New South Wales", 166 blank, "Toowoomba" once —
+ *     and NZ stores carry "NZ", "Auckland", "Otago Region" and, twice, "QLD"
+ *     (Hastings, Hawke's Bay). A Hastings NZ store read as "Hastings, QLD"
+ *     would plot on Brisbane.
+ *   - So NZ rows are identified by the tenant's NZ board instead
+ *     (APPLYNOW_NZ_BOARD): measured the same day, dominos-nz.applynow.net.au
+ *     serves 28 blocks and every one of those 28 ids is also on the main
+ *     board. A row whose id is on the NZ board is written "<place>, New
+ *     Zealand" and its typed state is dropped. If the NZ board cannot be read
+ *     the pull is refused, since the NZ rows could then not be told apart.
+ *   - A blank state leaves the bare place ("Blacktown", "Alice Springs"),
+ *     which HUB_MATCH places or leaves unplaced; nothing here guesses a state.
+ *
+ * Refused (returns []) when the number of `jobblock` elements and the number
+ * of parsed rows disagree — that means the markup moved under the regex, and
+ * a partial read would archive a random subset.
+ */
+const APPLYNOW_NZ_BOARD: Record<string, string> = {
+  "brisbane-dmp": "https://dominos-nz.applynow.net.au/",
+};
+
+/**
+ * The state field spelled out, as 267 of Domino's 1,149 stated rows are, back
+ * to the abbreviation the rest of the board uses. It matters for one of them:
+ * HUB_MATCH has no bare "victoria" needle (Victoria BC, Victoria Island), so
+ * "Vermont South, Victoria" and 66 like it resolved to no hub while
+ * "MILL PARK, VIC" placed. The field is the board's own STATE field, and only
+ * on rows the NZ board does not claim, so reading "Victoria" as VIC here is
+ * the board's statement and not a guess.
+ */
+const APPLYNOW_STATE: Record<string, string> = {
+  queensland: "QLD",
+  "new south wales": "NSW",
+  victoria: "VIC",
+  "western australia": "WA",
+  "south australia": "SA",
+  tasmania: "TAS",
+  "northern territory": "NT",
+  "australian capital territory": "ACT",
+};
+
+function applyNowBlocks(html: string): string[] {
+  return [...html.matchAll(/<div\s+data-[^>]*\bclass="jobblock block"[^>]*>/gi)].map((m) => m[0]);
+}
+
+function applyNowAttr(block: string, name: string): string {
+  return clean(new RegExp(`\\sdata-${name}="([^"]*)"`, "i").exec(block)?.[1] ?? "");
+}
+
+async function fetchApplyNow(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const blocks = applyNowBlocks(html);
+  const expected = (html.match(/class="jobblock block"/gi) ?? []).length;
+  if (!blocks.length || blocks.length !== expected) {
+    console.log(
+      `applynow ${site.key ?? site.id}: ${blocks.length} parsed of ${expected} — refused`,
+    );
+    return [];
+  }
+  const nzUrl = APPLYNOW_NZ_BOARD[site.key ?? site.id];
+  const nzIds = new Set<string>();
+  if (nzUrl) {
+    const nz = await getText(nzUrl);
+    if (!nz) {
+      console.log(`applynow ${site.key ?? site.id}: NZ board unreadable — refused`);
+      return [];
+    }
+    for (const b of applyNowBlocks(nz)) nzIds.add(applyNowAttr(b, "id"));
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const b of blocks) {
+    const id = applyNowAttr(b, "id");
+    const title = applyNowAttr(b, "title");
+    const url = applyNowAttr(b, "url");
+    if (!id || !title || !url || seen.has(id)) continue;
+    seen.add(id);
+    const place = applyNowAttr(b, "location");
+    const typed = applyNowAttr(b, "address_state");
+    const state = APPLYNOW_STATE[typed.toLowerCase()] ?? typed;
+    const loc = nzIds.has(id)
+      ? [place, "New Zealand"].filter(Boolean).join(", ")
+      : [place, state].filter(Boolean).join(", ");
+    const day = applyNowAttr(b, "created_at").slice(0, 10);
+    out.push(
+      job(site, title, loc, url, /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : "", "Career portal"),
+    );
+  }
+  return out;
+}
+
+/**
+ * Hutchinson Builders' own opportunities page,
+ * www.hutchinsonbuilders.com.au/careers/opportunities — a server-rendered CMS
+ * collection of `<div class="column item-card">` cards, each an
+ * <h3><a href="/feed/news/<slug>">title</a></h3> and a
+ * `<p class="lead …">` holding the place ("Toowoomba QLD", "Sydney NSW").
+ *
+ * Measured 2026-09-30: 22 cards, 19 distinct /feed/news/ roles. The other
+ * cards are the standing "General Applications" and "Apprenticeships" entries,
+ * which link to the apply form rather than to a post and are skipped on that.
+ * One role (Construction Cadets, Toowoomba) is carded twice and is deduped on
+ * its href. No pager, no total, no dates anywhere — on the card or the post.
+ *
+ * WHY A DATELESS CMS LIST IS TRUSTED HERE (the Pallion lesson is that a
+ * WordPress list can outlive its vacancies): every state-suffixed job post in
+ * the site's own sitemap.xml — 21 of them — is also on this page bar one news
+ * article, i.e. filled roles are DELETED from the site rather than left behind.
+ * That is what makes "on the page" mean "open".
+ *
+ * TRAP: two cards carry "Careers" in the place slot instead of a place. Their
+ * slug still ends in the place, "-sydney-nsw" / "-rockhampton-qld", so for
+ * those the slug's final STATE token alone is used ("NSW", "QLD"): the town
+ * part of a slug cannot be split reliably ("gold-coast-qld"), and a state is
+ * what HUB_MATCH places anyway.
+ */
+async function fetchHutchies(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const card of html.split(/<div class="column item-card">/i).slice(1)) {
+    const a = /<h3[^>]*>\s*<a href="(\/feed\/news\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/i.exec(card);
+    if (!a || seen.has(a[1])) continue;
+    const title = clean(a[2]);
+    if (!title) continue;
+    seen.add(a[1]);
+    let loc = clean(/<p class="lead[^"]*">([\s\S]*?)<\/p>/i.exec(card)?.[1] ?? "");
+    if (!/\b(?:QLD|NSW|VIC|TAS|WA|SA|NT|ACT)\b|australia wide/i.test(loc)) {
+      const st = /-(qld|nsw|vic|tas|wa|sa|nt|act)$/i.exec(a[1]);
+      loc = st ? st[1].toUpperCase() : "";
+    }
+    out.push(job(site, title, loc, `${site.origin}${a[1]}`, "", "Career portal"));
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  // batch 13: N
+  alibabatalent: fetchAlibabaTalent,
+  naverrecruit: fetchNaverRecruit,
+  swireprops: fetchSwireProps,
+  frcareersjp: fetchFastRetailingJp,
+  avaturetable: fetchAvatureTable,
+  exalead3ds: fetchExalead3ds,
   sonar: fetchSonar,
   axol: fetchAxol,
   mitsuicareer: fetchMitsuiCareer,
@@ -36024,6 +39841,9 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   // reader; the platform is separate only so their rows get their own tag.
   atsx: fetchBytedance,
   workdaystores: fetchWorkdayStores,
+  mcloud: fetchMcloud,
+  inploi: fetchInploi,
+  brassring: fetchBrassRing,
   clinchfacets: fetchClinchFacets,
   danoneaem: fetchDanoneAem,
   sikaaem: fetchSikaAem,
@@ -36032,6 +39852,8 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   sgquantum: fetchSgQuantum,
   wisetech: fetchWiseTech,
   x0pa: fetchX0pa,
+  applynow: fetchApplyNow,
+  hutchies: fetchHutchies,
   sfclassicxml: fetchSfClassicXml,
   tencent: fetchTencent,
   baidu: fetchBaidu,
@@ -36136,13 +39958,21 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
   const jobs = await FETCHERS[site.platform](site);
   const skip = site.skipTitles;
-  return skip ? jobs.filter((j) => !skip.test(j.t)) : jobs;
+  const skipLoc = site.skipLocations;
+  if (!skip && !skipLoc) return jobs;
+  return jobs.filter((j) => !skip?.test(j.t) && !skipLoc?.test(j.loc));
 }
 
 /** Short source tag per platform, so an archive row says where it came from. */
 export const SOURCE_TAG: Record<Platform, string> = {
+  avaturetable: "avt",
+  exalead3ds: "exa3ds",
   // Workday rows; only the placement differs (see fetchWorkdayStores).
   workdaystores: "wd",
+  inploi: "inp",
+  // The tag scripts/infosys-to-d1.py already writes (`portal-brassring`).
+  brassring: "brassring",
+  mcloud: "mcloud",
   clinchfacets: "clfc",
   danoneaem: "dnaem",
   sikaaem: "sikaem",
@@ -36151,6 +39981,9 @@ export const SOURCE_TAG: Record<Platform, string> = {
   sgquantum: "sgq",
   wisetech: "wtc",
   x0pa: "x0pa",
+  // batch 13 J: applynow.net.au is named for its host; Hutchies for the employer.
+  applynow: "applynow",
+  hutchies: "hutchies",
   successfactors: "sf",
   workday: "wd",
   eightfold: "ef",
@@ -36310,6 +40143,11 @@ export const SOURCE_TAG: Record<Platform, string> = {
   saicrecruit: "saic",
   hotjob: "hotjob",
   atsx: "atsx",
+  // batch 13: N. The employer's own boards, named for the employer.
+  alibabatalent: "alibaba",
+  naverrecruit: "naver",
+  swireprops: "swireprops",
+  frcareersjp: "fastretailing",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
