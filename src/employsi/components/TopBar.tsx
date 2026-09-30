@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { BrandMark } from "./BrandMark";
+import { MARKETING_APEX } from "@/lib/siteGate";
 import { AccountButton } from "./AccountButton";
 import { HelpDock } from "./HelpDock";
 import { useAppStore, isSearchActive, type FilterState } from "../state/store";
@@ -149,12 +150,28 @@ export function TopBar() {
 
   return (
     <div className="topbar">
-      <div className="brand">
+      {/* The mark and wordmark go to the marketing site, the way a product's
+          logo usually goes home — and here "home" is the public site rather
+          than the map you are already looking at.
+
+          The host comes from MARKETING_APEX (lib/siteGate.ts), not a literal,
+          because that module is already the one place this domain is written
+          down; a second copy is how the two drift when the domain changes.
+
+          A plain <a>, not a router link: this leaves the app for a different
+          site, so it should be an ordinary navigation that middle-click and
+          "open in new tab" both handle. Same tab, which is the convention for
+          a logo and what makes it feel like a way back rather than a pop-out. */}
+      <a
+        className="brand"
+        href={`https://${MARKETING_APEX}`}
+        aria-label="employsi — go to the employsi website"
+      >
         <BrandMark />
         <div className="bwrap">
           <span className="logo">employsi</span>
         </div>
-      </div>
+      </a>
       <div className="controls">
         {/* Feedback / Help / Settings sit at the header's right edge, per the
             action-banner design. In the control row rather than free-floating

@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
 import { getTalentFlowMonths, getTalentFlowSkills, getTalentFlowView } from "../../lib/flowsFn";
-import { WINDOW_CAVEAT, viewForWindow } from "../../lib/flows";
+import { viewForWindow } from "../../lib/flows";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
 import { IconClose } from "../ActionIcons";
@@ -988,13 +988,20 @@ export function TalentFlowPane() {
           })}
         </div>
 
-        {view && (
-          <p className="tfnote">
-            {view.caption}
-            {mode !== "in" ? " Net is inflow minus outflow, for those companies only." : ""}
-            {windowed ? ` ${WINDOW_CAVEAT}` : ""}
-          </p>
-        )}
+        {/* THE METHOD FOOTER IS GONE (2026-09-30, at the owner's request).
+            It read: how many sampled profiles the moves are drawn from and
+            over what months, that companies under the move floor are grouped
+            as "other", that outflow is only measured to companies whose own
+            staff were sampled, and — off the "in" tab — that net is inflow
+            minus outflow for those companies only.
+
+            Those are caveats about what the figures ARE, not decoration, so
+            removing them is a real loss: the card now shows sample-derived
+            counts with nothing on screen saying they are a sample or that
+            outflow is systematically partial. `view.caption` is still built
+            in lib/flows.ts and is the record of the method; the cheap way to
+            put this right without the footer returning is to hang it off an
+            info affordance, the way LocalBanner's stats carry `note`. */}
       </aside>
     </>
   );

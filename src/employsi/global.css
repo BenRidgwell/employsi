@@ -4225,6 +4225,10 @@ body {
 }
 .brand {
   pointer-events: auto;
+  /* It is an <a> to the marketing site now, so the anchor defaults have to be
+     undone — the wordmark sets its own colour and must not be underlined. */
+  text-decoration: none;
+  color: inherit;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -17493,16 +17497,11 @@ body {
 .tftrack:focus-within .tfknob {
   box-shadow: var(--focus-ring);
 }
-/* What the numbers are: sampled moves, the period, the grouping and the
-   outflow rule. The design has no line for it; a count with no statement of
-   what it counts is the thing this codebase refuses to print. */
-.tfnote {
-  margin: 0;
-  padding: 4px 20px 18px;
-  font: 400 11.5px/1.5 var(--font-label, Inter, system-ui, sans-serif);
-  color: var(--text-tertiary, #8e8e93);
-  text-wrap: pretty;
-}
+/* .tfnote removed with the talent-flow method footer (2026-09-30) — see the
+   note where it was rendered in TalentFlowPane.tsx. Its comment here read "a
+   count with no statement of what it counts is the thing this codebase refuses
+   to print", which is now what the card does; recorded rather than deleted
+   quietly so the next reader knows it was a decision. */
 @media (max-width: 680px) {
   .tfcard {
     left: 12px;
