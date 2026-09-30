@@ -217,7 +217,11 @@ type Platform =
   | "sgquantum"
   | "wisetech"
   | "x0pa"
-  | "workdaystores";
+  | "workdaystores"
+  | "alibabatalent"
+  | "naverrecruit"
+  | "swireprops"
+  | "frcareersjp";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -401,6 +405,22 @@ interface SiteDef {
    * rejects the call without it, so it is per tenant and measured, not derived.
    */
   portalNo?: string;
+  /**
+   * Taleo only: the languages to walk, merged by requisition id. Default
+   * ["en"]. For a career section that posts some roles in ONE language only —
+   * MTR's says so on its own list page ("There are other job vacancies posted
+   * in the Chinese version of this website"): measured 2026-09-30, en 37,
+   * zh_TW 14, with Chinese-only roles among the 14.
+   */
+  taleoLangs?: string[];
+  /**
+   * HRMOS only: complete a card that shows no location from its job page's
+   * 勤務地 row. For tenants whose list leaves `sg-tag-location` empty — measured
+   * 2026-09-30, SMBC (214 roles) and Mizuho (154) print an empty tag on every
+   * card while the job page states 東京 / 東京都. Canon's cards carry the
+   * address, so it does not set this.
+   */
+  hrmosDetailPlace?: boolean;
   /**
    * Avature only: where the location and category sit in a result card's text
    * cells, zero-based, when the tenant does not use Macquarie's ordering.
@@ -23912,6 +23932,458 @@ export const SITES: SiteDef[] = [
       ["norwell, ma", "boston"],
     ],
   })),
+  // ── batch 13: N ──
+  // DBS Group Holdings — Workday dbs.wd3 / DBS_Careers. Measured 2026-09-30: total 1,393,
+  // Market facet (locationCountry) Singapore 304, Hong Kong 312, India 368, Taiwan 215,
+  // Indonesia 108, China 75, Australia 6, Vietnam 4 (sum 1,392 — one posting carries no
+  // Market and is in none of the three feeds). locationsText is a BUILDING, not a city: "One
+  // Island East", "Kwun Tong", "Mira Place Tower A" (HK), "Singapore - Central", "DBS Asia
+  // Central" (SG), "Jakarta Head Office", "Regional Office Mumbai". So the board is read in
+  // three Market partitions, each walked in full: in the Singapore and Hong Kong ones the
+  // Market facet itself says where the role is, which is what makes assumeHomeHub honest there
+  // (the HK Market's one "Macau Branch" row is hinted to null). The rest-of-Asia partition has
+  // no home: HUB_MATCH places Mumbai/Bangalore/Sydney/Shanghai/Shenzhen/Beijing, hints add the
+  // measured same-metro branch names (Vikhroli, Kanjurmarg = Mumbai; Bellandur, Basaweshwara
+  // Nagar = Bengaluru), and Taipei 184, Jakarta, Delhi, Guangzhou, Pune etc. stay unplaced.
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-sg",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: "singapore",
+    assumeHomeHub: true,
+    appliedFacets: { locationCountry: ["80938777cac5440fab50d729f9634969"] },
+  },
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-hk",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: "hongkong",
+    assumeHomeHub: true,
+    hubHints: [["macau", null]],
+    appliedFacets: { locationCountry: ["d4afdeb461d446e4babd204bd102dba8"] },
+  },
+  {
+    id: "singapore-d05",
+    key: "singapore-d05-asia",
+    name: "DBS Group Holdings",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://dbs.wd3.myworkdayjobs.com/wday/cxs/dbs/DBS_Careers/jobs",
+    origin: "https://dbs.wd3.myworkdayjobs.com/DBS_Careers",
+    homeHub: null,
+    hubHints: [
+      ["vikhroli", "mumbai"],
+      ["kanjurmarg", "mumbai"],
+      ["bellandur", "bengaluru"],
+      ["basaweshwara nagar", "bengaluru"],
+    ],
+    // Australia, China, India, Indonesia, Taiwan, Vietnam.
+    appliedFacets: {
+      locationCountry: [
+        "d903bb3fedad45039383f6de334ad4db",
+        "6cb77610a8a543aea2d6bc10457e35d4",
+        "c4f78be1a8f14da0ab49ce1162348a5e",
+        "b31234dbcdda4da9ba8fa073c5944e36",
+        "a4e08b475d6a4176853c9d1cb9854e02",
+        "db69e8c8446c11de98360015c5e6daf6",
+      ],
+    },
+    maxPages: 60,
+  },
+  // Singapore Airlines — the group board careers.singaporeair.com (SIA, SIA Engineering
+  // "/siaec/" and Scoot roles in one list), classic SuccessFactors table theme, 10 a page.
+  // Measured 2026-09-30: "Results 1 – 10 of 79", walked 79/79 twice, ~5 s. Every row's
+  // location cell is the bare country code "SG", which HUB_MATCH does not read; the
+  // site hint places exactly that string. homeHub null: nothing blank to default.
+  {
+    id: "singapore-c6l",
+    name: "Singapore Airlines",
+    sector: "Consumer & Retail",
+    platform: "successfactors",
+    endpoint: "https://careers.singaporeair.com",
+    origin: "https://careers.singaporeair.com",
+    homeHub: null,
+    hubHints: [[" sg,", "singapore"]],
+  },
+  // ST Engineering — careers.stengg.com is SuccessFactors on the NES theme (the page is
+  // the xweb/rmk-jobs-search widget and server-renders no rows), so it is read through
+  // the RMK JSON service like Bendigo's. Measured 2026-09-30: totalJobs 341. Locations
+  // are "Singapore, 01, SGP, 619523" — 331 Singapore — plus 9 with no location, which
+  // stay unplaced (homeHub null) rather than being assumed Singapore: the group also
+  // hires in the US, China and Europe.
+  {
+    id: "singapore-s63",
+    name: "ST Engineering",
+    sector: "Industrial Manufacturing",
+    platform: "sfrmkapi",
+    endpoint: "https://careers.stengg.com",
+    origin: "https://careers.stengg.com",
+    homeHub: null,
+    // The default "recent" walk re-shuffles per request: four walks on 2026-09-30 gave
+    // 341, 340, 324 and 332 unique of 341. "date" + one locale is the deterministic
+    // parallel walk Standard Chartered/Colgate use.
+    sfRmkSort: "date",
+    sfRmkLocales: ["en_GB"],
+  },
+  // Mitsubishi UFJ Financial Group — MUFG's global Workday board, mufgub.wd3/MUFG-Careers
+  // (linked from careers.mufgamericas.com). Measured 2026-09-30: total 692, walked 692/692
+  // twice, ~44 s (35 pages). No Japan roles on it: India 206, US 198, UK 76, Singapore 58,
+  // HK 35, … by its Country facet. MUFG Bank's Japanese mid-career hiring is on its own
+  // site (mufg.jp/careers links only to graduate/career-tasu pages) and is NOT wired.
+  // Placement: "MUFG Global Service Private Ltd. - Bengaluru (BCIT)" 164 -> bengaluru,
+  // London 74, New York 51; hints for the same-metro offices Jersey City (35, and "210
+  // Hudson Street") -> newyork and Irving, TX (14) -> dallas. "2 Locations"/"3
+  // Locations" (80), Jakarta, Taipei, Amsterdam, Tempe AZ, Tampa etc. stay unplaced.
+  {
+    id: "tokyo-8306",
+    name: "Mitsubishi UFJ Financial Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mufgub.wd3.myworkdayjobs.com/wday/cxs/mufgub/MUFG-Careers/jobs",
+    origin: "https://mufgub.wd3.myworkdayjobs.com/MUFG-Careers",
+    homeHub: null,
+    hubHints: [
+      ["jersey city, nj", "newyork"],
+      ["210 hudson street", "newyork"],
+      ["irving, tx", "dallas"],
+    ],
+    maxPages: 50,
+  },
+  // Mizuho Financial Group — three boards, none of them complete on its own:
+  //  - americas: Workday mizuho.wd1/mizuhoamericas (linked from mizuhogroup.com/americas).
+  //    2026-09-30: total 116, 116/116 twice, ~5 s. "New York, NY (1271 AOA/6th Ave)" 50,
+  //    "NYC (1285)" 48 -> newyork (hint), MetroPark (Iselin NJ) 9 -> newyork, Menlo Park CA
+  //    -> sanfrancisco; Madrid, Stockholm and "Offsite - NY" unplaced.
+  //  - emea: careers.mizuhoemea.com, classic SuccessFactors, "1 – 12 of 12"; London 11.
+  //  - jp: HRMOS hrmos.co/pages/mizuho ("全 154 件"), Mizuho Bank/Trust/Securities roles in
+  //    Japan. The list prints an empty location on every card, so the place is read off
+  //    each job page (hrmosDetailPlace): 東京都 104, 東京 10, … -> tokyo; 大阪府 4 and 4
+  //    with no 勤務地 row stay unplaced.
+  // careers.mizuhobankaustralia.com (SF) listed 0 roles on the day and is not wired.
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-americas",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "workday",
+    endpoint: "https://mizuho.wd1.myworkdayjobs.com/wday/cxs/mizuho/mizuhoamericas/jobs",
+    origin: "https://mizuho.wd1.myworkdayjobs.com/mizuhoamericas",
+    homeHub: null,
+    hubHints: [
+      ["nyc (1285)", "newyork"],
+      ["metropark", "newyork"],
+      ["menlo park, ca", "sanfrancisco"],
+    ],
+  },
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-emea",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "successfactors",
+    endpoint: "https://careers.mizuhoemea.com",
+    origin: "https://careers.mizuhoemea.com",
+    homeHub: null,
+  },
+  // Nintendo — careers.nintendo.com is Nintendo of America's Next.js site over the
+  // Greenhouse board "nintendo". 2026-09-30: meta.total 49, 49 read. Redmond, WA 40 is the
+  // " wa," (Perth) trap and is hinted to seattle, as is North Bend, WA (NoA's warehouse,
+  // King County); Austin 5. Nintendo Co.'s own Kyoto mid-career roles are single e2r
+  // (portal.e2r.jp) pages linked from nintendo.co.jp/jobs/career with no list to walk,
+  // and Kyoto is not a hub — NOT wired.
+  {
+    id: "tokyo-7974",
+    name: "Nintendo",
+    sector: "Technology, Media & Telecom",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/nintendo/jobs",
+    origin: "https://careers.nintendo.com",
+    homeHub: null,
+    hubHints: [
+      ["redmond, wa", "seattle"],
+      ["north bend, wa", "seattle"],
+      ["manhattan, ny", "newyork"],
+    ],
+  },
+  // SK Hynix — careers.skhynix.com and recruit.skhynix.com did not answer from here on
+  // 2026-09-30 (the proxy's CONNECT got 502), so the Korean board is NOT wired. This is
+  // SK hynix America's Greenhouse board "skhynixamerica": 54 of meta.total 54 — San Jose
+  // 43, West Lafayette IN 9 (Purdue packaging plant; no hub), Austin 2.
+  {
+    id: "seoul-000660",
+    name: "SK Hynix",
+    sector: "Technology, Media & Telecom",
+    platform: "greenhouse",
+    endpoint: "https://boards-api.greenhouse.io/v1/boards/skhynixamerica/jobs",
+    origin: "https://job-boards.greenhouse.io/skhynixamerica",
+    homeHub: null,
+  },
+  // Kia Corporation — Kia America/Canada's board, careers-americas.kia.com, classic
+  // SuccessFactors table, 25 a page. 2026-09-30: "1 – 25 of 57", 57/57 twice, ~2 s. Irvine
+  // CA (Kia America HQ) 30 -> losangeles (Orange County), West Point GA plant 10 (no hub),
+  // Mississauga 5 -> toronto, Downers Grove 4 -> chicago; "Renton, WA" is hinted to
+  // seattle before HUB_MATCH's " wa," can file it on Perth. Kia's Korean board
+  // (career.kia.com, "Kia Talent Lounge") sits behind a NetFunnel queue and its API
+  // answers the queue page, not JSON — NOT wired.
+  {
+    id: "seoul-000270",
+    name: "Kia Corporation",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://careers-americas.kia.com",
+    origin: "https://careers-americas.kia.com",
+    homeHub: null,
+    hubHints: [
+      ["irvine, ca", "losangeles"],
+      ["renton, wa", "seattle"],
+      ["seattle, wa", "seattle"],
+      ["mississauga, on", "toronto"],
+      ["downers grove, il", "chicago"],
+      ["kennesaw, ga", "atlanta"],
+    ],
+  },
+  // Alibaba Group — talent.alibaba.com social recruitment (see fetchAlibabaTalent).
+  // 2026-09-30: totalCount 3,959, 3,959 unique in 25 s; first-listed city: Hangzhou (no
+  // hub) most, beijing 1,001, shanghai 418, shenzhen 167, hongkong 5. homeHub null — see
+  // the reader for why a Hong Kong fallback would be wrong.
+  {
+    id: "hongkong-09988",
+    name: "Alibaba Group Holding",
+    sector: "Technology, Media & Telecom",
+    platform: "alibabatalent",
+    endpoint: "https://talent.alibaba.com/position/search",
+    origin: "https://talent.alibaba.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Naver — recruit.navercorp.com (see fetchNaverRecruit). 2026-09-30: totalSize 27, 27
+  // read, all work area 0010 = 분당 (Bundang, Seongnam) -> seoul.
+  {
+    id: "seoul-035420",
+    name: "Naver",
+    sector: "Technology, Media & Telecom",
+    platform: "naverrecruit",
+    endpoint: "https://recruit.navercorp.com/rcrt/loadJobList.do",
+    origin: "https://recruit.navercorp.com",
+    homeHub: null,
+    hubHints: [["분당", "seoul"]],
+  },
+  // Swire Pacific — Swire Properties (82%-owned) is the subsidiary with a readable board:
+  // see fetchSwireProps. 2026-09-30: 38 roles, HK districts hinted (a bare " taikoo," only,
+  // so a mainland "Taikoo Li" cannot match); Singapore 1; 8 blank stay unplaced.
+  // NOT wired: careers.swire.com / mycareers.swire.com is John Swire & Sons (the PARENT,
+  // SuccessFactors JSSHK) and its programmes; careers.swirecocacola.com renders its list
+  // client-side with no API found; Cathay Pacific is an associate, not a subsidiary.
+  {
+    id: "hongkong-00019",
+    key: "hongkong-00019-swireprops",
+    name: "Swire Pacific",
+    sector: "Infrastructure & Government",
+    platform: "swireprops",
+    endpoint:
+      "https://careers.swireproperties.com/api/jobs/talentlink?region=hk&lang=en-HK&database=web",
+    origin: "https://careers.swireproperties.com",
+    homeHub: null,
+    hubHints: [
+      ["quarry bay", "hongkong"],
+      ["admiralty", "hongkong"],
+      ["taikoo shing", "hongkong"],
+      [" taikoo,", "hongkong"],
+      ["tung chung", "hongkong"],
+      ["chai wan", "hongkong"],
+      ["north point", "hongkong"],
+      ["mid-levels", "hongkong"],
+    ],
+  },
+  // Fast Retailing — Japan mid-career roles (see fetchFastRetailingJp): 2026-09-30, 167
+  // roles, twice, ~24 s; 有明本部/六本木本部 (Tokyo) 153 -> tokyo; Yamaguchi HQ, Osaka
+  // warehouse and "海外拠点" roles stay unplaced.
+  //
+  // And its Workday tenant fastretailing.wd3, which has one SITE PER COUNTRY AND BRAND —
+  // there is no tenant-wide list. The sites were read off fastretailing.com/employment
+  // (en, zh_chs, zh_cht, ko pages) and each counted on 2026-09-30; the twenty below had
+  // roles (their count that day beside them), and are one feed each. Listed but EMPTY
+  // that day, so not wired: graduates_hk_Theory, headquarter_roles_au_Uniqlo,
+  // headquarter_roles_india_Uniqlo, headquarters_cn_FastRetailing, headquarters_hk_Theory,
+  // headquarters_us_FastRetailing, headquarters_useu_JBrand, store_staff_hk_Theory;
+  // corporate_us_HelmutLang answers 403. Japan's store staff and graduate hiring are on
+  // other systems and are not here.
+  {
+    id: "tokyo-9983",
+    key: "tokyo-9983-jp",
+    name: "Fast Retailing",
+    sector: "Consumer & Retail",
+    platform: "frcareersjp",
+    endpoint: "https://www.fastretailing.com/careers/ja/mid-career/",
+    origin: "https://www.fastretailing.com",
+    homeHub: null,
+    hubHints: [["東京", "tokyo"]],
+  },
+  ...(
+    [
+      ["EU_Theory", 18],
+      ["headquarters_eu_Uniqlo", 17],
+      ["store_staff_eu_Uniqlo", 106],
+      ["graduates_au_Uniqlo", 2],
+      ["graduates_eu_Uniqlo", 11],
+      ["headquarter_roles_vn_Uniqlo", 11],
+      ["headquarters_hk_GU", 2],
+      ["headquarters_hkm_Uniqlo", 8],
+      ["headquarters_id_Uniqlo", 4],
+      ["headquarters_my_Uniqlo", 5],
+      ["headquarters_ph_Uniqlo", 3],
+      ["headquarters_sg_Uniqlo", 3],
+      ["headquarters_th_Uniqlo", 2],
+      ["headquarters_tw_Uniqlo", 3],
+      ["headquarters_us_GU", 2],
+      ["headquarters_us_Uniqlo", 9],
+      ["retail_us_GU", 6],
+      ["retail_us_Theory", 6],
+      ["retail_us_Uniqlo", 336],
+      ["store_staff_au_Uniqlo", 70],
+    ] as const
+  ).map(([board]): SiteDef => ({
+    id: "tokyo-9983",
+    key: `tokyo-9983-${board}`,
+    name: "Fast Retailing",
+    sector: "Consumer & Retail",
+    platform: "workday",
+    endpoint: `https://fastretailing.wd3.myworkdayjobs.com/wday/cxs/fastretailing/${board}/jobs`,
+    origin: `https://fastretailing.wd3.myworkdayjobs.com/${board}`,
+    homeHub: null,
+    // Same-metro store towns, read off retail_us_Uniqlo's 336 locations on
+    // 2026-09-30, and the US-state trap: "Tacoma, WA" matches HUB_MATCH's
+    // " wa," (Perth). Seattle-metro towns are named; any other ", WA" is null.
+    hubHints: [
+      ["bellevue", "seattle"],
+      ["tacoma, wa", "seattle"],
+      ["lynnwood, wa", "seattle"],
+      ["issaquah,wa", "seattle"],
+      ["tukwila,wa", "seattle"],
+      [", wa,", null],
+      ["brooklyn, ny", "newyork"],
+      ["bronx, ny", "newyork"],
+      ["flushing, ny", "newyork"],
+      ["staten island, ny", "newyork"],
+      ["yonkers, ny", "newyork"],
+      ["white plains, ny", "newyork"],
+      ["jersey city, nj", "newyork"],
+      ["paramus, nj", "newyork"],
+      ["east rutherford, nj", "newyork"],
+      ["elizabeth, nj", "newyork"],
+      ["mclean, va", "washington"],
+      ["fairfax, va", "washington"],
+      ["arlington,va", "washington"],
+      ["bethesda", "washington"],
+      ["silver spring, md", "washington"],
+      ["chestnut hill, ma", "boston"],
+      ["framingham, ma", "boston"],
+      ["braintree, massachusetts", "boston"],
+      ["burlington", "boston"],
+      ["santa clara, ca", "sanjose"],
+      ["milpitas, ca", "sanjose"],
+      ["valley fair", "sanjose"],
+      ["daly city, ca", "sanfrancisco"],
+      ["san mateo, ca", "sanfrancisco"],
+      ["emeryville, ca", "sanfrancisco"],
+      ["culver city", "losangeles"],
+      ["santa monica, ca", "losangeles"],
+      ["sherman oaks, ca", "losangeles"],
+      ["torrance, ca", "losangeles"],
+      ["glendale, ca", "losangeles"],
+      ["arcadia, ca", "losangeles"],
+      ["cerritos, ca", "losangeles"],
+      ["topanga", "losangeles"],
+      ["frisco,tx", "dallas"],
+      ["arlington,tx", "dallas"],
+      ["first colony mall", "houston"],
+      ["oak brook, il", "chicago"],
+      ["schaumburg, il", "chicago"],
+      ["king of prussia, pa", "philadelphia"],
+    ],
+  })),
+  // MTR Corporation — careers.mtr.com.hk is on-premise Taleo (career sections
+  // mtr_external and mtr_external_pt). The REST job board answers with portal
+  // 10115100333, found by trying the long numbers printed in jobsearch.ftl (the page
+  // carries no FacetedSearchSettings). 2026-09-30: en totalCount 37 of which 30 are
+  // served anonymously (the Sonic/Ansell/RACQ gap), zh_TW 14 of which 13; merged by
+  // requisition id 31, one of them Chinese-only — which is why taleoLangs is set: the
+  // English list page itself says other vacancies are posted in the Chinese version.
+  // All Hong Kong ("Hong Kong" / "香港").
+  {
+    id: "hongkong-00066",
+    name: "MTR Corporation",
+    sector: "Infrastructure & Government",
+    platform: "taleo",
+    endpoint: "https://careers.mtr.com.hk",
+    origin: "https://careers.mtr.com.hk",
+    portalNo: "10115100333",
+    taleoLangs: ["en", "zh_TW"],
+    homeHub: "hongkong",
+    hubHints: [["香港", "hongkong"]],
+  },
+  // Sumitomo Mitsui Financial Group — SMBC's mid-career board is HRMOS
+  // hrmos.co/pages/smbc (linked from smbc-careers.com). 2026-09-30: "全 214 件", 214 read;
+  // every card's location tag is empty, so the place comes from each job page
+  // (hrmosDetailPlace): 東京 175, 東京・大阪 9, … -> tokyo. Hints: ニューヨーク before 東京
+  // (a New York posting says it starts with some months in Tokyo; the ※ note is cut, the
+  // hint is belt and braces), and a role listing 大阪 FIRST is left unplaced, on the
+  // first-listed rule. 首都圏・関西圏 and 全国 stay unplaced.
+  {
+    id: "tokyo-8316",
+    name: "Sumitomo Mitsui Financial Group",
+    sector: "Financial Services",
+    platform: "hrmos",
+    endpoint: "https://hrmos.co/pages/smbc/jobs",
+    origin: "https://hrmos.co/pages/smbc/jobs",
+    homeHub: null,
+    hrmosDetailPlace: true,
+    hubHints: [
+      ["ニューヨーク", "newyork"],
+      ["大阪府、", null],
+      ["大阪、", null],
+      ["東京", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+  },
+  {
+    id: "tokyo-8411",
+    key: "tokyo-8411-jp",
+    name: "Mizuho Financial Group",
+    sector: "Financial Services",
+    platform: "hrmos",
+    endpoint: "https://hrmos.co/pages/mizuho/jobs",
+    origin: "https://hrmos.co/pages/mizuho/jobs",
+    homeHub: null,
+    hrmosDetailPlace: true,
+    hubHints: [
+      ["ニューヨーク", "newyork"],
+      ["大阪府、", null],
+      ["大阪、", null],
+      ["東京", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+  }, // ── batch 13: N — employers NOT wired ──
+  // SoftBank Group (tokyo-9984): group.softbank/careers links only to a HERP page
+  // (herp.careers/v1/sbgcareer) holding ONE "オープンポジション" open-application form
+  // on 2026-09-30 — not a vacancy, so nothing to archive.
+  // Recruit Holdings (tokyo-6098): Indeed's careers site (indeed.com/careers) answers 401
+  // to a plain request and the Greenhouse board "indeed" is empty; Recruit Co.'s Japanese
+  // mid-career site (recruit-mid-career.my.salesforce-sites.com) also answers 401.
+  // Tata Consultancy Services (mumbai-tcs) and Infosys (bengaluru-infy) are already fed by
+  // scripts/tcs-to-d1.py and scripts/infosys-to-d1.py (portal-ibegin, portal-brassring).
 ];
 
 /**
@@ -27426,83 +27898,95 @@ async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
   const out: PortalJob[] = [];
   const seen = new Set<string>();
   const max = site.maxPages ?? DEFAULT_MAX_PAGES;
-  let advertised = 0;
-  for (let page = 1; page <= max; page++) {
-    const json = await getJson<TaleoPage>(
-      `${site.endpoint}/careersection/rest/jobboard/searchjobs?lang=en&portal=${site.portalNo ?? ""}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          tz: "GMT+10:00",
-          tzname: "Australia/Sydney",
+  // One walk per language (SiteDef.taleoLangs; "en" alone by default), merged
+  // by requisition id. The end-of-list test counts ids new to THIS language's
+  // walk, not to the merged set: a second language's first page is mostly
+  // roles the first already read, and "nothing added" there is not the end.
+  for (const lang of site.taleoLangs ?? ["en"]) {
+    const walked = new Set<string>();
+    let langAdvertised = 0;
+    for (let page = 1; page <= max; page++) {
+      const json = await getJson<TaleoPage>(
+        `${site.endpoint}/careersection/rest/jobboard/searchjobs?lang=${lang}&portal=${site.portalNo ?? ""}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            tz: "GMT+10:00",
+            tzname: "Australia/Sydney",
+          },
+          body: JSON.stringify({
+            multilineEnabled: false,
+            sortingSelection: { sortBySelectionParam: "3", ascendingSortingOrder: "false" },
+            fieldData: { fields: { KEYWORD: "", LOCATION: "" }, valid: true },
+            filterSelectionParam: { searchFilterSelections: [] },
+            advancedSearchFiltersSelectionParam: { searchFilterSelections: [] },
+            pageNo: page,
+          }),
         },
-        body: JSON.stringify({
-          multilineEnabled: false,
-          sortingSelection: { sortBySelectionParam: "3", ascendingSortingOrder: "false" },
-          fieldData: { fields: { KEYWORD: "", LOCATION: "" }, valid: true },
-          filterSelectionParam: { searchFilterSelections: [] },
-          advancedSearchFiltersSelectionParam: { searchFilterSelections: [] },
-          pageNo: page,
-        }),
-      },
-    );
-    const rows = json?.requisitionList;
-    if (!rows || !rows.length) break;
-    advertised = json?.pagingData?.totalCount ?? advertised;
-    let added = 0;
-    for (const r of rows) {
-      const id = r.jobId ?? r.contestNo ?? "";
-      if (!id || seen.has(id)) continue;
-      seen.add(id);
-      const cells = r.column ?? [];
-      const title = clean(cells[r.linkedColumn ?? 0] ?? "");
-      if (!title) continue;
-      // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
-      // prefixes each with country/state codes, which hubFor cannot read, so
-      // the trailing segment is what gets matched to a hub.
-      let loc = "";
-      const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
-      if (rawLoc) {
-        try {
-          const parsed = JSON.parse(rawLoc) as string[];
-          loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
-        } catch {
-          loc = clean(rawLoc);
-        }
-      }
-      // Tenants disagree on how the date cell is written and there is no header
-      // to say which column it is, so the cell is found by shape. Measured
-      // 2026-08-05: Sonic HealthPlus prints "04-Aug-2026", Ansell prints
-      // "Aug 5, 2026". Date.parse reads both, but only once the right cell has
-      // been picked out — matching one shape alone silently dated a whole board
-      // to the day it was scraped.
-      const posted =
-        cells.find((c) => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ??
-        cells.find((c) => /^[A-Za-z]{3}\.? \d{1,2}, \d{4}$/.test(c ?? "")) ??
-        "";
-      out.push(
-        job(
-          site,
-          title,
-          loc,
-          `${site.origin}/careersection/jobdetail.ftl?job=${encodeURIComponent(id)}`,
-          posted ? isoDay(posted) : today(),
-          "Career portal",
-        ),
       );
-      added++;
+      const rows = json?.requisitionList;
+      if (!rows || !rows.length) break;
+      langAdvertised = json?.pagingData?.totalCount ?? langAdvertised;
+      let added = 0;
+      for (const r of rows) {
+        const id = r.jobId ?? r.contestNo ?? "";
+        if (!id || walked.has(id)) continue;
+        walked.add(id);
+        added++;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        const cells = r.column ?? [];
+        const title = clean(cells[r.linkedColumn ?? 0] ?? "");
+        if (!title) continue;
+        // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
+        // prefixes each with country/state codes, which hubFor cannot read, so
+        // the trailing segment is what gets matched to a hub.
+        let loc = "";
+        const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
+        if (rawLoc) {
+          try {
+            const parsed = JSON.parse(rawLoc) as string[];
+            loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
+          } catch {
+            loc = clean(rawLoc);
+          }
+        }
+        // Tenants disagree on how the date cell is written and there is no header
+        // to say which column it is, so the cell is found by shape. Measured
+        // 2026-08-05: Sonic HealthPlus prints "04-Aug-2026", Ansell prints
+        // "Aug 5, 2026". Date.parse reads both, but only once the right cell has
+        // been picked out — matching one shape alone silently dated a whole board
+        // to the day it was scraped.
+        const posted =
+          cells.find((c) => /^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(c ?? "")) ??
+          cells.find((c) => /^[A-Za-z]{3}\.? \d{1,2}, \d{4}$/.test(c ?? "")) ??
+          "";
+        out.push(
+          job(
+            site,
+            title,
+            loc,
+            `${site.origin}/careersection/jobdetail.ftl?job=${encodeURIComponent(id)}`,
+            posted ? isoDay(posted) : today(),
+            "Career portal",
+          ),
+        );
+      }
+      // Clamped page (every id already seen in this walk) = end of list.
+      if (added === 0) break;
     }
-    // Clamped page (every id already seen) = end of list.
-    if (added === 0) break;
-  }
-  // The board's own total routinely exceeds what it will serve anonymously
-  // (Sonic HealthPlus: 22 advertised, 18 returned, stable across pages and
-  // across multiline on/off). Collected is what we archive; the gap is logged
-  // rather than back-filled, because inventing the difference is exactly the
-  // failure mode this codebase is built to avoid.
-  if (advertised && out.length < advertised) {
-    console.log(`[taleo] ${site.name}: collected ${out.length} of ${advertised} advertised`);
+    // The board's own total routinely exceeds what it will serve anonymously
+    // (Sonic HealthPlus: 22 advertised, 18 returned, stable across pages and
+    // across multiline on/off). Collected is what we archive; the gap is logged
+    // rather than back-filled, because inventing the difference is exactly the
+    // failure mode this codebase is built to avoid. Each language states its own
+    // total, so the gap is checked per language.
+    if (langAdvertised && walked.size < langAdvertised) {
+      console.log(
+        `[taleo] ${site.name}${lang === "en" ? "" : ` (${lang})`}: collected ${walked.size} of ${langAdvertised} advertised`,
+      );
+    }
   }
   return out;
 }
@@ -33527,6 +34011,7 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
   );
   if (rest.some((p) => p === null)) return [];
   const byUrl = new Map<string, PortalJob>();
+  const cards = new Map<string, { title: string; loc: string; cat: string }>();
   for (const { html } of [first, ...rest] as { html: string }[]) {
     for (const card of html.split(/<li class="pg-list-cassette/).slice(1)) {
       const href = /<a href="(https:\/\/hrmos\.co\/pages\/[^"]+\/jobs\/[^"]+)"/.exec(card)?.[1];
@@ -33538,6 +34023,7 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
       const loc = clean(
         /<li class="sg-tag-location">([\s\S]*?)<\/li>/.exec(tags)?.[1] ?? "",
       ).replace(/\s*他(?:\s*\(\d+\))?\s*$/, "");
+      cards.set(href, { title, loc, cat: cat || "Career portal" });
       byUrl.set(href, job(site, title, loc, href, "", cat || "Career portal"));
     }
   }
@@ -33545,6 +34031,35 @@ async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
     console.log(`hrmos ${site.key ?? site.id}: ${byUrl.size} of ${first.total} — feed skipped`);
     return [];
   }
+  if (!site.hrmosDetailPlace) return [...byUrl.values()];
+  // SiteDef.hrmosDetailPlace: a card with no location is completed from its
+  // own job page's 勤務地 row — `<th>勤務地</th><td><ul></ul><pre>東京都\n
+  // （就業場所の変更の範囲）…</pre></td>` — first line only, the rest being the
+  // statutory "may be transferred" note. A page that cannot be read fails the
+  // pull, as fanuc's does: the place is only there.
+  const blank = [...cards.entries()].filter(([, c]) => !c.loc);
+  const places = await b11ePool(blank, PAGE_CONCURRENCY, async ([href]) => {
+    const page = await getText(href);
+    if (!page) return null;
+    const cell = /<th>\s*勤務地\s*<\/th>\s*<td>([\s\S]*?)<\/td>/.exec(page)?.[1] ?? "";
+    const first =
+      cell
+        .replace(/<\/?(?:pre|br\s*\/?)>/gi, "\n")
+        .split(/\n/)
+        .map(clean)
+        .find(Boolean) ?? "";
+    // "ニューヨーク ※入行後数か月東京にて勤務後…" (SMBC): the note after ※
+    // names a city the role is NOT in; so does the statutory
+    // "（就業場所の変更の範囲）…" when it shares the line (Mizuho).
+    return first.replace(/\s*(?:※|（就業場所の変更の範囲）)[\s\S]*$/, "");
+  });
+  if (places.some((p) => p === null)) {
+    console.log(`hrmos ${site.key ?? site.id}: a job page could not be read — feed skipped`);
+    return [];
+  }
+  blank.forEach(([href, c], i) => {
+    byUrl.set(href, job(site, c.title, places[i] ?? "", href, "", c.cat));
+  });
   return [...byUrl.values()];
 }
 
@@ -36008,7 +36523,350 @@ async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
   });
 }
 
+// ── batch 13: N — readers ────────────────────────────────────────────────────
+
+// ── Alibaba Group, talent.alibaba.com ────────────────────────────────────────
+/**
+ * The social-recruitment board's own search call:
+ *   POST https://talent.alibaba.com/position/search?_csrf=<XSRF-TOKEN>
+ *   {channel:"group_official_site", language:"zh", pageIndex, pageSize, …}
+ * -> {success, content:{totalCount, datas:[{id, name, categories[],
+ *     workLocations[], publishTime (epoch ms), positionUrl}]}}
+ * `site.endpoint` is that URL without the query; `site.origin` the host.
+ *
+ * Measured 2026-09-30: totalCount 3,959; pageSize 100 IS honoured (100 rows a
+ * page), so the board is 40 pages. The POST needs the SESSION + XSRF-TOKEN
+ * cookies and the token again as `_csrf`, all three handed out by any page GET
+ * (the list page answers 302 and sets them on the redirect, hence
+ * redirect:"manual"). Without them the call answers 403.
+ *
+ * TRAPS:
+ * - language:"zh" not "en": the Chinese list is the whole board; roles are
+ *   written in Chinese and so are places (杭州, 上海, 北京, 深圳, 香港).
+ * - workLocations is a LIST, often several cities ("北京, 杭州"). The row is
+ *   placed on the FIRST listed, the Toyota/Denso precedent, not on whichever
+ *   city a hint happens to match first. 杭州 (Hangzhou, the HQ) is not a hub and
+ *   stays unplaced — which is most of the board.
+ * - homeHub is null on purpose. The roster plots Alibaba on Hong Kong (its
+ *   listing), and HOME_COUNTRY.hongkong matches "china", so any fallback would
+ *   file mainland roles as Hong Kong.
+ * - A page that cannot be read fails the pull (allPages), and the unique count
+ *   is checked against totalCount (reportGap) — the list is ordered by update
+ *   time, so a row can shift a page mid-walk.
+ */
+interface AlibabaPos {
+  id?: number | string;
+  name?: string;
+  categories?: string[] | null;
+  workLocations?: string[] | null;
+  publishTime?: number | null;
+}
+
+async function fetchAlibabaTalent(site: SiteDef): Promise<PortalJob[]> {
+  const label = `alibaba ${site.key ?? site.id}`;
+  let cookie = "";
+  let token = "";
+  try {
+    const seed = await fetch(`${site.origin}/off-campus/position-list?lang=zh`, {
+      headers: { "User-Agent": UA },
+      redirect: "manual",
+    });
+    const jar = (seed.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]);
+    cookie = jar.join("; ");
+    token = jar.find((c) => c.startsWith("XSRF-TOKEN="))?.slice("XSRF-TOKEN=".length) ?? "";
+  } catch {
+    return [];
+  }
+  if (!token) {
+    console.log(`${label}: no XSRF-TOKEN handed out — feed skipped`);
+    return [];
+  }
+  const per = 100;
+  const get = async (n: number) => {
+    const r = await getJson<{
+      success?: boolean;
+      content?: { totalCount?: number; datas?: AlibabaPos[] };
+    }>(`${site.endpoint}?_csrf=${encodeURIComponent(token)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({
+        channel: "group_official_site",
+        language: "zh",
+        batchId: "",
+        categories: "",
+        deptCodes: [],
+        key: "",
+        pageIndex: n,
+        pageSize: per,
+        regions: "",
+        subCategories: "",
+      }),
+    });
+    return r?.success && Array.isArray(r.content?.datas) ? r.content : null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const total = Number(first.totalCount ?? 0);
+  // AN EMPTY PAGE INSIDE THE STATED TOTAL IS A FAILED PAGE. Measured 2026-09-30:
+  // one of four walks came back exactly 100 short (3,859 of 3,959) with every
+  // request "successful" — a page answered success with no rows. So a page
+  // short of what the total says it should hold is treated as unread
+  // (allPages retries it once, then abandons the pull).
+  const pages = Math.max(0, Math.ceil(total / per) - 1);
+  const rest = await allPages(
+    pages,
+    async (i) => {
+      const rows = (await get(i + 2))?.datas ?? null;
+      const want = i + 1 < pages ? per : total - per * pages;
+      return rows && rows.length >= Math.min(want, per) * 0.9 ? rows : null;
+    },
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const p of [...(first.datas ?? []), ...rest]) {
+    const title = clean(p.name ?? "");
+    if (!title || p.id == null) continue;
+    const url = `${site.origin}/off-campus/position-detail?positionId=${p.id}`;
+    byId.set(
+      String(p.id),
+      job(
+        site,
+        title,
+        clean(p.workLocations?.[0] ?? ""),
+        url,
+        cnDate(p.publishTime ?? undefined),
+        clean(p.categories?.[0] ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, byId.size, total);
+  return [...byId.values()];
+}
+
+// ── NAVER, recruit.navercorp.com ─────────────────────────────────────────────
+/**
+ * GET https://recruit.navercorp.com/rcrt/loadJobList.do?firstIndex=N
+ * -> {result:"Y", totalSize, list:[{annoId, annoSubject, sysCompanyCdNm,
+ *     classCdNm, subJobCdNm, workAreaCd, staYmd, jobDetailLink}]}
+ * The list page's own "load more" call. 10 a page, firstIndex 0-based.
+ * Measured 2026-09-30: totalSize 27, 27 distinct annoIds over three pages.
+ * The board is the NAVER group's (NAVER 9, WEBTOON 11, Cloud 6, I&S 2, SNOW 1
+ * that day) — the same postings the site shows, one row each.
+ *
+ * PLACE: the list carries only `workAreaCd`, a code. The page's filter names
+ * five work areas (분당, 서울, 춘천, 세종, 글로벌); all 27 roles were 0010, and
+ * the detail page of one read "경기도 성남시 분당구 정자일로 95 (NAVER 1784 사옥)"
+ * — so 0010 is 분당 (Bundang, Seongnam: the Seoul capital area, the rule the
+ * Hyundai feed follows for Pangyo). Filtering by the other four codes returned
+ * 0 each, so their mapping could not be measured and they are left unnamed:
+ * such a row is unplaced rather than guessed.
+ */
+interface NaverAnno {
+  annoId?: number | string;
+  annoSubject?: string;
+  sysCompanyCdNm?: string;
+  classCdNm?: string;
+  subJobCdNm?: string;
+  workAreaCd?: string;
+  staYmd?: string;
+  jobDetailLink?: string;
+}
+
+const NAVER_WORK_AREA: Record<string, string> = { "0010": "분당" };
+
+async function fetchNaverRecruit(site: SiteDef): Promise<PortalJob[]> {
+  const label = `naver ${site.key ?? site.id}`;
+  const per = 10;
+  const get = async (i: number) => {
+    const r = await getJson<{ result?: string; totalSize?: number; list?: NaverAnno[] }>(
+      `${site.endpoint}?firstIndex=${i * per}`,
+    );
+    return r?.result === "Y" && Array.isArray(r.list) ? r : null;
+  };
+  const first = await get(0);
+  if (!first) return [];
+  const total = Number(first.totalSize ?? 0);
+  const rest = await allPages(
+    Math.max(0, Math.ceil(total / per) - 1),
+    async (i) => (await get(i + 1))?.list ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const a of [...(first.list ?? []), ...rest]) {
+    const title = clean(a.annoSubject ?? "");
+    if (!title || a.annoId == null) continue;
+    const d = /^(\d{4})(\d{2})(\d{2})$/.exec(a.staYmd ?? "");
+    byId.set(
+      String(a.annoId),
+      job(
+        site,
+        title,
+        NAVER_WORK_AREA[a.workAreaCd ?? ""] ?? "",
+        a.jobDetailLink || `${site.origin}/rcrt/view.do?annoId=${a.annoId}`,
+        d ? `${d[1]}-${d[2]}-${d[3]}` : "",
+        [a.sysCompanyCdNm, a.classCdNm]
+          .filter(Boolean)
+          .map((x) => clean(String(x)))
+          .join(" — ") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, byId.size, total);
+  return [...byId.values()];
+}
+
+// ── Swire Properties, careers.swireproperties.com ────────────────────────────
+/**
+ * The careers site's own proxy over its TalentLink (Saba) board:
+ *   GET /api/jobs/talentlink?region=hk&lang=en-HK&database=web&page=N
+ *   header api_key: <the key the page itself ships>
+ * -> {meta:{currentPage, totalPages, itemPerPage:10},
+ *     posts:[{postingTargetId, title, location, jobFunctions, url, endPost}]}
+ *
+ * The api_key is NOT a secret: it is printed in the jobs page's markup as
+ * `data-api-key="QBTFK026203F3"` for the browser to send, and without it the
+ * call answers "Authorization has been denied". `site.endpoint` carries the
+ * url without `page`.
+ *
+ * Measured 2026-09-30: totalPages 4, 38 distinct postingTargetIds; the
+ * `region` parameter changes nothing (hk, cn, us and none all return the same
+ * 38). Places are Hong Kong districts — Quarry Bay 18, Admiralty 2, Taikoo
+ * Shing 2, Taikoo 2, Tung Chung 2, Chai Wan 1, North Point 1, Mid-levels 1 —
+ * plus Singapore 1 and 8 blank.
+ *
+ * TRAPS:
+ * - The host is FLAKY: the same measurement saw a TLS "bad record mac" and two
+ *   read timeouts in seven walks. Each page gets three spaced attempts, and a
+ *   page that still fails fails the pull (allPages) — the board states no row
+ *   total, only a page count, so a short walk could not be detected afterwards.
+ * - The walk is bounded by totalPages, never by an empty page.
+ */
+interface SwirePropsPost {
+  postingTargetId?: string | number;
+  title?: string;
+  location?: string | null;
+  jobFunctions?: string | null;
+  url?: string | null;
+}
+
+async function fetchSwireProps(site: SiteDef): Promise<PortalJob[]> {
+  const label = `swireprops ${site.key ?? site.id}`;
+  // Public: printed in the page's own markup (data-api-key) — see above.
+  const headers = { api_key: "QBTFK026203F3" };
+  const get = async (n: number) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      const r = await getJson<{ meta?: { totalPages?: number }; posts?: SwirePropsPost[] }>(
+        `${site.endpoint}&page=${n}`,
+        { headers },
+      );
+      if (r && Array.isArray(r.posts)) return r;
+    }
+    return null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const pages = Number(first.meta?.totalPages ?? 0);
+  const rest = await allPages(
+    Math.max(0, pages - 1),
+    async (i) => (await get(i + 2))?.posts ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const byId = new Map<string, PortalJob>();
+  for (const p of [...(first.posts ?? []), ...rest]) {
+    const title = clean(p.title ?? "");
+    if (!title || p.postingTargetId == null) continue;
+    byId.set(
+      String(p.postingTargetId),
+      job(
+        site,
+        title,
+        clean(p.location ?? ""),
+        `${site.origin}/en-hk/job-detail/?postingTargetId=${p.postingTargetId}`,
+        "",
+        clean(p.jobFunctions ?? "") || "Career portal",
+      ),
+    );
+  }
+  return [...byId.values()];
+}
+
+// ── Fast Retailing Japan mid-career, fastretailing.com/careers/ja ────────────
+/**
+ * Japan's mid-career (中途採用) roles are not on Fast Retailing's Workday
+ * tenant (that carries the overseas subsidiaries — see the SITES note). They
+ * are server-rendered on five category pages:
+ *   /careers/ja/mid-career/{corporate,creative,dx,marketing,scm}/
+ * each an accordion of
+ *   <a href="/careers/ja/job-description/?id=N" aria-label="…"><img … alt="BRAND"><span>TITLE</span></a>
+ * and each role's page states its place in a `<th>勤務地</th><td>…</td>` row
+ * ("有明本部：東京都江東区有明1丁目6-7 UNIQLO CITY<br />※…") and its update date
+ * in `<time datetime="YYYY-MM-DD">`.
+ *
+ * Measured 2026-09-30: corporate 55, creative 29, dx 23, marketing 47, scm 17
+ * = 171 links, 167 distinct ids (a role can sit in two categories; it is one
+ * row, filed under the first). `site.endpoint` is the /mid-career/ base.
+ *
+ * The board states no total, so completeness rests on reading every category
+ * page: one that cannot be read fails the pull, as does any role page (the
+ * place is only there). Role pages are read ≤6 at a time. Only the FIRST line
+ * of the 勤務地 cell is kept — the rest is the "※ may be transferred" note.
+ */
+const FR_JP_CATEGORIES = ["corporate", "creative", "dx", "marketing", "scm"];
+
+async function fetchFastRetailingJp(site: SiteDef): Promise<PortalJob[]> {
+  const label = `frjp ${site.key ?? site.id}`;
+  const roles = new Map<string, { title: string; cat: string }>();
+  for (const cat of FR_JP_CATEGORIES) {
+    const html = await getText(`${site.endpoint}${cat}/`);
+    if (!html) {
+      console.log(`${label}: category ${cat} could not be read — pull abandoned`);
+      return [];
+    }
+    for (const m of html.matchAll(
+      /<a href="\/careers\/ja\/job-description\/\?id=(\d+)"[^>]*>[\s\S]*?<span>([\s\S]*?)<\/span>\s*<\/a>/g,
+    )) {
+      const title = clean(m[2]);
+      if (title && !roles.has(m[1])) roles.set(m[1], { title, cat });
+    }
+  }
+  if (!roles.size) return [];
+  const ids = [...roles.keys()];
+  const pages = await b11ePool(ids, PAGE_CONCURRENCY, async (id) => {
+    const page = await getText(`${site.origin}/careers/ja/job-description/?id=${id}`);
+    if (!page) return null;
+    const cell = /<th>\s*勤務地\s*<\/th>\s*<td>([\s\S]*?)<\/td>/.exec(page)?.[1] ?? "";
+    const place = clean(cell.split(/<br\s*\/?>/i)[0].replace(/※[\s\S]*$/, ""));
+    const date = /<time datetime="(\d{4}-\d{2}-\d{2})"/.exec(page)?.[1] ?? "";
+    return { place, date };
+  });
+  if (pages.some((p) => p === null)) {
+    console.log(`${label}: a role page could not be read — pull abandoned`);
+    return [];
+  }
+  return ids.map((id, i) => {
+    const r = roles.get(id)!;
+    const p = pages[i]!;
+    return job(
+      site,
+      r.title,
+      p.place,
+      `${site.origin}/careers/ja/job-description/?id=${id}`,
+      p.date,
+      r.cat,
+    );
+  });
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  // batch 13: N
+  alibabatalent: fetchAlibabaTalent,
+  naverrecruit: fetchNaverRecruit,
+  swireprops: fetchSwireProps,
+  frcareersjp: fetchFastRetailingJp,
   sonar: fetchSonar,
   axol: fetchAxol,
   mitsuicareer: fetchMitsuiCareer,
@@ -36310,6 +37168,11 @@ export const SOURCE_TAG: Record<Platform, string> = {
   saicrecruit: "saic",
   hotjob: "hotjob",
   atsx: "atsx",
+  // batch 13: N. The employer's own boards, named for the employer.
+  alibabatalent: "alibaba",
+  naverrecruit: "naver",
+  swireprops: "swireprops",
+  frcareersjp: "fastretailing",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
