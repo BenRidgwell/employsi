@@ -1124,6 +1124,7 @@ SENT = re.compile(
 
 
 FETCH_FAILED = {}          # url -> why, for the run report
+OWN_REPORT_FAILED = {}     # cid -> why, for the KEPT report's cause
 
 
 def fetch(url):
@@ -1313,6 +1314,20 @@ def main():
                          else own_report(cid, spec))
             print(f'  own report: {cid} -> {data[cid]["now"]:,} as at {spec["asof"]}')
         except Exception as e:                                    # noqa: BLE001
+            # RECORDED, not just printed, because the KEPT report below used to
+            # state the wrong CAUSE for these. `failed_for` is built from
+            # FETCH_FAILED, which only ever holds AGGREGATOR failures keyed by
+            # ticker path, so an own-report failure always fell to the else
+            # branch and was announced as "the page had no usable table".
+            #
+            # That was false the first time it mattered. On 2026-09-30 aps-csiro
+            # failed with "Connection reset by peer" — no page, no table, nothing
+            # read — and the run said its page had no usable table, which invites
+            # the next reader to go rewrite a spec that is fine when the fix is to
+            # run it again. A 9.6 MB PDF over this sandbox's proxy drops often
+            # enough that this is not a rare path: the run before it lost
+            # nz-chorus the same way.
+            OWN_REPORT_FAILED[cid] = f'{type(e).__name__}: {e}'
             print(f'  own report FAILED for {cid}: {type(e).__name__}: {e}')
 
     # A ROW THIS RUN DID NOT PRODUCE IS KEPT, NOT DROPPED — and the run says
@@ -1328,7 +1343,12 @@ def main():
               f'(the previous reading stands):', file=sys.stderr)
         for cid in kept:
             was = existing[cid]
-            why = 'the fetch FAILED' if cid in failed_for else 'the page had no usable table'
+            if cid in OWN_REPORT_FAILED:
+                why = f'its own report could not be read — {OWN_REPORT_FAILED[cid]}'
+            elif cid in failed_for:
+                why = 'the fetch FAILED'
+            else:
+                why = 'the page had no usable table'
             print(f'      {cid}  (was {int(was["now"]):,} as at {was.get("asof")}) — {why}',
                   file=sys.stderr)
         for cid in kept:

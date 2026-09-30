@@ -110,6 +110,7 @@ export const COMPANY_HEADCOUNT: Record<string, Headcount> = {
   'nhc': { now: 1339, prev: 1575, yoy: -15.0, asof: 'Jul 2026', span: 1 },
   'nst': { now: 10062, prev: 3383, yoy: 197.4, asof: 'Jun 2026', span: 5 },
   'nwh': { now: 13300, prev: 8800, yoy: 51.1, asof: 'Jun 2026', span: 1 },
+  'nz-chorus': { now: 745, yoy: null, asof: 'Jun 2026', span: 0 },
   'nz-fisher-and-paykel-healthcare': { now: 7629, prev: 7506, yoy: 1.6, asof: 'Mar 2026', span: 1 },
   'nz-fonterra-co-operative-group': { now: 11721, yoy: null, asof: 'Jul 2026', span: 0, unit: 'fte' },
   'nz-mainfreight': { now: 10839, prev: 11130, yoy: -2.6, asof: 'Mar 2026', span: 1 },
