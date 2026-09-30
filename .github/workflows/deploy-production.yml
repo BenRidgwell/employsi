@@ -162,9 +162,34 @@ jobs:
             echo "apex $p  $code"
             [ "$code" = 302 ] || { echo "::error::apex $p answered $code, expected 302 while the app is gated"; fail=1; }
           done
-          code=$(fetch https://benridgwell-globe-gazer-hr.employsi.workers.dev/app); t=$(title)
-          echo "workers.dev /app $code  $t"
-          case "$t" in *"labour-market globe"*) ;; *) echo "::error::workers.dev /app is not the app"; fail=1 ;; esac
+          # workers.dev /app: 302 TO /login IS THE PASS, not the app's title.
+          # The app is signed-in-only as of 2026-09-30 (getAppAccess), so an
+          # unauthenticated request never reaches it and this line used to demand
+          # a title only a signed-in browser can see. Only the app route bounces
+          # to /login, so the redirect proves both that the app is deployed and
+          # that its sign-in gate is live — which is what wanted proving.
+          #
+          # This is the apex /app check's opposite number and must not be
+          # confused with it: the apex 302s because APP_ONLY_PATHS gates the
+          # MARKETING host (it lands on / there), while this one 302s because the
+          # app requires an account. Releasing the app empties APP_ONLY_PATHS and
+          # changes that check; it does not change this one.
+          u=https://benridgwell-globe-gazer-hr.employsi.workers.dev/app
+          read -r code location < <(curl -s --compressed -o page.html \
+            -w '%{http_code} %{redirect_url}\n' --max-time 30 "$u" || echo "000 -")
+          t=$(title)
+          echo "workers.dev /app $code  ${location:-$t}"
+          case "$code|$location" in
+            "302|"*/login*) ;;
+            200\|*)
+              case "$t" in
+                *"labour-market globe"*)
+                  echo "::error::workers.dev /app served the app to an anonymous request —" \
+                       "the sign-in gate is not working on production"; fail=1 ;;
+                *) echo "::error::workers.dev /app answered 200 but is not the app: $t"; fail=1 ;;
+              esac ;;
+            *) echo "::error::workers.dev /app answered $code ${location:-}, expected 302 to /login"; fail=1 ;;
+          esac
           exit $fail
 
       - name: Summary
