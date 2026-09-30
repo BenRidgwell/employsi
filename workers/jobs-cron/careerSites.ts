@@ -190,7 +190,16 @@ type Platform =
   | "cajobs"
   | "hrmos"
   | "ripplehire"
-  | "sfclassicxml";
+  | "sfclassicxml"
+  | "clinchfacets"
+  | "danoneaem"
+  | "sikaaem"
+  | "applejobs"
+  | "rilcareers"
+  | "sgquantum"
+  | "wisetech"
+  | "x0pa"
+  | "workdaystores";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -504,6 +513,23 @@ interface SiteDef {
    * ("Customer Enquiries Officer").
    */
   skipTitles?: RegExp;
+  /**
+   * Eightfold PCSX only: store and place a multi-site role by its FIRST listed
+   * site, as "<first> (+N other locations)", instead of every site joined.
+   *
+   * Lockheed Martin is the case (measured 2026-09-30, 5,362 roles): 676 list
+   * more than one site, 8 list 156-161 ("Virtual Two, AK, Virtual Three, AK,
+   * …" — a remote role offered in every state). Joined, hubFor sees one long
+   * string and the first NEEDLE to match anywhere in it wins, whatever site the
+   * board lists first — "Littleton, CO, Sunnyvale, CA, Huntsville, AL,
+   * Houston, TX" was filed on houston, and eight 150-state remote roles on
+   * perth through the " wa," needle. The first site is the one the board puts
+   * first on the card; the order was the same across two full walks.
+   *
+   * Opt-in, because it changes the stored location (and so the archive key) of
+   * every multi-site role on a board that already has rows.
+   */
+  firstLocationOnly?: boolean;
 }
 
 // Google's own board places by METRO, not by city name — the county rule
@@ -5814,11 +5840,11 @@ export const SITES: SiteDef[] = [
   // NOT wired, each for a measured reason: Microsoft (eightfoldpcs, 429s after
   // a few requests — a walk read 1,155 of 2,296 once and 0 twice), Schneider
   // Electric (Jibe, careers.se.com; Akamai cut full walks to 2,883, 300 and 0
-  // of 3,613), Tesla and IHG (Akamai 403 on every path), Lockheed Martin
-  // (eightfoldpcs 429 after ~300 of 531 pages), Thiess (Clinch serves a
-  // different slice per identical request; sitemap.xml lists all 135), and new
+  // of 3,613), Tesla and IHG (Akamai 403 on every path), and new
   // readers still to write for Larsen & Toubro
   // (PeopleStrong behind Incapsula) and Talent International (WordPress, 279).
+  // Lockheed Martin (eightfoldpcs 429s) and Thiess (Clinch's random pager) were
+  // listed here too; both are wired since 2026-09-30, batch 12: H — see there.
   // ARB (ConnX), Vault Minerals (Datakiosk) and Defence Health (Taleo Business
   // Edition) have readers since 2026-09-30, batch 11: A. No board of their own: Sydney Tools, Alto, Loan
   // Market, SEEK (lists only on SEEK itself).
@@ -21660,12 +21686,19 @@ export const SITES: SiteDef[] = [
   // home, then Santa Clara CA 86 + Cupertino 3 -> sanjose, Markham ON 37 -> toronto, Boxborough
   // MA 4 -> boston, 'Washington - Remote' -> null (the state, not DC). Unplaced: Hyderabad 135,
   // Hsinchu 78, Cork 75, Tijuana 53, Noida 43, Mexico City, Chennai, Taipei, Israel sites.
+  // SORTED BY RELEVANCE, NOT THE DEFAULT TIMESTAMP (2026-09-30, batch 12 H). Qualcomm's postedTs
+  // is DAY-granular (every posting at 00:00), so the default sort is hundreds-way ties whose
+  // order changes between requests: pages overlap and others are never served. Measured the
+  // same afternoon, every page read in full: 1,921 unique of 2,050 on one walk, 2,051 of 2,051
+  // on another — the "2,003 of 2,040" above was this, not the rate limit. `sort_by=relevance`
+  // walked 2,058 of 2,058 twice (its count is 8 higher than the timestamp sort's, measured on
+  // the same minute; both are the board's own figure for its own order).
   {
     id: "sandiego-qcom",
     name: "Qualcomm",
     sector: "Technology, Media and Telecommunications",
     platform: "eightfoldpcs",
-    endpoint: "https://careers.qualcomm.com/api/pcsx/search?domain=qualcomm.com",
+    endpoint: "https://careers.qualcomm.com/api/pcsx/search?domain=qualcomm.com&sort_by=relevance",
     origin: "https://careers.qualcomm.com",
     homeHub: "sandiego",
     maxPages: 230,
@@ -22644,6 +22677,663 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     skipTitles: /^EOI\s*-\s*Academic Sessional/i,
   },
+  // ── batch 12: H ──
+  // Lockheed Martin — Eightfold PCSX, lockheedmartin.eightfold.ai. Measured
+  // 2026-09-30: count 5,362 = 537 pages of a fixed 10; the pager is stable (six
+  // walks through fetchPortal read 5,362 of 5,362, identical placement). The API
+  // answers 429 after ~200-250 requests and recovers in seconds, which is what
+  // fetchEightfoldPcs' shared backoff is for (see there); the full walk takes
+  // 100-140 s and ~13 s CPU (mostly the skills matcher over 5,362 titles) — the
+  // longest single feed of this batch, so give it a tick WITHOUT other
+  // eightfoldpcs feeds. The day before, the old walk archived 3,051 of 5,301 — a
+  // random ~60%.
+  //
+  // Placement is by the FIRST listed site (`firstLocationOnly`, see SiteDef).
+  // homeHub null: every row names a site, and a site no needle knows is not
+  // Bethesda. Hints are US Census CBSA folds measured on that walk (first-site
+  // counts): Fort Worth 617 / Grand Prairie 301 / Arlington TX 63 -> Dallas-Fort
+  // Worth; Littleton 582 / Englewood 66 / Highlands Ranch 59 / Aurora 12 ->
+  // Denver (Louisville, Boulder and Longmont CO are the Boulder CBSA and stay
+  // unplaced); King of Prussia 246 / Moorestown 115 / Mount Laurel 28 ->
+  // Philadelphia; Palmdale 194 (LA County) -> Los Angeles (Edwards AFB is Kern
+  // County, not hinted); Marietta 175 -> Atlanta; Sunnyvale 95 -> San Jose;
+  // Chelmsford 60 / Andover MA 10 -> Boston; Manassas 45 / Bethesda 22 /
+  // Herndon 16 / Arlington VA 11 -> Washington. Annapolis Junction 55, Hanover
+  // 31 and Fort Meade 12 MD are the BALTIMORE CBSA, which has no hub: unplaced,
+  // not folded onto DC. Orlando (545, Lockheed's third site) has no hub.
+  // Australia writes "<suburb>, AUS": Mawson Lakes 32 -> Adelaide, Enoggera 8
+  // -> Brisbane, Holsworthy 7 -> Sydney, Barton -> Canberra. Washington STATE
+  // (Silverdale 14, Bothell, Fort Lewis) would hit HUB_MATCH's " wa," -> perth:
+  // Bothell and Fort Lewis are the Seattle CBSA, the rest of the state is null.
+  {
+    id: "washington-lmt",
+    name: "Lockheed Martin",
+    sector: "Industrial Manufacturing",
+    platform: "eightfoldpcs",
+    endpoint: "https://lockheedmartin.eightfold.ai/api/pcsx/search?domain=lockheedmartin.com",
+    origin: "https://lockheedmartin.eightfold.ai",
+    homeHub: null,
+    // 537 pages today; headroom for growth, and a runaway bound.
+    maxPages: 700,
+    firstLocationOnly: true,
+    hubHints: [
+      ["fort worth, tx", "dallas"],
+      ["grand prairie, tx", "dallas"],
+      ["arlington, tx", "dallas"],
+      ["littleton, co", "denver"],
+      ["englewood, co", "denver"],
+      ["highlands ranch, co", "denver"],
+      ["aurora, co", "denver"],
+      ["king of prussia, pa", "philadelphia"],
+      ["moorestown, nj", "philadelphia"],
+      ["mount laurel, nj", "philadelphia"],
+      ["palmdale, ca", "losangeles"],
+      ["marietta, ga", "atlanta"],
+      ["sunnyvale, ca", "sanjose"],
+      ["chelmsford, ma", "boston"],
+      ["andover, ma", "boston"],
+      ["manassas, va", "washington"],
+      ["bethesda, md", "washington"],
+      ["herndon, va", "washington"],
+      ["arlington, va", "washington"],
+      ["mawson lakes, aus", "adelaide"],
+      ["enoggera, aus", "brisbane"],
+      ["holsworthy, aus", "sydney"],
+      ["barton, aus", "canberra"],
+      ["bothell, wa", "seattle"],
+      ["fort lewis, wa", "seattle"],
+      [" wa,", null],
+      // Canada is written "<city>, CAN"; these two would otherwise hit the
+      // London and Victoria (-> Melbourne) needles.
+      ["london, can", null],
+      ["victoria, can", null],
+    ],
+  },
+  // Thiess — see fetchClinchFacets. careers.thiess.com read by category groups (no paging,
+  // because its pager is random). Measured 2026-09-30: 112 of 112 on two walks, identical
+  // url sets, 5 requests, 16-50 s (the slow one waited out WAF 202s left by earlier probing);
+  // 104 after skipTitles. The board shrank from 135 to 112 over two days — a real change, seen
+  // in its own "of N in total". homeHub brisbane: cards write "Australia - Moranbah, QLD";
+  // QLD/NSW/WA needles place them (Mackay, Moranbah, Mt Isa -> brisbane; Muswellbrook,
+  // Singleton -> sydney; Perth, Pilbara, Goldfields -> perth). Chile, India, Indonesia unplaced.
+  // skipTitles drops the standing Australian program pools ("Expression of Interest - Thiess
+  // Graduate Program / Vacation Program / Apprenticeships / Cadetship / Scholarships /
+  // Undergraduates", "- Operator Traineeship", "- Apprenticeship (WA)"); the Indonesian
+  // "Expression of interest - <specific role>" posts name one role each and are kept.
+  {
+    id: "priv-thiess",
+    name: "Thiess",
+    sector: "Mining services",
+    platform: "clinchfacets",
+    endpoint: "https://careers.thiess.com/jobs/search",
+    origin: "https://careers.thiess.com",
+    homeHub: "brisbane",
+    skipTitles: /^Expression of Interest - (Thiess |Operator Traineeship|Apprenticeship)/i,
+  },
+  // Danone — careers.danone.com (AEM over iCIMS), see fetchDanoneAem. Measured 2026-09-30: 660
+  // of 660 advertised, 4 requests, ~28 s. homeHub null: every card names a city. Île-de-France
+  // communes -> paris (RUEIL MALMAISON 40, Gif-Sur-Yvette 10; "PARIS" 26 and Paris-Saclay 2
+  // place already); Boucherville 19 (Montérégie, Montreal CMA) -> montreal; Fort Worth 5 ->
+  // dallas; White Plains 6 (Westchester, NY MSA) -> newyork. Unplaced: Louisville 28, Warsaw 25,
+  // Limonest 19 (Lyon), Hoofddorp 18, Wevelgem 15, Tatebayashi 14 and the rest of the world.
+  {
+    id: "paris-bn",
+    name: "Danone",
+    sector: "Consumer and Retail",
+    platform: "danoneaem",
+    endpoint: "https://careers.danone.com/en-global/jobs.html",
+    origin: "https://careers.danone.com",
+    homeHub: null,
+    hubHints: [
+      ["rueil malmaison, france", "paris"],
+      ["gif-sur-yvette, france", "paris"],
+      ["boucherville, canada", "montreal"],
+      ["fort worth, united states", "dallas"],
+      ["white plains, united states", "newyork"],
+    ],
+  },
+  // Sika — its own AEM listing, see fetchSikaAem. Measured 2026-09-30: 700 of 700, 70 requests,
+  // 20-56 s. Global board; homeHub null (every row has a location). Swiss sites are mostly not
+  // Zurich (Sarnen 11, Romanshorn 7, Düdingen 4, Widen/Birr AG) and stay unplaced; "Zürich,
+  // Zurich" 15 places. Location is "City, Region, Country" with the region spelled out, so the
+  // traps are US/Canadian namesakes: "Ottawa, Illinois" (1, was on ottawa), "London, Ontario"
+  // (1, was on london), "Amherst, New York" (2, Buffalo MSA, was on newyork) -> null, and any
+  // ", Washington, United States" other than Seattle is the STATE -> null. CBSA suburbs:
+  // Lyndhurst 14 / Rutherford 7 NJ -> newyork, Canton MA 10 -> boston, Fairless Hills PA ->
+  // philadelphia, Duluth GA 2 -> atlanta, Lewisville TX -> dallas, Downers Grove / Aurora IL ->
+  // chicago, Pointe-Claire 5 / Boisbriand 3 QC -> montreal, Oakville ON -> toronto.
+  {
+    id: "zurich-sika",
+    name: "Sika",
+    sector: "Industrial Manufacturing",
+    platform: "sikaaem",
+    endpoint:
+      "https://www.sika.com/en/career/jobs/_jcr_content/content/layoutcontainer_1337473725/first/jobposting.listing.json",
+    origin: "https://www.sika.com",
+    homeHub: null,
+    hubHints: [
+      ["ottawa, illinois", null],
+      ["london, ontario", null],
+      ["amherst, new york", null],
+      ["seattle, washington", "seattle"],
+      [", washington, united states", null],
+      ["lyndhurst, new jersey", "newyork"],
+      ["rutherford, new jersey", "newyork"],
+      ["canton, massachusetts", "boston"],
+      ["fairless hills, pennsylvania", "philadelphia"],
+      ["duluth, georgia", "atlanta"],
+      ["lewisville, texas", "dallas"],
+      ["downers grove, illinois", "chicago"],
+      ["aurora, illinois", "chicago"],
+      ["pointe-claire, québec", "montreal"],
+      ["boisbriand, québec", "montreal"],
+      ["oakville, ontario", "toronto"],
+    ],
+  },
+  // Apple — jobs.apple.com, see fetchAppleJobs. Measured 2026-09-30: 6,187 advertised = 310
+  // pages, ~25-40 s; 81 standing retail pools dropped. Locations are Apple's site names with the
+  // country and no state, so homeHub null and the hints carry the metros (US Census CBSA):
+  // Cupertino 1,444 / Sunnyvale 436 / Santa Clara 251 / Palo Alto / Apple Park -> sanjose;
+  // Culver City 89 / Irvine 32 and LA-area stores -> losangeles; Beaverton 136 and Vancouver WA
+  // (4, "Vancouver, United States") -> portland; Waltham 52 / Cambridge MA 22 / Natick /
+  // Boylston St -> boston; Minato 37 -> tokyo; Klang Valley 21 -> kualalumpur; DC-area stores
+  // and "Bethesda Metro Area" -> washington; Bellevue Square / Southcenter -> seattle;
+  // Ridgedale / Southdale -> minneapolis; Carlsbad CA -> sandiego; Toronto/Vancouver/Montreal
+  // CMA stores; Paris-region stores -> paris. NULLED: "San Francisco Bay Area" (209, a metro
+  // tag Apple uses for roles open across the whole Bay Area — SF and San Jose are two CBSAs, and
+  // HUB_MATCH would have put all of them on sanfrancisco), "Melbourne, United States" (7,
+  // Florida, was on melbourne AU) and "Wellington Green" (a Florida store, was on wellington
+  // NZ). Unplaced by design: Boulder 18, Cary 22, Orlando 16, Pittsburgh 13, Munich 62,
+  // Hyderabad 58, Suzhou 37, most single US stores, and 24 country-only "United States" rows.
+  {
+    id: "sanjose-aapl",
+    name: "Apple",
+    sector: "Technology, Media and Telecommunications",
+    platform: "applejobs",
+    endpoint: "https://jobs.apple.com/api/v1/search",
+    origin: "https://jobs.apple.com",
+    homeHub: null,
+    hubHints: [
+      ["san francisco bay area", null],
+      ["melbourne, united states", null],
+      ["wellington green", null],
+      ["cupertino, united states", "sanjose"],
+      ["sunnyvale, united states", "sanjose"],
+      ["santa clara, united states", "sanjose"],
+      ["palo alto, united states", "sanjose"],
+      ["apple park visitor center", "sanjose"],
+      ["culver city, united states", "losangeles"],
+      ["irvine, united states", "losangeles"],
+      ["irvine spectrum center", "losangeles"],
+      ["santa monica, united states", "losangeles"],
+      ["century city, united states", "losangeles"],
+      ["the americana at brand", "losangeles"],
+      ["glendale galleria", "losangeles"],
+      ["manhattan village", "losangeles"],
+      ["del amo, united states", "losangeles"],
+      ["brea mall", "losangeles"],
+      ["fashion island", "losangeles"],
+      ["woodland hills, united states", "losangeles"],
+      ["carlsbad, ca", "sandiego"],
+      ["beaverton, united states", "portland"],
+      ["vancouver, united states", "portland"],
+      ["waltham, united states", "boston"],
+      ["cambridge, united states", "boston"],
+      ["natick collection", "boston"],
+      ["boylston street", "boston"],
+      ["minato, japan", "tokyo"],
+      ["klang valley", "kualalumpur"],
+      ["fairfax corner", "washington"],
+      ["tysons corner", "washington"],
+      ["carnegie library", "washington"],
+      ["pentagon city", "washington"],
+      ["montgomery mall", "washington"],
+      ["reston, united states", "washington"],
+      ["bethesda metro area", "washington"],
+      ["bellevue square", "seattle"],
+      ["southcenter, united states", "seattle"],
+      ["ridgedale, united states", "minneapolis"],
+      ["southdale, united states", "minneapolis"],
+      ["oakbrook, united states", "chicago"],
+      ["old orchard, united states", "chicago"],
+      ["staten island, united states", "newyork"],
+      ["smith haven, united states", "newyork"],
+      ["willow grove park", "philadelphia"],
+      ["scarborough, canada", "toronto"],
+      ["brampton, canada", "toronto"],
+      ["coquitlam centre", "vancouver"],
+      ["guildford town centre", "vancouver"],
+      ["sainte-catherine, canada", "montreal"],
+      ["opéra, france", "paris"],
+      ["carre senart", "paris"],
+    ],
+  },
+  // Reliance Industries — careers.ril.com, see fetchRilCareers. Measured 2026-09-30: 32 of 32
+  // (server row numbers 1..32 unbroken), 4 pages, 7-14 s. homeHub null: every row names a site
+  // and most are not Mumbai (Jamnagar 12, Nagothane, Silvassa, Surat, Vadodara ...); Mumbai 6
+  // and Navi Mumbai 3 place through HUB_MATCH.
+  {
+    id: "mumbai-reliance",
+    name: "Reliance Industries Limited",
+    sector: "Energy & Natural Resources",
+    platform: "rilcareers",
+    endpoint: "https://careers.ril.com/rilcareers/frmJobSearch.aspx",
+    origin: "https://careers.ril.com/rilcareers/",
+    homeHub: null,
+  },
+  // Société Générale — careers.societegenerale.com, see fetchSgQuantum (three-step public
+  // flow; NOT yet seen from a Worker, and Imperva fronts the host — if the Worker is
+  // challenged the pull is [] and says so). Measured 2026-09-30: 1,033 documents = 988
+  // requisitions after the FR/EN dedupe, 11 requests, ~7 s. homeHub null: bare "France" (34)
+  // and "Romania" (19) stay unplaced rather than default to Paris. SG writes Paris-region sites
+  // by commune, never "Paris" — Île-de-France -> paris: La Défense 60, Fontenay-sous-Bois 14,
+  // Boulogne-Billancourt 11, Courbevoie 9, Cergy 3, Nanterre 2, Puteaux, Saint-Germain-en-Laye;
+  // Jersey City 2 -> newyork. NULLED: "Le-Touquet-Paris-Plage" (1, Pas-de-Calais, was on paris
+  // via the "paris" needle). NOT hinted: "Saint-Denis, France" (6) — also a Réunion commune.
+  {
+    id: "paris-gle",
+    name: "Société Générale",
+    sector: "Financial Services",
+    platform: "sgquantum",
+    endpoint: "https://careers.societegenerale.com/en/search",
+    origin: "https://careers.societegenerale.com",
+    homeHub: null,
+    hubHints: [
+      ["paris-plage", null],
+      ["la defense, france", "paris"],
+      ["fontenay-sous-bois, france", "paris"],
+      ["boulogne-billancourt, france", "paris"],
+      ["courbevoie, france", "paris"],
+      ["cergy, france", "paris"],
+      ["nanterre, france", "paris"],
+      ["puteaux, france", "paris"],
+      ["saint-germain-en-laye, france", "paris"],
+      ["jersey city, united states", "newyork"],
+    ],
+  },
+  // WiseTech Global — wisetechglobal.com/careers/current-openings, see fetchWiseTech. 12 of 12
+  // on 2026-09-30, one request. Every card is an E2open (WiseTech's acquisition) US sales role
+  // with an EMPTY data-location, so homeHub null — none of these is a Sydney role, and SEEK and
+  // Adzuna already carry WiseTech's Sydney hiring. The card is small but it is the group's own
+  // board, read whole.
+  {
+    id: "sydney-wtc",
+    name: "WiseTech Global",
+    sector: "Technology, Media and Telecommunications",
+    platform: "wisetech",
+    endpoint: "https://www.wisetechglobal.com/careers/current-openings/",
+    origin: "https://www.wisetechglobal.com",
+    homeHub: null,
+  },
+  // City Developments Limited — X0PA microsite, see fetchX0pa. 13 of 13 on 2026-09-30, every
+  // one country Singapore with no work location, so homeHub singapore is the board's own claim.
+  {
+    id: "singapore-c09",
+    name: "City Developments Limited",
+    sector: "Infrastructure and Government",
+    platform: "x0pa",
+    endpoint: "https://cdl.x0pa.ai/roboroy/api/v1/jobs/list",
+    origin: "https://cdl.x0pa.ai",
+    homeHub: "singapore",
+  },
+  // Target — Workday target.wd5 site `targetcareers`, the whole board, read as ELEVEN FEEDS.
+  // Workday caps `total` at 2,000 and wraps past it, and this board is ~14,000 (measured
+  // 2026-09-30: Location_Country US 13,971 + India 66 = 14,037; 96% of it Stores). The
+  // Location_Region_State_Province facet (52 values: 50 states, DC, Karnātaka) sums to 14,053 —
+  // 16 postings name two states and sit in two partitions; the archive's job_key dedupes them.
+  // States were packed into groups of <=1,330, and every group's FILTERED total was read back and
+  // matched its facet sum (one group 1,328 of 1,329). Headroom is deliberate: this is late
+  // September and seasonal hiring grows until November; a group that reaches 2,000 would be capped
+  // silently, so RE-PACK (from a fresh facet read) if any feed's rows approach ~1,800.
+  // fetchWorkday walks one page at a time, ~1 s each, so a 1,330-role feed is ~70-80 s.
+  // Locations are store street addresses ("2941 Queensgate Dr, Richland,WA 99352-9101"), so homeHub
+  // is null and most rows are unplaced — only an address in a hub city, or a hinted suburb, places.
+  ...(
+    [
+      // 1329: Texas, Connecticut, New Mexico
+      [
+        "g1",
+        {
+          Location_Region_State_Province: [
+            "fc77e3a1ab36487f9646d14f7242dd77",
+            "bffb3e4c9a4a4542bc6bd075a4c26247",
+            "32c182efea294964a9000772bc740672",
+          ],
+        },
+      ],
+      // 1330: Florida, Georgia, Rhode Island
+      [
+        "g2",
+        {
+          Location_Region_State_Province: [
+            "9c1a239b35bd4598856e5393b249b8a1",
+            "dec8eabbb13d45bdb159b8e25d896110",
+            "4c2f08af9b834f13bf4c2d41679d222d",
+          ],
+        },
+      ],
+      // 1329: New York, Pennsylvania, South Dakota
+      [
+        "g3",
+        {
+          Location_Region_State_Province: [
+            "9819bf0148e54f89adb255aa7bead635",
+            "f620a79f2dc44473828b42881312de2b",
+            "745d76f06d2b41738aecee630c5888a0",
+          ],
+        },
+      ],
+      // 1329: Minnesota, Virginia, Iowa, Maine
+      [
+        "g4",
+        {
+          Location_Region_State_Province: [
+            "02f3984b69ba450080e456fe733f6741",
+            "e0889a76c58d4fff9b54b80dadc49000",
+            "a9be12393ccd460ea46d08c249ce6c8b",
+            "b6d5367355b64eebb870b465d2e72205",
+          ],
+        },
+      ],
+      // 1329: Illinois, Ohio, Tennessee, Wyoming
+      [
+        "g5",
+        {
+          Location_Region_State_Province: [
+            "d8bb292ed9fe44a2899a990ad569538c",
+            "41493c81d9214eb190fd14067c7d974d",
+            "00044a0287144032bca6973ac0eedb3e",
+            "0022bee925f740b0a078f707a1868642",
+          ],
+        },
+      ],
+      // 1329: North Carolina, New Jersey, Colorado, South Carolina, North Dakota
+      [
+        "g6",
+        {
+          Location_Region_State_Province: [
+            "1486a0a4a8464c3b9ec482d4038deb99",
+            "9b56fe16bdf74b2cbad8b644cdf6015a",
+            "a83d6eabae3b49718c4ce09eeb66fd0b",
+            "1d2632a43d204a2799bcd38b57e8a26e",
+            "0567a9c4e90340e192aa655d387323c6",
+          ],
+        },
+      ],
+      // 1329: Arizona, Massachusetts, Michigan, Wisconsin, Mississippi
+      [
+        "g7",
+        {
+          Location_Region_State_Province: [
+            "c7b20b0d4bc04711a00900569e9afabd",
+            "c66d738416b74fb180376cf59cc7ec8f",
+            "b8372eef6b5341a39cdc95ac32790cba",
+            "96f29b3353ac4653b1a860751618e36b",
+            "7c552cab901d4a1aa359a9cfc62850a7",
+          ],
+        },
+      ],
+      // 1325: Maryland, Missouri, Washington, Indiana, Alabama, Kansas, District of Columbia
+      [
+        "g8",
+        {
+          Location_Region_State_Province: [
+            "586509e6daa741808206b095fee97e8f",
+            "790e3c3ddfaa4123905237a05f1df9e9",
+            "de9b48948ef8421db97ddf4ea206e931",
+            "28489665bcac44028a70d0642c932be4",
+            "31475924e5494080a8a458bf4fa293ed",
+            "975ef5fd66c048909a4d64b64b762836",
+            "0d2bcd0308f541938f3ae29e7cc69ae0",
+          ],
+        },
+      ],
+      // 1245: Oregon, Utah, Nevada, Louisiana, Oklahoma, Kentucky, Nebraska, Hawaii, New Hampshire, Arkansas, West Virginia, Karnātaka, Montana, Idaho, Delaware, Alaska, Vermont
+      [
+        "g9",
+        {
+          Location_Region_State_Province: [
+            "6fcc4198762c4a7c807486c849fe94dd",
+            "9bf006cfb5a44c51b84138e1a0e7d805",
+            "33e7c3874e0e4d28a8047926aa4a1d21",
+            "777facb47a8442bfba79628424812d64",
+            "205ef21c556342268847466c48ec5a8c",
+            "66d386e70a2946b695835e59cebcd7b2",
+            "3a652942d5f84071a48bc94a2b17d331",
+            "e7634111501844fe83a0b316b16beb08",
+            "9efc91fd842142a0b0bf455e723b65a0",
+            "cea6c5355e1b4983b5fd0640310385b5",
+            "dc5bc08fd91446bdbd108d98a19ac0ff",
+            "701eb5584934425d930bc84b9e8b04eb",
+            "d649a916a12e4680887c98d5836d0647",
+            "b1c017b8f6294b0e82773aaca1dce33e",
+            "18b4cf9ddb4e4542a39614cb55b4dde7",
+            "c8891443252c4c4ea9427be64d755b9f",
+            "7df7a0cb48724af7891cb70410546897",
+          ],
+        },
+      ],
+      // California (2,179) is over the cap on its own, so it is split by workerSubType:
+      // Regular 1,583; Seasonal 578 + Intern 18 = 596.
+      [
+        "ca-reg",
+        {
+          Location_Region_State_Province: ["ec3d210e4240442e99a28fa70419aec5"],
+          workerSubType: ["daccab9f1d25016e8af65f8d3157bc05"],
+        },
+      ],
+      [
+        "ca-oth",
+        {
+          Location_Region_State_Province: ["ec3d210e4240442e99a28fa70419aec5"],
+          workerSubType: ["daccab9f1d2501e8c121618d3157be05", "daccab9f1d25019dc0cd608d3157bd05"],
+        },
+      ],
+    ] as [string, Record<string, string[]>][]
+  ).map(([k, facets]): SiteDef => ({
+    id: "minneapolis-tgt",
+    key: `minneapolis-tgt-${k}`,
+    name: "Target",
+    sector: "Consumer and Retail",
+    platform: "workdaystores",
+    endpoint: "https://target.wd5.myworkdayjobs.com/wday/cxs/target/targetcareers/jobs",
+    origin: "https://target.wd5.myworkdayjobs.com/en-US/targetcareers",
+    homeHub: null,
+    appliedFacets: facets,
+    maxPages: 100,
+    // Tested against "<City>, <ST>" only (see fetchWorkdayStores); counts are one walk's rows.
+    hubHints: [
+      // Washington STATE — HUB_MATCH's " wa," is Western Australia: 230 rows were on perth.
+      // King / Snohomish / Pierce counties are the Seattle CBSA; Clark County is Portland's.
+      ["seattle, wa", "seattle"],
+      ["bellevue, wa", "seattle"], // 11
+      ["puyallup, wa", "seattle"], // 12
+      ["renton, wa", "seattle"],
+      ["federal way, wa", "seattle"],
+      ["bonney lake, wa", "seattle"],
+      ["woodinville, wa", "seattle"],
+      ["redmond, wa", "seattle"],
+      ["issaquah, wa", "seattle"],
+      ["tukwila, wa", "seattle"],
+      ["kent, wa", "seattle"],
+      ["tacoma, wa", "seattle"],
+      ["lynnwood, wa", "seattle"],
+      ["lakewood, wa", "seattle"],
+      ["marysville, wa", "seattle"],
+      ["lake stevens, wa", "seattle"],
+      ["everett, wa", "seattle"],
+      ["gig harbor, wa", "seattle"],
+      ["vancouver, wa", "portland"], // 20
+      [", wa,", null], // Spokane 22, Richland, Lacey, Olympia, Silverdale, Yakima ...
+      // Namesakes HUB_MATCH files in the wrong place.
+      ["melbourne", null], // Melbourne FL 20
+      ["south portland, me", null],
+      ["portland, tx", null],
+      ["port charlotte, fl", null],
+      ["charlottesville, va", null],
+      ["washington, pa", null],
+      ["port washington, ny", null],
+      ["washington, mo", null],
+      ["lake zurich, il", "chicago"], // Lake County IL, Chicago CBSA (was on zurich)
+      ["perth amboy, nj", "newyork"], // Middlesex County NJ (was on perth)
+      ["fort worth, tx", "dallas"], // 40, Dallas-Fort Worth CBSA
+      // New York City's boroughs and the Queens neighbourhoods the board names.
+      ["brooklyn, ny", "newyork"], // 66
+      ["bronx, ny", "newyork"], // 33
+      ["staten island, ny", "newyork"], // 15
+      ["elmhurst, ny", "newyork"],
+      ["college point, ny", "newyork"],
+      ["long island city, ny", "newyork"],
+      // Minneapolis-St. Paul CBSA — Target's own metro (Brooklyn Park is its northern campus).
+      // Rochester, St. Cloud, Duluth, Mankato, Northfield, Owatonna, Red Wing are not in it.
+      ["brooklyn park, mn", "minneapolis"], // 73
+      ["saint paul, mn", "minneapolis"],
+      ["st paul, mn", "minneapolis"],
+      ["woodbury, mn", "minneapolis"],
+      ["minnetonka, mn", "minneapolis"],
+      ["apple valley, mn", "minneapolis"],
+      ["st.louis park, mn", "minneapolis"],
+      ["st louis park, mn", "minneapolis"],
+      ["coon rapids, mn", "minneapolis"],
+      ["fridley, mn", "minneapolis"],
+      ["edina, mn", "minneapolis"],
+      ["roseville, mn", "minneapolis"],
+      ["lino lakes, mn", "minneapolis"],
+      ["otsego, mn", "minneapolis"],
+      ["burnsville, mn", "minneapolis"],
+      ["richfield, mn", "minneapolis"],
+      ["monticello, mn", "minneapolis"],
+      ["maple grove, mn", "minneapolis"],
+      ["blaine, mn", "minneapolis"],
+      ["chaska, mn", "minneapolis"],
+      ["shoreview, mn", "minneapolis"],
+      ["eden prairie, mn", "minneapolis"],
+      ["eagan, mn", "minneapolis"],
+      ["waconia, mn", "minneapolis"],
+      ["champlin, mn", "minneapolis"],
+      ["savage, mn", "minneapolis"],
+      ["lakeville, mn", "minneapolis"],
+      ["buffalo, mn", "minneapolis"],
+      ["plymouth, mn", "minneapolis"],
+      ["medina, mn", "minneapolis"],
+      ["andover, mn", "minneapolis"],
+      ["rogers, mn", "minneapolis"],
+      ["forest lake, mn", "minneapolis"],
+      ["shakopee, mn", "minneapolis"],
+      ["vadnais heights, mn", "minneapolis"],
+      ["crystal, mn", "minneapolis"],
+      ["bloomington, mn", "minneapolis"],
+      ["inver grove heights, mn", "minneapolis"],
+      ["oakdale, mn", "minneapolis"],
+      ["cambridge, mn", "minneapolis"],
+      ["stillwater, mn", "minneapolis"],
+      ["chanhassen, mn", "minneapolis"],
+      ["cottage grove, mn", "minneapolis"],
+      ["elk river, mn", "minneapolis"],
+      ["hudson, wi", "minneapolis"], // St. Croix County WI
+    ],
+  })),
+  // The TJX Companies — Workday tjx.wd1 `TJX_External`, the whole board, as SIX PAGE WINDOWS.
+  // THE 2,000 CAP DOES NOT APPLY HERE, whatever the day-before note said: measured 2026-09-30,
+  // `total` is 11,037 on every page (the Northrop/Nike behaviour, not the Citi wrap), offsets
+  // 2,000, 2,020 and 5,000 serve distinct rows, and a full 552-page walk (6 concurrent) read
+  // 11,037 unique of 11,037 in 56 s with the total unchanged at the end. So no facet partition
+  // is needed — which is as well, because there is none (Business & Store Operations alone is
+  // 10,545; the only location facet is 3,360 store ids). fetchWorkday walks one page at a time
+  // (~0.6 s here), so the board is split into 92-page windows (~1,840 roles, ~60 s, ~4 s CPU
+  // each); the last is open-ended for growth. SCHEDULE ALL SIX IN ONE TICK: the pager is
+  // stable within a walk, but windows read hours apart would see the list shifted by the day's
+  // postings and could miss or double rows at their seams.
+  // Global board (US, Canada, UK, Ireland, Germany, Poland, Austria, Netherlands, Australia),
+  // homeHub null.
+  ...(
+    [
+      ["w1", 0, 92],
+      ["w2", 92, 92],
+      ["w3", 184, 92],
+      ["w4", 276, 92],
+      ["w5", 368, 92],
+      ["w6", 460, 140],
+    ] as [string, number, number][]
+  ).map(([k, from, pages]): SiteDef => ({
+    id: "boston-tjx",
+    key: `boston-tjx-${k}`,
+    name: "The TJX Companies",
+    sector: "Consumer and Retail",
+    platform: "workday",
+    endpoint: "https://tjx.wd1.myworkdayjobs.com/wday/cxs/tjx/TJX_External/jobs",
+    origin: "https://tjx.wd1.myworkdayjobs.com/en-US/TJX_External",
+    homeHub: null,
+    pageFrom: from,
+    maxPages: pages,
+    // Measured on the six windows' 11,036 rows (counts in brackets). Locations are "City, ST
+    // ZIP" in North America, "Town, <county code> <postcode>" in the UK, "Suburb, STATE
+    // postcode" in Australia, plus store labels ("CAN Marshalls Store 0761 London ON").
+    hubHints: [
+      // Namesakes the global table files in the wrong place.
+      ["charlottesville, va", null], // 14, was charlotte
+      ["port charlotte, fl", null], // 5
+      ["charlottetown, pe", null], // 3
+      ["charlottenburg", null], // 4, Berlin
+      ["south portland, me", null], // 10, was portland
+      ["portland, tx", null], // 3
+      ["austin, mn", null], // 2
+      ["new philadelphia, oh", null],
+      ["london, on", null], // 7, Ontario — was london
+      ["london on", null], // "... Store 0761 London ON"
+      ["new london, ct", null],
+      ["londonderry, nh", null],
+      ["washington, mo", null],
+      ["washington, pa", null],
+      ["port washington, ny", null],
+      ["melbourne, fl", null], // 7 incl. West Melbourne, was melbourne AU
+      ["paris, tx", null], // 6, was paris
+      ["paris, tn", null], // 3
+      ["boston, lin", null], // Boston, Lincolnshire
+      ["christchurch, dor", null], // Christchurch, Dorset — was wellington via Christchurch NZ
+      ["vancouver, wa", "portland"], // 3, Clark County WA
+      ["lake zurich, il", "chicago"], // 2, was zurich
+      // TJX's own metro — Boston-Cambridge-Newton CBSA (Middlesex, Norfolk, Suffolk,
+      // Plymouth, Essex). Framingham is its headquarters, Marlborough its second campus.
+      // Worcester County, Cape Cod, Bristol County (Providence CBSA) and western MA are not.
+      ["framingham, ma", "boston"], // 42
+      ["marlborough, ma", "boston"], // 25
+      ["newton, ma", "boston"], // 15
+      ["bedford, ma", "boston"], // 13
+      ["woburn, ma", "boston"], // 13
+      ["plymouth, ma", "boston"],
+      ["braintree, ma", "boston"],
+      ["gloucester, ma", "boston"],
+      ["westwood, ma", "boston"],
+      ["north andover, ma", "boston"],
+      ["quincy, ma", "boston"],
+      ["stoneham, ma", "boston"],
+      ["hudson, ma", "boston"],
+      ["plainville, ma", "boston"],
+      ["sudbury, ma", "boston"],
+      ["saugus, ma", "boston"],
+      ["wareham, ma", "boston"],
+      ["norwood, ma", "boston"],
+      ["chelsea, ma", "boston"],
+      ["westford, ma", "boston"],
+      ["franklin, ma", "boston"],
+      ["danvers, ma", "boston"],
+      ["salem, ma", "boston"],
+      ["dorchester, ma", "boston"],
+      ["waltham, ma", "boston"],
+      ["middleton, ma", "boston"],
+      ["swampscott, ma", "boston"],
+      ["north reading, ma", "boston"],
+      ["revere, ma", "boston"],
+      ["reading, ma", "boston"],
+      ["cambridge, ma", "boston"],
+      ["somerville, ma", "boston"],
+      ["peabody, ma", "boston"],
+      ["lawrence, ma", "boston"],
+      ["wilmington, ma", "boston"],
+      ["norwell, ma", "boston"],
+    ],
+  })),
 ];
 
 /**
@@ -28989,6 +29679,8 @@ interface PcsPosition {
  * domain=worley.com).
  */
 const PCS_PAGE = 10;
+/** A walk still running after this is abandoned, not truncated — see below. */
+const PCS_DEADLINE_MS = 170_000;
 
 interface PcsSearch {
   data?: { positions?: PcsPosition[]; count?: number };
@@ -28996,8 +29688,27 @@ interface PcsSearch {
 
 async function fetchEightfoldPcs(site: SiteDef): Promise<PortalJob[]> {
   const max = site.maxPages ?? 200;
-  const pageAt = (i: number) =>
-    getJson<PcsSearch>(`${site.endpoint}&start=${i * PCS_PAGE}&num=${PCS_PAGE}`);
+  const label = `eightfoldpcs ${site.key ?? site.id}`;
+  const t0 = Date.now();
+  // One page, retried IN PLACE when it fails. A failure also pushes back a
+  // cooldown SHARED by every worker (1, 2, 4, then 8 s per failure), because
+  // the 429 is the tenant's rate limit, not this page's problem: five workers
+  // carrying on at full speed while the sixth waits only drain the bucket
+  // further. NULL only when ten attempts failed or the walk ran past
+  // PCS_DEADLINE_MS — the caller then abandons the pull rather than archive the
+  // board minus that page.
+  let cooldownUntil = 0;
+  const pageAt = async (i: number): Promise<PcsSearch | null> => {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const wait = cooldownUntil - Date.now();
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      if (Date.now() - t0 > PCS_DEADLINE_MS) return null;
+      const w = await getJson<PcsSearch>(`${site.endpoint}&start=${i * PCS_PAGE}&num=${PCS_PAGE}`);
+      if (w?.data) return w;
+      cooldownUntil = Math.max(cooldownUntil, Date.now() + 1000 * 2 ** Math.min(attempt, 3));
+    }
+    return null;
+  };
 
   const first = await pageAt(0);
   const positions: PcsPosition[] = [...(first?.data?.positions ?? [])];
@@ -29005,30 +29716,48 @@ async function fetchEightfoldPcs(site: SiteDef): Promise<PortalJob[]> {
   const total = first?.data?.count ?? 0;
   const pages = Math.min(max, Math.ceil(total / PCS_PAGE) || 1);
 
-  // A FAILED PAGE USED TO VANISH. getJson returns null for a 429 as for a
-  // timeout, and `?? []` turned that into ten silently missing rows — measured
-  // 2026-09-29 on Starbucks' tenant, where three walks of a 398-role search
-  // returned 160, 0 and 90 once it began answering 429, and nothing logged.
-  // Failed pages are now retried one at a time, spaced, after the parallel
-  // pass, and a walk that still falls short of `count` says so.
+  // A FAILED PAGE USED TO VANISH, AND THEN IT USED TO BE RETRIED TWICE AND
+  // STILL VANISH. getJson returns null for a 429 as for a timeout, and `?? []`
+  // turned that into ten silently missing rows — measured 2026-09-29 on
+  // Starbucks' tenant, where three walks of a 398-role search returned 160, 0
+  // and 90 once it began answering 429, and nothing logged. The first fix
+  // retried failures twice after the parallel pass and then dropped whatever
+  // still failed, with a log line — still a random subset archived as the board.
+  //
+  // Now: a pool of PAGE_CONCURRENCY workers, each page retried in place with
+  // backoff, and ONE PAGE THAT STILL FAILS FAILS THE PULL — the reader returns
+  // [], and yesterday's rows stand (an empty pull is never written).
+  //
+  // Measured 2026-09-30 on Lockheed Martin (5,362 roles = 537 pages, the
+  // largest tenant): the API starts answering 429 after ~200-250 requests and
+  // recovers within seconds. With in-place backoff a 6-worker walk read 5,362
+  // of 5,362 unique ids in 89 s (49 429s, every one recovered), a 3-worker walk
+  // in 131 s (18 429s). The old walk collected 3,051 of 5,301 the day before.
+  // Qualcomm's tenant is stricter — its first 429 came 38 requests in, and a
+  // page there needed longer than 30 s of per-page backoff to come back, which
+  // is why the cooldown is shared and a page gets ten attempts (~55 s of patience).
+  //
+  // THE LIMIT MAY BE PER CLIENT ADDRESS ACROSS TENANTS: Qualcomm walked while a
+  // Lockheed walk was running from the same machine took 317 s under the old
+  // reader, against 85 s alone. Keep Lockheed off the ticks that carry other
+  // eightfoldpcs feeds.
   const failed: number[] = [];
-  for (let start = 1; start < pages; start += PAGE_CONCURRENCY) {
-    const idx: number[] = [];
-    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, pages); i++) idx.push(i);
-    const windows = await Promise.all(idx.map(pageAt));
-    windows.forEach((w, k) =>
-      w ? positions.push(...(w.data?.positions ?? [])) : failed.push(idx[k]),
-    );
-  }
-  for (const i of failed) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+  const queue: number[] = [];
+  for (let i = 1; i < pages; i++) queue.push(i);
+  const worker = async () => {
+    for (let i = queue.shift(); i !== undefined && !failed.length; i = queue.shift()) {
       const w = await pageAt(i);
-      if (w) {
-        positions.push(...(w.data?.positions ?? []));
-        break;
-      }
+      if (w) positions.push(...(w.data?.positions ?? []));
+      else failed.push(i);
     }
+  };
+  await Promise.all(Array.from({ length: PAGE_CONCURRENCY }, worker));
+  if (failed.length) {
+    console.log(
+      `${label}: page ${failed[0] + 1} of ${pages} could not be read after retries ` +
+        `(${Math.round((Date.now() - t0) / 1000)} s) — pull abandoned rather than archive a partial board`,
+    );
+    return [];
   }
   const out: PortalJob[] = [];
   const seen = new Set<string>();
@@ -29040,26 +29769,27 @@ async function fetchEightfoldPcs(site: SiteDef): Promise<PortalJob[]> {
     // postedTs is epoch SECONDS. Multiplying is what keeps a 2026 posting from
     // being stored as 1970.
     const posted = p.postedTs ? new Date(p.postedTs * 1000).toISOString().slice(0, 10) : "";
-    out.push(
-      job(
-        site,
-        title,
-        (p.locations ?? []).join(", "),
-        site.origin + (p.positionUrl || `/careers/job/${p.id ?? ""}`),
-        posted,
-        (p.department || "").trim() || "Career portal",
-      ),
+    const locs = p.locations ?? [];
+    const row = job(
+      site,
+      title,
+      site.firstLocationOnly ? (locs[0] ?? "") : locs.join(", "),
+      site.origin + (p.positionUrl || `/careers/job/${p.id ?? ""}`),
+      posted,
+      (p.department || "").trim() || "Career portal",
     );
+    // Placed from the first site alone (above); the note is added after, so no
+    // needle can match inside it.
+    if (site.firstLocationOnly && locs.length > 1) {
+      row.loc += ` (+${locs.length - 1} other location${locs.length > 2 ? "s" : ""})`;
+    }
+    out.push(row);
   }
   const expected = Math.min(total, pages * PCS_PAGE);
-  // A few short is the board repeating an id across a page boundary (measured
-  // on Lam Research: ~4 of 1,382); more than that is pages lost.
-  if (expected && out.length < expected * 0.98) {
-    console.log(
-      `eightfoldpcs ${site.key ?? site.id}: ${out.length} of ${expected} — walk incomplete ` +
-        `(${failed.length} page(s) failed first time; the tenant may be rate-limiting)`,
-    );
-  }
+  // Every page was read, so a few short is the board repeating an id across a
+  // page boundary (measured on Lam Research: ~4 of 1,382) or serving a short
+  // page mid-list; logged, not fatal.
+  reportGap(label, out.length, expected);
   return out;
 }
 
@@ -32342,7 +33072,752 @@ async function fetchSfClassicXml(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 12: H — readers ────────────────────────────────────────────────────
+
+/** Name=value pairs of a response's Set-Cookie headers, merged over `prev`. */
+function mergeCookies(prev: string, res: Response): string {
+  const jar = new Map<string, string>();
+  for (const kv of prev.split("; ").filter(Boolean)) jar.set(kv.split("=")[0], kv);
+  for (const c of res.headers.getSetCookie?.() ?? []) {
+    const kv = c.split(";")[0];
+    jar.set(kv.split("=")[0], kv);
+  }
+  return [...jar.values()].join("; ");
+}
+
+// ── Clinch, read by category instead of by page (Thiess) ────────────────────
+/**
+ * careers.thiess.com is a Clinch site, and neither of the obvious walks works:
+ *
+ *  - THE PAGER IS RANDOM. Measured 2026-09-29, identical `?page=N` requests
+ *    returned different slices, so nine 9-page walks of a 135-role board
+ *    collected 135, 90, 75, 75, 120, 135, 105, 75 and 90 distinct roles, with
+ *    or without cache-busting and under every sort. fetchClinch cannot read it.
+ *  - THE JOB PAGES ARE BEHIND AN AWS WAF CHALLENGE once a client makes more
+ *    than a few dozen requests. sitemap.xml lists exactly the stated total, but
+ *    on 2026-09-30, after one full read of the 129 job pages, 94 of 112 answered
+ *    202 with the 2.4 KB `challenge.js` interstitial ("we need to verify that
+ *    you're not a robot"). Nothing here tries to get past that page, so a
+ *    sitemap-and-detail reader was written, measured and dropped.
+ *
+ * What works is never paging. `/jobs/search` honours `per_page` up to 50, and
+ * its filter panel lists every category with a count ("Mining Maintenance (22
+ * items)", the `category_uids[]` inputs). Several `category_uids[]` in one
+ * request are OR-ed (22 + 22 -> 44 cards), so the categories are packed into
+ * groups whose counts sum to <= 50: each group is ONE request that cannot be
+ * truncated, and the pager's randomness never comes into it. 167 category
+ * places over 112 roles packed into 4 requests, a second apart.
+ *
+ * COMPLETE OR NOTHING: the union of the groups (a role can sit in two
+ * categories) must equal the board's own "of N in total", or the pull is []
+ * and yesterday's rows stand. A category over 50 on its own also abandons.
+ *
+ * A 202 is the WAF interstitial, and getText already refuses it as content;
+ * each request is retried after 5 s and 10 s before the pull gives up.
+ *
+ * Cards list every site a role names, often with a catch-all ("Australia -
+ * All", "- Other", "- Regional"); the first SPECIFIC one is the location, as
+ * the card writes it ("Australia - Moranbah, QLD").
+ */
+async function fetchClinchFacets(site: SiteDef): Promise<PortalJob[]> {
+  const label = `clinchfacets ${site.key ?? site.id}`;
+  const PER = 50;
+  const page = async (query: string): Promise<string | null> => {
+    let html: string | null = null;
+    for (let attempt = 0; !html && attempt < 3; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 5000 * attempt));
+      html = await getText(`${site.endpoint}?per_page=${PER}${query}`);
+    }
+    return html;
+  };
+  const first = await page("");
+  if (!first) return [];
+  const total = Number(
+    first.match(/of\s*<b>\s*([\d,]+)\s*<\/b>\s*in total/i)?.[1]?.replace(/,/g, "") ?? 0,
+  );
+  const cats: { uid: string; n: number }[] = [];
+  for (const m of first.matchAll(
+    /<input[^>]*name="category_uids\[\]"[^>]*value="([0-9a-f]+)"[^>]*>[\s\S]{0,600}?\((\d+) items?\)/g,
+  )) {
+    cats.push({ uid: m[1], n: Number(m[2]) });
+  }
+  if (!total || !cats.length || cats.some((c) => c.n > PER)) {
+    console.log(`${label}: ${cats.length} categories, total ${total} — cannot read by category`);
+    return [];
+  }
+  // First-fit decreasing into groups of <= PER listed roles.
+  const groups: { uids: string[]; n: number }[] = [];
+  for (const c of [...cats].sort((a, b) => b.n - a.n)) {
+    const g = groups.find((x) => x.n + c.n <= PER);
+    if (g) {
+      g.uids.push(c.uid);
+      g.n += c.n;
+    } else groups.push({ uids: [c.uid], n: c.n });
+  }
+  const CATCH_ALL = / - (all|other|regional),/i;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < groups.length; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 1000));
+    const html = await page(
+      groups[i].uids.map((u) => `&category_uids%5B%5D=${encodeURIComponent(u)}`).join(""),
+    );
+    if (!html) {
+      console.log(`${label}: group ${i + 1} of ${groups.length} could not be read — abandoned`);
+      return [];
+    }
+    for (const card of html.split(/job-search-results-card-col/i).slice(1)) {
+      const a = card.match(
+        /job-search-results-card-title[\s\S]{0,300}?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const url = clean(a[1]);
+      const title = clean(a[2]);
+      if (!title || !url || seen.has(url)) continue;
+      seen.add(url);
+      const spans = (name: string) =>
+        [
+          ...card.matchAll(
+            new RegExp(`id="${name}_icon_text_[^"]*"[^>]*>([\\s\\S]*?)</span>`, "gi"),
+          ),
+        ]
+          .map((m) => clean(m[1]))
+          .filter(Boolean);
+      const locs = spans("location");
+      const loc = locs.find((l) => !CATCH_ALL.test(l + ",")) ?? locs[0] ?? "";
+      out.push(job(site, title, loc, url, today(), spans("category")[0] || "Career portal"));
+    }
+  }
+  if (out.length !== total) {
+    console.log(`${label}: categories cover ${out.length} of ${total} — abandoned`);
+    return [];
+  }
+  return out;
+}
+
+// ── Danone — Adobe AEM Asset Share Commons search ───────────────────────────
+/**
+ * careers.danone.com is AEM over iCIMS postings, and the listing is
+ * SERVER-RENDERED: GET /en-global/jobs.html?p.limit=200&p.offset=N. `p.limit` is
+ * honoured (default 12; `limit=` is ignored). THE OFFSET IS `p.offset`: a bare
+ * `offset=` (what the first note on this board said) is IGNORED and every page
+ * comes back as page one — a walk with it read 200 of 660 and looked like it
+ * had paged. Measured 2026-09-30: the page's
+ * statistics block (<div class="cmp cmp-search-statistics">, values [shown,
+ * TOTAL, ms]) states 659; 200 cards are ~3 MB (every card carries its full
+ * description as an attribute) and take 15-28 s to render, so the walk is four
+ * requests in parallel, ~28 s. p.limit=1000 would be one request but took 31 s
+ * for 686 the day before — the same wall time with no retry granularity.
+ *
+ * Each card is `<article class="cmp-contentfragment …" country city state title
+ * locale url posted(epoch ms) key … isIcimsJob>`. The ATTRIBUTE VALUES CONTAIN
+ * '>' (the description is escaped HTML with raw '>'), so the tag is read
+ * attribute by attribute, not up to the first '>'. There is also a bare
+ * `isIcimsJob` attribute with no value. `key` (= the url slug, e.g.
+ * "brand-manager-26915-en-us") is unique per card; `jobID` is not always set.
+ */
+async function fetchDanoneAem(site: SiteDef): Promise<PortalJob[]> {
+  const label = `danoneaem ${site.key ?? site.id}`;
+  const LIMIT = 200;
+  const read = async (offset: number) => {
+    const html = await getText(`${site.endpoint}?p.limit=${LIMIT}&p.offset=${offset}`);
+    if (!html) return null;
+    const stats = html.slice(html.indexOf("cmp-search-statistics"));
+    const values = [...stats.slice(0, 4000).matchAll(/<div class="value">\s*([\d,]+)\s*<\/div>/g)];
+    const total = Number(values[1]?.[1]?.replace(/,/g, "") ?? 0);
+    const cards: Record<string, string>[] = [];
+    for (const part of html.split('<article class="cmp-contentfragment').slice(1)) {
+      const a: Record<string, string> = {};
+      // Skip the rest of the class attribute, then read attributes one at a
+      // time until the tag closes.
+      const body = part.slice(part.indexOf('"') + 1);
+      const attr = /\s+([\w:-]+)(?:="([^"]*)")?/y;
+      for (let m = attr.exec(body); m; m = attr.exec(body)) a[m[1]] = m[2] ?? "";
+      cards.push(a);
+    }
+    return { total, cards };
+  };
+  const first = await read(0);
+  if (!first?.total || !first.cards.length) return [];
+  const pages = Math.ceil(first.total / LIMIT);
+  const rest = await allPages(
+    pages - 1,
+    async (i) => (await read((i + 1) * LIMIT))?.cards ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const c of [...first.cards, ...rest]) {
+    const key = c.key || c.url;
+    const title = clean(c.title ?? "");
+    if (!key || !title || seen.has(key)) continue;
+    seen.add(key);
+    const posted = Number(c.posted);
+    out.push(
+      job(
+        site,
+        title,
+        [clean(c.city ?? ""), clean(c.country ?? "")].filter(Boolean).join(", "),
+        `${site.origin}/en-global/jobs/${c.url || key}.html`,
+        posted > 1e12 ? new Date(posted).toISOString().slice(0, 10) : today(),
+        "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, first.total);
+  return out;
+}
+
+// ── Sika — its own AEM job listing ──────────────────────────────────────────
+/**
+ * sika.com/en/career/jobs.html links a BrassRing tenant that is EMPTY (JobsCount
+ * 0); the real list is the AEM component the page loads from its
+ * data-search-api-url:
+ *
+ *   GET …/jobposting.listing.json?offset=N
+ *   -> {totalItems, nextOffset, limit, items:[{id,title,url,location,tags}]}
+ *
+ * Measured 2026-09-30: totalItems 700, TEN items a response whatever `limit`
+ * says or is asked for (the response claims 20), `offset` pages disjointly and
+ * nextOffset is null on the last page. 70 requests, 6 at a time. `location` is
+ * "City, Region, Country" with the region spelled out ("Lyndhurst, New Jersey,
+ * United States"); tags are [employment type, category]. No posted date.
+ */
+async function fetchSikaAem(site: SiteDef): Promise<PortalJob[]> {
+  const label = `sikaaem ${site.key ?? site.id}`;
+  interface SikaPage {
+    totalItems?: number;
+    items?: { id?: string; title?: string; url?: string; location?: string; tags?: string[] }[];
+  }
+  const first = await getJson<SikaPage>(`${site.endpoint}?offset=0`);
+  const size = first?.items?.length ?? 0;
+  const total = first?.totalItems ?? 0;
+  if (!size || !total) return [];
+  const rest = await allPages(
+    Math.ceil(total / size) - 1,
+    async (i) => {
+      const p = await getJson<SikaPage>(`${site.endpoint}?offset=${(i + 1) * size}`);
+      return p?.items ?? null;
+    },
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const it of [...(first?.items ?? []), ...rest]) {
+    const title = clean(it.title ?? "");
+    const id = it.id || it.url || "";
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(it.location ?? ""),
+        it.url || site.origin,
+        today(),
+        clean(it.tags?.[1] ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(label, out.length, total);
+  return out;
+}
+
+// ── Apple — jobs.apple.com ──────────────────────────────────────────────────
+/**
+ * Apple's own board. The page's own client calls POST /api/v1/search with
+ * {query, filters:{}, page, locale, sort, format}; the body has to carry
+ * `locale` and `format` or the API answers {searchResults:[], totalRecords:0}
+ * — which is what the earlier note recorded for "every body tried". It also
+ * sends the X-Apple-CSRF-Token that GET /api/v1/CSRFToken returns in a header;
+ * measured 2026-09-30 the search answers without it, but it is sent the way
+ * the page sends it.
+ *
+ * 20 results a page, fixed; totalRecords 6,187 = 310 pages, ~31 KB each (the
+ * server-rendered /en-us/search?page=N carries the same rows in 320 KB of HTML
+ * and cost 17 s of CPU for a full walk; this costs a fraction). A full walk at
+ * 6 concurrent: ~25 s. Sorted newest-first, so a posting added mid-walk shifts
+ * a row across a page boundary: 6,185 unique of 6,187 on the walk measured.
+ *
+ * A multi-site requisition is one row PER SITE (ids "200655805-0836",
+ * "200655805-3337"), all sharing the detail page /en-us/details/<positionId>/
+ * <slug>. Locations are Apple's own site names — "Cupertino", "Austin",
+ * "Culver City", a store ("Bellevue Square", level 6), a metro ("San Francisco
+ * Bay Area", level 4) or just a country (level 1) — with no state, so the
+ * stored location is "<site>, <country>" and placement needs the site's hints.
+ *
+ * DROPPED: `managedPipelineRole: true`, 81 on 2026-09-30 — Apple Retail's
+ * standing per-country pools ("US - Specialist: Seasonal, Part-time", "IN -
+ * Business Expert"), one posting a country that is never a single vacancy.
+ * `type: "PIPE"` is NOT that: 4,180 postings carry it, 2,357 of them Hardware
+ * engineering roles in Cupertino and Sunnyvale; it is Apple's ordinary
+ * requisition type and those rows are kept.
+ */
+async function fetchAppleJobs(site: SiteDef): Promise<PortalJob[]> {
+  const label = `applejobs ${site.key ?? site.id}`;
+  interface AppleLoc {
+    name?: string;
+    countryName?: string;
+  }
+  interface AppleRow {
+    id?: string;
+    positionId?: string;
+    postingTitle?: string;
+    transformedPostingTitle?: string;
+    postDateInGMT?: string;
+    managedPipelineRole?: boolean;
+    team?: { teamName?: string };
+    locations?: AppleLoc[];
+  }
+  interface AppleRes {
+    res?: { searchResults?: AppleRow[]; totalRecords?: number };
+  }
+  let token = "";
+  try {
+    const t = await fetch(`${site.origin}/api/v1/CSRFToken`, { headers: { "User-Agent": UA } });
+    token = t.headers.get("X-Apple-CSRF-Token") ?? "";
+  } catch {
+    // The search answers without it (measured); carry on.
+  }
+  const read = (page: number) =>
+    getJson<AppleRes>(site.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { "X-Apple-CSRF-Token": token } : {}),
+      },
+      body: JSON.stringify({
+        query: "",
+        filters: {},
+        page,
+        locale: "en-us",
+        sort: "newest",
+        format: { longDate: "MMMM D, YYYY", mediumDate: "MMM D, YYYY" },
+      }),
+    });
+  const first = await read(1);
+  const total = first?.res?.totalRecords ?? 0;
+  const head = first?.res?.searchResults ?? [];
+  if (!total || !head.length) return [];
+  const rest = await allPages(
+    Math.ceil(total / head.length) - 1,
+    async (i) => (await read(i + 2))?.res?.searchResults ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of [...head, ...rest]) {
+    const title = clean(r.postingTitle ?? "");
+    const id = r.id ?? "";
+    if (!title || !id || seen.has(id)) continue;
+    seen.add(id);
+    if (r.managedPipelineRole) continue;
+    const l = r.locations?.[0];
+    const name = clean(l?.name ?? "");
+    const country = clean(l?.countryName ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        name && name !== country ? `${name}, ${country}` : country || name,
+        `${site.origin}/en-us/details/${r.positionId ?? id}/${r.transformedPostingTitle ?? ""}`,
+        r.postDateInGMT ? isoDay(r.postDateInGMT) : today(),
+        clean(r.team?.teamName ?? "") || "Career portal",
+      ),
+    );
+  }
+  // Pipelines are counted in `total` and deliberately dropped above.
+  reportGap(label, seen.size, total);
+  return out;
+}
+
+// ── Reliance Industries — ASP.NET WebForms postback paging ───────────────────
+/**
+ * careers.ril.com/rilcareers/frmJobSearch.aspx is RIL's own WebForms page, not
+ * an ATS. Page 1 is a GET; every later page is a POST of the page's own form
+ * (the __VIEWSTATE / __EVENTVALIDATION hidden fields, every other input and
+ * select at its current value) with the pager's submit button
+ * `ctl00$MainContent$rgJobs$ctl13$lnkNext=Next` — exactly what the Next button
+ * does in a browser. Changing the page dropdown through __EVENTTARGET did not
+ * advance it (measured 2026-09-29). The session cookie is kept across posts.
+ *
+ * Measured 2026-09-30: "Showing 1 of 4 Pages", 10 rows a page, 32 roles, 4
+ * requests, ~14 s. Rows are numbered (#1..#32) by the server, so completeness
+ * is checkable: the walk must end on "Showing N of N" with the numbers running
+ * 1..count unbroken, or the pull is abandoned. Titles carry the requisition
+ * number ("Const Engr - CHO Projects MEP ( 83013504 )"); links carry encrypted
+ * ids.
+ */
+async function fetchRilCareers(site: SiteDef): Promise<PortalJob[]> {
+  const label = `rilcareers ${site.key ?? site.id}`;
+  const decode = (s: string) =>
+    s
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&");
+  const formOf = (html: string) => {
+    const f = new URLSearchParams();
+    const form = html.slice(html.indexOf("<form"), html.indexOf("</form>"));
+    for (const m of form.matchAll(/<input\b([^>]*)>/gi)) {
+      const type = (m[1].match(/type="([^"]*)"/i)?.[1] ?? "text").toLowerCase();
+      const name = m[1].match(/name="([^"]*)"/i)?.[1];
+      if (!name || ["submit", "image", "checkbox", "radio", "button"].includes(type)) continue;
+      f.set(decode(name), decode(m[1].match(/value="([^"]*)"/i)?.[1] ?? ""));
+    }
+    for (const m of form.matchAll(/<select\b[^>]*name="([^"]*)"[^>]*>([\s\S]*?)<\/select>/gi)) {
+      const opts = m[2];
+      const v =
+        opts.match(/<option[^>]*selected[^>]*value="([^"]*)"/i)?.[1] ??
+        opts.match(/<option[^>]*value="([^"]*)"/i)?.[1] ??
+        "";
+      f.set(decode(m[1]), decode(v));
+    }
+    return f;
+  };
+  let cookie = "";
+  const request = async (init?: RequestInit): Promise<string | null> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const res = await fetch(site.endpoint, {
+          ...init,
+          headers: {
+            "User-Agent": UA,
+            Accept: "text/html",
+            ...(cookie ? { Cookie: cookie } : {}),
+            ...init?.headers,
+          },
+        });
+        cookie = mergeCookies(cookie, res);
+        if (res.ok) return await res.text();
+      } catch {
+        // retried once
+      }
+    }
+    return null;
+  };
+  const rows: { n: number; href: string; title: string; cat: string; loc: string; d: string }[] =
+    [];
+  let html = await request();
+  let pages = 0;
+  let reachedEnd = false;
+  for (let guard = 0; html && guard < 50; guard++) {
+    const pg = html.match(/Showing\s+(\d+)\s+of\s+(\d+)\s+Pages/i);
+    if (!pg || Number(pg[1]) !== guard + 1) break;
+    pages = Number(pg[2]);
+    for (const m of html.matchAll(
+      /lblsrno_\d+">(\d+)<\/span>\s*<\/td>\s*<td>\s*<a[^>]*href="(frmJobSearch\.aspx\?[^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>\s*<td>([\s\S]*?)<\/td>/g,
+    )) {
+      rows.push({
+        n: Number(m[1]),
+        href: decode(m[2]),
+        title: clean(m[3]),
+        cat: clean(m[4]),
+        loc: clean(m[5]),
+        d: clean(m[6]),
+      });
+    }
+    if (pg[1] === pg[2]) {
+      reachedEnd = true;
+      break;
+    }
+    const f = formOf(html);
+    f.set("ctl00$MainContent$rgJobs$ctl13$lnkNext", "Next");
+    html = await request({
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Referer: site.endpoint },
+      body: f.toString(),
+    });
+    if (!html) break;
+  }
+  // Complete only if the last page was reached and the server's own row
+  // numbers run 1..count with none missing or repeated.
+  const nums = rows.map((r) => r.n).sort((a, b) => a - b);
+  const unbroken = nums.every((n, i) => n === i + 1);
+  if (!reachedEnd || !pages || !rows.length || !unbroken) {
+    console.log(`${label}: walk incomplete (${rows.length} rows over ${pages} pages) — abandoned`);
+    return [];
+  }
+  return rows.map((r) =>
+    job(
+      site,
+      r.title,
+      r.loc,
+      new URL(r.href, site.endpoint).toString(),
+      isoDay(r.d + " UTC"),
+      r.cat || "Career portal",
+    ),
+  );
+}
+
+// ── Société Générale — Drupal front end over the Quantum search API ──────────
+/**
+ * careers.societegenerale.com, SG's own board (its Taleo career section 302s
+ * back here). The search page's own client makes three calls, and so does this:
+ *
+ *  1. GET /en/search — keeps the cookies it sets (Imperva's incap_ses/visid and
+ *     the SOCGENCRRLB balancer cookie, on a normal 200, no challenge) and reads
+ *     `csrfToken` from the drupal-settings JSON;
+ *  2. GET /sg-careers-offers/get-token with X-CSRF-Token and
+ *     X-Requested-With: XMLHttpRequest -> {token} (a JWT, ~55 min);
+ *  3. POST /search-proxy.php with X-Proxy-URL naming SG's search-profile API,
+ *     Authorization-API: Bearer <token>, body {profile:"ces_profile_sgcareers",
+ *     query:{advanced:[sourcestr6 eq "job"], skipCount:100, skipFrom:N}, lang,
+ *     responseType} -> {TotalCount, Result:{Docs[]}}.
+ *
+ * Measured 2026-09-30: TotalCount 1,033, 100 a page honoured, 11 requests.
+ * Docs: title, sourcestr4 = requisition, sourcestr12 = requisition-language,
+ * sourcestr7 = "City, Country", sourcestr10 = job family, sourcedatetime1 =
+ * posted, url1 = the offer page. The same requisition is often posted in
+ * French AND English (46 of 1,042 on 2026-09-29), so rows DEDUPE ON THE
+ * REQUISITION, preferring the English posting.
+ *
+ * NOT VERIFIED FROM A WORKER. Imperva fronts the site; from this sandbox the
+ * careers host answered 200 while www.societegenerale.com answered 403. If the
+ * Worker's first GET is challenged there is no csrfToken and the pull returns
+ * [] — which is the honest failure, and nothing here tries to solve a challenge.
+ */
+async function fetchSgQuantum(site: SiteDef): Promise<PortalJob[]> {
+  const label = `sgquantum ${site.key ?? site.id}`;
+  let cookie = "";
+  const get = async (url: string, headers: Record<string, string> = {}) => {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA, ...(cookie ? { Cookie: cookie } : {}), ...headers },
+      });
+      cookie = mergeCookies(cookie, res);
+      return res.ok ? await res.text() : null;
+    } catch {
+      return null;
+    }
+  };
+  const page = await get(site.endpoint, { Accept: "text/html" });
+  const csrf = page?.match(/"csrfToken":"([^"]+)"/)?.[1];
+  if (!csrf) {
+    console.log(`${label}: no csrfToken on the search page — pull abandoned`);
+    return [];
+  }
+  const tok = await get(`${site.origin}/sg-careers-offers/get-token`, {
+    Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+    "X-CSRF-Token": csrf,
+    Referer: site.endpoint,
+  });
+  let bearer = "";
+  try {
+    bearer = String((JSON.parse(tok ?? "{}") as { token?: string }).token ?? "");
+  } catch {
+    bearer = "";
+  }
+  if (!bearer) return [];
+  interface SgDoc {
+    title?: string;
+    sourcestr4?: string;
+    sourcestr7?: string;
+    sourcestr10?: string;
+    sourcestr12?: string;
+    sourcedatetime1?: string;
+    url1?: string;
+  }
+  interface SgRes {
+    TotalCount?: number;
+    Result?: { Docs?: SgDoc[] };
+  }
+  const SIZE = 100;
+  const search = (from: number) =>
+    getJson<SgRes>(`${site.origin}/search-proxy.php`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        Referer: site.endpoint,
+        "X-Proxy-URL":
+          "https://api.socgen.com/business-support/it-for-it-support/cognitive-service-knowledge/api/v1/search-profile",
+        "Authorization-API": `Bearer ${bearer}`,
+      },
+      body: JSON.stringify({
+        profile: "ces_profile_sgcareers",
+        query: {
+          advanced: [{ type: "simple", name: "sourcestr6", op: "eq", value: "job" }],
+          skipCount: SIZE,
+          skipFrom: from,
+        },
+        lang: "en",
+        responseType: "SearchResult",
+      }),
+    });
+  const first = await search(0);
+  const total = first?.TotalCount ?? 0;
+  const head = first?.Result?.Docs ?? [];
+  if (!total || !head.length) return [];
+  const rest = await allPages(
+    Math.ceil(total / SIZE) - 1,
+    async (i) => (await search((i + 1) * SIZE))?.Result?.Docs ?? null,
+    label,
+  );
+  if (!rest) return [];
+  const docs = [...head, ...rest];
+  // One row per requisition, the English posting where there is one.
+  const byReq = new Map<string, SgDoc>();
+  for (const d of docs) {
+    const req = (d.sourcestr4 ?? "").trim();
+    if (!req || !clean(d.title ?? "")) continue;
+    const had = byReq.get(req);
+    if (!had || (!/-en$/i.test(had.sourcestr12 ?? "") && /-en$/i.test(d.sourcestr12 ?? ""))) {
+      byReq.set(req, d);
+    }
+  }
+  const out: PortalJob[] = [];
+  for (const d of byReq.values()) {
+    out.push(
+      job(
+        site,
+        clean(d.title ?? ""),
+        clean(d.sourcestr7 ?? ""),
+        d.url1 || site.endpoint,
+        d.sourcedatetime1 ? isoDay(d.sourcedatetime1.replace(" ", "T") + "Z") : today(),
+        clean(d.sourcestr10 ?? "") || "Career portal",
+      ),
+    );
+  }
+  // `total` counts both language versions; what must match is the documents.
+  reportGap(label, docs.length, total);
+  return out;
+}
+
+// ── WiseTech Global — its own current-openings page ─────────────────────────
+/**
+ * wisetechglobal.com/careers/current-openings/ renders every opening in one
+ * server-rendered page, no ATS behind it (apply is on the same site). Card:
+ * `<div class="current-openings-item" data-location="" data-category="…">`
+ * with an `<h4>` title and `<a class="cta-button" href="/careers/current-
+ * openings/<slug>/<uuid>">`. Measured 2026-09-30: 12 cards, all "E2open - US
+ * Area Sales Director (…) - <US state>" (E2open is WiseTech's acquisition),
+ * and data-location EMPTY on every one — so rows carry no location and the
+ * feed's homeHub is null: none is a Sydney role. The state stays in the title.
+ */
+async function fetchWiseTech(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.endpoint);
+  if (!html) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const part of html.split(/<div class="current-openings-item"/).slice(1)) {
+    const card = part.split(/<div class="current-openings-item"/)[0];
+    const title = clean(card.match(/<h4[^>]*>([\s\S]*?)<\/h4>/)?.[1] ?? "");
+    const href = card.match(/href="(\/careers\/current-openings\/[^"]+)"/)?.[1] ?? "";
+    if (!title || !href || seen.has(href)) continue;
+    seen.add(href);
+    const loc = clean(card.match(/data-location="([^"]*)"/)?.[1] ?? "");
+    out.push(job(site, title, loc, site.origin + href, today(), "Career portal"));
+  }
+  return out;
+}
+
+// ── X0PA microsite (City Developments) ──────────────────────────────────────
+/**
+ * cdl.com.sg/careers links an X0PA microsite (a React SPA) whose data call is
+ * GET https://<tenant>.x0pa.ai/roboroy/api/v1/jobs/list?filter[skip]=N&
+ * filter[limit]=M -> {count:"13", jobs:[{_source:{jobId, companyId,
+ * displayJobName, country:{countryShort}, workLocationRaw, openDate}}]}. The
+ * default page is 10, so the limit is passed and the rows must reach `count`.
+ * Measured 2026-09-30: 13 of 13, every one country SG with no city
+ * (workLocationRaw ""). The job page is /public/r/job/<jobId>, the link the
+ * microsite's own cards build.
+ */
+async function fetchX0pa(site: SiteDef): Promise<PortalJob[]> {
+  interface X0paJob {
+    _source?: {
+      jobId?: string | number;
+      companyId?: string | number;
+      displayJobName?: string;
+      jobName?: string;
+      openDate?: string;
+      workLocationRaw?: string;
+      country?: { countryFull?: string };
+    };
+  }
+  const d = await getJson<{ count?: string | number; jobs?: X0paJob[] }>(
+    `${site.endpoint}?filter%5Bskip%5D=0&filter%5Blimit%5D=500&_=${Date.now()}`,
+  );
+  const count = Number(d?.count ?? 0);
+  const jobs = d?.jobs ?? [];
+  if (!jobs.length || jobs.length < count) {
+    if (count) console.log(`x0pa ${site.key ?? site.id}: ${jobs.length} of ${count} — abandoned`);
+    return [];
+  }
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const j of jobs) {
+    const s = j._source ?? {};
+    const id = String(s.jobId ?? "");
+    const title = clean(s.displayJobName || s.jobName || "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    const loc = [clean(s.workLocationRaw ?? ""), clean(s.country?.countryFull ?? "")]
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/public/r/job/${id}`,
+        s.openDate ? isoDay(s.openDate) : today(),
+        "Career portal",
+      ),
+    );
+  }
+  return out;
+}
+
+// ── Workday boards whose location is a store's street address (Target) ──────
+/**
+ * fetchWorkday, unchanged, with placement taken from the CITY of a US street
+ * address rather than from the whole string.
+ *
+ * Target's locationsText is the store's address — "2941 Queensgate Dr,
+ * Richland,WA 99352-9101", "1401 2nd Ave, Seattle,WA 98101-2007" — and the
+ * street half is full of hub names: Washington Ave, Houston St, Chicago Ave,
+ * Portland Rd. Matched whole, a street name places the row; so the hub is
+ * found from "<City>, <ST>" alone (the last comma-separated city before a
+ * two-letter state and ZIP). The stored `loc` stays the full address, which is
+ * what the board shows. A location with no such tail ("Bangalore,India",
+ * "12 Locations") is matched whole, as fetchWorkday would.
+ */
+const US_ADDRESS_CITY = /,\s*([^,]+?),\s*([A-Z]{2})\s+\d{5}(?:-\d{4})?\s*$/;
+
+async function fetchWorkdayStores(site: SiteDef): Promise<PortalJob[]> {
+  const rows = await fetchWorkday(site);
+  return rows.map((r) => {
+    const m = US_ADDRESS_CITY.exec(r.loc);
+    const place = m ? `${m[1].trim()}, ${m[2]}` : r.loc;
+    return {
+      ...r,
+      city: hubFor(
+        place,
+        site.homeHub,
+        HOME_COUNTRY[site.homeHub ?? ""] ?? /$^/,
+        site.hubHints,
+        site.assumeHomeHub,
+      ),
+    };
+  });
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  workdaystores: fetchWorkdayStores,
+  clinchfacets: fetchClinchFacets,
+  danoneaem: fetchDanoneAem,
+  sikaaem: fetchSikaAem,
+  applejobs: fetchAppleJobs,
+  rilcareers: fetchRilCareers,
+  sgquantum: fetchSgQuantum,
+  wisetech: fetchWiseTech,
+  x0pa: fetchX0pa,
   sfclassicxml: fetchSfClassicXml,
   tencent: fetchTencent,
   baidu: fetchBaidu,
@@ -32445,6 +33920,16 @@ export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
 
 /** Short source tag per platform, so an archive row says where it came from. */
 export const SOURCE_TAG: Record<Platform, string> = {
+  // Workday rows; only the placement differs (see fetchWorkdayStores).
+  workdaystores: "wd",
+  clinchfacets: "clfc",
+  danoneaem: "dnaem",
+  sikaaem: "sikaem",
+  applejobs: "aapl",
+  rilcareers: "ril",
+  sgquantum: "sgq",
+  wisetech: "wtc",
+  x0pa: "x0pa",
   successfactors: "sf",
   workday: "wd",
   eightfold: "ef",
