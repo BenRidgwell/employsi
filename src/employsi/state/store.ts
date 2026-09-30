@@ -198,6 +198,21 @@ export interface AppState {
   // the mobile "More" sheet can open them alongside the desktop dock buttons.
   feedbackOpen: boolean;
   helpTourOpen: boolean;
+  /**
+   * The first-run welcome card, shown once per ACCOUNT (lib/onboardingFn.ts).
+   *
+   * Set from the server's answer, never from a local default, so it cannot
+   * flash open on a load where the answer has not arrived.
+   */
+  welcomeOpen: boolean;
+  /**
+   * Which walkthrough GuidedTour should open on, instead of its hub.
+   *
+   * Null is the normal path: pressing "Need help?" shows the hub and the
+   * person picks. The welcome card sets "orient", because "Start tour" that
+   * lands you on a menu has not started a tour.
+   */
+  tourStart: string | null;
   // The mobile bottom-bar "More" sheet.
   mobileMenuOpen: boolean;
   /**
@@ -339,6 +354,9 @@ export interface AppState {
   closeFeedback: () => void;
   toggleHelpTour: () => void;
   closeHelpTour: () => void;
+  setWelcomeOpen: (v: boolean) => void;
+  /** Open the guided tour directly on a named walkthrough. */
+  startTour: (key: string) => void;
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
   toggleNewsCollapsed: () => void;
@@ -634,6 +652,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
+  welcomeOpen: false,
+  tourStart: null,
   mobileMenuOpen: false,
   newsCollapsed: persisted.newsCollapsed,
   tickerCollapsed: persisted.tickerCollapsed,
@@ -1186,8 +1206,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleFeedback: () => set((s) => solo("feedbackOpen", !s.feedbackOpen)),
   closeFeedback: () => set({ feedbackOpen: false }),
-  toggleHelpTour: () => set((s) => solo("helpTourOpen", !s.helpTourOpen)),
-  closeHelpTour: () => set({ helpTourOpen: false }),
+  // Both of these clear `tourStart`. Opening from the dock is a request for
+  // the HUB, and closing ends the one tour the welcome card asked for — a
+  // start key that outlived its own tour would silently replay orient the next
+  // time "Need help?" was pressed.
+  toggleHelpTour: () => set((s) => ({ ...solo("helpTourOpen", !s.helpTourOpen), tourStart: null })),
+  closeHelpTour: () => set({ helpTourOpen: false, tourStart: null }),
+  setWelcomeOpen: (v) => set({ welcomeOpen: v }),
+  // `solo` so the tour opens as the only surface, the same as pressing
+  // "Need help?" — the welcome card is dismissed by its own handler first.
+  startTour: (key) => set({ ...solo("helpTourOpen", true), tourStart: key }),
+
   toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
   toggleNewsCollapsed: () => set((s) => ({ newsCollapsed: !s.newsCollapsed })),

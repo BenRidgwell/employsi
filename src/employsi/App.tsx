@@ -21,8 +21,10 @@ import { CareerPathwaysPane } from "./components/panels/CareerPathwaysPane";
 import { ComingSoonPane } from "./components/panels/ComingSoonPane";
 import { TalentFlowPane } from "./components/panels/TalentFlowPane";
 import { IntroLoader } from "./components/IntroLoader";
+import { WelcomeCard } from "./components/WelcomeCard";
 import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
+import { useWelcome } from "./hooks/useWelcome";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
 import { startSession } from "./lib/analytics";
@@ -33,6 +35,10 @@ function App() {
   // httpOnly, so this is the only way the client can know — and the only
   // place that sets `account`.
   useAuthSession();
+
+  // First visit for this ACCOUNT? Asks the server once the session is known,
+  // and opens the welcome card if so — which is what starts the guided tour.
+  useWelcome();
 
   // Escape closes the frontmost open surface, app-wide.
   //
@@ -155,6 +161,7 @@ function App() {
       <ComingSoonPane />
       <MobileTabBar />
       <MobileMenu />
+      <WelcomeCard />
       <Toast />
     </div>
   );
