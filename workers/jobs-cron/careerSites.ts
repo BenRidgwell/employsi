@@ -168,7 +168,13 @@ type Platform =
   | "googlecareers"
   | "data3"
   | "glencore"
-  | "moka";
+  | "moka"
+  | "tencent"
+  | "baidu"
+  | "netease"
+  | "pingan"
+  | "beisen"
+  | "bytedance";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -882,6 +888,23 @@ const MOKA_CN_HINTS: [string, string | null][] = [
   ["上海", "shanghai"],
   ["深圳", "shenzhen"],
   ["香港", "hongkong"],
+];
+
+/**
+ * Chinese-script hub needles for the batch-11 boards: MokaHR's list plus the
+ * three foreign hubs these boards name in Chinese (Baidu writes 新加坡共和国,
+ * 东京 and 旧金山; Mindray 新加坡共和国·新加坡). Built on MOKA_CN_HINTS rather
+ * than beside it so the two cannot drift; the Moka feeds keep their own list
+ * unchanged. Defined here, not beside the readers, because SITES reads it at
+ * module load. Only hubs — 广州, 杭州, 成都 and the rest stay unplaced, which is
+ * what HUB_MATCH does with them in Latin script too.
+ */
+const CN_CITY_HINTS: [string, string | null][] = [
+  ...MOKA_CN_HINTS,
+  ["新加坡", "singapore"],
+  ["东京", "tokyo"],
+  ["首尔", "seoul"],
+  ["旧金山", "sanfrancisco"],
 ];
 
 export const SITES: SiteDef[] = [
@@ -8124,7 +8147,8 @@ export const SITES: SiteDef[] = [
   //
   // NOT wired, each for a measured reason: Starbucks (eightfoldpcs 429s after
   // 2-4 walks; the board is 21,719 roles), Swinburne (NGA.NET CAPTCHA). New
-  // readers needed: ByteDance (csrf + 10,000-row cap), Hengrui (MokaHR,
+  // readers needed: ByteDance (csrf + 10,000-row cap — since read, Beijing
+  // partition only, by fetchBytedance in batch 11 D), Hengrui (MokaHR,
   // AES-encrypted), UTS (Oracle iRecruitment session forms), Amazon (10,000
   // cap), IBM (www-api.ibm.com search, sort by dcdate), Teys and RAA (RSS
   // <item>, which fetchXmlFeed does not read), Notre Dame (Jobvite). No board
@@ -21832,6 +21856,96 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     hubHints: MOKA_CN_HINTS,
   },
+  // ── batch 11: D ──
+  // Six Chinese employers on their OWN boards, each a new reader (see the
+  // header above each fetcher for the endpoint, the measured shape and the
+  // traps). Measured 2026-09-30. homeHub is null throughout: every one of these
+  // boards gives every row a place, so a blank has nothing to default to, and
+  // a row in Hangzhou or Quanzhou honestly lands on no hub.
+  //
+  // Tencent — careers.tencent.com, the whole board (China and overseas), 2,262.
+  // English place names, so HUB_MATCH reads it; the hints are same-metro US
+  // places the board writes without a state ("Palo Alto, USA",
+  // "Bellevue, USA", "Irvine, USA").
+  {
+    id: "shenzhen-00700",
+    name: "Tencent",
+    sector: "Technology, Media and Telecommunications",
+    platform: "tencent",
+    endpoint: "https://careers.tencent.com/tencentcareer/api/post/Query",
+    origin: "https://careers.tencent.com",
+    homeHub: null,
+    hubHints: [
+      ["palo alto", "sanjose"],
+      ["bellevue, usa", "seattle"],
+      ["irvine, usa", "losangeles"],
+    ],
+  },
+  // Baidu — talent.baidu.com, experienced hires (SOCIAL) only, 1,670.
+  {
+    id: "beijing-09888",
+    name: "Baidu",
+    sector: "Technology, Media and Telecommunications",
+    platform: "baidu",
+    endpoint: "https://talent.baidu.com/httservice/getPostListNew",
+    origin: "https://talent.baidu.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // NetEase — hr.163.com, every business unit, 2,654.
+  {
+    id: "beijing-ntes",
+    name: "NetEase",
+    sector: "Technology, Media and Telecommunications",
+    platform: "netease",
+    endpoint: "https://hr.163.com/api/hr163/position/queryPage",
+    origin: "https://hr.163.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Ping An Bank — the group's talent.pingan.com cut to the bank (SZDBK), 2,770.
+  // tenantId is the group's recruiting tenant, sent by the site's own page.
+  {
+    id: "shenzhen-000001",
+    name: "Ping An Bank",
+    sector: "Financial Services",
+    platform: "pingan",
+    endpoint:
+      "https://talent.pingan.com/zztj-recruit-talent-webserver/rctt/candidate/position/getPositionList?businessUnitId=SZDBK&tenantId=CHDUIE8QRPG16AJFM2B9NL0OS3TK574",
+    origin: "https://talent.pingan.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
+  // Mindray — Beisen portal career.mindray.com, 244 across every audience. Its
+  // Moka board (app.mokahr.com/social-recruitment/mindray/44475) is NOT wired:
+  // the company's own site links this one, and reading both would count every
+  // role twice under different source tags. The one 校园大使 (campus
+  // ambassador) post, "2027届校园星探", recruits students to promote the
+  // campus drive and is not a vacancy.
+  {
+    id: "shenzhen-300760",
+    name: "Shenzhen Mindray Bio-Medical",
+    sector: "Healthcare and Life Sciences",
+    platform: "beisen",
+    endpoint: "https://career.mindray.com/api/Jobad/GetJobAdPageList",
+    origin: "https://career.mindray.com",
+    homeHub: null,
+    hubHints: [...CN_CITY_HINTS, ["全国", null]],
+    skipTitles: /校园星探/,
+  },
+  // ByteDance — jobs.bytedance.com China experienced board, Beijing partition
+  // (CT_11) only: 5,584. The unfiltered board is capped at a 10,000 window and
+  // cannot be walked to a known total; see fetchBytedance.
+  {
+    id: "beijing-bytedance",
+    name: "ByteDance",
+    sector: "Technology, Media and Telecommunications",
+    platform: "bytedance",
+    endpoint: "https://jobs.bytedance.com/api/v1/search/job/posts?location=CT_11",
+    origin: "https://jobs.bytedance.com",
+    homeHub: null,
+    hubHints: CN_CITY_HINTS,
+  },
 ];
 
 /**
@@ -29105,7 +29219,667 @@ async function fetchGlencore(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 11 D: Chinese employers' own boards ─────────────────────────────────
+/**
+ * Every page of a walk whose length is already known, or NULL if any page
+ * could not be read.
+ *
+ * pagedParallel's contract — stop at the first page that fails and return what
+ * came before — suits a board whose end is found by reading until a short page.
+ * These six boards each state their own total on page one, so the page count
+ * is known before the walk starts and there is no reason to accept a partial
+ * one: a page that fails twice fails the whole pull, the reader returns [], and
+ * yesterday's rows stand (an empty pull is never written). A truncated list
+ * would archive a random subset as if it were the board.
+ *
+ * `read(i)` is page i, 0-based within the walk; each is retried once, serially.
+ */
+async function allPages<T>(
+  n: number,
+  read: (i: number) => Promise<T[] | null>,
+  label: string,
+): Promise<T[] | null> {
+  const out: T[] = [];
+  for (let start = 0; start < n; start += PAGE_CONCURRENCY) {
+    const idx: number[] = [];
+    for (let i = start; i < Math.min(start + PAGE_CONCURRENCY, n); i++) idx.push(i);
+    const got = await Promise.all(idx.map(read));
+    for (let k = 0; k < got.length; k++) {
+      const rows = got[k] ?? (await read(idx[k]));
+      if (!rows) {
+        console.log(`${label}: page ${idx[k] + 1} of ${n} could not be read — pull abandoned`);
+        return null;
+      }
+      out.push(...rows);
+    }
+  }
+  return out;
+}
+
+/**
+ * The walk's own completeness check, after dedupe. Boards sorted by update time
+ * can shift a row across a page boundary mid-walk (one row read twice, its
+ * neighbour missed), so a small gap is logged, not fatal; allPages has already
+ * refused any walk that lost a whole page.
+ */
+function reportGap(label: string, got: number, total: number) {
+  if (total && got < total * 0.98) console.log(`${label}: ${got} of ${total} — walk incomplete`);
+}
+
+/** "September 30,2026" / "2026-09-30 16:13:54" / epoch ms → YYYY-MM-DD, or "". */
+function cnDate(v: string | number | undefined | null): string {
+  if (typeof v === "number") {
+    return v > 1e12 && v < 1e13 ? new Date(v).toISOString().slice(0, 10) : "";
+  }
+  const s = (v ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const t = Date.parse(s.replace(",", ", ") + " UTC");
+  return Number.isFinite(t) ? new Date(t).toISOString().slice(0, 10) : "";
+}
+
+// ── Tencent ──────────────────────────────────────────────────────────────────
+/**
+ * careers.tencent.com, Tencent's own board — ALL of it, China and overseas.
+ *
+ *   GET /tencentcareer/api/post/Query?timestamp=<ms>&keyword=&pageIndex=<1..>
+ *       &pageSize=500&language=en-us&area=cn
+ *   → {Code:200, Data:{Count, Posts:[{PostId, RecruitPostName, CountryName,
+ *       LocationName, CategoryName, LastUpdateTime:"September 30,2026", PostURL}]}}
+ *
+ * Measured 2026-09-30: Count 2,262, five pages of 500 (the last 262), 2,262
+ * distinct PostIds, 2,261 distinct links (one role listed twice; see the
+ * dedupe below). `area=cn` is the site's own parameter and does NOT restrict
+ * to China — Singapore 79, Tokyo 34, Palo Alto 33, London 25 are all in it.
+ * `language=en-us` gives English place names ("Shenzhen", "China"), which
+ * HUB_MATCH reads; zh-cn would give Chinese ones.
+ *
+ * TRAPS: a page past the end answers Count 0 with Posts null, so the total is
+ * read from page one only. LocationName can carry a leading space
+ * (" Bangkok"). Overseas PostURLs point at Tencent's Workday tenant, not this
+ * host — they are the board's own links and are kept as given.
+ */
+interface TencentPost {
+  PostId?: string;
+  RecruitPostName?: string;
+  CountryName?: string;
+  LocationName?: string;
+  CategoryName?: string;
+  LastUpdateTime?: string;
+  PostURL?: string;
+}
+
+const TENCENT_PAGE = 500;
+
+async function fetchTencent(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const q = new URLSearchParams({
+      timestamp: String(Date.now()),
+      keyword: "",
+      pageIndex: String(i + 1),
+      pageSize: String(TENCENT_PAGE),
+      language: "en-us",
+      area: "cn",
+    });
+    const r = await getJson<{ Code?: number; Data?: { Count?: number; Posts?: TencentPost[] } }>(
+      `${site.endpoint}?${q}`,
+    );
+    return r?.Code === 200 && r.Data
+      ? { total: Number(r.Data.Count) || 0, posts: r.Data.Posts ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / TENCENT_PAGE) - 1,
+    async (i) => (await read(i + 1))?.posts ?? null,
+    "tencent",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.posts, ...rest]) {
+    const id = p.PostId ?? "";
+    const title = clean(p.RecruitPostName ?? "");
+    const url =
+      (p.PostURL ?? "").replace(/^http:/, "https:") ||
+      `https://careers.tencent.com/jobdesc.html?postId=${id}`;
+    // Deduped on the URL as well as the PostId: measured 2026-09-30, two
+    // PostIds (1877601288456282112, 1948689715007979520) carry the same Workday
+    // requisition, R104655-3 in Tokyo, under two spellings of one title — one
+    // vacancy listed twice.
+    if (!id || !title || seen.has(id) || seen.has(url)) continue;
+    seen.add(id);
+    seen.add(url);
+    const loc = [p.LocationName, p.CountryName]
+      .map((x) => clean(x ?? ""))
+      .filter(Boolean)
+      .join(", ");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        url,
+        cnDate(p.LastUpdateTime),
+        clean(p.CategoryName ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("tencent", out.length, first.total);
+  return out;
+}
+
+// ── Baidu ────────────────────────────────────────────────────────────────────
+/**
+ * talent.baidu.com, Baidu's own board — the experienced (SOCIAL) list only.
+ *
+ *   POST /httservice/getPostListNew   (form-encoded)
+ *        recruitType=SOCIAL&pageSize=20&curPage=<1..>&keyWord=
+ *   → {status:"ok", data:{total:"1670" (a STRING), pages, list:[{postId, name,
+ *       postType, publishDate, updateDate, workPlace:"北京市,上海市"}]}}
+ *
+ * Measured 2026-09-29/30: total 1,669-1,670, 84 pages. `pageSize` above 20 is
+ * refused ("Illegal argument : pageSize"), so this is the deepest walk of the
+ * batch — 84 requests, ~21 s at six in flight. recruitType must be the literal
+ * "SOCIAL"; campus and intern boards are other values and are not read.
+ *
+ * `workPlace` lists every city the role can sit in, comma-joined. The row is
+ * placed at the FIRST, as everywhere in this file — passing the whole string
+ * would let hint order decide ("上海市,北京市" would land on Beijing).
+ *
+ * The job link is the SPA's own route /jobs/detail/SOCIAL/<postId>; checked
+ * 2026-09-30 that the server-rendered page carries the role's title for a real
+ * postId and not for a made-up one, and that /httservice/getPostDetail answers
+ * for the same id.
+ */
+interface BaiduPost {
+  postId?: string;
+  name?: string;
+  postType?: string;
+  publishDate?: string;
+  updateDate?: string;
+  workPlace?: string;
+}
+
+const BAIDU_PAGE = 20;
+
+async function fetchBaidu(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const r = await getJson<{
+      status?: string;
+      data?: { total?: string | number; list?: BaiduPost[] };
+    }>(site.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Referer: `${site.origin}/jobs/social-list`,
+      },
+      body: `recruitType=SOCIAL&pageSize=${BAIDU_PAGE}&curPage=${i + 1}&keyWord=`,
+    });
+    return r?.status === "ok" && r.data
+      ? { total: Number(r.data.total) || 0, list: r.data.list ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / BAIDU_PAGE) - 1,
+    async (i) => (await read(i + 1))?.list ?? null,
+    "baidu",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.list, ...rest]) {
+    const id = p.postId ?? "";
+    const title = clean(p.name ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    const loc = clean((p.workPlace ?? "").split(/[,，]/)[0] ?? "");
+    out.push(
+      job(
+        site,
+        title,
+        loc,
+        `${site.origin}/jobs/detail/SOCIAL/${id}`,
+        cnDate(p.publishDate || p.updateDate),
+        clean(p.postType ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("baidu", out.length, first.total);
+  return out;
+}
+
+// ── NetEase ──────────────────────────────────────────────────────────────────
+/**
+ * hr.163.com, NetEase's own experienced-hire board (all business units —
+ * Games, Cloud Music, Youdao …). The roster's neteasegames.com/careers is a
+ * legacy page whose list returns nothing.
+ *
+ *   POST /api/hr163/position/queryPage   {"currentPage":<1..>,"pageSize":200}
+ *   → {code:200, data:{total, pages, list:[{id, name, workType,
+ *       firstPostTypeName, workPlaceNameList:["杭州市"], updateTime (ms)}]}}
+ *
+ * Measured 2026-09-30: total 2,654, 14 pages of 200 (the last 54), 2,654
+ * distinct ids. pageSize 250 and up is refused (code 402 "[pageSize]超过最大值")
+ * with data null, which read() treats as a failed page, not an empty one.
+ * workType 0 is full-time (2,036), 1 intern (562), 2 other (56) — all real
+ * openings, all kept. Every row had exactly one workPlaceNameList entry:
+ * 杭州市 1,378, 广州市 641, 上海市 338, 北京市 186, 深圳市 8 — so most of
+ * NetEase is honestly unplaced (Hangzhou and Guangzhou are not hubs).
+ *
+ * Sorted by updateTime descending, so a role edited mid-walk can shift a row
+ * across a page boundary; ids are deduped and reportGap logs a shortfall.
+ * The link, job-detail.html?id=<id>, is the site's own detail page, whose
+ * script reads /api/hr163/position/query?id=<id> (answers for a real id,
+ * code 500 for a made-up one).
+ */
+interface NeteasePost {
+  id?: number;
+  name?: string;
+  firstPostTypeName?: string;
+  workPlaceNameList?: string[] | null;
+  updateTime?: number;
+}
+
+const NETEASE_PAGE = 200;
+
+async function fetchNetease(site: SiteDef): Promise<PortalJob[]> {
+  const read = async (i: number) => {
+    const r = await getJson<{ code?: number; data?: { total?: number; list?: NeteasePost[] } }>(
+      site.endpoint,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPage: i + 1, pageSize: NETEASE_PAGE }),
+      },
+    );
+    return r?.code === 200 && r.data
+      ? { total: Number(r.data.total) || 0, list: r.data.list ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / NETEASE_PAGE) - 1,
+    async (i) => (await read(i + 1))?.list ?? null,
+    "netease",
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<number>();
+  for (const p of [...first.list, ...rest]) {
+    const id = p.id;
+    const title = clean(p.name ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(p.workPlaceNameList?.[0] ?? ""),
+        `${site.origin}/job-detail.html?id=${id}`,
+        cnDate(p.updateTime),
+        clean(p.firstPostTypeName ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap("netease", out.length, first.total);
+  return out;
+}
+
+// ── Ping An ──────────────────────────────────────────────────────────────────
+/**
+ * talent.pingan.com, Ping An Group's recruiting site, filtered to ONE group
+ * company by `businessUnitId`, read off the endpoint's query string along with
+ * the group's `tenantId` (both are body fields the site's own page sends).
+ *
+ *   POST …/rctt/candidate/position/getPositionList   (JSON)
+ *        {keyword:"", businessUnitId, addressCode:"", postCategory:"",
+ *         wecruitPlatform:false, tenantId, pageNum:<1..>, pageSize:500,
+ *         countTotal:true}
+ *   → {responseCode:"10001", data:{totalCount, list:[{positionId,
+ *       positionShowName, addressName:"深圳市", postCategory, updatedDate,
+ *       businessUnitName}]}}
+ *
+ * Measured 2026-09-30 for SZDBK (Ping An Bank Co. Ltd): totalCount 2,770, six
+ * pages of 500, 2,770 distinct positionIds, every row businessUnitName
+ * 平安银行. Without businessUnitId the board is the whole group (13,106 on
+ * 2026-09-29), which must not be filed under the bank. pageSize 500 is honoured
+ * (3,000 is too, in one 21 s response); the server is slow, ~9 s a page, so
+ * 500 × 6 in parallel is one round of requests. One of three verification
+ * pulls on 2026-09-30 got nothing back for page one (20 s, no rows), and 18
+ * pages requested in parallel straight after all answered in 4-16 s — a
+ * transient, which is why page one is retried like every other page. A pull
+ * that still fails returns [] and yesterday's rows stand.
+ *
+ * addressName is a city in Chinese: 深圳市 517, 北京市 150, 泉州市 106, 上海市
+ * 78 … — the bank's branch network, most of it on no hub.
+ *
+ * The link is the page's own: social.html's cards href
+ * "./position.html?positionId=" + positionId.
+ */
+interface PinganPost {
+  positionId?: string;
+  positionShowName?: string;
+  addressName?: string;
+  postCategory?: string;
+  updatedDate?: string;
+}
+
+const PINGAN_PAGE = 500;
+
+async function fetchPingan(site: SiteDef): Promise<PortalJob[]> {
+  const u = new URL(site.endpoint);
+  const unit = u.searchParams.get("businessUnitId");
+  const tenantId = u.searchParams.get("tenantId");
+  if (!unit || !tenantId) return [];
+  const read = async (i: number) => {
+    const r = await getJson<{
+      responseCode?: string;
+      data?: { totalCount?: number; list?: PinganPost[] | null };
+    }>(`${u.origin}${u.pathname}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Referer: `${site.origin}/recruit/social.html`,
+      },
+      body: JSON.stringify({
+        keyword: "",
+        businessUnitId: unit,
+        addressCode: "",
+        postCategory: "",
+        wecruitPlatform: false,
+        tenantId,
+        pageNum: i + 1,
+        pageSize: PINGAN_PAGE,
+        countTotal: true,
+      }),
+    });
+    return r?.responseCode === "10001" && r.data
+      ? { total: Number(r.data.totalCount) || 0, list: r.data.list ?? [] }
+      : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / PINGAN_PAGE) - 1,
+    async (i) => (await read(i + 1))?.list ?? null,
+    `pingan ${unit}`,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.list, ...rest]) {
+    const id = p.positionId ?? "";
+    const title = clean(p.positionShowName ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(p.addressName ?? ""),
+        `${site.origin}/recruit/position.html?positionId=${id}`,
+        cnDate(p.updatedDate),
+        clean(p.postCategory ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(`pingan ${unit}`, out.length, first.total);
+  return out;
+}
+
+// ── Beisen (北森) recruitment portals ──────────────────────────────────────────
+/**
+ * Beisen's hosted career portal ("ux-recruitment-portal-2022"), on the
+ * employer's own domain — first tenant Mindray, career.mindray.com.
+ *
+ *   POST <origin>/api/Jobad/GetJobAdPageList
+ *        {PageIndex:<0..>, PageSize:100, KeyWords:"", SpecialType:0, PortalId,
+ *         DisplayFields:["Category","Kind","LocId","ClassificationOne"]}
+ *   → {Code:200, Count, Data:[{Id, JobAdName, LocNames:["广东省·深圳市"],
+ *       Category, ClassificationOne, ChangeDate}]}
+ *
+ * The PortalId is read off the portal's HTML (`"PortalId":"<guid>"` in the
+ * page's config blob), so a tenant is just its origin. PageIndex is 0-based.
+ * One portal carries every audience — Mindray's Count 244 on 2026-09-30 is
+ * 社会招聘 163, 校园招聘 58, internships 18, 技能人才 4 and one campus-ambassador
+ * post (skipTitles on the site). PageSize 100 and 500 are both honoured.
+ *
+ * THE LINK: the SPA answers 200 for any path, so the route was read off the
+ * live site in a browser — a card on /social/jobs opens
+ * /social/detail?jobAdId=<Id>, and that route renders campus and intern
+ * posts too (checked with one of each), while a made-up id renders "加载失败".
+ * Measured on Mindray only; another tenant's route prefix should be checked
+ * the same way.
+ *
+ * LocNames is 'Province·City' in Chinese, sometimes a province alone, or 全国
+ * (nationwide). The row is placed at its first entry.
+ */
+interface BeisenAd {
+  Id?: string;
+  JobAdName?: string;
+  LocNames?: string[] | null;
+  Category?: string;
+  ClassificationOne?: string;
+  ChangeDate?: string;
+}
+
+const BEISEN_PAGE = 100;
+
+async function fetchBeisen(site: SiteDef): Promise<PortalJob[]> {
+  const html = await getText(site.origin);
+  const portalId = html?.match(/"PortalId"\s*:\s*"([0-9a-f-]{36})"/i)?.[1];
+  if (!portalId) {
+    console.log(`beisen ${site.key ?? site.id}: PortalId not found on the portal page`);
+    return [];
+  }
+  const read = async (i: number) => {
+    const r = await getJson<{ Code?: number; Count?: number; Data?: BeisenAd[] | null }>(
+      site.endpoint,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Referer: site.origin },
+        body: JSON.stringify({
+          PageIndex: i,
+          PageSize: BEISEN_PAGE,
+          KeyWords: "",
+          SpecialType: 0,
+          PortalId: portalId,
+          DisplayFields: ["Category", "Kind", "LocId", "ClassificationOne"],
+        }),
+      },
+    );
+    return r?.Code === 200 ? { total: Number(r.Count) || 0, ads: r.Data ?? [] } : null;
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  const rest = await allPages(
+    Math.ceil(first.total / BEISEN_PAGE) - 1,
+    async (i) => (await read(i + 1))?.ads ?? null,
+    `beisen ${site.key ?? site.id}`,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const a of [...first.ads, ...rest]) {
+    const id = a.Id ?? "";
+    const title = clean(a.JobAdName ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(a.LocNames?.[0] ?? ""),
+        `${site.origin}/social/detail?jobAdId=${id}`,
+        cnDate(a.ChangeDate),
+        clean(a.ClassificationOne ?? a.Category ?? "") || "Career portal",
+      ),
+    );
+  }
+  reportGap(`beisen ${site.key ?? site.id}`, out.length, first.total);
+  return out;
+}
+
+// ── ByteDance ────────────────────────────────────────────────────────────────
+/**
+ * jobs.bytedance.com, ByteDance's own China experienced-hire board (ATSX), cut
+ * to ONE city by `location_code_list`, read off the endpoint's `?location=`.
+ *
+ *   1. POST /api/v1/csrf/token  {"portal_entrance":1}, header website-path:
+ *      society → data.token, plus an `atsx-csrf-token` cookie.
+ *   2. POST /api/v1/search/job/posts with that cookie and x-csrf-token,
+ *      website-path: society, portal-channel: office, portal-platform: pc,
+ *      body {keyword:"", limit:200, offset, job_category_id_list:[],
+ *      location_code_list:[<code>], portal_type:2, portal_entrance:1, …}
+ *   → {code:0, data:{count, job_post_list:[{id, title, city_info:{name,
+ *       en_name}, city_list, job_category:{name, en_name, parent}, publish_time}]}}
+ *
+ * WHY ONE CITY. The unfiltered board answers count 10000 exactly and returns
+ * nothing at offset ≥ 9,900 — a search window, not the board's size — so the
+ * whole China board has no advertised total to bound a walk by, and a sum of
+ * per-city partitions could not be checked against anything. Beijing (CT_11,
+ * the roster city) is one partition with a real count: 5,584 on 2026-09-30,
+ * 28 pages of 200, 5,584 distinct ids in ~20 s at six in flight. A count at the
+ * cap is refused rather than walked. The feed is therefore "ByteDance roles
+ * that can be filled in Beijing", not ByteDance's whole China hiring.
+ *
+ * A role can list several cities (602 of the 5,584 list two, 228 three or
+ * more); the partition catches any role that includes Beijing, and the row is
+ * placed at the role's PRIMARY city (`city_info`) — 5,229 Beijing, 241
+ * Shanghai, 57 Shenzhen, 44 Hangzhou measured — rather than forcing it on
+ * Beijing. en_name is used for the location text so HUB_MATCH reads it.
+ *
+ * Pages are heavy (~1.4 MB each: every post carries its full description), so
+ * each is reduced to the few fields kept before the next round is fetched.
+ *
+ * The link is the board's own route /experienced/position/<id>/detail; checked
+ * in a browser 2026-09-30 that it renders the role for a real id and
+ * "undefined" for a made-up one.
+ */
+interface BytedancePost {
+  id?: string;
+  title?: string;
+  city_info?: { name?: string; en_name?: string } | null;
+  job_category?: { name?: string; en_name?: string } | null;
+  publish_time?: number;
+}
+
+const BYTEDANCE_PAGE = 200;
+/** The search window: a count at or above this is the cap, not a total. */
+const BYTEDANCE_CAP = 10000;
+
+async function fetchBytedance(site: SiteDef): Promise<PortalJob[]> {
+  const u = new URL(site.endpoint);
+  const location = u.searchParams.get("location");
+  if (!location) return [];
+  const base = {
+    "Content-Type": "application/json",
+    "website-path": "society",
+    "portal-channel": "office",
+    "portal-platform": "pc",
+    Referer: `${site.origin}/experienced/position`,
+  };
+  let token = "";
+  let cookie = "";
+  try {
+    const res = await fetch(`${u.origin}/api/v1/csrf/token`, {
+      method: "POST",
+      headers: { "User-Agent": UA, Accept: "application/json", ...base },
+      body: JSON.stringify({ portal_entrance: 1 }),
+    });
+    cookie = (res.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+    token = res.ok
+      ? String(((await res.json()) as { data?: { token?: string } }).data?.token ?? "")
+      : "";
+  } catch {
+    token = "";
+  }
+  if (!token) {
+    console.log(`bytedance ${location}: no csrf token`);
+    return [];
+  }
+  const read = async (i: number) => {
+    const r = await getJson<{
+      code?: number;
+      data?: { count?: number; job_post_list?: BytedancePost[] | null };
+    }>(`${u.origin}${u.pathname}`, {
+      method: "POST",
+      headers: { ...base, "x-csrf-token": token, Cookie: cookie },
+      body: JSON.stringify({
+        keyword: "",
+        limit: BYTEDANCE_PAGE,
+        offset: i * BYTEDANCE_PAGE,
+        job_category_id_list: [],
+        location_code_list: [location],
+        subject_id_list: [],
+        recruitment_id_list: [],
+        portal_type: 2,
+        job_function_id_list: [],
+        portal_entrance: 1,
+      }),
+    });
+    if (r?.code !== 0 || !r.data) return null;
+    // Reduce each post before it is kept; the descriptions are most of a page.
+    const posts = (r.data.job_post_list ?? []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      city: p.city_info?.en_name || p.city_info?.name || "",
+      cat: p.job_category?.en_name || p.job_category?.name || "",
+      at: p.publish_time,
+    }));
+    return { total: Number(r.data.count) || 0, posts };
+  };
+  // Page one carries the total, so it gets the same one retry as the rest.
+  const first = (await read(0)) ?? (await read(0));
+  if (!first?.total) return [];
+  if (first.total >= BYTEDANCE_CAP) {
+    console.log(`bytedance ${location}: count ${first.total} is the search cap — not walked`);
+    return [];
+  }
+  const rest = await allPages(
+    Math.ceil(first.total / BYTEDANCE_PAGE) - 1,
+    async (i) => (await read(i + 1))?.posts ?? null,
+    `bytedance ${location}`,
+  );
+  if (!rest) return [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const p of [...first.posts, ...rest]) {
+    const id = p.id ?? "";
+    const title = clean(p.title ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(p.city),
+        `${site.origin}/experienced/position/${id}/detail`,
+        cnDate(p.at),
+        clean(p.cat) || "Career portal",
+      ),
+    );
+  }
+  reportGap(`bytedance ${location}`, out.length, first.total);
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
+  tencent: fetchTencent,
+  baidu: fetchBaidu,
+  netease: fetchNetease,
+  pingan: fetchPingan,
+  beisen: fetchBeisen,
+  bytedance: fetchBytedance,
   jibe: fetchJibe,
   googlecareers: fetchGoogleCareers,
   data3: fetchData3,
@@ -29283,6 +30057,15 @@ export const SOURCE_TAG: Record<Platform, string> = {
   glencore: "glen",
   // MokaHR, the Chinese ATS behind ZTE, DJI, CATL, East Money and Hengrui.
   moka: "moka",
+  // Batch 11 D. Each of the first four and ByteDance is the employer's own
+  // board, named for the employer as `glen` and `googl` are; Beisen is a
+  // vendor platform, named for the platform.
+  tencent: "tencent",
+  baidu: "baidu",
+  netease: "netease",
+  pingan: "pingan",
+  beisen: "beisen",
+  bytedance: "bytedance",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
