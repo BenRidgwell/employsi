@@ -17844,6 +17844,325 @@ export const SITES: SiteDef[] = [
     homeHub: "hongkong",
     hubHints: [[" hk-", "hongkong"]],
   },
+  // ── The 2026-09-30 seventh batch — scraper-gap ranks 241-280 ───────────────
+  // Measured by research agents with the real fetchPortal and re-verified
+  // before merge; packed several boards to a tick like batches 4-6.
+  // Williams-Sonoma — Measured 2026-09-29: Williams-Sonoma Inc (Pottery Barn, West Elm, WS
+  // brands) runs Oracle Recruiting Cloud at ehac.fa.us6.oraclecloud.com, siteNumber CX_1
+  // (linked from williams-sonomainc.com/careers/jobs; roster domain williamssonoma.com is not
+  // the corporate site). TotalJobsCount 1519; fetchOracle walked 1519 of 1519 unique twice (15
+  // s, 14 s; 61 pages at 25, maxPages 90). Locations are 'City, ST, United States'. HUB_MATCH
+  // alone put Bellevue 9 / Lynnwood 5 / Spokane 4, WA on PERTH (' wa,'), Charlottesville VA on
+  // charlotte, and Portland ME 6 on portland — hints fix these (Bellevue/Lynnwood -> seattle,
+  // Spokane/Charlottesville/Portland ME -> null). Other hints are same-MSA store towns (CBSA):
+  // Brooklyn 49 + LI/Westchester/north-NJ towns -> newyork; Costa Mesa 21, Manhattan Beach 16,
+  // Brea 13, Santa Monica 12 ... -> losangeles; Corte Madera, San Ramon, Richmond CA, San
+  // Mateo, Walnut Creek -> sanfrancisco; Palo Alto, Campbell, Milpitas, Santa Clara -> sanjose;
+  // Littleton 26 -> denver; Oak Brook 18 etc -> chicago; Fairfax 17, Bethesda 14, Arlington,
+  // Alexandria, Leesburg -> washington; King of Prussia, Glen Mills, Ardmore, Cherry Hill NJ ->
+  // philadelphia; Brossard QC -> montreal. Left unplaced (own MSAs / no hub): Annapolis
+  // (Baltimore MSA), Princeton NJ, Westport/Danbury CT, Vacaville, Thousand Oaks, Inland
+  // Empire, Florida, Pune 18, etc. 7 rows read just 'United States' -> null. homeHub
+  // sanfrancisco (HQ); no blank locations measured.
+  {"id": "sanfrancisco-wsm", "name": "Williams-Sonoma", "sector": "Consumer and Retail", "platform": "oracle", "endpoint": "https://ehac.fa.us6.oraclecloud.com", "origin": "https://ehac.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1", "homeHub": "sanfrancisco", "siteNumber": "CX_1", "maxPages": 90, "hubHints": [["charlottesville, va", null], ["spokane, wa", null], ["portland, me", null], ["bellevue, wa", "seattle"], ["lynnwood, wa", "seattle"], ["corte madera, ca", "sanfrancisco"], ["san ramon, ca", "sanfrancisco"], ["richmond, ca", "sanfrancisco"], ["san mateo, ca", "sanfrancisco"], ["walnut creek, ca", "sanfrancisco"], ["mill valley, ca", "sanfrancisco"], ["emeryville, ca", "sanfrancisco"], ["berkeley, ca", "sanfrancisco"], ["palo alto, ca", "sanjose"], ["campbell, ca", "sanjose"], ["milpitas, ca", "sanjose"], ["santa clara, ca", "sanjose"], ["costa mesa, ca", "losangeles"], ["manhattan beach, ca", "losangeles"], ["brea, ca", "losangeles"], ["santa monica, ca", "losangeles"], ["pasadena, ca", "losangeles"], ["mission viejo, ca", "losangeles"], ["burbank, ca", "losangeles"], ["valencia, ca", "losangeles"], ["newport coast, ca", "losangeles"], ["solana beach, ca", "sandiego"], ["brooklyn, ny", "newyork"], ["scarsdale, ny", "newyork"], ["huntington station, ny", "newyork"], ["huntington, ny", "newyork"], ["riverhead, ny", "newyork"], ["bridgehampton, ny", "newyork"], ["garden city, ny", "newyork"], ["white plains, ny", "newyork"], ["short hills, nj", "newyork"], ["shrewsbury, nj", "newyork"], ["hackensack, nj", "newyork"], ["paramus, nj", "newyork"], ["summit, nj", "newyork"], ["montvale, nj", "newyork"], ["bridgewater, nj", "newyork"], ["elizabeth, nj", "newyork"], ["red bank, nj", "newyork"], ["hoboken, nj", "newyork"], ["upper montclair, nj", "newyork"], ["lynnfield, ma", "boston"], ["wrentham, ma", "boston"], ["hingham, ma", "boston"], ["dedham, ma", "boston"], ["burlington, ma", "boston"], ["natick, ma", "boston"], ["chestnut hill, ma", "boston"], ["salem, nh", "boston"], ["fairfax, va", "washington"], ["bethesda, md", "washington"], ["arlington, va", "washington"], ["alexandria, va", "washington"], ["leesburg, va", "washington"], ["alpharetta, ga", "atlanta"], ["marietta, ga", "atlanta"], ["norcross, ga", "atlanta"], ["dawsonville, ga", "atlanta"], ["southlake, tx", "dallas"], ["plano, tx", "dallas"], ["fort worth, tx", "dallas"], [" allen, tx", "dallas"], ["the colony, tx", "dallas"], ["the woodlands, tx", "houston"], ["oak brook, il", "chicago"], ["skokie, il", "chicago"], ["vernon hills, il", "chicago"], ["deer park, il", "chicago"], ["aurora, il", "chicago"], ["geneva, il", "chicago"], ["lake forest, il", "chicago"], ["littleton, co", "denver"], ["broomfield, co", "denver"], ["lone tree, co", "denver"], ["edina, mn", "minneapolis"], ["minnetonka, mn", "minneapolis"], ["maple grove, mn", "minneapolis"], ["roseville, mn", "minneapolis"], ["tigard, or", "portland"], ["huntersville, nc", "charlotte"], ["king of prussia, pa", "philadelphia"], ["glen mills, pa", "philadelphia"], ["ardmore, pa", "philadelphia"], ["cherry hill, nj", "philadelphia"], ["brossard, qc", "montreal"]]},
+  // Roche Holding — Measured 2026-09-29: Roche's global board is Workday roche.wd3 / roche-ext,
+  // total 1,166 (under the 2,000 wrap, so one feed; 59 pages at 20, maxPages 80). fetchWorkday
+  // walked 1,166 of 1,166 unique twice, 33-35 s. Genentech (gene.wd5) and Chugai run their own
+  // boards and are NOT in this one. skipTitles drops 10 standing talent-pool posts (titles
+  // ending 'TALENT POOL' / '(Talent pool)' / 'TALENTPOOL', several open since 2024-03), leaving
+  // 1,156; 'Pipeline' (Shanghai, 1) is ambiguous and left in. Locations are bare city names.
+  // Hints fix wrong placements: 'San Jose, Costa Rica' 12 -> null (was sanjose); bare
+  // 'Washington' 2 -> null (the STATE: 'Field Engineering Specialist - Central Washington'; was
+  // DC). Same-metro: Santa Clara 9 (Roche Sequencing Solutions) -> sanjose; Pleasanton 3 ->
+  // sanfrancisco; Carlsbad 2 -> sandiego; Mississauga 16 -> toronto; Laval 4 -> montreal (Roche
+  // Canada, French-language posts). homeHub NULL: Roche's HQ is Basel, which is not the Zurich
+  // metro, and 7 postings carry no location at all (the reader then shows the req id e.g.
+  // '202403-107294' as loc), so a home fallback would file Basel/unknown roles on Zurich. Left
+  // unplaced: Basel 52, Kaiseraugst 34, Rotkreuz 13 (Zug), Madrid 64, Budapest 49, Penzberg,
+  // Mannheim, 'N Locations' 187, Wilmington (state not given). Consequence: the Zurich card
+  // gets ~0 placed rows from this feed, which is true — the board lists no Zurich role.
+  {"id": "zurich-rog", "name": "Roche Holding", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://roche.wd3.myworkdayjobs.com/wday/cxs/roche/roche-ext/jobs", "origin": "https://roche.wd3.myworkdayjobs.com/roche-ext", "homeHub": null, "maxPages": 80, "hubHints": [["san jose, costa rica", null], [" washington,", null], [" santa clara,", "sanjose"], [" pleasanton,", "sanfrancisco"], [" carlsbad,", "sandiego"], [" mississauga,", "toronto"], [" laval,", "montreal"]], "skipTitles": /\btalent ?pool\)?\s*$/i},
+  // Daikin Industries — Measured 2026-09-29. Daikin Industries' own Japanese mid-career board,
+  // daikin-career.net/jobfind-pc (linked from daikin.co.jp/recruit/info/career), serves its
+  // landing page but every listing URL (/jobfind-pc/area/All) answers 202 with an AWS WAF
+  // challenge (window.awsWafCookie...), and no reader exists for that engine — so Japan (and
+  // the Tokyo card) is NOT covered. Wired instead: two wholly-owned subsidiaries' Workday
+  // boards. (a) Daikin Applied Americas, daikinapplied.wd1 / Daikin-Careers (linked from
+  // daikinapplied.com/careers): total 245 (US 237, Canada 8; hiringCompany Daikin Applied
+  // Americas 219, Thermosystems 11, Daikin Applied Canada 9, ThermalNetics 4, Chilldyne 1),
+  // walked 245/245 twice, 8-11 s. Locations 'City, ST 55441'. Hints: Plymouth MN 46 (HQ,
+  // Hennepin) -> minneapolis; Long Island City NY, Jersey City NJ -> newyork; Romeoville,
+  // Elmhurst IL -> chicago; Bowie MD -> washington; Braintree MA -> boston; Marietta GA ->
+  // atlanta; Carlsbad CA -> sandiego. Faribault/Owatonna MN plants, Staunton VA 13, 'Remote
+  // XX', 'N Locations' stay null. Spokane WA is not caught by ' wa,' because the 5-digit ZIP
+  // follows. (b) Daikin Australia, daikinaustralia.wd105 / Daikin_Career_Site (linked from
+  // daikin.com.au/careers): 9 of 9, hint 'Scoresby VIC Office' -> melbourne. homeHub NULL on
+  // both: neither board is in Japan, and a blank location must not fall to Tokyo. NOT wired,
+  // needs a new reader: Daikin Comfort Technologies (Goodman, Houston) on UKG Pro Recruiting -
+  // POST https://recruiting2.ultipro.com/GOO1038GOMN/JobBoard/75022464-9dbd-43d2-af44-
+  // 2840603d5823/JobBoardView/LoadSearchResults with {opportunitySearch:{Top:50,Skip:N,QueryStr
+  // ing:'',OrderBy:[{Value:'postedDateDesc',PropertyName:'PostedDate',Ascending:false}],Filters
+  // :[...]},matchCriteria:{...}} -> {totalCount:426,
+  // opportunities:[{Title,Id,PostedDate,Locations:[{Address:{City,State:{Code},Country}}]}]}.
+  // The 'ukgready' platform is UKG Ready, a different product.
+  {"id": "tokyo-6367", "key": "tokyo-6367-applied", "name": "Daikin Industries", "sector": "Industrial Manufacturing", "platform": "workday", "endpoint": "https://daikinapplied.wd1.myworkdayjobs.com/wday/cxs/daikinapplied/Daikin-Careers/jobs", "origin": "https://daikinapplied.wd1.myworkdayjobs.com/Daikin-Careers", "homeHub": null, "maxPages": 40, "hubHints": [["plymouth, mn", "minneapolis"], ["long island city, ny", "newyork"], ["jersey city, nj", "newyork"], ["romeoville, il", "chicago"], ["elmhurst, il", "chicago"], ["bowie, md", "washington"], ["braintree, ma", "boston"], ["marietta, ga", "atlanta"], ["carlsbad, ca", "sandiego"]]},
+  {"id": "tokyo-6367", "key": "tokyo-6367-au", "name": "Daikin Industries", "sector": "Industrial Manufacturing", "platform": "workday", "endpoint": "https://daikinaustralia.wd105.myworkdayjobs.com/wday/cxs/daikinaustralia/Daikin_Career_Site/jobs", "origin": "https://daikinaustralia.wd105.myworkdayjobs.com/Daikin_Career_Site", "homeHub": null, "maxPages": 10, "hubHints": [["scoresby", "melbourne"]]},
+  // Moderna — Measured 2026-09-29: Moderna's board is Workday modernatx.wd1 / M_tx (linked from
+  // modernatx.com/careers; roster domain moderna.com), total 225, walked 225/225 twice in 9 s.
+  // Locations 'City, State' or 'City - Country'. Hints (Boston MSA): Cambridge, Massachusetts
+  // 75, Norwood, Massachusetts 72 (the mRNA plant, Norfolk County), Marlborough, Massachusetts
+  // 2 -> boston; 'Laval - Canada' 4 (the Quebec plant) -> montreal. Left null: Warsaw 22,
+  // Oxford - England 14 (not London), Princeton NJ 8, Madrid 6, Remote - US 2, Mexico City,
+  // Munich. No blank locations; homeHub boston kept for the blank-only fallback.
+  {"id": "boston-mrna", "name": "Moderna", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://modernatx.wd1.myworkdayjobs.com/wday/cxs/modernatx/M_tx/jobs", "origin": "https://modernatx.wd1.myworkdayjobs.com/M_tx", "homeHub": "boston", "maxPages": 30, "hubHints": [["cambridge, massachusetts", "boston"], ["norwood, massachusetts", "boston"], ["marlborough, massachusetts", "boston"], ["laval - canada", "montreal"]]},
+  // The Coca-Cola Company — Measured 2026-09-29: careers.coca-colacompany.com redirects to
+  // Workday coke.wd1 / coca-cola-careers, total 203, walked 203/203 twice in 10-12 s. This is
+  // The Coca-Cola Company (incl. Minute Maid Auburndale FL, CCJC Japan); bottlers (CCEP, Coke
+  // Consolidated, Coca-Cola Europacific, Swire, Amatil) are separate employers with their own
+  // boards and are not in it. Locations 'US - GA - Atlanta' / 'Country - City'. Hints: 'US - AR
+  // - Rogers' 1 -> bentonville (same MSA); 'South Korea - Uiwang' 3 -> seoul (Gyeonggi, Capital
+  // Area; same rule as Samsung's Suwon). Left null: Auburndale FL 11, Japan - Shiga 10, Cairo
+  // 6, Manaus 6, 'N Locations' 26, and the rest. No blank locations; homeHub atlanta.
+  {"id": "atlanta-ko", "name": "The Coca-Cola Company", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://coke.wd1.myworkdayjobs.com/wday/cxs/coke/coca-cola-careers/jobs", "origin": "https://coke.wd1.myworkdayjobs.com/coca-cola-careers", "homeHub": "atlanta", "maxPages": 30, "hubHints": [["us - ar - rogers", "bentonville"], ["south korea - uiwang", "seoul"]]},
+  // Merck — Merck & Co (MSD outside the US/Canada) - measured 2026-09-29. jobs.merck.com is
+  // Phenom over Workday msd.wd5 site 'SearchJobs'; read from Workday. total 1,002 (under the
+  // 2,000 cap, no partition); reader collected 1,002 of 1,002 unique twice, ~30s. GLOBAL board
+  // filed under the New York company (the AmEx pattern): non-hub countries fall to null (no
+  // HOME_COUNTRY for newyork). Locations read 'CTY - State - City (site)'. hubHints by
+  // county/MSA: Rahway NJ 103 -> newyork (Union County, NY MSA); West Point PA 61, North Wales
+  // (Upper Gwynedd) 31, Lower Gwynedd (Spring House) 4, Wilmington DE 3 -> philadelphia
+  // (Montgomery / New Castle counties); Cambridge MA 8 -> boston; Irving TX 3 -> dallas;
+  // Elkhorn NE 2 -> omaha. 'CRI - San Jose - San Jose' 5 is Costa Rica, HUB_MATCH 'san jose'
+  // would file it on sanjose -> null. 'USA - California - South San Francisco' 20 ->
+  // sanfrancisco via HUB_MATCH, correct (San Mateo County). 'NZL - Wellington - Upper Hutt' 3
+  // -> wellington, correct. Unplaced 595: ~245 multi-location postings whose locationsText is
+  // 'N Locations' (Workday gives no primary place), plus Elkton VA, Wilson NC, De Soto KS,
+  // Durham NC, Boxmeer NL, Hyderabad, Prague etc. (not hubs). No blank locations, so homeHub
+  // newyork is only the blank fallback. Includes Merck Animal Health (Intervet) sites - same
+  // company.
+  {"id": "newyork-mrk", "name": "Merck", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://msd.wd5.myworkdayjobs.com/wday/cxs/msd/SearchJobs/jobs", "origin": "https://msd.wd5.myworkdayjobs.com/en-US/SearchJobs", "homeHub": "newyork", "maxPages": 80, "hubHints": [["cri - san jose", null], ["usa - new jersey - rahway", "newyork"], ["usa - pennsylvania - west point", "philadelphia"], ["usa - pennsylvania - north wales", "philadelphia"], ["usa - pennsylvania - lower gwynedd", "philadelphia"], ["usa - delaware - wilmington", "philadelphia"], ["usa - massachusetts - cambridge", "boston"], ["usa - texas - irving", "dallas"], ["usa - nebraska - elkhorn", "omaha"]]},
+  // DocuSign — DocuSign - measured 2026-09-29. careers.docusign.com is Jibe (iCIMS behind it:
+  // uscareers-/emeacareers-/apjcareers-docusign.icims.com apply links); discover-boards reports
+  // 'icims (NO READER)' but /api/jobs is the Jibe JSON the jibe reader reads. totalCount 268 =
+  // 268 distinct req_ids; the reader returns 237 because it dedupes on title|location and 31
+  // postings are repeat openings of the same title in the same city ('Software Engineer',
+  // Bengaluru x6 / San Francisco x6 / Seattle x5 ...) - the archive job_key would collapse them
+  // identically, so 237 is the honest archive figure. 1.5-4s, identical twice. Jibe rows carry
+  // city + country only; remote roles have city null ('United States Remote' 27, 'EG-Cairo-
+  // Remote' 10, 'BR-Remote' 9 ...) and read as a bare country -> unplaced (no HOME_COUNTRY for
+  // sanfrancisco), which is right for remote roles. Dublin 18, Sao Paulo 13, Munich 5, Mexico
+  // City 6 not hubs. No wrong-continent traps seen (Seattle resolves before ' wa,'; no state is
+  // in the loc string). No hubHints needed.
+  {"id": "sanfrancisco-docu", "name": "DocuSign", "sector": "Technology, Media and Telecommunications", "platform": "jibe", "endpoint": "https://careers.docusign.com/api/jobs", "origin": "https://careers.docusign.com", "homeHub": "sanfrancisco"},
+  // Conagra Brands — Conagra Brands - measured 2026-09-29. careers.conagrabrands.com is Phenom
+  // (totalHits 293) over Workday conagrabrands.wd1 site 'Careers_US' (total 283,
+  // Location_Country: USA 283); read from Workday. Collected 283 of 283 unique twice, ~13s. No
+  // Careers_Canada site (404). hubHints: 'Kent, Washington' 14 -> seattle - WITHOUT it
+  // HUB_MATCH 'washington' files the Kent WA plant on Washington DC; 'Council Bluffs' 22 ->
+  // omaha (Pottawattamie County, Omaha MSA, Google hint rule); 'Maple Grove, Minnesota' 1 ->
+  // minneapolis; 'Mason, Ohio' 1 -> cincinnati (Warren County). Unplaced 148: ~27 'N Locations'
+  // multi-site postings and plant towns off every hub (Troy OH, Darien WI, Louisville KY,
+  // Russellville AR, Marshall MO ...). Chesapeake, Virginia stays unplaced (does not hit
+  // 'washington'). homeHub chicago only as blank fallback (none blank).
+  {"id": "chicago-cag", "name": "Conagra Brands", "sector": "Consumer and Retail", "platform": "workday", "endpoint": "https://conagrabrands.wd1.myworkdayjobs.com/wday/cxs/conagrabrands/Careers_US/jobs", "origin": "https://conagrabrands.wd1.myworkdayjobs.com/en-US/Careers_US", "homeHub": "chicago", "maxPages": 40, "hubHints": [["kent, washington", "seattle"], ["council bluffs", "omaha"], ["maple grove, minnesota", "minneapolis"], ["mason, ohio", "cincinnati"]]},
+  // Air Products and Chemicals — Air Products - measured 2026-09-29. airproducts.com careers
+  // links Workday airproducts.wd5 site 'AP0001'. total 395 (global: Taiwan 70, China 54, Saudi
+  // Arabia 27, Brazil 22, USA 91 ...); collected 395 of 395 unique twice, ~18s. HQ is Allentown
+  // PA (Lehigh Valley MSA, NOT Philadelphia) so Allentown 29 and Bethlehem 7 stay unplaced
+  // deliberately - the Philadelphia hub gets nothing from this board, which is the honest
+  // outcome. hubHints: 'Glenmont, New York' 1 -> null (Albany County; HUB_MATCH 'new york'
+  // would file it on newyork); 'Santa Clara, California' 1 -> sanjose; La Porte TX 3, Baytown
+  // TX 1, Texas City TX 2 -> houston (Harris / Galveston counties, Houston MSA). Port Arthur TX
+  // stays unplaced (Beaumont MSA). Unplaced 355: 60 'N Locations' multi-site postings, Taiwan
+  // (Tainan, Taichung, Nanke ...), Saudi (Duba, Jubail), Brazil, Chile, Uzbekistan etc. homeHub
+  // philadelphia only as the blank fallback (none blank).
+  {"id": "philadelphia-apd", "name": "Air Products and Chemicals", "sector": "Industrial Manufacturing", "platform": "workday", "endpoint": "https://airproducts.wd5.myworkdayjobs.com/wday/cxs/airproducts/AP0001/jobs", "origin": "https://airproducts.wd5.myworkdayjobs.com/en-US/AP0001", "homeHub": "philadelphia", "maxPages": 40, "hubHints": [["glenmont, new york", null], ["santa clara, california", "sanjose"], ["la porte, texas", "houston"], ["baytown, texas", "houston"], ["texas city, texas", "houston"]]},
+  // Nepean Consolidated — 2026-09-29. nepean.com/careers sits behind a SiteGround bot check
+  // ('One moment, please…'); rendered, /careers/current-vacancies/ links
+  // https://jobboards.martianlogic.com/Nepean/ (MyRecruitment+ clientCode 'Nepean' — case-
+  // sensitive: 'nepean' returns total 0). Its /api/search/?clientCode=Nepean answers total 25,
+  // pageSize 10; fetchMartianLogic collected 25 of 25 on two runs, 2 s. Placement: Mackay QLD 9
+  // + Paget QLD 3 -> brisbane (HUB_MATCH 'queensland', the file's regional-QLD rule), Prestons
+  // NSW 4 + Kurri Kurri NSW 4 + Gulgong NSW 1 -> sydney ('new south wales'), Bayswater WA 1 ->
+  // perth; Sumbawa, Nusa Tenggara Barat (Indonesia) 3 unplaced, correctly. No blank locations.
+  // KNOWN READER GAP: this tenant's jobAds carry no advertUrl and no postedDate, so every row's
+  // url is the origin and created is '' — see the separate martianlogic reader-bug entry.
+  {"id": "priv-nepean-consolidated", "name": "Nepean Consolidated", "sector": "Industrial engineering", "platform": "martianlogic", "endpoint": "Nepean", "origin": "https://jobboards.martianlogic.com", "homeHub": "sydney"},
+  // Aramex — 2026-09-29. careers.aramex.com is SuccessFactors RMK in the NES theme (/search/
+  // server-renders 0 data-row/job-tile), so it is read through the RMK JSON service. The board
+  // lives ONLY in en_US: POST /services/recruiting/v1/jobs answers totalJobs 69 for en_US and 0
+  // for en_GB (the reader's default), ar_SA, fr_FR, en_AU, de_DE, es_ES — without sfRmkLocales
+  // this feed would archive nothing. sfRmkSort 'date' gave 69 of 69 unique on two walks
+  // (2.3-2.7 s). Locations are 'City, ISO3, ' (e.g. 'Amman, JOR,'); Riyadh reads 'Riyadh, SAU,
+  // 11583' and does not hit the ' sa,' Adelaide needle. Unplaced 50 are real non-hub places:
+  // Amman 10, Pune 7, Lagos 3, bare 'AUS,' 3 and 'NZL,' 3 (no city, and HOME_COUNTRY has no
+  // dubai entry so they stay unplaced), Casablanca 2, etc. No blank locations.
+  {"id": "dubai-armx", "name": "Aramex", "sector": "Industrial Manufacturing", "platform": "sfrmkapi", "endpoint": "https://careers.aramex.com", "origin": "https://careers.aramex.com", "homeHub": "dubai", "sfRmkSort": "date", "sfRmkLocales": ["en_US"]},
+  // Panasonic Holdings — 2026-09-29. Panasonic's only board a plain client can read is
+  // Panasonic NORTH AMERICA's: careers.na.panasonic.com is Jibe (iCIMS Career Sites; apply urls
+  // on uscareers-napanasonic.icims.com / global-napanasonic.icims.com), /api/jobs totalCount
+  // 449, every row hiring_organization 'Panasonic'. panasonic.com 403s this sandbox; the
+  // Japanese HQ's own recruiting (panasonic.co.jp) is NOT covered by this feed, so the card
+  // shows the group's NA-run board only — say so. Countries on page 1: US 86, India 6, Mexico
+  // 4, Canada/Australia/Malaysia/Netherlands 1. fetchJibe collected 412 on two runs (2.0-4.4
+  // s): 449 reqs collapse to 412 because the reader dedupes by title|location (37 reqs repeat a
+  // title at the same city) — the archive's job_key would collapse them the same way. homeHub
+  // NULL: the loc is 'City, Country' and 16 US rows are bare 'United States'; a Tokyo home hub
+  // would only ever be reached by blanks. The reader drops the STATE field, so hints were set
+  // from the board's own state value, every one checked: Irvine CA 29 (Panasonic Avionics) ->
+  // losangeles; Newark NJ 8 -> newyork; The Colony TX 3 -> dallas; Suwanee GA 4 + Powder
+  // Springs GA 3 -> atlanta; Beaverton OR 3 -> portland; Bothell WA 2 + Seatac WA 1 -> seattle;
+  // Dulles VA 1 -> washington; Hoffman Estates IL 1 -> chicago; Mountain View CA 1 -> sanjose;
+  // Tewksbury/Marlborough/Weymouth MA 1 each -> boston. 'Portland, United States' is Portland,
+  // MAINE (1) and HUB_MATCH would put it on the Oregon hub -> null. Left unplaced deliberately
+  // (ambiguous without state): Lake Forest CA 2 (Lake Forest IL is Chicago), Salem NH 5, Quincy
+  // MA 1, Georgetown TX 1, San Marcos TX 1, Chino CA 2 (Riverside MSA). Largest unplaced: De
+  // Soto KS 74 and Leawood KS 5 (Kansas City, no hub), Sparks NV 73 (Reno), Bridgeton MO 25 (St
+  // Louis).
+  {"id": "tokyo-6752", "name": "Panasonic Holdings", "sector": "Technology, Media and Telecommunications", "platform": "jibe", "endpoint": "https://careers.na.panasonic.com/api/jobs", "origin": "https://careers.na.panasonic.com", "homeHub": null, "hubHints": [["portland, united states", null], ["irvine, united states", "losangeles"], ["newark, united states", "newyork"], ["the colony, united states", "dallas"], ["suwanee, united states", "atlanta"], ["powder springs, united states", "atlanta"], ["beaverton, united states", "portland"], ["bothell, united states", "seattle"], ["seatac, united states", "seattle"], ["dulles, united states", "washington"], ["hoffman estates, united states", "chicago"], ["mountain view, united states", "sanjose"], ["tewksbury, united states", "boston"], ["marlborough, united states", "boston"], ["weymouth, united states", "boston"]]},
+  // Reckitt Benckiser Group — 2026-09-29. Domain is reckitt.com (reckittbenckiser.com is
+  // legacy). careers.reckitt.com is SuccessFactors (company reckittb01) in the classic TABLE
+  // theme: /search/?q=&startrow=0 serves 25 data-row rows and 'Results 1 to 25 of 419'.
+  // fetchSuccessFactors collected 419 of 419 unique on three runs, 7.5-11.5 s. Location cell is
+  // 'City, Region, CC, Postcode' (e.g. 'Kingston upon Hull, East Yorkshire, GB, HU1 1AA'); GB
+  // rows do not match HOME_COUNTRY london (/united kingdom|england|uk/) so non-London UK sites
+  // stay unplaced, correctly. hubHint: 'Slough, Berkshire, GB, SL1 1DT' 7 -> london — Reckitt's
+  // HQ, inside the London functional urban area (Eurostat FUA / ONS Greater London built-up
+  // area) though outside Greater London proper; drop it if the hub is strictly Greater London.
+  // London proper: 'Uxbridge, Greater London' 1. Checked traps: Sydney 3 are 'Sydney, New South
+  // Wales, AU'; 'Evansville, IN, US' and bare 'IN' do not hit any needle; 'Wallisellen, Zurich,
+  // CH' -> zurich is the Zurich metro. Unplaced 350 are real non-hub sites (Warsaw 38,
+  // Hyderabad 36, Nowy Dwór Mazowiecki 21, Hull 18, Samut Prakan 16, Chachoengsao 16, Nutley NJ
+  // 14, Evansville IN 13 …).
+  {"id": "london-rkt", "name": "Reckitt Benckiser Group", "sector": "Consumer and Retail", "platform": "successfactors", "endpoint": "https://careers.reckitt.com", "origin": "https://careers.reckitt.com", "homeHub": "london", "hubHints": [["slough, berkshire", "london"]]},
+  // Moody's — 2026-09-29. careers.moodys.com is Radancy TalentBrew (applications go to
+  // SuccessFactors company MoodysProd, but the listing is Radancy's). /en/search-jobs
+  // advertises data-total-results="353"; fetchRadancy collected 353 of 353 on four runs,
+  // 1.4-4.7 s. Card location is 'City, Region' ('New York, NY', 'London, England', 'Tokyo,
+  // Tokyo'). hubHints: 'Puteaux, Île-de-France Region' 3 -> paris (La Défense, Hauts-de-Seine);
+  // 'Newark, CA' 2 -> sanfrancisco (Alameda County, the Google-board precedent). Checked traps:
+  // 'Washington, DC' 2 is DC; no ', WA' or ', SA' strings. 7 bare 'United States' stay unplaced
+  // (HOME_COUNTRY has no newyork entry) — correct, not a blank. Unplaced 126 are real non-hub
+  // sites: Heredia CR 29, Gurugram 17, Greater Manchester 13, Brussels 12, Vilnius 8, Greater
+  // Noida 7 …
+  {"id": "newyork-mco", "name": "Moody's", "sector": "Financial Services", "platform": "radancy", "endpoint": "https://careers.moodys.com/en/search-jobs/results", "origin": "https://careers.moodys.com", "homeHub": "newyork", "hubHints": [["puteaux", "paris"], ["newark, ca", "sanfrancisco"]]},
+  // Broadcom — Broadcom — 2026-09-29: broadcom.wd1.myworkdayjobs.com, site External_Career
+  // (includes VMware). total 367; fetchPortal collected 367 twice (9.5s, 17.2s), every path
+  // unique. Under 2,000, one feed. Locations are Broadcom site codes ('USA-CA San Jose
+  // Innovation Drive', 'IND-Bangalore Electronic City - S1'); HUB_MATCH places San Jose 64,
+  // Bangalore 50, Singapore 30. hubHints: 'usa-tx plano' -> dallas 13 (Collin County), 'usa-ca
+  // irvine' -> losangeles 11 (Orange County, LA MSA, the Google precedent), 'usa-il lisle' ->
+  // chicago 3 (DuPage), 'usa-ga-duluth' -> atlanta 2 (Gwinnett), 'usa-mendota heights' ->
+  // minneapolis 2 (Dakota County), 'usa-co broomfield' -> denver 1. Deliberately NOT hinted:
+  // 'USA-CA - Promontory A..E' (13) — VMware's campus name, which the board never ties to a
+  // city (the job JSON carries no address), so it stays unplaced rather than be guessed to Palo
+  // Alto; 'USA-CA Bay Area Remote Location'. Left unplaced as their own metros: Fort Collins
+  // 24, Colorado Springs 5, Breinigsville (Allentown) 3, Durham, Pittsburgh, Rochester MN,
+  // Chandler; 77 'N Locations' multi-site cards (Workday prints only the count). No non-vacancy
+  // titles.
+  {"id": "sanjose-avgo", "name": "Broadcom", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs", "origin": "https://broadcom.wd1.myworkdayjobs.com/en-US/External_Career", "homeHub": "sanjose", "hubHints": [["usa-ca irvine", "losangeles"], ["usa-tx plano", "dallas"], ["usa-il lisle", "chicago"], ["usa-ga-duluth", "atlanta"], ["usa-mendota heights", "minneapolis"], ["usa-co broomfield", "denver"]]},
+  // Intel — Intel — 2026-09-29: intel.wd1.myworkdayjobs.com, site External. total 618;
+  // fetchPortal collected 617, 616, 616 (24.7-28.5s). The gap is NOT paging: a raw walk returns
+  // 618 unique paths every time, but 2-4 listing rows carry an EMPTY `title` (e.g.
+  // /job/Accountant_JR0287130, /job/Network-Systems-and-Solutions-Engineer_JR0285494) and
+  // fetchWorkday drops a titleless row — see reader note. Under 2,000, one feed; Contract (69)
+  // and Intern (58) job types are real fixed-term vacancies and kept. hubHints: 'us, oregon,
+  // hillsboro' -> portland 98 (Washington County, Portland MSA; Intel's largest site), 'us,
+  // california, santa clara' -> sanjose 19 (HQ; HUB_MATCH has no 'santa clara'). Left unplaced
+  // as their own metros: Phoenix/Chandler 71, Albuquerque 26, Folsom (Sacramento) 4, Kulim 27
+  // (not Penang state), Leixlip, Haifa, Kiryat-Gat, Taipei, Guadalajara, Gdansk, New Albany OH;
+  // 'Virtual US' etc; ~146 'N Locations' cards. No non-vacancy titles.
+  {"id": "sanjose-intc", "name": "Intel", "sector": "Technology, Media and Telecommunications", "platform": "workday", "endpoint": "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs", "origin": "https://intel.wd1.myworkdayjobs.com/en-US/External", "homeHub": "sanjose", "hubHints": [["us, california, santa clara", "sanjose"], ["us, oregon, hillsboro", "portland"]]},
+  // Mort & Co — Mort & Co — 2026-09-29: roster domain mortco.com.au is right but www. does not
+  // resolve; the apex's /careers/ (-> /careers/create/) iframes ELMO tenant mortco, board
+  // 'default'. Filters: Dalby (2), Pittsworth (3), Permanent - Full Time (5), Operations (5);
+  // fetchPortal collected 5 twice (2.5-3.0s). Locations are bare Darling Downs towns with no
+  // state, so hubHints 'pittsworth' 3 and 'dalby' 2 -> brisbane, the regional-Queensland-to-
+  // Brisbane rule HUB_MATCH applies to Townsville/Gladstone and the MPC Kinetic 'toowoomba'
+  // hint. No general-application posts.
+  {"id": "priv-mort-co", "name": "Mort & Co", "sector": "Cattle feedlots", "platform": "elmo", "endpoint": "https://mortco.elmotalent.com.au/careers/default/jobs", "origin": "https://mortco.elmotalent.com.au", "homeHub": "brisbane", "hubHints": [["pittsworth", "brisbane"], ["dalby", "brisbane"]]},
+  // Cencora — Cencora — 2026-09-29: careers.cencora.com is Phenom (totalHits 1,018) over
+  // Workday tenant myhrabc (AmerisourceBergen's legacy name), site Global; apply links point at
+  // myhrabc.wd5.myworkdayjobs.com/Global. Read from Workday: total 1,010 (1,009 a day later);
+  // fetchPortal collected 1,010 twice (49.5s, 49.8s), all paths unique. Under 2,000, one feed,
+  // maxPages 80 (51 pages). Location strings come in three shapes ('Conshohocken, PA', 'WEMEA >
+  // Netherlands > Veghel Campus', 'Gennevilliers'). WRONG-CONTINENT TRAP: 'Des Moines, WA' 4
+  // and 'Fife, WA' 3 went to PERTH through ' wa,' — hinted to seattle (King / Pierce County).
+  // Other hints (counts): conshohocken, pa 15 + king of prussia 1 -> philadelphia (HQ,
+  // Montgomery County); romeoville, il 11, mount prospect 1 -> chicago; whitestown, in 11,
+  // lebanon, in 9 -> indianapolis (Boone County; needles end in a comma so 'in' is the state);
+  // roanoke, tx 11, carrollton 7, grand prairie 4 -> dallas; sugar land 3 -> houston; shakopee
+  // 4 -> minneapolis; oakville 3, mississauga 2, milton 2, richmond hill 1 -> toronto; burnaby
+  // 2, richmond bc 1 -> vancouver; 'qc > st. laurent' 2 -> montreal; gennevilliers 13,
+  // longjumeau 1, courbevoie 1 -> paris; feltham 3, croydon 1 -> london; new hyde park 3, n
+  // amityville 5, kearny nj 2 -> newyork; buford ga 2 -> atlanta; aurora co 2 -> denver;
+  // hawthorne 2, orange ca 1 -> losangeles; millbrae 2 -> sanfrancisco; chantilly va 1 ->
+  // washington; wilmington ma 1 -> boston; harrison oh 1 -> cincinnati. Left unplaced (honest):
+  // Pune 63, Vilnius 24, Birmingham UK 21, Veghel 18, Lockbourne/Columbus OH,
+  // Reading/Bethlehem/Elizabethtown PA, Kansas City, Edmonton, Bogota, Brooks/Louisville KY,
+  // Corona CA, ~160 'N Locations' cards, 'Remote, <state>' rows, Norway/Turkey/Netherlands
+  // pharmacies. skipTitles '- future opportunities$' drops 1 standing post: 'Infirmièr(e)
+  // d’injection et de perfusion - Opportunités Future/Field and Infusion Nurse - Future
+  // Opportunities' (13 Locations) -> 1,009 after skip.
+  {"id": "philadelphia-cor", "name": "Cencora", "sector": "Healthcare and Life Sciences", "platform": "workday", "endpoint": "https://myhrabc.wd5.myworkdayjobs.com/wday/cxs/myhrabc/Global/jobs", "origin": "https://myhrabc.wd5.myworkdayjobs.com/en-US/Global", "homeHub": "philadelphia", "maxPages": 80, "hubHints": [["des moines, wa", "seattle"], ["fife, wa", "seattle"], ["conshohocken, pa", "philadelphia"], ["king of prussia, pa", "philadelphia"], ["romeoville, il", "chicago"], ["mount prospect, illinois", "chicago"], ["whitestown, in,", "indianapolis"], ["lebanon, in,", "indianapolis"], ["roanoke, tx", "dallas"], ["carrollton, tx", "dallas"], ["tx > carrollton", "dallas"], ["grand prairie, tx", "dallas"], ["sugar land, tx", "houston"], ["shakopee", "minneapolis"], ["oakville, on", "toronto"], ["mississauga, on", "toronto"], ["milton, on", "toronto"], ["richmond hill, on", "toronto"], ["burnaby, bc", "vancouver"], ["richmond, bc", "vancouver"], ["qc > st. laurent", "montreal"], ["gennevilliers", "paris"], ["longjumeau", "paris"], ["courbevoie", "paris"], ["feltham, united kingdom", "london"], ["united kingdom > croydon", "london"], ["new hyde park, ny", "newyork"], ["n amityville, ny", "newyork"], ["kearny, nj", "newyork"], ["buford, ga", "atlanta"], ["aurora, co", "denver"], ["hawthorne, ca", "losangeles"], ["orange, ca", "losangeles"], ["millbrae, ca", "sanfrancisco"], ["chantilly, virginia", "washington"], ["wilmington, ma", "boston"], ["harrison, oh", "cincinnati"]], "skipTitles": /- future opportunities$/i},
+  // Morgan Stanley — Morgan Stanley — 2026-09-29: morganstanley.com/careers links
+  // morganstanley.eightfold.ai (PCSX; v2 API 'Not authorized for PCSX'), a front end over
+  // Workday tenant ms, site External (same JR requisition ids). READ FROM WORKDAY: total 1,354;
+  // fetchPortal collected 1,354 twice (78.9s, 80.4s), all paths unique, one feed (under 2,000),
+  // maxPages 80 (68 pages). Eightfold was measured too —
+  // /api/pcsx/search?domain=morganstanley.com count 1,347, walks 1,347 (22s) and 1,345, then
+  // the third walk minutes later hit rate limiting: '1315 of 1347 — 32 page(s) failed first
+  // time', 90s — the Microsoft/Lockheed shape, so it is not the primary. Eightfold does place
+  // better (it lists every location; Workday prints '93 Locations'-style counts for 93 multi-
+  // site cards), which is the one cost of this choice. hubHints, measured counts on the
+  // eightfold walk (same 'City, State, United States of America' strings on Workday): NULL for
+  // NY-state places HUB_MATCH files on newyork — syracuse 2, rochester 2, latham 1, glens falls
+  // 1; 'portland, maine' 2 -> null (not Oregon); 'charlottesville' -> null (HUB_MATCH
+  // 'charlotte' substring); 'tacoma, washington' 2 and 'kirkland, washington' 1 -> seattle
+  // (HUB_MATCH 'washington' = DC); alpharetta, georgia 39 -> atlanta; west conshohocken 9,
+  // newtown square 3, mount laurel nj 1 -> philadelphia; pasadena 7, newport beach 4, beverly
+  // hills 2, irvine 2, westlake village 1, long beach 1 -> losangeles; menlo park 4 ->
+  // sanfrancisco; palo alto 4, cupertino 2 -> sanjose; morristown 5, shrewsbury 4, paramus 3
+  // (NJ) -> newyork; mclean va 5 -> washington; oak brook 6, northbrook 1 -> chicago; wayzata 2
+  // -> minneapolis; lake oswego 3 -> portland. 'Purchase, New York' 48 and 'Garden City' 6
+  // correctly land on newyork (Westchester, Nassau). Left unplaced: Budapest 44, Baltimore 27,
+  // Glasgow 26, Sandy/South Jordan UT, Tampa, Florida wealth offices, Scottsdale, Stamford (its
+  // own CBSA), Lawrenceville NJ. skipTitles '^expression of interest\b' drops 1: 'Expression of
+  // interest - Asia Strats (Institutional Equity Division)' -> 1,353.
+  {"id": "newyork-ms", "name": "Morgan Stanley", "sector": "Financial Services", "platform": "workday", "endpoint": "https://ms.wd5.myworkdayjobs.com/wday/cxs/ms/External/jobs", "origin": "https://ms.wd5.myworkdayjobs.com/en-US/External", "homeHub": "newyork", "maxPages": 80, "hubHints": [["syracuse, new york", null], ["rochester, new york", null], ["latham, new york", null], ["glens falls, new york", null], ["portland, maine", null], ["charlottesville", null], ["tacoma, washington", "seattle"], ["kirkland, washington", "seattle"], ["west conshohocken, pennsylvania", "philadelphia"], ["newtown square, pennsylvania", "philadelphia"], ["mount laurel, new jersey", "philadelphia"], ["alpharetta, georgia", "atlanta"], ["pasadena, california", "losangeles"], ["newport beach, california", "losangeles"], ["beverly hills, california", "losangeles"], ["irvine, california", "losangeles"], ["westlake village, california", "losangeles"], ["long beach, california", "losangeles"], ["menlo park, california", "sanfrancisco"], ["palo alto, california", "sanjose"], ["cupertino, california", "sanjose"], ["morristown, new jersey", "newyork"], ["shrewsbury, new jersey", "newyork"], ["paramus, new jersey", "newyork"], ["mclean, virginia", "washington"], ["oak brook, illinois", "chicago"], ["northbrook, illinois", "chicago"], ["wayzata, minnesota", "minneapolis"], ["lake oswego, oregon", "portland"]], "skipTitles": /^expression of interest\b/i},
+  // The Walt Disney Company — The Walt Disney Company — 2026-09-29: waltdisney.com careers =
+  // www.disneycareers.com, Radancy TalentBrew; endpoint /en/search-jobs/results. Radancy was
+  // chosen over Disney's Workday (disney.wd5 disneycareer, total 615, 614 collected) because it
+  // is the company's own public board and carries more: Aulani (Kapolei 31), Disney Cruise Line
+  // 'Shipboard' 14, Disney Vacation Club, Disneyland Paris. data-total-results says 921, but
+  // the server serves 759 distinct data-job-id at any page size (8 pages of 100;
+  // RecordsPerPage=1000 returns 759 and that response's page 2 reports total 759), so 759 is
+  // the board. fetchPortal collected 759 twice (7.6s, 4.4s) — 747 after skipTitles. hubHints:
+  // tulalip, washington -> seattle 1 (Snohomish; HUB_MATCH 'washington' filed it on DC);
+  // burbank 36, glendale 31, anaheim 26, santa monica 8, commerce 2 (all ', california') ->
+  // losangeles (LA County / Orange County); nicasio 3 (Skywalker Ranch, Marin), emeryville 4
+  // (Pixar), livermore 1 -> sanfrancisco; minato-ku 24, chiba 2 (Tokyo Disney Resort, Urayasu)
+  // -> tokyo; chessy 22, marne-la-vallée 12, montévrain 2, serris 1, villeneuve-le-comte 1
+  // (Disneyland Paris, Seine-et-Marne, in the Paris aire d'attraction) -> paris; richmond,
+  // australia 2 -> melbourne (the board pairs it with 'Melbourne, Australia'); elizabeth nj 1
+  // -> newyork; grapevine 1 -> dallas; cypress 2, the woodlands 5 -> houston; san marcos tx 1
+  // -> austin. NOTE multi-location cards ('New York, New York / Glendale, California') resolve
+  // by the first matching NEEDLE, not the first-listed place, so with these hints ~45 NY-first
+  // and ~20 Seattle-first multi-city cards move to losangeles; drop the four LA needles if
+  // first-listed matters more. Left unplaced: Orlando area (Lake Buena
+  // Vista/Celebration/Kissimmee/Bay Lake ~95), Kapolei, Shipboard, Bristol CT (ESPN), Iver
+  // Heath (Pinewood, Bucks), Jakarta, Bangkok, Buenos Aires, Hilton Head. No posted date on
+  // Radancy cards (rows dated today, as for Chevron). skipTitles '\bexpression of interest\b'
+  // drops 12 role-specific standing talent-pool posts: 'KGO - News Photographers (As-Needed)
+  // (Expression Of Interest)', 'Broadcast Maintenance Technician (Expression of Interest) (As-
+  // Needed))', 'KGO - Weather Anchor (As-Needed) (Expression Of Interest)', 'KGO - Reporter
+  // (As-Needed) (Expression Of Interest)', 'KGO - Newswriters (As-Needed) (Expression Of
+  // Interest)', 'KGO - Local TV Director (As-Needed) (Expression Of Interest)', 'KTRK
+  // Meteorologist (Expression Of Interest)', 'Senior Lighting Artist / Technical Director -
+  // Expression of Interest - ILM San Francisco', 'Production Security Coordinator - Expression
+  // of Interest', 'IT Coordinator - Film Production - Expression of Interest', 'Production
+  // Safety Advisor (Canada) – Expression of Interest', 'Creatures FX - Expression of Interest'.
+  {"id": "losangeles-dis", "name": "The Walt Disney Company", "sector": "Technology, Media and Telecommunications", "platform": "radancy", "endpoint": "https://www.disneycareers.com/en/search-jobs/results", "origin": "https://www.disneycareers.com", "homeHub": "losangeles", "hubHints": [["tulalip, washington", "seattle"], ["burbank, california", "losangeles"], ["glendale, california", "losangeles"], ["anaheim, california", "losangeles"], ["santa monica, california", "losangeles"], ["commerce, california", "losangeles"], ["nicasio, california", "sanfrancisco"], ["emeryville, california", "sanfrancisco"], ["livermore, california", "sanfrancisco"], ["minato-ku, japan", "tokyo"], ["chiba, japan", "tokyo"], ["chessy, france", "paris"], ["marne-la-vall", "paris"], ["montévrain, france", "paris"], ["serris, france", "paris"], ["villeneuve-le-comte, france", "paris"], ["richmond, australia", "melbourne"], ["elizabeth, new jersey", "newyork"], ["grapevine, texas", "dallas"], ["cypress, texas", "houston"], ["the woodlands, texas", "houston"], ["san marcos, texas", "austin"]], "skipTitles": /\bexpression of interest\b/i},
 ];
 
 /**
