@@ -168,7 +168,11 @@ type Platform =
   | "googlecareers"
   | "data3"
   | "glencore"
-  | "moka";
+  | "moka"
+  | "talentsoft"
+  | "cajobs"
+  | "hrmos"
+  | "ripplehire";
 
 interface SiteDef {
   /** App company id — what the archive rows are attributed to. */
@@ -3918,9 +3922,9 @@ export const SITES: SiteDef[] = [
   //     EVIDENCE THEY HAVE NO BOARD — the universities almost certainly run
   //     PageUp or NGA — so they are left for an environment that can see them
   //     rather than guessed at from the outside.
-  //   HDFC Bank and Larsen & Toubro — Indian employers whose archived rows come
-  //     from naukri. Neither careers page named a board, and an unfiltered
-  //     Indian feed is a different job from the AU-facing ones here.
+  //   Larsen & Toubro — an Indian employer whose archived rows come from
+  //     naukri; its careers page named no board. (HDFC Bank was listed here
+  //     too; its board was since found on RippleHire and is wired, batch 11 E.)
   {
     id: "uni-flinders-university",
     name: "Flinders University",
@@ -5615,9 +5619,8 @@ export const SITES: SiteDef[] = [
   //     careers.se.com also 403s this sandbox while serving a runner, so
   //     whatever is built for it has to be measured from a runner.
   //   HDFC Bank (337) — the careers page names no ATS, but following its links
-  //     lands on hdfcbank.ripplehire.com/candidate/careers. RippleHire is an
-  //     Indian ATS with no reader here. Worth knowing the host is named: the
-  //     employer is not invisible, the platform is simply unread.
+  //     lands on hdfcbank.ripplehire.com/candidate/careers. RippleHire now has
+  //     a reader (fetchRippleHire) and HDFC Bank is wired — see batch 11 E.
   //   SGH (320) — sevengroup.com.au renders with no marker at all, and
   //     careers./jobs. do not resolve. The roster domain sgh.com was wrong for
   //     this employer; sevengroup.com.au is right and still has no board on it.
@@ -5744,7 +5747,7 @@ export const SITES: SiteDef[] = [
   // of 3,613), Tesla and IHG (Akamai 403 on every path), Lockheed Martin
   // (eightfoldpcs 429 after ~300 of 531 pages), Thiess (Clinch serves a
   // different slice per identical request; sitemap.xml lists all 135), and new
-  // readers still to write for HDFC Bank (RippleHire, 399), Larsen & Toubro
+  // readers still to write for Larsen & Toubro
   // (PeopleStrong behind Incapsula), Talent International (WordPress, 279),
   // ARB (ConnX, 43), Vault Minerals (Datakiosk, 67) and Defence Health (Taleo
   // Business Edition, 10). No board of their own: Sydney Tools, Alto, Loan
@@ -21832,6 +21835,120 @@ export const SITES: SiteDef[] = [
     homeHub: null,
     hubHints: MOKA_CN_HINTS,
   },
+  // ── batch 11: E ──
+  // Safran — 2026-09-30: Talentsoft, 4,186 advertised, 4,183 read, twice, same
+  // ids (2 carry no job family and cannot be reached — see fetchTalentsoft), 53
+  // and 72 s. The group domain's own /jobs page is behind a Cloudflare
+  // challenge; careers.safran-group.com is the board it fronts and answers
+  // plainly. Places: paris 1,614 (every offer in the board's own Île-de-France
+  // region facet), bengaluru 99, dubai 14, cincinnati 8; 2,428 unplaced (bare
+  // French towns outside Île-de-France, Mexico, Morocco, …). homeHub null: the
+  // card gives a place and no country, so nothing may default. hubHints, each
+  // measured on this pull: "225 Erie Street 14086 Lancaster, New York" (8, near
+  // Buffalo) and "West Henrietta 14586 New York" (5, Rochester) were landing on
+  // newyork; "Newman Blvd 76208 Denton (TX)" (2) on perth (HUB_MATCH "newman",
+  // the Pilbara town); "London, Southwestern Ontario" (3) on london; "San Jose
+  // Dos Campos" (1, Brazil) on sanjose — all -> null.
+  {
+    id: "paris-saf",
+    name: "Safran",
+    sector: "Industrial Manufacturing",
+    platform: "talentsoft",
+    endpoint: "https://careers.safran-group.com/offre-de-emploi/liste-toutes-offres.aspx?lcid=1036",
+    origin: "https://careers.safran-group.com",
+    homeHub: null,
+    hubHints: [
+      ["ile-de-france", "paris"],
+      ["lancaster, new york", null],
+      ["west henrietta", null],
+      ["newman blvd", null],
+      ["southwestern ontario", null],
+      ["san jose dos campos", null],
+    ],
+  },
+  // Crédit Agricole — 2026-09-30: 1,179 advertised, 1,175 distinct (the board
+  // lists four offers twice — see fetchCaJobs), read twice with identical ids,
+  // ~13 s. Every card is a Crédit Agricole S.A. entity (CIB, LCL, CACEIS,
+  // Amundi, Indosuez, …); none is a separate roster company here. Places: paris
+  // 564 (region "Ile-de-France" appended from data-gtm-jobRegion — Montrouge,
+  // Guyancourt, Villejuif, Saint-Quentin-en-Yvelines, Massy, La Défense), 436
+  // unplaced (Luxembourg, Dublin, Munich, Parma, Lyon, …), kualalumpur 66
+  // (Putrajaya/Cyberjaya via HUB_MATCH), newyork 31, singapore 23, montreal 20.
+  // hubHints: "aachen" -> null (4 German roles written "Aachen/Paris - Allemagne"
+  // were landing on paris); "montréal" 3, "singapour" 8, "hong-kong" 1 and the
+  // misspelt "shangai" 1 are the French spellings HUB_MATCH misses. homeHub
+  // null: a third of the board is outside France.
+  {
+    id: "paris-aca",
+    name: "Crédit Agricole",
+    sector: "Financial Services",
+    platform: "cajobs",
+    endpoint: "https://groupecreditagricole.jobs/fr/nos-offres/page/",
+    origin: "https://groupecreditagricole.jobs",
+    homeHub: null,
+    hubHints: [
+      ["aachen", null],
+      ["ile-de-france", "paris"],
+      ["montréal", "montreal"],
+      ["singapour", "singapore"],
+      ["hong-kong", "hongkong"],
+      ["shangai", "shanghai"],
+    ],
+  },
+  // Canon — 2026-09-30: hrmos.co/pages/canon/jobs is Canon Inc.'s own board
+  // (global.canon/ja/employ/career/ links it; canon.com is not the group site).
+  // 121 advertised, 121 read, twice, same ids; 119 after skipTitles, which drops
+  // a recruiting-events page and a general talent registration — standing posts,
+  // not vacancies ("障がい者採用", disability hiring, is a real standing
+  // recruitment and is kept). Places, from the prefecture that opens every
+  // address: 東京都 51 and 神奈川県 42 (Kawasaki 40, Ayase 2) -> tokyo, following
+  // this file's Greater-Tokyo precedent (Yokohama, Fujisawa, Chiba and Saitama
+  // already resolve to tokyo); 埼玉県/千葉県 hints are there for the same reason.
+  // 栃木県 (Utsunomiya, Otawara) 17 and 茨城県 (Toride) 9 stay unplaced.
+  {
+    id: "tokyo-7751",
+    name: "Canon",
+    sector: "Technology, Media and Telecommunications",
+    platform: "hrmos",
+    endpoint: "https://hrmos.co/pages/canon/jobs",
+    origin: "https://hrmos.co/pages/canon/jobs",
+    homeHub: null,
+    hubHints: [
+      ["東京都", "tokyo"],
+      ["神奈川県", "tokyo"],
+      ["埼玉県", "tokyo"],
+      ["千葉県", "tokyo"],
+    ],
+    skipTitles: /^(キヤノンキャリア採用イベント|キャリア登録)$/,
+  },
+  // HDFC Bank — 2026-09-30: RippleHire, totalJobCount 385, 385 read in one
+  // call, twice, same ids, ~3 s. Locations are bare Indian cities over ~100
+  // places. Placement is HUB_MATCH alone: mumbai 105 ("Mumbai" 98, "Navi Mumbai"
+  // 4, "Mumbai, Navi Mumbai" 2 — Navi Mumbai is Mumbai Metropolitan Region, as
+  // the Baker Hughes and Orange notes already treat it; no Thane row today),
+  // bengaluru 22; 258 unplaced (Ahmedabad, Delhi, Pune, Mohali, Kolkata, …).
+  // Three multi-city rows land on the one hub city they name, as elsewhere here.
+  // homeHub null: a blank location must not default to Mumbai.
+  {
+    id: "mumbai-hdfcbank",
+    name: "HDFC Bank",
+    sector: "Financial Services",
+    platform: "ripplehire",
+    endpoint:
+      "https://hdfcbank.ripplehire.com/candidate/?token=pvB5iAMcmu4ydUh2IW2O&source=CAREERSITE",
+    origin: "https://hdfcbank.ripplehire.com",
+    homeHub: null,
+  },
+  // CGI Inc. (montreal-giba) — NOT WIRED, deliberately. Its board is Njoyn,
+  // cgi.njoyn.com/CORP/xweb/xweb.asp?page=JobListing&CLID=21001 (3,171 roles,
+  // 64 pages of 50, ~2 s and ~370 KB a page), and a Radware bot manager sits in
+  // front of it. Measured 2026-09-30 with this file's UA: the listing GET is
+  // 302'd to validate.perfdrive.com (a challenge page). The same GET with
+  // curl's default UA, and the pager's POST (pn=N) with this file's UA, were
+  // both served the real list — i.e. the board is readable only down the paths
+  // the bot manager does not happen to cover, or by NOT presenting as a
+  // browser. That is getting past the challenge, not reading a public feed, so
+  // no reader is built for it. Revisit only if CGI publishes a feed or an API.
 ];
 
 /**
@@ -29105,6 +29222,524 @@ async function fetchGlencore(site: SiteDef): Promise<PortalJob[]> {
   return out;
 }
 
+// ── batch 11 E: Talentsoft, Crédit Agricole's board, HRMOS, RippleHire ───────
+
+/** Run `fn` over `items` with at most `limit` in flight. Order of results
+ *  follows `items`. */
+async function b11ePool<T, R>(items: T[], limit: number, fn: (x: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array<R>(items.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+// ── Talentsoft (Cegid) front office ──────────────────────────────────────────
+/**
+ * `site.endpoint` is the tenant's "all offers" list WITHOUT a page parameter,
+ * e.g. https://careers.safran-group.com/offre-de-emploi/liste-toutes-offres.aspx?lcid=1036
+ * Server-rendered ASP.NET, 20 cards a page (`<li class="ts-offer-list-item
+ * offerlist-item">`), the board's own total in `#…Pagination_TotalOffers`.
+ *
+ * THE PAGER STOPS AT PAGE 50 AND THEN WRAPS. Measured 2026-09-30 on Safran:
+ * 4,184 offers advertised, the pager reads "page N / 50", and ?page=51, 100,
+ * 150, 210 and 250 all serve PAGE ONE again (same first offer, 20 cards, HTTP
+ * 200). So a plain walk reaches 1,000 of 4,184 and — because every page past 50
+ * is full — nothing about the response says it stopped. The research note that
+ * "page 100 served 20" was reading page 1 a second time. Every page read here
+ * checks that the pager's ACTIVE page is the one asked for.
+ *
+ * FACETS ARE STATELESS URL PARAMETERS, which is how the other 3,184 are reached.
+ * Clicking a facet goes through `changefacet=1` and a session cookie, but the
+ * board's own "show the search url" link prints the stateless form —
+ * `…liste-toutes-offres.aspx?lcid=1036&facet_JobFamily=4259` — and that URL
+ * answers with no cookie, pages with `&page=N`, and combines with a second
+ * facet (Europe + CDI = 2,074, measured). Each filtered page lists the next
+ * facet values WITH COUNTS UNDER THE FILTER, so the walk splits any slice over
+ * 1,000 by a facet group whose counts sum exactly to the slice (a PARTITION),
+ * and walks each part.
+ *
+ * NO FACET PARTITIONS SAFRAN EXACTLY ALL THE WAY DOWN, so a split may fall
+ * short by at most 0.5% and the shortfall is logged. Measured 2026-09-30:
+ * contract and the top geographic areas sum exactly to 4,184, but CDI is 3,270
+ * and Europe 2,794, and Europe+CDI (2,075) has no exact split at all — its
+ * families sum to 2,073, its countries to 2,070, its job levels to 2,063. The
+ * offers missing from a group are the ones Safran left unclassified on that
+ * facet. The ranking below therefore prefers the job-family split at the top
+ * (35 values, largest 678, every one walkable), which loses the 2–3 offers
+ * that carry no family — the SAME offers every run, not a random subset — and
+ * collects 4,183 of 4,186. Walk: ~300 pages including the place walk, 58 s,
+ * measured twice with identical ids.
+ *
+ * Places: the cards carry a bare town or street ("ERAGNY", "Rue des jeunes bois
+ * 78117 Châteaufort") and no country, so for a tenant listed in
+ * TALENTSOFT_PLACES the reader walks the named facet (Île-de-France, the
+ * board's OWN region facet) as well and appends its label to every offer found
+ * there. That is the board's classification, not a guess from a town name. If
+ * that walk fails the feed returns nothing, because a partial label set would
+ * give the same offer two different locations — two archive keys — on two days.
+ *
+ * Honesty: any page that cannot be read, a pager that is not on the page asked
+ * for, or a total collected short of the advertised one by more than 2%
+ * (offers are posted and withdrawn during a ~1 min walk) returns [] — an empty
+ * pull is never written, so yesterday's rows stand.
+ */
+const TS_PAGE = 20;
+const TS_MAX_PAGES = 50;
+
+/** Per-feed place facets for Talentsoft tenants: [stateless facet query, label
+ *  appended to the location of every offer inside it]. */
+const TALENTSOFT_PLACES: Record<string, [facet: string, label: string][]> = {
+  // Safran's region facet 157 "Ile de France" = 1,613 of 4,185 offers,
+  // measured 2026-09-30. Its departments (Essonne 461, Seine-et-Marne 447,
+  // Hauts-de-Seine 258, Yvelines 240, Val-d'Oise 151, …) sum to 1,588: 25 offers
+  // are filed at region level only, which is why the REGION is walked.
+  "paris-saf": [["facet_JobRegion=157", "Ile-de-France"]],
+};
+
+interface TsCard {
+  id: string;
+  href: string;
+  title: string;
+  sub: string;
+  date: string;
+  loc: string;
+}
+
+interface TsPage {
+  total: number;
+  cards: TsCard[];
+  facets: { params: [string, string][]; count: number }[];
+}
+
+function tsParse(html: string, want: number): TsPage | null {
+  const tot = /Pagination_TotalOffers"[^>]*>\s*(\d+)/.exec(html);
+  if (!tot) return null;
+  const total = Number(tot[1]);
+  const active = /list-item__link--active[^"]*">\s*(\d+)\s*</.exec(html);
+  // No pager at all is fine for a one-page result; a pager on another page
+  // is the wrap-around described above.
+  if (active ? Number(active[1]) !== want : want !== 1 && total > TS_PAGE) return null;
+  const cards: TsCard[] = [];
+  for (const block of html.split(/<li class="ts-offer-list-item offerlist-item/).slice(1)) {
+    const a =
+      /<a class="ts-offer-list-item__title-link[^"]*"\s+href="([^"]+)"\s+title="([^"]*)"\s*>([\s\S]*?)<\/a>/.exec(
+        block,
+      );
+    if (!a) continue;
+    const id = /_(\d+)\.aspx/.exec(a[1])?.[1];
+    const title = clean(a[3]);
+    if (!id || !title) continue;
+    // The link's title attribute is "Title (Réf. : 2026-188925) - Sub-family".
+    const sub = clean(a[2]).split(/\)\s+-\s+/)[1] ?? "";
+    const ul = /<ul class="ts-offer-list-item__description[^"]*">([\s\S]*?)<\/ul>/.exec(block);
+    const lis = ul ? [...ul[1].matchAll(/<li([^>]*)>([\s\S]*?)<\/li>/g)] : [];
+    const date = lis.map((m) => /(\d{2})\/(\d{2})\/(\d{4})/.exec(m[2])).find(Boolean);
+    const locLi = lis.find((m) => /noBorder/.test(m[1]));
+    cards.push({
+      id,
+      href: clean(a[1]),
+      title,
+      sub,
+      date: date ? `${date[3]}-${date[2]}-${date[1]}` : "",
+      loc: locLi ? clean(locLi[2]) : "",
+    });
+  }
+  if (cards.length === 0 && total > 0) return null;
+  const facets: TsPage["facets"] = [];
+  for (const m of html.matchAll(
+    /<a[^>]*href="[^"]*changefacet=1&(?:amp;)?([^"]*)"[^>]*>([\s\S]*?)<\/a>/g,
+  )) {
+    const count = /\((\d+)\)\s*$/.exec(clean(m[2]));
+    if (!count) continue;
+    const params = m[1]
+      .replace(/&amp;/g, "&")
+      .split("&")
+      .map((kv) => kv.split("=") as [string, string])
+      .filter((kv) => kv.length === 2);
+    facets.push({ params, count: Number(count[1]) });
+  }
+  return { total, cards, facets };
+}
+
+/** Apply a facet link's parameters to a filter: `-x` removes, anything else sets. */
+function tsApply(filter: Map<string, string>, params: [string, string][]): Map<string, string> {
+  const f = new Map(filter);
+  for (const [k, v] of params) {
+    if (v.startsWith("-")) f.delete(k);
+    else f.set(k, v);
+  }
+  return f;
+}
+
+async function tsGet(
+  site: SiteDef,
+  filter: Map<string, string>,
+  page: number,
+): Promise<TsPage | null> {
+  const q = [...filter].map(([k, v]) => `&${k}=${v}`).join("");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const html = await getText(`${site.endpoint}${q}&page=${page}`);
+    const p = html ? tsParse(html, page) : null;
+    if (p) return p;
+  }
+  return null;
+}
+
+interface TsLeaf {
+  filter: Map<string, string>;
+  first: TsPage;
+}
+
+/** Split a filter into slices of at most TS_MAX_PAGES pages, each an exact
+ *  facet partition of its parent. Null when that cannot be done honestly. */
+async function tsLeaves(
+  site: SiteDef,
+  filter: Map<string, string>,
+  first: TsPage,
+  depth: number,
+): Promise<TsLeaf[] | null> {
+  if (first.total <= TS_PAGE * TS_MAX_PAGES) return [{ filter, first }];
+  if (depth >= 4) return null;
+  // Group this page's facet links by the facet they SET. A group is usable
+  // only if it partitions the slice: its counts sum to the total, and no single
+  // value is the whole slice (the breadcrumb links back up the geo tree are).
+  const groups = new Map<string, { params: [string, string][]; count: number }[]>();
+  for (const f of first.facets) {
+    const key = f.params.find(([, v]) => !v.startsWith("-"))?.[0];
+    if (!key || filter.has(key)) continue;
+    groups.set(key, [...(groups.get(key) ?? []), f]);
+  }
+  // Ranked: a group that ends the recursion here (every value walkable) beats
+  // one that needs another split, then the smaller shortfall, then the
+  // smaller largest value. A group may fall short of the slice by at most
+  // 0.5% — see the header for why Safran needs that and what it costs.
+  const cap = TS_PAGE * TS_MAX_PAGES;
+  let best: { params: [string, string][]; count: number }[] | null = null;
+  let bestScore: [number, number, number] | null = null;
+  for (const g of groups.values()) {
+    const sum = g.reduce((s, f) => s + f.count, 0);
+    const max = Math.max(...g.map((f) => f.count));
+    if (sum > first.total || sum < first.total * 0.995 || max >= first.total) continue;
+    const score: [number, number, number] = [max <= cap ? 0 : 1, first.total - sum, max];
+    const better =
+      !bestScore ||
+      score[0] < bestScore[0] ||
+      (score[0] === bestScore[0] &&
+        (score[1] < bestScore[1] || (score[1] === bestScore[1] && score[2] < bestScore[2])));
+    if (better) {
+      best = g;
+      bestScore = score;
+    }
+  }
+  if (best && bestScore && bestScore[1] > 0) {
+    console.log(
+      `talentsoft ${site.key ?? site.id}: split of ${first.total} leaves ${bestScore[1]} ` +
+        `offer(s) outside every facet value — not reachable by this board's facets`,
+    );
+  }
+  if (!best) {
+    console.log(
+      `talentsoft ${site.key ?? site.id}: no facet partitions a slice of ${first.total} ` +
+        `(${[...filter].map(([k, v]) => `${k}=${v}`).join("&") || "unfiltered"})`,
+    );
+    return null;
+  }
+  const parts = await b11ePool(
+    best.filter((f) => f.count > 0),
+    PAGE_CONCURRENCY,
+    async (f) => {
+      const sub = tsApply(filter, f.params);
+      const p = await tsGet(site, sub, 1);
+      return p ? tsLeaves(site, sub, p, depth + 1) : null;
+    },
+  );
+  if (parts.some((p) => p === null)) return null;
+  return parts.flat() as TsLeaf[];
+}
+
+/** Every card under `filter`, or null if any slice could not be read whole. */
+async function tsWalk(
+  site: SiteDef,
+  filter: Map<string, string>,
+): Promise<{ total: number; cards: Map<string, TsCard> } | null> {
+  const first = await tsGet(site, filter, 1);
+  if (!first) return null;
+  const leaves = await tsLeaves(site, filter, first, 0);
+  if (!leaves) return null;
+  const cards = new Map<string, TsCard>();
+  const tasks: [TsLeaf, number][] = [];
+  for (const leaf of leaves) {
+    for (const c of leaf.first.cards) cards.set(c.id, c);
+    const pages = Math.ceil(leaf.first.total / TS_PAGE);
+    for (let p = 2; p <= pages; p++) tasks.push([leaf, p]);
+  }
+  const pages = await b11ePool(tasks, PAGE_CONCURRENCY, ([leaf, p]) => tsGet(site, leaf.filter, p));
+  if (pages.some((p) => p === null)) {
+    console.log(`talentsoft ${site.key ?? site.id}: a page could not be read — feed skipped`);
+    return null;
+  }
+  for (const p of pages) for (const c of p!.cards) cards.set(c.id, c);
+  return { total: first.total, cards };
+}
+
+async function fetchTalentsoft(site: SiteDef): Promise<PortalJob[]> {
+  const all = await tsWalk(site, new Map());
+  if (!all) return [];
+  const short = (got: number, want: number): boolean => got < want * 0.98;
+  if (short(all.cards.size, all.total)) {
+    console.log(
+      `talentsoft ${site.key ?? site.id}: ${all.cards.size} of ${all.total} — feed skipped`,
+    );
+    return [];
+  }
+  const label = new Map<string, string>();
+  for (const [facet, name] of TALENTSOFT_PLACES[site.key ?? site.id] ?? []) {
+    const place = await tsWalk(
+      site,
+      tsApply(
+        new Map(),
+        facet.split("&").map((kv) => kv.split("=") as [string, string]),
+      ),
+    );
+    if (!place || short(place.cards.size, place.total)) {
+      console.log(
+        `talentsoft ${site.key ?? site.id}: place walk ${facet} incomplete — feed skipped`,
+      );
+      return [];
+    }
+    for (const id of place.cards.keys()) label.set(id, name);
+  }
+  const out: PortalJob[] = [];
+  for (const c of all.cards.values()) {
+    const place = label.get(c.id);
+    const loc = place ? (c.loc ? `${c.loc}, ${place}` : place) : c.loc;
+    out.push(job(site, c.title, loc, `${site.origin}${c.href}`, c.date, c.sub || "Career portal"));
+  }
+  return out;
+}
+
+// ── Crédit Agricole group board (groupecreditagricole.jobs) ──────────────────
+/**
+ * `site.endpoint` is the paged list up to the page number:
+ * https://groupecreditagricole.jobs/fr/nos-offres/page/ — page N is `${endpoint}N/`.
+ * A WordPress theme ("creditagricole"), server-rendered, no ATS API behind it
+ * that answers publicly. Measured 2026-09-30: `#total-offers-count` 1,179,
+ * 33 cards a page, page 36 holds 24 (35×33+24 = 1,179), page 37 answers 200
+ * with no cards. Each card is `<article class="card offer …">` whose
+ * `data-gtm-*` attributes carry country, region and city; the region is only
+ * filled for France, Italy and Geneva, so it is appended to the city where
+ * present ("Montrouge - France, Ile-de-France").
+ *
+ * The advertised total COUNTS REPEATS. Measured 2026-09-30, three walks
+ * minutes apart: 1,179 cards, 1,175 distinct hrefs, the SAME four hrefs twice
+ * each every time (e.g. …reference--2026-112714--/) — so it is the board
+ * listing four offers twice, not a row shifting across a page boundary
+ * mid-walk (which the list, sorted by last update, can also do). Rows are keyed
+ * by href, the walk is bounded by the advertised total, and a result more than
+ * 2% short of it returns [] (a failed page does too). 36 pages, ~13 s.
+ */
+async function fetchCaJobs(site: SiteDef): Promise<PortalJob[]> {
+  const parse = (html: string): { total: number; cards: string[] } | null => {
+    const tot = /id="total-offers-count">\s*(\d+)/.exec(html);
+    return tot
+      ? { total: Number(tot[1]), cards: html.split(/<article class="card offer/).slice(1) }
+      : null;
+  };
+  const get = async (n: number) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const html = await getText(`${site.endpoint}${n}/`);
+      const p = html ? parse(html) : null;
+      if (p) return p;
+    }
+    return null;
+  };
+  const first = await get(1);
+  if (!first || !first.cards.length) return [];
+  const per = first.cards.length;
+  const pages = Math.min(site.maxPages ?? 80, Math.ceil(first.total / per));
+  const rest = await b11ePool(
+    Array.from({ length: pages - 1 }, (_, i) => i + 2),
+    PAGE_CONCURRENCY,
+    get,
+  );
+  if (rest.some((p) => p === null)) {
+    console.log(`cajobs ${site.key ?? site.id}: a page could not be read — feed skipped`);
+    return [];
+  }
+  const byHref = new Map<string, PortalJob>();
+  for (const card of [first, ...rest].flatMap((p) => p!.cards)) {
+    const a = /<h3 class="offer-title">\s*<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/.exec(card);
+    if (!a) continue;
+    const href = clean(a[1]);
+    const title = clean(a[2]);
+    if (!title || byHref.has(href)) continue;
+    const attr = (name: string): string =>
+      clean(new RegExp(`data-gtm-${name}="([^"]*)"`).exec(card)?.[1] ?? "");
+    const city = clean(/<li class="offer-location[^"]*">([\s\S]*?)<\/li>/.exec(card)?.[1] ?? "");
+    const region = attr("jobRegion");
+    const d = /(\d{2})\/(\d{2})\/(\d{4})/.exec(attr("jobPublishDate"));
+    byHref.set(
+      href,
+      job(
+        site,
+        title,
+        region ? `${city}, ${region}` : city,
+        href,
+        d ? `${d[3]}-${d[2]}-${d[1]}` : "",
+        attr("jobCategory") || "Career portal",
+      ),
+    );
+  }
+  if (byHref.size < first.total * 0.98) {
+    console.log(`cajobs ${site.key ?? site.id}: ${byHref.size} of ${first.total} — feed skipped`);
+    return [];
+  }
+  return [...byHref.values()];
+}
+
+// ── HRMOS (BizReach) job pages ───────────────────────────────────────────────
+/**
+ * `site.endpoint` is the tenant's list, https://hrmos.co/pages/<tenant>/jobs,
+ * paged with `?page=N`. Server-rendered; 100 cards a page; the header states
+ * the total ("全 121 件中 100 件 を表示しています" — 121 in all, showing 100).
+ * Measured 2026-09-30 on Canon: page 1 holds 100, page 2 holds 21, page 3 none.
+ *
+ * Each card is `<li class="pg-list-cassette …"><a href=".../jobs/NNNNNNN">`
+ * with an `<h2>` title and a tag list whose first entry is the job type and
+ * whose `sg-tag-location` entry is a street address beginning with the
+ * prefecture ("東京都大田区下丸子３丁目３０－２ キヤノン株式会社 本社"). A role
+ * at several sites ends its address with "他" or "他(8)" ("and others"); that
+ * suffix is dropped so a change in the site count does not re-key the row.
+ * Walk bounded by the stated total; a failed page or a short result returns [].
+ */
+async function fetchHrmos(site: SiteDef): Promise<PortalJob[]> {
+  const get = async (n: number) => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const html = await getText(`${site.endpoint}?page=${n}`);
+      const tot = html ? /全\s*(\d+)\s*件中/.exec(html) : null;
+      if (html && tot) return { total: Number(tot[1]), html };
+    }
+    return null;
+  };
+  const first = await get(1);
+  if (!first) return [];
+  const per = 100;
+  const pages = Math.min(site.maxPages ?? 20, Math.ceil(first.total / per));
+  const rest = await b11ePool(
+    Array.from({ length: Math.max(0, pages - 1) }, (_, i) => i + 2),
+    PAGE_CONCURRENCY,
+    get,
+  );
+  if (rest.some((p) => p === null)) return [];
+  const byUrl = new Map<string, PortalJob>();
+  for (const { html } of [first, ...rest] as { html: string }[]) {
+    for (const card of html.split(/<li class="pg-list-cassette/).slice(1)) {
+      const href = /<a href="(https:\/\/hrmos\.co\/pages\/[^"]+\/jobs\/[^"]+)"/.exec(card)?.[1];
+      const title = clean(/<h2>([\s\S]*?)<\/h2>/.exec(card)?.[1] ?? "");
+      if (!href || !title || byUrl.has(href)) continue;
+      const tags = /<ul class="sg-tags[^"]*">([\s\S]*?)<\/ul>/.exec(card)?.[1] ?? "";
+      const cat = clean(/<li>([\s\S]*?)<\/li>/.exec(tags)?.[1] ?? "");
+      // clean()'s \s+ also folds the ideographic space (U+3000) the addresses use.
+      const loc = clean(
+        /<li class="sg-tag-location">([\s\S]*?)<\/li>/.exec(tags)?.[1] ?? "",
+      ).replace(/\s*他(?:\s*\(\d+\))?\s*$/, "");
+      byUrl.set(href, job(site, title, loc, href, "", cat || "Career portal"));
+    }
+  }
+  if (byUrl.size < first.total * 0.98) {
+    console.log(`hrmos ${site.key ?? site.id}: ${byUrl.size} of ${first.total} — feed skipped`);
+    return [];
+  }
+  return [...byUrl.values()];
+}
+
+// ── RippleHire candidate career site ─────────────────────────────────────────
+/**
+ * `site.endpoint` is the career-site entry URL with its token,
+ * https://<tenant>.ripplehire.com/candidate/?token=…&source=CAREERSITE
+ * (the token is the public career-site id printed in the employer's own
+ * careers link, not a credential). The page is a Backbone shell; the list is
+ * a form POST to /candidate/candidatejobsearch with
+ * careerSiteUrlParams={"page":0,"search":"*:*","token":…,"source":…,"pagesize":N}.
+ *
+ * Measured 2026-09-30 on HDFC Bank: totalJobCount 385, and pagesize 500 returns
+ * all 385 in ONE response (507 KB, ~1.8 s) — so there is no paging to get
+ * wrong, and the result is checked against totalJobCount. Without
+ * search:"*:*" the count is 0 (the 2026-09-29 trap). Without Accept:
+ * application/json the same call answers XML. The GET that sets JSESSIONID is
+ * made first and its cookie carried, as the page itself does; the search also
+ * answered without it on the day, which is not relied on.
+ *
+ * Each job: jobSeq, jobTitle, locations (a bare city or a comma list:
+ * "Mumbai, Navi Mumbai", "Dhanbad, Ranchi, Jamshedpur, Bokaro"). The job page
+ * is the SPA's #detail/job/<jobSeq> route.
+ */
+interface RippleJob {
+  jobSeq?: string | number;
+  jobTitle?: string;
+  locations?: string | null;
+}
+
+async function fetchRippleHire(site: SiteDef): Promise<PortalJob[]> {
+  const entry = new URL(site.endpoint);
+  const token = entry.searchParams.get("token") ?? "";
+  const source = entry.searchParams.get("source") ?? "CAREERSITE";
+  let cookie = "";
+  try {
+    const r = await fetch(site.endpoint, { headers: { "User-Agent": UA } });
+    cookie = (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]).join("; ");
+    await r.text();
+  } catch {
+    // The search is still attempted; its own count check decides.
+  }
+  const body = new URLSearchParams({
+    careerSiteUrlParams: JSON.stringify({ page: 0, search: "*:*", token, source, pagesize: 1000 }),
+    lang: "en",
+  });
+  const res = await getJson<{ totalJobCount?: string | number; jobVoList?: RippleJob[] }>(
+    `${entry.origin}/candidate/candidatejobsearch`,
+    {
+      method: "POST",
+      body,
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        ...(cookie ? { Cookie: cookie } : {}),
+      },
+    },
+  );
+  const total = Number(res?.totalJobCount ?? 0);
+  const rows = res?.jobVoList ?? [];
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const id = String(r.jobSeq ?? "");
+    const title = clean(r.jobTitle ?? "");
+    if (!id || !title || seen.has(id)) continue;
+    seen.add(id);
+    out.push(
+      job(
+        site,
+        title,
+        clean(r.locations ?? ""),
+        `${site.endpoint}#detail/job/${id}`,
+        "",
+        "Career portal",
+      ),
+    );
+  }
+  if (!total || out.length < total * 0.98) {
+    console.log(`ripplehire ${site.key ?? site.id}: ${out.length} of ${total} — feed skipped`);
+    return [];
+  }
+  return out;
+}
+
 const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   jibe: fetchJibe,
   googlecareers: fetchGoogleCareers,
@@ -29176,6 +29811,10 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   capgemini: fetchCapgemini,
   wipro: fetchWipro,
   eightfoldpcs: fetchEightfoldPcs,
+  talentsoft: fetchTalentsoft,
+  cajobs: fetchCaJobs,
+  hrmos: fetchHrmos,
+  ripplehire: fetchRippleHire,
 };
 
 export async function fetchPortal(site: SiteDef): Promise<PortalJob[]> {
@@ -29283,6 +29922,12 @@ export const SOURCE_TAG: Record<Platform, string> = {
   glencore: "glen",
   // MokaHR, the Chinese ATS behind ZTE, DJI, CATL, East Money and Hengrui.
   moka: "moka",
+  // Talentsoft (Cegid) is the ATS; HRMOS and RippleHire likewise.
+  talentsoft: "talentsoft",
+  hrmos: "hrmos",
+  ripplehire: "ripplehire",
+  // Crédit Agricole's own WordPress board, named for the page as `cjd` is.
+  cajobs: "cajobs",
 };
 
 /** Portal rows → archive rows, attributed to the employer they came from. */
