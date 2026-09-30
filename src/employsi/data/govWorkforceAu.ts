@@ -5,7 +5,7 @@
 //
 // Sources, as at the run that produced this file:
 //   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
-//   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — refreshed 2026-09-30
+//   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: National Injury Insurance Agency: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Curriculum and Assessment Authority: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Office of the Information Commissioner: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run

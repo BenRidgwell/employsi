@@ -1410,13 +1410,31 @@ NOT_IN_SOURCE = {
         'root and it reads fine, so "outside the collection" is answered. p20 '
         'says the FTE workforce "was 238 as at 30 June 2026"; Note 4 on p35, '
         'introduced with almost the same sentence, gives Total 283 (2025: 309). '
-        'The note is the one that adds up — 210 funded by the Delivery Authority '
-        'plus 73 funded by DTMR and QR — so the prose is probably a '
-        'transposition, and probably is not a measurement. Separately, those 73 '
-        'are other agencies\' people: 283 would put them on this card as well as '
-        "inside Transport and Main Roads' 6,573, and 210 is a component being "
-        'called a total. The first objection goes away if the next edition '
-        'agrees with itself; the second does not',
+        'THE FIRST OBJECTION IS NOW SETTLED AND THE PROSE IS THE TYPO. The '
+        'tabled copy (paper 5826T1828) was read in full on 2026-09-30 and Note 4 '
+        'reconciles BOTH years exactly: "Employees funded by the Delivery '
+        'Authority 210 236 / Employees funded by DTMR and QR 73 73 / Total 283 '
+        '309". 210+73=283 and 236+73=309, while 238 reconciles with nothing and '
+        'is 283 with two digits swapped. So the supported total is 283, not the '
+        'earlier "probably".\n\n'
+        'WHAT BLOCKS IT IS THE 73, AND THE WORD IS "FUNDED", WHICH IS ABOUT WHO '
+        'PAYS AND NOT ABOUT WHO EMPLOYS. If those 73 are officers seconded in '
+        'from DTMR and Queensland Rail they remain their home agency\'s '
+        'employees, appear in ITS MOHRI profile, and filing 283 puts them on two '
+        'cards. If they are the Authority\'s own employees whose cost the other '
+        'two reimburse, they are this card\'s and 283 is right. p20 points at the '
+        'first — the Authority "engages employees directly and may also engage '
+        'officers on secondment and interchange from other Queensland Government '
+        'entities under the CRRDA Act" — but points is not says.\n\n'
+        'So the choice is 283, which double counts 73 people if they are '
+        'secondees, or 210, which drops 73 if they are not, and the report '
+        'decides neither. Note that 210 would NOT be a number this codebase '
+        'computed — it is a published row with a published prior year, so if the '
+        'next edition says who employs the 73, this card can be filed from it '
+        "immediately. Contrast the CCC, filed GROSS at 337 including 62 police "
+        'seconded from the QPS: the CCC PAYS for those 62, and it is that '
+        'direction of payment, stated in its own footnote, that made filing '
+        'gross right there and leaves it undecidable here',
     # ── THE PUBLIC GUARDIAN: A FIGURE IN HAND AND A QUESTION IN THE WAY ─────
     # Its reason was "no row names it; independent statutory office, outside the
     # collection", and its report is on its own host, unchallenged. Read
