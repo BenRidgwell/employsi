@@ -8514,6 +8514,25 @@ body {
   gap: 16px;
   padding: 13px 18px;
 }
+/* Title + caption on one baseline, the same shape the tour's hub header uses
+   for "Need help?  WORLD VIEW" (.gthubhdleft / .gteyebrow). */
+.stheadleft {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.stcap {
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .stbody {
   flex: 1 1 auto;
   min-height: 0;
@@ -17158,10 +17177,22 @@ body {
 }
 
 /* --- Completion toast --- */
+/* TOP RIGHT, UNDER THE HEADER — not bottom right, where it sat over the
+   demand ticker. The ticker is a full-width bar at bottom: 32px, so a toast
+   anchored to the bottom-right corner covered the one thing on that edge.
+   Here it hangs below the alert / settings / feedback buttons it is telling
+   you about ("reopen it from the help button"), which is also where the eye
+   already is when a tour ends.
+
+   `right: 28px` is .apphead's own horizontal padding, so the toast lines up
+   with the buttons above it rather than sitting 10px proud of them. The
+   existing emppop animation enters from translateY(-6px), which reads as
+   dropping out of the header — it was always slightly wrong under a
+   bottom-anchored card. */
 .gtdone {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  top: calc(var(--head-height) + 12px);
+  right: 28px;
   z-index: 60;
   display: flex;
   align-items: center;

@@ -126,18 +126,23 @@ export function SettingsPanel() {
 
   return (
     <div className="dockpanel setpanel">
+      {/* Title + caption on one line, the way the tour's hub header carries
+          "Need help?  WORLD VIEW". The caption used to open the body below;
+          it is a caveat about the panel's SCOPE — these settings are this
+          device's, not the account's — which is the same job the tour's
+          eyebrow does, so it belongs beside the title rather than competing
+          with the first real setting for the reader's attention. */}
       <div className="sthead">
-        <span className="sttitle">Settings</span>
+        <div className="stheadleft">
+          <span className="sttitle">Settings</span>
+          <span className="stcap">Preferences apply to this device</span>
+        </div>
         <button className="paneclose" onClick={closeSettings} aria-label="Close">
           <IconClose />
         </button>
       </div>
 
       <div className="stbody">
-        {/* Was the line under the title. It is a caveat about where these
-            settings live, not a label for the panel, so it reads as the body's
-            opening sentence instead. */}
-        <p className="panecap">Preferences apply to this device.</p>
         <div className="stgroup">
           <span className="steyebrow">Appearance</span>
 
