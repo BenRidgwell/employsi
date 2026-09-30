@@ -34,6 +34,9 @@ import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
 import { GOV_HEADCOUNT_AU } from "../src/employsi/data/govWorkforceAu";
 import { ACNC_HEADCOUNT } from "../src/employsi/data/acncWorkforce";
 import { WGEA_HEADCOUNT } from "../src/employsi/data/wgeaWorkforceAu";
+import { MERGED_COMPANY_ID } from "../src/employsi/data/mergedCompanies";
+import { AU_JOBS_TARGETS } from "../src/employsi/data/auJobsTargets";
+import { CHINA_JOBS_TARGETS } from "../src/employsi/data/chinaJobsTargets";
 
 import { buildCompanyCard, filedHeadcount } from "../src/employsi/lib/companyCard";
 import { buildCompareCard } from "../src/employsi/lib/compareCard";
@@ -84,6 +87,35 @@ const rosterName = new Map(COMPANIES.map((c) => [c.id, c.name]));
   }
 }
 
+// ── 1b. A retired id stays retired ──────────────────────────────────────────
+// data/mergedCompanies.ts lists ids folded into another company. One coming
+// back — re-added to a roster line, or still named by a target list a scraper
+// walks — recreates the duplicate card and splits the employer's ads between
+// two ids again, and nothing else here would notice: it would be a perfectly
+// well-wired company. And the id each one resolves to must itself be drawn,
+// or old follows and stray rows resolve to nothing.
+{
+  const writers: [string, string[]][] = [
+    ["roster", [...rosterIds]],
+    ["auJobsTargets", AU_JOBS_TARGETS.map((t) => t.id)],
+    ["chinaJobsTargets", CHINA_JOBS_TARGETS.map((t) => t.id)],
+    ["careerSites", CAREER_SITES.map((s) => s.id)],
+    ["seekAdvertisers", Object.keys(SEEK_ADVERTISERS)],
+    ["seekTradingNames", Object.keys(SEEK_TRADING_NAMES)],
+  ];
+  for (const [retired, kept] of Object.entries(MERGED_COMPANY_ID)) {
+    for (const [where, ids] of writers)
+      if (ids.includes(retired))
+        err("retired-id-reappeared", retired, `still in ${where}; it was folded into ${kept}`);
+    if (!rosterIds.has(kept))
+      err(
+        "retired-id-resolves-nowhere",
+        retired,
+        `resolves to ${kept}, which is not on the roster`,
+      );
+  }
+}
+
 // ── 2. Every career site points at a roster company ─────────────────────────
 // A feed whose id is not in the roster still runs, still costs its page budget,
 // and writes rows keyed to a company_id nothing can display.
@@ -105,13 +137,21 @@ for (const site of CAREER_SITES) {
 // Seeded with the generated map so a trading name that collides with an
 // already-resolved advertiser is caught as well as one that collides with
 // another trading name.
-const seekAdvertiserOwner = new Map<string, string>(
-  Object.entries(SEEK_ADVERTISERS).map(([id, a]) => [a.advertiserId, id]),
-);
-for (const id of Object.keys(SEEK_ADVERTISERS)) {
+const seekAdvertiserOwner = new Map<string, string>();
+for (const [id, a] of Object.entries(SEEK_ADVERTISERS)) {
   if (!rosterIds.has(id)) {
     err("seek-without-company", id, "seekAdvertisers entry has no roster entry");
   }
+  // ONE ADVERTISER ON TWO GENERATED ENTRIES is the roster holding one employer
+  // twice: the exact-name match resolves both lines to the same SEEK account,
+  // and each ad lands on whichever id wrote it first. Stanmore was on smr and
+  // brisbane-smr like this until 2026-09-30, with 16 of its 17 SEEK ads on the
+  // copy.
+  const owner = seekAdvertiserOwner.get(a.advertiserId);
+  if (owner && owner !== id) {
+    err("seek-advertiser-shared", a.advertiserId, `claimed by both ${owner} and ${id}`);
+  }
+  seekAdvertiserOwner.set(a.advertiserId, id);
 }
 // The hand-written half of the map. A typo'd company id here is worse than a
 // missing feed: the ads are pulled and then filed against an id nothing reads,
@@ -445,11 +485,12 @@ for (const [id, list] of Object.entries(SEEK_TRADING_NAMES)) {
   // ONE REGISTER ENTRY ON SEVERAL COMPANIES is either an ALIAS pointing two
   // roster names at one employer — which would file the same number twice and
   // read as two companies that happen to be identical — or a company the
-  // roster holds twice. Measured 2026-09-24 it is the second: `smr` and
-  // `brisbane-smr` are both Stanmore Resources, so both correctly carry
-  // STANMORE RESOURCES LIMITED's 782. That is a roster duplicate rather than a
-  // matching fault, so this warns instead of failing; a NEW pair appearing
-  // after an ALIAS edit is the case to look at.
+  // roster holds twice. Measured 2026-09-24 it was the second: `smr` and
+  // `brisbane-smr` were both Stanmore Resources, so both correctly carried
+  // STANMORE RESOURCES LIMITED's 782. That was a roster duplicate rather than a
+  // matching fault (merged 2026-09-30, see data/mergedCompanies.ts), so this
+  // warns instead of failing; a NEW pair appearing after an ALIAS edit is the
+  // case to look at.
   const byFigure = new Map<string, string[]>();
   for (const [id, h] of wgea) {
     const k = `${h.now}|${h.prev}|${h.asof}`;

@@ -3,6 +3,7 @@ import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
 import { NZ_GOV_IDS } from "../data/nzGov";
+import { MERGED_COMPANY_ID } from "../data/mergedCompanies";
 import type { AdvertisedJob } from "./skillsFn";
 import { archiveJobs, type ArchiveRow, type D1Like } from "./jobArchive";
 import { asRecord, asRecords, str, type JsonRecord, type JsonValue } from "./json";
@@ -469,8 +470,16 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 // portal. The portal is archived once, against the primary (LSE) line; the Hong
 // Kong line reads those same rows rather than the scrape running twice and the
 // roles being counted twice in market-wide totals.
+//
+// It also carries every RETIRED id (data/mergedCompanies.ts): a company folded
+// into another is read under the kept id, so a straggler row, an old follow or
+// a stale link resolves to the card that is actually drawn. Those are spread in
+// rather than repeated so the two lists cannot drift. scripts/scraper-gap.ts
+// parses the literal pairs above the spread, which is all it needs — a retired
+// id is off the roster and never on its list.
 export const COMPANY_ID_ALIAS: Record<string, string> = {
   "hongkong-00005": "london-hsba",
+  ...MERGED_COMPANY_ID,
 };
 
 // NZ public-sector agency ids. These need an explicit set rather than an

@@ -16343,7 +16343,8 @@ export const SITES: SiteDef[] = [
   // before merge; packed several boards to a tick like batch 4. Givaudan uses
   // phenomSort, added the same day. "brisbane-smr" is NOT wired: it is the
   // same Stanmore Resources as `smr` above, and a second feed would archive
-  // every role twice.
+  // every role twice. (It left the roster on 2026-09-30 and now resolves to
+  // `smr` — see src/employsi/data/mergedCompanies.ts.)
   // Publicis Groupe — Measured 2026-09-29: careers.publicisgroupe.com is Jibe (iCIMS-branded
   // shell; discover would say icims). /api/jobs totalCount 3,169 then 3,151 on the rerun; 3,010
   // unique req_id (translated duplicates) and 2,565/2,543 unique title|location, which is what
@@ -17504,7 +17505,8 @@ export const SITES: SiteDef[] = [
   // before merge; packed several boards to a tick like batches 4 and 5.
   // AbbVie uses the Attrax searchParams fix and BAT the Radancy card-shape
   // fix, both of the same day. "beijing-00992" is NOT wired: it is the same
-  // Lenovo as `hongkong-00992` above.
+  // Lenovo as `hongkong-00992` above. (It left the roster on 2026-09-30 and
+  // now resolves to hongkong-00992 — see src/employsi/data/mergedCompanies.ts.)
   // AbbVie — 2026-09-29: careers.abbvie.com is Attrax (attrax-vacancy-tile markup, 'Job Search
   // | AbbVie'), GLOBAL board, 1,588 roles. BUG/LIMIT 1: Attrax serves at most 25 pages -
   // measured at size=48, pages 25..34 all return the SAME 48 ids (page 26 vs 25: 48 of 48

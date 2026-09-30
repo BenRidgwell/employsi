@@ -543,20 +543,6 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     cities: ["sydney"],
   },
   {
-    id: "sydney-clw",
-    name: "Charter Hall Long WALE REIT",
-    sector: "Financial Services",
-    group: "Financial Services",
-    cities: ["sydney"],
-  },
-  {
-    id: "sydney-cqr",
-    name: "Charter Hall Retail REIT",
-    sector: "Financial Services",
-    group: "Financial Services",
-    cities: ["sydney"],
-  },
-  {
     id: "sydney-dow",
     name: "Downer Group",
     sector: "Industrial Manufacturing",
@@ -1282,13 +1268,6 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     name: "ALS Limited",
     sector: "Industrial Manufacturing",
     group: "Industrial Manufacturing",
-    cities: ["brisbane"],
-  },
-  {
-    id: "brisbane-smr",
-    name: "Stanmore Resources",
-    sector: "Energy & Natural Resources",
-    group: "Energy & Natural Resources",
     cities: ["brisbane"],
   },
   {

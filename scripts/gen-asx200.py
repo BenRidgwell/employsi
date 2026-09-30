@@ -102,6 +102,13 @@ def main():
                   'RIO', 'RMS', 'RRL', 'S32', 'SFR', 'SGQ', 'SMR', 'STO', 'STX', 'SW1', 'SWM',
                   'WDS', 'WES', 'WGX'}
     have |= hp_tickers
+    # RETIRED on purpose, so a rerun over the ASX 200 must not put them back.
+    # Charter Hall Long WALE REIT and Charter Hall Retail REIT are externally
+    # managed by Charter Hall (CHC) and employ nobody; removed 2026-09-30, see
+    # the note in cityRosters.ts and src/employsi/data/mergedCompanies.ts.
+    # (Stanmore's SMR is already covered by hp_tickers: it is the hand-placed
+    # `smr`, and was on the Brisbane roster a second time until the same day.)
+    have |= {'CLW', 'CQR'}
 
     new_by_city = {c: [] for c in CITYNAME.values()}
     skipped = 0
