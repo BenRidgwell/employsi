@@ -15582,6 +15582,19 @@ body {
 .nbrowwrap {
   position: relative;
   overflow: hidden;
+  /* `flex: none` IS LOAD-BEARING, and the line above is why.
+     .nblist is a flex column with max-height: 420px. A flex item's
+     `min-height: auto` normally resolves to its CONTENT size, which is what
+     kept .nbrow from being squashed back when it was the flex item itself —
+     it never needed an explicit flex. But that automatic minimum resolves to
+     ZERO as soon as the item's `overflow` is anything but `visible`, and this
+     wrapper has to clip so the swiped row does not spill out of the panel.
+     Adding the clip therefore removed the shrink protection the list had been
+     relying on implicitly: measured 2026-10-01 at 14 alerts, every wrapper
+     collapsed to 30px around a 94px row, so the rows overlapped and the list
+     stopped scrolling (scrollHeight pinned at the 420px cap instead of 1313).
+     Restoring it explicitly: 94px wrappers, 1313px of scroll. */
+  flex: none;
 }
 .nbswipe {
   position: absolute;
