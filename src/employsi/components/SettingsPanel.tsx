@@ -1,4 +1,5 @@
 import { useAppStore } from "../state/store";
+import { APP_VERSION } from "../version";
 import { IconClose } from "./ActionIcons";
 
 /**
@@ -56,9 +57,10 @@ import { IconClose } from "./ActionIcons";
  * the foot of Appearance when it applies.
  */
 
-// The shipped version. "v2.4.1" was carried over from the design mock, which
-// invented a plausible number for a product that has not had a 1.0 yet.
-const VERSION = "1.0.0-beta.1";
+// The shipped version lives in employsi/version.ts, which also carries the
+// rule for when it is bumped and is what the production deploy reads and tags.
+// Keeping it there rather than here is what stops the number a user reads
+// drifting from the number the release history records.
 
 function Switch({
   on,
@@ -230,7 +232,7 @@ export function SettingsPanel() {
       </div>
 
       <div className="stfoot">
-        <span className="stver">{VERSION}</span>
+        <span className="stver">{APP_VERSION}</span>
         <div className="stfootbtns">
           <button type="button" className="stghost" onClick={resetDefaults}>
             Reset to defaults

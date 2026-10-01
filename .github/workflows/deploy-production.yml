@@ -43,6 +43,11 @@ on:
         description: 'What is being released (goes in the run summary)'
         type: string
         required: false
+      release:
+        description: 'significant = bumps the version shown in Settings; maintenance = hotfix/finishing, reuses it'
+        type: choice
+        options: [maintenance, significant]
+        default: maintenance
 
 concurrency:
   group: deploy-production
@@ -52,6 +57,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      # Only for the release tag at the end. Nothing else in this job writes
+      # to the repository.
+      contents: write
     steps:
       # Inputs go through env, never ${{ }} in a script body — see the note on
       # `reason` in deploy-preview.yml.
@@ -70,9 +79,46 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
+        with:
+          # Tags are how a significant release is recorded, and the pre-flight
+          # check below reads them. A shallow clone carries none.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # THE VERSION SHOWN IN SETTINGS, AND WHETHER THIS RELEASE SHOULD HAVE
+      # BUMPED IT. Read from src/employsi/version.ts, which is the single
+      # source — see the bump rule written there.
+      #
+      # A machine cannot judge "significant", so the operator declares it on
+      # dispatch and this enforces consistency with that declaration. For a
+      # significant release the check is simply that this version has not
+      # already shipped: if a v<version> tag exists, the number is one that
+      # went out under a previous release, which is exactly what forgetting to
+      # bump looks like.
+      #
+      # A maintenance deploy is EXPECTED to reuse the version and is not
+      # checked — a hotfix restores the version that was claimed rather than
+      # advancing it.
+      - name: Version and release type
+        env:
+          RELEASE: ${{ inputs.release }}
+        run: |
+          v=$(sed -n 's/^export const APP_VERSION = "\(.*\)";$/\1/p' src/employsi/version.ts)
+          [ -n "$v" ] || { echo "::error::Could not read APP_VERSION from src/employsi/version.ts"; exit 1; }
+          echo "APP_VERSION=$v" >> "$GITHUB_ENV"
+          echo "Shipping version $v  (${RELEASE:-maintenance} release)"
+          if [ "${RELEASE:-maintenance}" = "significant" ]; then
+            if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+              echo "::error::v$v is already tagged, so this version has shipped before."
+              echo "::error::A significant release needs a new number — bump APP_VERSION in"
+              echo "::error::src/employsi/version.ts (the rule for what counts is in that file),"
+              echo "::error::or re-run this deploy as 'maintenance' if it is a hotfix."
+              exit 1
+            fi
+            echo "v$v is new — it will be tagged after a successful deploy."
+          fi
 
       - name: Tokens and account
         env:
@@ -214,13 +260,39 @@ jobs:
           esac
           exit $fail
 
+      # TAG THE RELEASE, after the live site has been checked — so a tag can
+      # never name a deploy that did not actually serve. Significant releases
+      # only: a maintenance deploy reuses its version and its tag already
+      # exists.
+      #
+      # continue-on-error, deliberately. The deploy has already succeeded and
+      # been verified by this point; a tag that fails to push is a bookkeeping
+      # problem, and turning a good production release red over it would teach
+      # everyone to ignore the colour. The summary prints the manual command.
+      - name: Tag the release
+        if: success() && inputs.release == 'significant'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$APP_VERSION" -m "employsi v$APP_VERSION"
+          git push origin "v$APP_VERSION"
+          echo "TAGGED=1" >> "$GITHUB_ENV"
+
       - name: Summary
         if: always()
         env:
           REASON: ${{ inputs.reason }}
+          RELEASE: ${{ inputs.release }}
         run: |
           {
             echo '## employsi.com.au (benridgwell-globe-gazer-hr)'
+            echo
+            echo "Version: \`${APP_VERSION:-unknown}\`  (${RELEASE:-maintenance} release)"
+            if [ "${RELEASE:-}" = "significant" ] && [ -z "${TAGGED:-}" ]; then
+              echo
+              echo "> Tag did not push. Run: \`git tag -a v${APP_VERSION} -m \"employsi v${APP_VERSION}\" && git push origin v${APP_VERSION}\`"
+            fi
             echo
             echo "Reason: ${REASON:-—}"
             echo
