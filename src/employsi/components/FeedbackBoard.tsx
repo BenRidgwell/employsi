@@ -27,6 +27,12 @@ import { Avatar } from "./Avatar";
 // and styling are.
 
 const STATUS_LABEL: Record<FbStatus, string> = {
+  /* Reads "Submitted" rather than "Pending" or "Awaiting approval". Only the
+     author and an administrator ever see a pending item (getFeedback filters
+     it in SQL), and to the author the true and sufficient fact is that their
+     request is in — not that a person has to let it through. The admin reads
+     the same chip as "not public yet", which it also is. */
+  pending: "Submitted",
   open: "Open",
   "under-review": "Under review",
   planned: "Planned",
@@ -365,11 +371,14 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
         />
+        {/* "Submitted", not "Posted": a new request is not on the board until it
+            is approved, and telling someone it is posted when it is not would be
+            the one claim here that is actually false. */}
         <div className="fbcomposerow">
           {error ? (
             <span className="fbsent show fberr">{error}</span>
           ) : (
-            <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Posted — thanks!</span>
+            <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Submitted — thanks!</span>
           )}
           <button className="fbsend" disabled={!canPost} onClick={() => post.mutate()}>
             {post.isPending ? "Posting…" : "Post idea"}

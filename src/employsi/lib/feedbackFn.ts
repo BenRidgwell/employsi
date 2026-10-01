@@ -4,6 +4,7 @@ import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
 import { getAuth, type AuthEnv } from "./auth";
 import { denyIfNotAdmin } from "./roles";
+import { notifyOperator } from "./notifyEmail";
 
 /**
  * The feedback board, stored in D1.
@@ -31,7 +32,14 @@ import { denyIfNotAdmin } from "./roles";
  *   • a cap of five posts per user per day.
  */
 
-export type FbStatus = "open" | "under-review" | "planned" | "shipped";
+/**
+ * "pending" is the MODERATION state and the one every new post starts in.
+ * It is not public: getFeedback hides it from everyone except an
+ * administrator and the person who wrote it. Approving is moving it to
+ * "open" — which the admin status control on the board already does — and
+ * rejecting is the Remove button beside it, so moderation needed no new UI.
+ */
+export type FbStatus = "pending" | "open" | "under-review" | "planned" | "shipped";
 
 export interface FeedbackItem {
   id: string;
@@ -59,7 +67,7 @@ const NAME_MAX = 60;
 /** Requests one user may post in a day. */
 const DAILY_POST_CAP = 5;
 
-const STATUSES = new Set<FbStatus>(["open", "under-review", "planned", "shipped"]);
+const STATUSES = new Set<FbStatus>(["pending", "open", "under-review", "planned", "shipped"]);
 
 async function db(): Promise<D1Like | null> {
   try {
@@ -123,7 +131,22 @@ export const getFeedback = createServerFn({ method: "GET" }).handler(
     const d = await db();
     if (!d) return [];
     const key = (await currentUser())?.key ?? "";
+    const isAdmin = (await callerRole()) === "admin";
     try {
+      // WHO SEES A PENDING POST. Filtered in SQL rather than after the fact, so
+      // an unapproved request is never sent to a browser that may not show it:
+      // a client-side filter would put the text in the page source of everyone
+      // who opens the board.
+      //
+      //   administrator — everything, which is what makes moderation possible
+      //   the author    — their own, so their request does not appear to have
+      //                   vanished the moment they submitted it
+      //   everyone else — nothing pending
+      //
+      // `?1` is the viewer's key and is already bound for the vote join, so the
+      // author exemption costs no extra parameter. An empty key (signed out)
+      // matches no author_key, which is the right answer rather than an
+      // accident: posting requires an account.
       const res = await d
         .prepare(
           `SELECT f.id, f.title, f.body, f.author, f.status, f.created, f.author_key,
@@ -131,11 +154,12 @@ export const getFeedback = createServerFn({ method: "GET" }).handler(
                   MAX(CASE WHEN v.voter = ?1 THEN v.dir END) AS mine
              FROM feedback f
              LEFT JOIN feedback_votes v ON v.item_id = f.id
+            WHERE f.status <> 'pending' OR ?2 = 1 OR (?1 <> '' AND f.author_key = ?1)
             GROUP BY f.id
             ORDER BY score DESC, f.created DESC
             LIMIT 200`,
         )
-        .bind(key)
+        .bind(key, isAdmin ? 1 : 0)
         .all();
       return (res?.results ?? []).map((r) => {
         const status = String(r.status || "open") as FbStatus;
@@ -202,7 +226,7 @@ export const postFeedback = createServerFn({ method: "POST" })
       await d
         .prepare(
           `INSERT INTO feedback (id, title, body, author, author_key, status, created)
-           VALUES (?1, ?2, ?3, ?4, ?5, 'open', ?6)`,
+           VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6)`,
         )
         .bind(id, title, body || null, author, key, today())
         .run();
@@ -215,6 +239,27 @@ export const postFeedback = createServerFn({ method: "POST" })
         )
         .bind(id, key, today())
         .run();
+
+      // Tell the operator something is waiting. BEST EFFORT, AND DELIBERATELY
+      // AWAITED: a scheduled handler's ctx.waitUntil gets 30s after the
+      // response, but a server function has no such hook, and a floating
+      // promise here would be cancelled when the isolate finishes. One Resend
+      // round trip is ~100ms, which is cheaper than losing the notification.
+      //
+      // Its failure is swallowed by notifyOperator and never reaches the
+      // visitor: their request IS stored either way, and "we could not email
+      // the moderator" is not their problem to see. With no mail secrets set
+      // this is a no-op, which is how the moderation flow works today.
+      await notifyOperator({
+        subject: `employsi feedback: ${title.slice(0, 60)}`,
+        text:
+          `${author} submitted a feature request. It is PENDING and is not on ` +
+          `the board until you approve it.\n\n` +
+          `Title: ${title}\n` +
+          (body ? `Detail: ${body}\n` : "") +
+          `\nApprove: open the app, Feedback, set its status from ` +
+          `"Submitted" to "Open". Reject: Remove, beside the same control.\n`,
+      });
       return { ok: true };
     } catch {
       return { ok: false, error: "Couldn't save that — try again." };
