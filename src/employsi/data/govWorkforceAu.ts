@@ -4,7 +4,8 @@
 // and still lives in perthGovWorkforce.ts; govHeadcount() merges the two.
 //
 // Sources, as at the run that produced this file:
-//   NSW: Law Enforcement Conduct Commission: 1 agencies published as at Jun 2024 — refreshed 2026-09-30
+//   WA: Perth Zoo: 1 agencies published as at 2025-26 — refreshed 2026-10-01
+//   NSW: Law Enforcement Conduct Commission: 1 agencies published as at Jun 2024 — KEPT, not refreshed this run
 //   VIC: Triple Zero Victoria: 1 agencies published as at Jun 2025 — KEPT, not refreshed this run
 //   QLD: QLeave: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
 //   QLD: Academy of Sport: 1 agencies published, as FTE not headcount, as at Jun 2026 — KEPT, not refreshed this run
@@ -284,6 +285,7 @@ export const GOV_HEADCOUNT_AU: Record<string, Headcount> = {
   "perth-gov-office-of-the-director-of-public-prosecutions": { now: 417, prev: 393, yoy: 6.1, asof: "2025-26", span: 1 },
   "perth-gov-ombudsman-western-australian": { now: 96, prev: 89, yoy: 7.9, asof: "2025-26", span: 1 },
   "perth-gov-pathwest": { now: 2612, prev: 2562, yoy: 2.0, asof: "2025-26", span: 1 },
+  "perth-gov-perth-zoo": { now: 235, prev: 233, yoy: 0.9, asof: "2025-26", span: 1 },
   "perth-gov-public-sector-commission": { now: 165, prev: 159, yoy: 3.8, asof: "2025-26", span: 1 },
   "perth-gov-public-transport-authority": { now: 3159, prev: 2889, yoy: 9.3, asof: "2025-26", span: 1 },
   "perth-gov-south-metropolitan-health-service": { now: 16036, prev: 14822, yoy: 8.2, asof: "2025-26", span: 1 },

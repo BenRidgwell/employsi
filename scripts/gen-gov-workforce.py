@@ -1437,18 +1437,61 @@ NOT_IN_SOURCE = {
         'a port authority, a GTE outside the PSM Act bulletin',
     'perth:Rottnest Island Authority':
         'a statutory authority outside the PSM Act bulletin',
-    'perth:Perth Zoo':
-        'the Zoological Parks Authority is outside the PSM Act bulletin',
     'perth:Western Australian Museum':
-        'no row names it; the museum sits under the Arts and Culture Trust, '
-        'which is itself absent from the bulletin',
+        'ITS OWN REPORT WAS READ IN FULL ON 2026-10-01 AND PUBLISHES NO WORKFORCE '
+        'TOTAL, and separately the parentage this reason asserted is not '
+        'supported by it. visit.museum.wa.gov.au/about/corporate-documents links '
+        'the 2025-26 annual report (40,272,280 bytes, 176 pages, plain fetch).'
+        '\n\n'
+        'NO FTE AND NO HEAD COUNT ANYWHERE: zero matches for "full-time '
+        'equivalent", "FTE", "headcount", "employee profile", "staffing" or '
+        '"number of employees" across 289,443 characters of extractable text. The '
+        'financial statements give employee benefits expense of $30,949k against '
+        '$28,337k and nothing per person. The one staff-shaped number, p148, is a '
+        'TRAINING count and not a workforce one: "Throughout 2025-26, 431 staff '
+        'completed a total of 4,213 courses" — staff who completed courses, which '
+        'is not stated to be all of them.'
+        '\n\n'
+        'AND THE OLD REASON SAID "the museum sits under the Arts and Culture '
+        'Trust", which its own report does not bear out. "Arts and Culture Trust" '
+        'appears ZERO times in 176 pages; the Museum reports under "the Museum '
+        'Act 1969 (WA)", receives its own service appropriation and pays $30.9m '
+        'of employee benefits from it. A body that pays its own staff under its '
+        'own Act is its own employer. That does NOT prove the Trust excludes them '
+        "from any figure of its own — the Trust's report has not been read — so "
+        'the parentage claim is withdrawn as unsupported rather than replaced '
+        'with the opposite claim.'
+        '\n\n'
+        'A WORD ON THE EXTRACTION, because it nearly produced a wrong finding: '
+        'this PDF breaks the fi ligature, so "Employee benefits" extracts as '
+        '"Employee benefi ts" and "flows" as "fl ows". A first pass matched '
+        'nothing and looked like an image-only scan; the text is all there. Any '
+        'pattern run against this document needs to tolerate that split.',
     'perth:Arts and Culture Trust':
         'a statutory authority outside the PSM Act bulletin',
     'perth:Tourism Western Australia':
         'a statutory authority outside the PSM Act bulletin',
     'perth:Parliamentary Services Department':
-        'Parliament-funded, and the bulletin covers the public sector under the '
-        'PSM Act rather than the departments of Parliament',
+        'THE REPORT IS REACHABLE AND WAS READ IN FULL, AND IT PUBLISHES NO '
+        "WORKFORCE FIGURE AT ALL. The old reason was about the bulletin's scope — "
+        '"Parliament-funded, and the bulletin covers the public sector under the '
+        'PSM Act rather than the departments of Parliament" — which is true and '
+        "was never a statement about the department's own reporting."
+        '\n\n'
+        "Found 2026-10-01 by following parliament.wa.gov.au's own links (About "
+        'Parliament -> Departmental Publications -> Annual Reports) to a Lotus '
+        'Notes resource URL: '
+        '/WebCMS/webcms.nsf/resources/file-psd-annual-report-2025-26/$file/Parliamentary%20Services%20Department%20Annual%20Report%202025-2026.pdf '
+        '— 3,049,727 bytes, 77 pages, plain fetch, no browser.'
+        '\n\n'
+        'ALL 77 PAGES CARRY EMPLOYEE COSTS AND NOT ONE HEAD. "Employee benefits '
+        'expense 14,673", "Total employee related provisions 3,199", "Contract '
+        'staff 133" — dollars in thousands throughout. No FTE, no head count, no '
+        'staffing table; the only staff-shaped percentages are survey ratings. So '
+        'this is the Fletcher Building and Contact Energy shape rather than a '
+        'reachability problem, and re-finding the document will not change it. '
+        'What would: a WA Parliament edition that adds an employee profile, or '
+        'the PSM Act bulletin widening to the parliamentary departments.',
     'perth:State Solicitors Office':
         'no row names it; its staff are inside the Department of Justice '
         '(8,578), where the State Solicitor sits — that parent is inference, '
@@ -3251,6 +3294,71 @@ AGENCY_REPORTS = {
         proof=r'For the Year Ended 30 June 2025',
         unit='fte', asof='Jun 2025'),
     # ═════════════════════════════════════════════════════════════════════════
+    # ═════════════════════════════════════════════════════════════════════════
+    # THE FIRST WESTERN AUSTRALIAN SPEC, AND ALL NINE WA REASONS WERE ONE SENTENCE
+    # ABOUT THE SOURCE. "a statutory authority outside the PSM Act bulletin", "a
+    # government trading enterprise ... no row in any edition", "Parliament-funded,
+    # and the bulletin covers the public sector under the PSM Act" — every one true
+    # of the WA Public Sector Commission's bulletin, and not one of them a
+    # statement about whether the body publishes its own annual report. Same
+    # sentence as Queensland's nineteen and Victoria's nineteen. WA agencies report
+    # an Employee Profile under their own reporting requirements, so the bulletin's
+    # scope was never the end of the question.
+    #
+    # HEAD COUNT AND A FINANCIAL-YEAR `asof`, to match load_wa: the bulletin is
+    # head count, and every perth row is dated "2025-26" rather than "Jun 2026".
+    # This report leads with both measures, so the choice is free and consistency
+    # decides it.
+    #
+    # p140 STATES THE PAIR IN PROSE BESIDE THE TABLE, which is what makes `stated`
+    # a real guard here rather than decoration: "Perth Zoo employed 235 people in
+    # 2025-26 and 165.49 full-time equivalents (FTE) as at 30 June 2026." The table
+    # above it reads "Total head count 235 233 224" and "Full time equivalent (FTE)
+    # 165.49 171.77 160.43" under a "2025-26 2024-25 2023-24" header — so the head
+    # count, the FTE and the date are each asserted twice, on one page.
+    #
+    # THE FTE FALLS WHILE THE HEAD COUNT RISES (165.49 from 171.77, against 235
+    # from 233) and that is the document's own arithmetic, not a parse error: more
+    # people on fewer average hours. Recorded because a reader comparing this card
+    # with the FTE figure would see opposite signs.
+    'perth-zoo': dict(
+        label='WA: Perth Zoo',
+        agency='Perth Zoo',
+        agency_id='perth-gov-perth-zoo',
+        # AND THIS URL IS THE BEST ARGUMENT IN THIS FILE AGAINST GUESSING ONE. The
+        # spec was first written with .../All%20PDFs/PZ_Annual-Report_2025-26.pdf,
+        # which 404s. The real filename embeds a layout note, an editor's initials
+        # and the date the file was edited — no amount of reasoning about naming
+        # conventions reaches it, and only the listing page has it. Seventh time in
+        # this campaign that an invented URL was tried; the first six are recorded
+        # beside the specs they nearly broke.
+        url='https://perthzoo.wa.gov.au/PerthZooWebsite/media/PerthZoo/All%20PDFs/'
+            'PZ_Annual-Report_26_KT-Web-Single-Pages_26-09-26_edit.pdf',
+        needle='Employee Profile',
+        total=r'^Total head count',
+        ncols=3, now_i=0, prev_i=1,
+        # CONTROLS, 2026-10-01 — AND THIS IS THE FIRST SPEC IN THE FILE WHERE EVERY
+        # NEGATIVE CONTROL FIRES:
+        #
+        #   as written            -> (235, 233)
+        #   now_i=1, prev_i=2     -> REJECTED "components sum to 233.0 against the
+        #                            235.0 the document states in prose"
+        #   total -> the FTE row  -> REJECTED "165.5 against the 235.0"
+        #   header wrong          -> REJECTED
+        #   proof wrong           -> REJECTED
+        #
+        # `stated` IS WHY, AND IT IS WORTH COPYING. On every other spec here the
+        # column choice is guarded by `header` alone — Stadiums, the Information
+        # Commissioner, Triple Zero and the LECC all file the wrong year without
+        # complaint when now_i moves, because each column reconciles against its own
+        # components. A prose sentence on the SAME PAGE stating the figure is an
+        # independent assertion, so it catches a wrong column AND a wrong table.
+        # Prefer it wherever a document offers one.
+        stated=r'employed\s+([\d,]+)\s+people',
+        header=r'2025-26 2024-25 2023-24',
+        proof=r'as at 30 June 2026',
+        unit='headcount', asof='2025-26'),
+
     # THE .pdf THAT SERVED A REACT PAGE, AND THE SUFFIX THAT WAS ONE RENDER AWAY.
     # The reason this replaces recorded the problem exactly: lecc.nsw.gov.au lists
     # /publications/annual-reports/law-enforcement-conduct-commission-annual-
