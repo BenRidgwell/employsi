@@ -15891,6 +15891,66 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* ── A dismissed alert leaves ──────────────────────────────────────────────
+   Two movements, overlapping: the row slides the rest of the way off its own
+   red strip, then the gap it left closes. Overlapping rather than sequential —
+   the collapse starts at 45%, before the slide has finished — because a strict
+   handover reads as two separate events happening to one row.
+
+   KEYFRAMES, NOT A TRANSITION. A transition needs the from-value rendered in
+   one frame and the to-value in the next, which for a height means measuring,
+   rendering that height, waiting a frame, then changing it. An animation
+   carries its own `from`, so the whole thing is one render. --nbh is the
+   wrapper's real measured height (see NotificationBell): a max-height guess
+   would overshoot every collapsed row and ease wrongly for it.
+
+   `forwards` holds the end state. Without it the row would flash back to full
+   height for the frames between the animation ending and the state update
+   removing it. */
+@keyframes nbexit {
+  0% {
+    transform: translateX(var(--nbdx, 0));
+    opacity: 1;
+  }
+  55%,
+  100% {
+    transform: translateX(var(--nbout, 115%));
+    opacity: 0;
+  }
+}
+@keyframes nbcollapse {
+  0%,
+  45% {
+    height: var(--nbh);
+    opacity: 1;
+  }
+  100% {
+    height: 0;
+    opacity: 0;
+  }
+}
+.nbrowwrap.leaving {
+  height: var(--nbh);
+  animation: nbcollapse 320ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  /* Nothing in a row on its way out is clickable: a tap landing on it would
+     toggle an alert that is already gone by the time the state catches up. */
+  pointer-events: none;
+}
+.nbrowwrap.leaving .nbrow {
+  animation: nbexit 320ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+/* Reduced motion never reaches these — beginDismiss drops straight to the
+   removal — but the rules are guarded anyway, because a stylesheet that only
+   behaves because of what the script does is one refactor from not. */
+@media (prefers-reduced-motion: reduce) {
+  .nbrowwrap.leaving,
+  .nbrowwrap.leaving .nbrow {
+    animation: none;
+    height: 0;
+    overflow: hidden;
+  }
+}
+
 /* ── A read alert is monotone ──────────────────────────────────────────────
    The point of the list is which alerts are NEW, and when every row carries a
    company's brand colour that is the loudest thing on screen in both of them.
@@ -15905,6 +15965,26 @@ body {
    opacity trim underneath it.
 
    Keyed on `.read`, not `.shut`: see the note in NotificationBell. */
+/* The GROUND, not just the contents. Tone alone left a read row the same
+   white card as a new one, so the state had to be read off the text; a filled
+   row is the thing you see without looking. --surface-sunken rather than
+   --surface-subtle: subtle is #fafafa against a #ffffff card, which is a
+   difference you have to go looking for, and the point of this is not having
+   to. */
+.nbrow.read {
+  background: var(--surface-sunken, #f4f4f5);
+}
+.nbrow.read:hover {
+  background: #ececef;
+}
+/* THE DIVIDER WAS --surface-sunken, which is now the read row's own
+   background — so every boundary between two read rows would have vanished
+   and the list would read as one block. It takes the border colour instead,
+   on read rows only, so unread rows keep the lighter rule they were designed
+   with. */
+.nbrow.read {
+  border-bottom-color: var(--border-subtle, #e5e5ea);
+}
 .nbrow.read .nbco,
 .nbrow.read .nbheadline {
   color: var(--text-secondary, #636366);
@@ -15920,8 +16000,11 @@ body {
 /* The kind pill and the skill glyph are the row's other two colours. The pill
    keeps its SHAPE so the row still says spike or cooling at a glance — it is
    the hue that is carrying "new", not the word. */
+/* Same collision as the divider: the grey the pill used to take IS the row's
+   background now, so it would be a word floating with no pill around it. It
+   goes a step darker than the row instead, which keeps it a shape. */
 .nbrow.read .nbpill {
-  background: var(--surface-sunken, #f1f1f3);
+  background: #e4e4e8;
   color: var(--text-tertiary, #8e8e93);
 }
 .nbrow.read .nbskillglyph {
@@ -15937,6 +16020,7 @@ body {
    point. */
 .nbread {
   flex: 0 0 auto;
+  background: var(--surface-card, #fff);
   display: inline-flex;
   align-items: center;
   height: 18px;
