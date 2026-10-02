@@ -234,9 +234,19 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
   }
 }
 
-// Normalise a title for cross-board dedupe: lowercase, collapse anything
-// non-alphanumeric to single spaces. Same-ad titles line up across providers.
-function normTitle(s: string): string {
+/**
+ * Normalise a title for cross-board dedupe: lowercase, collapse anything
+ * non-alphanumeric to single spaces. Same-ad titles line up across providers.
+ *
+ * MUST BEHAVE IDENTICALLY TO normRoleTitle in jobHistoryFn, which is what the
+ * vacancy chart folds by. The headline and the chart's last point are the same
+ * count of the same rows, and they stay the same count only while the two fold
+ * them the same way — a change to either one alone would split the numbers
+ * again with nothing erroring. It is not imported from there because
+ * jobHistoryFn imports THIS file, so the dependency would be a cycle; it is
+ * exported instead and check-skill-trends asserts the two agree.
+ */
+export function normTitle(s: string): string {
   return (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
@@ -517,18 +527,27 @@ async function currentFromArchive(
   try {
     const res = await db
       .prepare(
-        // "Current" = seen on the board no earlier than yesterday. This is the
-        // SAME cut the vacancy chart's last point uses (it plots roles live on
-        // a day, and its last day is yesterday), so the headline and the chart
-        // read the same rows. The previous three-day grace period was there to
-        // absorb a missed nightly run, but it also meant the headline counted
-        // roles the chart had already dropped — which is most of why the two
-        // numbers disagreed. A feed that genuinely misses a night now shows the
-        // same dip in both places rather than only in one.
+        // OPEN ON YESTERDAY — the literal test getVacancyTrend applies to
+        // every day it plots, so the headline and the chart's last point are
+        // the same count of the same rows rather than two readings a day
+        // apart.
+        //
+        // It was `last_seen >= date('now','-1 day')`, which is not the same
+        // question: an ad FIRST seen today satisfies it, so the headline
+        // counted ads the chart's last point structurally could not contain
+        // (it needs first_seen <= that day). CBH Group showed 12 against the
+        // chart's 11 for exactly this reason. The three-day grace period
+        // before that was a bigger version of the same gap.
+        //
+        // Yesterday rather than today because today is never fully collected:
+        // the scrapers run overnight, so a job whose last_seen is still
+        // yesterday is not closed, it just has not been looked at yet. The
+        // chart ends there for the same reason, and both move together now.
         `SELECT title, source, location, salary, url, posted, skills
            FROM jobs
           WHERE company_id = ?1
             ${includeLiveBoards ? "" : "AND source NOT IN ('adzuna', 'muse')"}
+            AND first_seen <= date('now', '-1 day')
             AND last_seen >= date('now', '-1 day')`,
       )
       .bind(COMPANY_ID_ALIAS[id] ?? id)
@@ -704,15 +723,17 @@ export const getOpenRoles = createServerFn({ method: "GET" })
     //    normalised title so the same ad on both boards is only counted once.
     //    For markets Adzuna doesn't cover (country ''), The Muse is the sole
     //    source.
-    // Did the live boards actually answer? `fromAdzuna` returns null when page
-    // 1 failed — "couldn't check" — and {count: 0} when Adzuna genuinely holds
-    // nothing. The archive fallback below needs to tell those apart.
-    let liveBoardsAnswered = false;
+    // A `liveBoardsAnswered` flag lived here, to tell "Adzuna failed" from
+    // "Adzuna holds nothing" so the archive fallback could decide whether to
+    // count adzuna/muse rows as well. It is gone with the decision: the
+    // archive now counts every source unconditionally, so whether the live
+    // fetch answered no longer changes the number — only whether there is a
+    // sample to fall back ON when the archive is empty, which `out` already
+    // says.
     if (!out) {
       const az = country ? await fromAdzuna(company, country, where) : null;
       const museJobs = await fromMuse(company, region);
       if (az || museJobs.length) {
-        liveBoardsAnswered = true;
         // DISTINCT ROLES, counted from the listings we actually hold — not
         // Adzuna's reported total.
         //
@@ -747,58 +768,56 @@ export const getOpenRoles = createServerFn({ method: "GET" })
       }
     }
 
-    // Fold in every OTHER source's current listings from the D1 archive (chiefly
-    // SEEK, scraped daily off-Worker) so the open-roles figure is a deduped union
-    // of all current vacancies for this company as at today — not just the live
-    // Adzuna/Muse fetch. Deduped by normalised title against the live sample.
-    // (Gov agencies returned earlier — their board is their single source.)
-    // Runs even when Adzuna/Muse returned nothing (out === null), so a company
-    // covered ONLY by an archive source — e.g. the Chinese roster companies whose
-    // vacancies come from Zhaopin, or any employer Adzuna/Muse don't index —
-    // still surfaces its listings instead of showing a false zero.
+    /**
+     * THE ARCHIVE IS THE ANSWER WHEREVER IT HAS ONE, AS AT YESTERDAY.
+     *
+     * The headline and the card's vacancy chart are meant to be one figure.
+     * They were built from different places — the headline summed a LIVE
+     * Adzuna/Muse fetch plus the archive's other sources, the chart read the
+     * archive alone — so even with the same dedupe they could not agree: the
+     * live fetch sees ads posted this morning, and the chart's last point is
+     * yesterday, which structurally cannot contain them. CBH Group read 12
+     * against a chart of 11 for precisely that.
+     *
+     * So when the archive holds rows for this company, its own as-at-yesterday
+     * count IS the headline: same rows, same day, same dedupe as the chart's
+     * last point, by construction rather than by two code paths being kept in
+     * step. The live fetch still runs — it is what WRITES those rows (see
+     * archiveJobs above) and it supplies the sample when the archive is empty
+     * — but it no longer adds to the count.
+     *
+     * `includeLiveBoards` is true here for the same reason: Adzuna and Muse
+     * rows are in the archive like any other source, and the exclusion that
+     * once kept them out existed only to avoid double-counting them against
+     * the live fetch, which no longer contributes.
+     *
+     * WHEN THE ARCHIVE HAS NOTHING the live answer stands. That is not an
+     * inconsistency: a company with no archived rows has no vacancy chart
+     * either (buildCompanyCard needs two points and says so), so there is no
+     * second number for it to disagree with — and reporting zero because our
+     * own history has not reached an employer yet would be the false zero this
+     * whole path was fixed to avoid.
+     */
     if (data.id) {
-      // WHEN THE LIVE BOARDS DID NOT ANSWER, COUNT THEIR ARCHIVED ROWS TOO.
-      //
-      // This fallback used to exclude adzuna/muse unconditionally, on the
-      // reasoning that those are fetched live just above. True when the fetch
-      // works; when it does not, the exclusion threw away the only record we
-      // had and the card asserted a zero. Measured 2026-09-30 on Edith Cowan
-      // University: 10 current rows in the archive, every one of them adzuna,
-      // so the fallback contributed nothing and the headline read "0 — no live
-      // vacancies" while the card's own vacancy chart, which counts every
-      // source, plotted 9 for the same day. 23 roster companies were in that
-      // state at the time, covering 313 current rows.
-      //
-      // The two numbers are meant to agree by construction (see the dedup note
-      // above); this is the branch where they could not.
-      const extra = await currentFromArchive(data.id, out ? out.jobs : [], !liveBoardsAnswered);
-      if (extra.added > 0) {
+      const archived = await currentFromArchive(data.id, [], true);
+      if (archived.added > 0) {
         // Every `portal-<platform>` source is the employer's own careers site;
         // the platform suffix is an implementation detail of how we read it,
         // not something a reader of the card should be shown. Collapsing them
         // also stops a company on two portals (Brambles, Transurban) reading
         // as two sources.
-        const extraLabels = [
+        const labels = [
           ...new Set(
-            extra.sources.map((s) =>
+            archived.sources.map((s) =>
               s.startsWith("portal-") ? "Careers site" : ARCHIVE_SOURCE_LABEL[s] || s,
             ),
           ),
         ];
-        if (out) {
-          const label = [out.source, ...extraLabels].filter(Boolean).join(" + ");
-          out = {
-            count: out.count + extra.added,
-            source: label,
-            jobs: [...out.jobs, ...extra.jobs].slice(0, 60),
-          };
-        } else {
-          out = {
-            count: extra.added,
-            source: extraLabels.filter(Boolean).join(" + ") || "Archive",
-            jobs: extra.jobs.slice(0, 60),
-          };
-        }
+        out = {
+          count: archived.added,
+          source: labels.filter(Boolean).join(" + ") || "Archive",
+          jobs: archived.jobs.slice(0, 60),
+        };
       }
     }
 

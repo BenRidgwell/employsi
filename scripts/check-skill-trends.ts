@@ -62,6 +62,8 @@ import {
   zoomFrame,
 } from "../src/employsi/lib/hotspotFrame";
 import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
+import { normTitle } from "../src/employsi/lib/openRolesFn";
+import { normRoleTitle } from "../src/employsi/lib/jobHistoryFn";
 import { monthsBetween } from "../src/employsi/lib/jobHistoryFn";
 import { demandByCompanyAt } from "../src/employsi/lib/skillHeat";
 import { IVI_MONTHS } from "../src/employsi/data/iviSkillDemand";
@@ -2440,6 +2442,42 @@ console.log("\nthe timeline runs to the present month, and the index marker to t
   // tick silently disappears from the track.
   const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);
   check("every event falls inside the series", off.length === 0, off.join(", "));
+}
+
+// ── the headline and the chart counting the same thing ─────────────────────
+// They are one figure in two places: "Open roles" on the card and the vacancy
+// chart's last point. They agree only while they fold titles the same way, and
+// the two folds live in different files — normRoleTitle in jobHistoryFn (the
+// chart) and normTitle in openRolesFn (the headline) — because importing one
+// into the other would be a cycle. Nothing errors if they drift; the card just
+// quietly shows two numbers again.
+console.log("\nthe headline and the vacancy chart fold titles the same way:");
+{
+  const cases = [
+    "Senior Payroll Officer",
+    "Senior  Payroll   Officer",
+    "People & Culture Officer",
+    "People and Culture Officer (Part-time)",
+    "Mining Engineer — Pilbara, FIFO 8/6",
+    "  LEAD   data-scientist/ML  ",
+    "Nurse (RN) — Ward 3B",
+    "Développeur Sénior",
+    "営業担当",
+    "",
+  ];
+  const differ = cases.filter((s) => normTitle(s) !== normRoleTitle(s));
+  check(
+    "normTitle and normRoleTitle agree on every sample",
+    differ.length === 0,
+    differ.map((s) => `${JSON.stringify(s)}: ${normTitle(s)} vs ${normRoleTitle(s)}`).join(" | "),
+  );
+  // The property both rely on, stated so a "harmless" tweak to either trips it.
+  check(
+    "...and both fold punctuation and case to single spaces",
+    normRoleTitle("People & Culture  Officer") === "people culture officer" &&
+      normTitle("People & Culture  Officer") === "people culture officer",
+    `${normRoleTitle("People & Culture  Officer")} / ${normTitle("People & Culture  Officer")}`,
+  );
 }
 
 // ── the skill map's pins following the timeline ─────────────────────────────
