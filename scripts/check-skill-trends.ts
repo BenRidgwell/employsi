@@ -2444,6 +2444,52 @@ console.log("\nthe timeline runs to the present month, and the index marker to t
   check("every event falls inside the series", off.length === 0, off.join(", "));
 }
 
+// ── the role key, written and counted ──────────────────────────────────────
+// Deduping across boards cannot live in the readers: it was fixed four times
+// in four surfaces and the fifth still had it. It is a COLUMN now — role_key,
+// written at archive time — so a count gets it right by default. These assert
+// the three things that make that true.
+console.log("\nthe archive carries a role key, and counts use it:");
+{
+  const arch = readFileSync("src/employsi/lib/jobArchive.ts", "utf8");
+  check(
+    "archiveJobs writes role_key on insert",
+    /\(job_key, role_key,/.test(arch) && /roleKey\(r\.companyId/.test(arch),
+    "new rows would archive with no role key",
+  );
+  check(
+    "...and backfills it on a re-seen row",
+    /role_key\s*=\s*COALESCE\(NULLIF\(role_key, ''\), \?14\)/.test(arch),
+    "a row already in the archive would never gain one",
+  );
+  check(
+    "...and the column is added lazily rather than by a hand-run migration",
+    /ALTER TABLE jobs ADD COLUMN role_key TEXT/.test(arch),
+    "the column has to exist before a deploy, which is the migration nobody runs",
+  );
+  const rk = readFileSync("src/employsi/lib/roleKey.ts", "utf8");
+  check(
+    "the count falls back to job_key for rows not yet backfilled",
+    /COALESCE\(NULLIF\(role_key, ''\), job_key\)/.test(rk),
+    "un-backfilled rows would collapse together and under-count",
+  );
+  const an = readFileSync("src/employsi/lib/analystFn.ts", "utf8");
+  check(
+    "the analyst's volume counts are role counts",
+    an.includes("${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}"),
+    "a live-volume answer is counting rows again",
+  );
+  // The two that must STAY row counts, for reasons stated at each: feed health
+  // is about what a board delivered, and the pay share's numerator is rows.
+  check(
+    "...and the feed-health and pay-share counts are still rows",
+    /COUNT\(\*\) AS n FROM jobs\n\s*WHERE \$\{where\} AND last_seen >= \? GROUP BY source/.test(
+      an,
+    ) && /COUNT\(\*\) AS n FROM jobs\n\s*WHERE first_seen <= \?1/.test(an),
+    "one of the two deliberate row counts was converted, which mixes units",
+  );
+}
+
 // ── one job, counted once, wherever it is counted ──────────────────────────
 // The archive's key is `source|title|company|location` and SOURCE IS FIRST, so
 // one job carried by an employer's careers site and by a job board is two rows
@@ -2479,13 +2525,11 @@ console.log("\nper-company skill demand counts roles, not archive rows:");
   );
 }
 
-// ── the headline and the chart counting the same thing ─────────────────────
-// They are one figure in two places: "Open roles" on the card and the vacancy
-// chart's last point. They agree only while they fold titles the same way, and
-// the two folds live in different files — normRoleTitle in jobHistoryFn (the
-// chart) and normTitle in openRolesFn (the headline) — because importing one
-// into the other would be a cycle. Nothing errors if they drift; the card just
-// quietly shows two numbers again.
+// ── one definition of a role, used everywhere ──────────────────────────────
+// There were two hand-identical title folds, and this asserted they agreed.
+// They are now literally the same function, re-exported from lib/roleKey, so
+// the assertion below is near-tautological — and kept exactly for that: if
+// someone re-introduces a local copy, it starts testing something again.
 console.log("\nthe headline and the vacancy chart fold titles the same way:");
 {
   const cases = [

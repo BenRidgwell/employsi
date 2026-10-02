@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { normRoleTitle } from "./roleKey";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
@@ -238,20 +239,14 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
  * Normalise a title for cross-board dedupe: lowercase, collapse anything
  * non-alphanumeric to single spaces. Same-ad titles line up across providers.
  *
- * MUST BEHAVE IDENTICALLY TO normRoleTitle in jobHistoryFn, which is what the
- * vacancy chart folds by. The headline and the chart's last point are the same
- * count of the same rows, and they stay the same count only while the two fold
- * them the same way — a change to either one alone would split the numbers
- * again with nothing erroring. It is not imported from there because
- * jobHistoryFn imports THIS file, so the dependency would be a cycle; it is
- * exported instead and check-skill-trends asserts the two agree.
+ * IT IS NOW THE SAME FUNCTION the vacancy chart folds by, not a copy of it.
+ * There were two hand-identical implementations — this one and normRoleTitle
+ * in jobHistoryFn — kept in step by a CI assertion, because jobHistoryFn
+ * imports THIS file and importing back would have been a cycle. lib/roleKey
+ * imports nothing, so both can take it from there and there is no longer
+ * anything to drift.
  */
-export function normTitle(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
+export const normTitle = normRoleTitle;
 
 function toJob(
   t: string,

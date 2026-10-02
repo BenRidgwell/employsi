@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
 import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
+import { normRoleTitle } from "./roleKey";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import {
   ALL_SKILLS,
@@ -1279,11 +1280,7 @@ export const roleKeyByCompanyTitle: RoleKeyFn = (r) => {
  * chart was written, and the two disagreeing is exactly the bug this fixes —
  * the line and the count beside it were measuring different things.
  */
-export const normRoleTitle = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+export { normRoleTitle };
 
 /** The most-named entry in a tally, ties broken alphabetically so the same rows
  *  always fold to the same answer. Null when nothing was named. */

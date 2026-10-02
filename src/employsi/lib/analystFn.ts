@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { ROLE_COUNT_SQL } from "./roleKey";
 import { LIVE_FEEDS_ONLY_SQL, type D1Like } from "./jobArchive";
 import {
   SKILL_CATEGORY,
@@ -496,6 +497,11 @@ export const askAnalyst = createServerFn({ method: "POST" })
           .first(),
         db
           .prepare(
+            // ROWS, deliberately. This is feed health — how much each SOURCE
+            // has lately delivered — so the question is how many rows a board
+            // wrote, not how many distinct roles they describe. Deduping here
+            // would hide a board that has gone quiet behind another that
+            // carries the same jobs.
             `SELECT MAX(last_seen) AS mx, COUNT(*) AS n FROM jobs
                WHERE ${where} AND last_seen >= ? GROUP BY source`,
           )
@@ -591,7 +597,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // Live = open on the reference day, by the same reconstruction the
     // comparison below uses. See LIVE_ON_DAY.
     const liveRow = await db
-      .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
+      .prepare(`SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
       .bind(...binds, asOf, asOf)
       .first();
     const live = Number(liveRow?.n) || 0;
@@ -1019,20 +1025,20 @@ export const askAnalyst = createServerFn({ method: "POST" })
         // The comparison end. `live` above is the same count on `asOf`, so the
         // two sides differ only in which day they ask about.
         db
-          .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
+          .prepare(`SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
           .bind(...binds, then, then)
           .first(),
         // Bounded at the top too: an ad first seen on a day the answer does not
         // yet claim to cover is not "new in the last N days" of that answer.
         db
           .prepare(
-            `SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND first_seen >= ? AND first_seen <= ?`,
+            `SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND first_seen >= ? AND first_seen <= ?`,
           )
           .bind(...binds, then, asOf)
           .first(),
         db
           .prepare(
-            `SELECT company, COUNT(*) AS n FROM jobs
+            `SELECT company, ${ROLE_COUNT_SQL} AS n FROM jobs
                WHERE ${where} AND ${LIVE_ON_DAY} AND company IS NOT NULL AND company <> ''
                GROUP BY company ORDER BY n DESC LIMIT 4`,
           )
@@ -1136,6 +1142,13 @@ export const getSkillPay = createServerFn({ method: "GET" })
         )
         .bind(asOf, quoted)
         .all();
+      // ROWS, deliberately, because of what it is divided BY. This is the
+      // denominator of "x% of what's open discloses pay", and the numerator is
+      // the count of salary-bearing ROWS fetched just above. Making this a
+      // role count would put roles under rows and report a share that is
+      // mostly the difference between the two methods — the exact comparison
+      // CLAUDE.md warns never to make. Both sides move together or neither
+      // does.
       const liveRow = await db
         .prepare(
           `SELECT COUNT(*) AS n FROM jobs
