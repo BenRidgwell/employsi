@@ -2571,6 +2571,222 @@ body {
   font-size: 12px;
   color: #8e8e93;
 }
+/* ── Beta tag ──────────────────────────────────────────────────────────────
+   A small outlined pill beside a card's title. Outlined rather than filled,
+   and in the body ink rather than a warning colour: it marks a surface as
+   young, not as broken, and a red badge on a working card reads as an error.
+
+   Shares the shape of the chrome's other pills. `flex: none` because it sits
+   in the title rows' baseline flex, where a long heading wrapping would
+   otherwise squeeze the word onto two lines. */
+.betatag {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 999px;
+  background: #fafafa;
+  font-family: var(--font-label), "Inter", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #6c6c72);
+  white-space: nowrap;
+}
+/* ── Feature use, search terms and the two sides ──────────────────────────
+   One bar language for all three: a track at #f4f4f5 with an ink fill, the
+   same as .dqbandbar, because they are all "share of the busiest thing" and a
+   second visual idiom would imply a second kind of measurement.
+
+   The bars are shares of the TOP ROW, not of a total. Every one of these lists
+   is a head of a long tail — four features out of the app's surfaces, eight
+   terms out of hundreds — so a percentage of the total would be a percentage
+   of a number the card does not show. Each card says what its bar is. */
+.dqfeat {
+  padding: 4px 0 0;
+}
+.dqfeatrow,
+.dqfeatkey {
+  display: grid;
+  /* label | bar | opens | total | per-visit. The three numeric columns are
+     fixed so they line up as columns rather than drifting with their content;
+     the label and the bar are minmax(0,…) so THEY absorb a narrow console
+     instead of the row forcing the card wider than its parent. A fixed
+     minimum on either would have made this grid the tab's new width floor. */
+  grid-template-columns: minmax(0, 1.1fr) minmax(24px, 2fr) 54px 56px 78px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+}
+.dqfeatrow {
+  border-top: 1px solid #f4f4f5;
+}
+.dqfeatrow:first-child {
+  border-top: 0;
+}
+.dqfeatlbl {
+  font-size: 13px;
+  color: #1c1c1e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dqfeatbar {
+  height: 10px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+.dqfeatbar > span {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.dqfeatn,
+.dqfeatms,
+.dqfeatavg {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+.dqfeatn {
+  color: #1c1c1e;
+}
+.dqfeatms {
+  color: #6c6c72;
+}
+.dqfeatavg {
+  color: #8e8e93;
+}
+/* The column key sits UNDER the rows, not above them: the figures are the
+   point and a header row would be read as the first feature. */
+.dqfeatkey {
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dqfeatkey > span {
+  color: #a1a1a6;
+}
+.dqtermpair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 6px 18px;
+  padding: 10px 18px 16px;
+}
+.dqtermhd {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a1a1a6;
+  padding: 4px 0 6px;
+}
+.dqterms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dqtermrow {
+  display: grid;
+  /* The NAME is the answer here and the bar only ranks it, so the bar is
+     capped and the name takes what is left — a skill like "Occupational
+     Health & Safety" truncated to fit a wider bar would be the card failing
+     at the one thing it is for. */
+  grid-template-columns: minmax(0, 1fr) minmax(24px, 56px) 38px;
+  align-items: center;
+  gap: 8px;
+}
+.dqterm {
+  font-size: 12.5px;
+  color: #1c1c1e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dqtermbar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+.dqtermbar > span {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.dqtermn {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-align: right;
+  color: #6c6c72;
+}
+/* NAMED .dqsides, NOT .dqsplit: the data tab already owns .dqsplit (a 1fr
+   1fr grid further down this file). Measured 2026-10-02 — the first version of
+   this card used that name, lost to the later rule, and laid its bar out in a
+   168px grid cell while leaking its own padding onto the other tab's card.
+
+   The one place two shares are shown against each OTHER rather than against a
+   leader, so it gets a single split bar instead of two rows: the question is
+   which side wins, and two separate bars make that an arithmetic exercise. */
+.dqsides {
+  padding: 14px 18px 18px;
+}
+.dqsidesbar {
+  display: flex;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f4f4f5;
+}
+.dqsidesbar > span {
+  display: block;
+  height: 14px;
+}
+.dqsidesbar > .demand {
+  background: #1c1c1e;
+}
+.dqsidesbar > .supply {
+  background: #c7c7cc;
+}
+.dqsideskey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0 0;
+}
+.dqsideskey > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #6c6c72;
+}
+.dqsideskey i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.dqsideskey i.demand {
+  background: #1c1c1e;
+}
+.dqsideskey i.supply {
+  background: #c7c7cc;
+}
+.dqsideskey b {
+  font-family: var(--font-label);
+  font-weight: 500;
+  color: #1c1c1e;
+}
 /* The unmapped-title share bar the design puts at the end of each row. */
 .dqbar {
   flex: 0 0 72px;

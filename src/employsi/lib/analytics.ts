@@ -123,11 +123,18 @@ function flush(unloading = false): void {
   send(batch, unloading);
 }
 
-/** Record that something happened. Never throws, never blocks. */
-export function track(name: EventName, detail?: string): void {
+/**
+ * Record that something happened. Never throws, never blocks.
+ *
+ * `ms` is only meaningful on the duration events (panel_close, mode_use,
+ * session_end) and is clamped and zeroed for everything else on the server —
+ * see DURATION_EVENTS in lib/events.ts. Passing it here is a request, not a
+ * fact; the server decides.
+ */
+export function track(name: EventName, detail?: string, ms?: number): void {
   if (typeof window === "undefined") return;
   if (!sessionId) sessionId = rid();
-  queue.push({ name, detail, sessionId, anonKey: anonKey() });
+  queue.push({ name, detail, sessionId, anonKey: anonKey(), ms });
   if (queue.length >= FLUSH_AT) {
     flush();
     return;

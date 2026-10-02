@@ -40,6 +40,8 @@ export const ALLOWED_EVENTS = [
   "follow_add",
   "follow_remove",
   "panel_open",
+  "panel_close",
+  "mode_use",
 ] as const;
 
 export type EventName = (typeof ALLOWED_EVENTS)[number];
@@ -50,6 +52,8 @@ const MAX_BATCH = 40;
 const MAX_DETAIL = 64;
 /** Longer than this is a tab left open overnight, not a session. */
 const MAX_SESSION_MS = 4 * 60 * 60 * 1000;
+/** The events whose `ms` is a real duration rather than 0. */
+const DURATION_EVENTS = new Set<string>(["session_end", "panel_close", "mode_use"]);
 
 export interface ClientEvent {
   name: string;
@@ -106,10 +110,17 @@ export async function writeEvents(
       // dropped so the two cannot be joined back together afterwards.
       anonKey: userKey ? "" : clean(e.anonKey, 40),
       sessionId: clean(e.sessionId, 40),
-      ms:
-        e.name === "session_end"
-          ? Math.max(0, Math.min(MAX_SESSION_MS, Math.round(Number(e.ms) || 0)))
-          : 0,
+      // `ms` is a DURATION and three events carry one now: how long a session
+      // ran, how long a feature panel was open, and how long the app sat on the
+      // supply or the demand side. Everything else stores 0.
+      //
+      // Clamped to the same ceiling for all three, because they fail the same
+      // way: a tab left open overnight. A browser can report anything, and an
+      // unclamped sum is one forgotten tab away from claiming a feature was
+      // used for nine hours.
+      ms: DURATION_EVENTS.has(e.name)
+        ? Math.max(0, Math.min(MAX_SESSION_MS, Math.round(Number(e.ms) || 0)))
+        : 0,
     }));
   if (!rows.length) return 0;
 
