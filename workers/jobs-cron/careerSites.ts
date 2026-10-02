@@ -23237,9 +23237,11 @@ export const SITES: SiteDef[] = [
   // third fingerprint that cannot be tested from here, and a reader that cannot
   // be run end to end is not wired. A runner (curl/python) could read it.
   // Meituan — zhaopin.meituan.com experienced board, 2,496-2,500. Wired ONCE, here:
-  // the roster also carries hongkong-03690 "Meituan", the same company's HKEX
-  // line, and a second feed would file every role twice. Beijing is its head
-  // office and 60% of its roles; homeHub null because a blank must not default.
+  // the roster used to carry hongkong-03690 "Meituan" as well, the same
+  // company's HKEX line, and a second feed would have filed every role twice.
+  // That line was retired into this one on 2026-10-02 (mergedCompanies.ts), so
+  // there is one Meituan card. Beijing is its head office and 60% of its roles;
+  // homeHub null because a blank must not default.
   {
     id: "beijing-03690",
     name: "Meituan",

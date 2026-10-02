@@ -217,7 +217,6 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     cityId: 702,
     hub: "hongkong",
   },
-  { id: "hongkong-03690", name: "Meituan", kw: "美团", cityId: 702, hub: "hongkong" },
   {
     id: "hongkong-09988",
     name: "Alibaba Group Holding",

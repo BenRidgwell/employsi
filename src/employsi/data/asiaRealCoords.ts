@@ -149,7 +149,6 @@ export const ASIA_REAL_COORDS: Record<string, [number, number]> = {
   "hongkong-01929": [114.15727, 22.28072], // Chow Tai Fook Jewellery — 33/F New World Tower, 16-18 Queen's Road Central · registered office
   "hongkong-02020": [114.21021, 22.31968], // Anta Sports — 16/F Manhattan Place, 23 Wang Tai Road, Kowloon Bay · Report of the Directors, Principal Place of Business
   "hongkong-02388": [114.16149, 22.27906], // BOC Hong Kong — 53/F Bank of China Tower, 1 Garden Road · Registered Office
-  "hongkong-03690": [114.1846, 22.27845], // Meituan — Room 1912, Lee Garden One, 33 Hysan Avenue, Causeway Bay · Principal Place of Business in Hong Kong
   "hongkong-03988": [114.16149, 22.27906], // Bank of China — Bank of China Tower, 1 Garden Road, Central · Place of Business in Hong Kong SAR
   "hongkong-06862": [114.17353, 22.27479], // Haidilao International — 40/F Dah Sing Financial Centre, 248 Queen's Road East, Wanchai · Principal Place of Business in Hong Kong
   "hongkong-09988": [114.18257, 22.27821], // Alibaba Group — 26/F Tower One, Times Square, 1 Matheson Street, Causeway Bay · business address of directors and executive officers

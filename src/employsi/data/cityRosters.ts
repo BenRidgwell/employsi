@@ -332,14 +332,14 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // Xiaomi (01810), Tencent (00700) and China Life (02628) are on the
       // Beijing and Shenzhen rosters, where they are headquartered, and were
       // removed from this one on 2026-09-30 — a second pin for one employer,
-      // each with its own slice of the same company's ads. The retired
+      // each with its own slice of the same company's ads. Meituan (03690) was
+      // the same case and was missed; it went on 2026-10-02. The retired
       // hongkong-* ids resolve through data/mergedCompanies.ts.
       ["01038", "CK Infrastructure Holdings", INF],
       ["01299", "AIA Group", FIN],
       ["01928", "Sands China", CON],
       ["01929", "Chow Tai Fook Jewellery", CON],
       ["02388", "BOC Hong Kong (Holdings)", FIN],
-      ["03690", "Meituan", TMT],
       ["09988", "Alibaba Group Holding", TMT],
       ["00012", "Henderson Land Development", INF],
       ["00016", "Sun Hung Kai Properties", INF],
