@@ -10064,8 +10064,8 @@ body {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 20px 22px;
+  gap: 12px;
+  padding: 15px 16px;
   background: var(--neutral-900, #1c1c1e);
   color: #fff;
 }
@@ -10078,13 +10078,13 @@ body {
 }
 .srpoptitle {
   font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 .srpopsub {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.35;
   color: var(--neutral-400, #a1a1a6);
 }
@@ -10092,10 +10092,10 @@ body {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
+  gap: 5px;
+  padding: 2px 9px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.5;
   white-space: nowrap;
   color: var(--status-success-fg);
@@ -10107,22 +10107,32 @@ body {
   border-radius: 50%;
   background: var(--status-success-dot);
 }
+/* ── The tiles, compacted against the company card's own density ───────────
+   The mock's numbers were padding 16, gap 12, a 16px title and 12px chips,
+   which is a ~105px tile. Three of those and the list is taller than the card
+   it hangs off, and this is a panel whose whole job is to show a SET of ads —
+   the case it has to be good at is the one with several in it.
+
+   The reference is the card beside it, not taste: its own list rows (.rolet)
+   are 13px/600, so a role title at 14 is one notch up from them, which is
+   right because here the title is the row's whole subject rather than a label
+   beside a bar. Everything else steps down with it. */
 .srpoprows {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 20px 22px;
+  gap: 8px;
+  padding: 14px 16px;
 }
 .srpoprow {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: 6px;
+  padding: 11px 13px;
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 11px;
   text-decoration: none;
   color: inherit;
   transition:
@@ -10136,11 +10146,12 @@ a.srpoprow:hover {
 .srpoprowtop {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
 }
 .srpoprole {
   font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.3;
@@ -10154,16 +10165,16 @@ a.srpoprow:hover {
 .srpopchips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .srpopchip {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 4px;
+  padding: 2px 8px;
   border-radius: 999px;
-  font-size: 12px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.45;
   color: var(--text-secondary);
   background: var(--surface-sunken);
 }
