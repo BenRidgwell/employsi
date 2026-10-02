@@ -16311,6 +16311,7 @@ a.srpoprow:hover {
    reflows as you read down it is harder to scan, which is the opposite of the
    point. */
 .nbread {
+  margin-left: auto;
   flex: 0 0 auto;
   background: var(--surface-card, #fff);
   display: inline-flex;
@@ -16403,13 +16404,13 @@ a.srpoprow:hover {
   background: #eceef4;
   color: #42506e;
 }
-.nbwhen {
-  margin-left: auto;
-  font-family: var(--font-label);
-  font-size: 10px;
-  color: var(--neutral-400);
-}
+/* THE STATUS MARK CARRIES THE `margin-left: auto` NOW. It was on .nbwhen, the
+   "5 ads" label that used to sit between the pill and the mark — the row's top
+   line is a flex row, and that one rule is what pushed everything after it to
+   the right edge. Deleting the label without moving it would have left the dot
+   tucked against the kind pill in the middle of the row. */
 .nbdot {
+  margin-left: auto;
   width: 6px;
   height: 6px;
   border-radius: 999px;
