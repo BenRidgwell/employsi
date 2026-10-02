@@ -116,18 +116,24 @@ export const METHOD: Record<DataIntent, string> = {
  * question rather than trailing off.
  *
  * THE VOLUME ONE IS THE REASON THIS EXISTS IN THIS FORM. A count of live ads
- * double-counts a role advertised on two boards, because the source is part of
- * the key. That is a real limit of every volume figure this analyst gives, it
- * was written down nowhere the user could see it, and the explanation that
- * should have carried it said the opposite. Stating a limit plainly is the
- * cheapest honesty available; hiding it inside a method paragraph is not.
+ * used to double-count a role advertised on two boards, because the source is
+ * the first field of the archive's key. That was a real limit of every volume
+ * figure this analyst gave, it was written down nowhere the user could see it,
+ * and the explanation that should have carried it said the opposite.
+ *
+ * It is FIXED now, not merely disclosed: every row carries a `role_key` —
+ * employer, city and normalised title — and the volume counts are
+ * COUNT(DISTINCT role_key). The limit this entry states changed with it, and
+ * had to: a card describing a weakness the product no longer has is the same
+ * failure as one hiding a weakness it does, pointed the other way. What
+ * replaced it is the fold's OWN limit, which is real and smaller.
  *
  * Each entry ends with a question the router actually answers, so "tell me
  * more" always leaves somewhere to go.
  */
 export const LIMITS: Record<DataIntent, string> = {
   volume:
-    "What it can't tell you: how many JOBS there are. One role advertised on two boards is two rows here, because the board is part of what makes an ad distinct, so a market whose employers post everywhere reads higher than one that posts once. It also only covers employers employsi crawls, and an ad staying up is not proof the job is still unfilled. Treat it as advertising activity, which is what it measures, and lean on the direction more than the level. Ask me which skills those ads name, or the same question about another city — the double-counting is roughly consistent between places, so comparisons hold up better than the raw number.",
+    "What it can't tell you: how many JOBS there are. One role is counted once however many boards carry it — employer, city and title together are what make it distinct — but that same fold means an employer advertising two genuinely different jobs under one title in one city reads as one. It also only covers employers employsi crawls, and an ad staying up is not proof the job is still unfilled. Treat it as advertising activity, which is what it measures, and lean on the direction more than the level. Ask me which skills those ads name, or the same question about another city.",
   skills:
     "What it can't tell you: how hard a skill is to hire. The ranking counts ads that NAME the skill in their title, so a skill an employer wants but writes in the body instead is invisible to it, and a common word beats a rare and valuable one every time. A speciality is folded into the skill it narrows, so the rank you see is the family. Ask me how long ads naming those skills stay up — that gets closer to which ones employers struggle to fill.",
   pay: 'What it can\'t tell you: what people are paid. It is advertised pay, from the minority of ads that state any, and that minority is not a random sample — public-sector and award-covered roles publish bands as a matter of course while senior private roles publish "competitive", so a median over what is disclosed sits low against the real market. Whether a figure is base or package depends on who wrote the ad. Ask me how it compares against the wider market, which reads the same skew on both sides and so cancels most of it.',

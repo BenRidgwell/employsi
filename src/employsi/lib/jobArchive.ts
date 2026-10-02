@@ -112,7 +112,14 @@ function norm(s: string): string {
     .slice(0, 120);
 }
 
+import { roleKey } from "./roleKey";
+
 // A stable key so the same ad from the same source dedupes across runs.
+//
+// SOURCE IS THE FIRST FIELD, which is why one job on two boards is two rows.
+// That is kept on purpose — it is the record of what each feed showed, and the
+// coverage checks read it — and `role_key` below is what lets a COUNT see
+// those two rows as one role. See lib/roleKey.ts.
 export function jobKey(r: ArchiveRow): string {
   return [
     r.source,
@@ -133,17 +140,35 @@ export async function archiveJobs(
   today: string,
 ): Promise<void> {
   if (!db || !rows.length) return;
+  // `role_key` is added lazily, the same way llm_usage and the other late
+  // tables are: the column did not exist when this table was created, and a
+  // migration that has to be run by hand before a deploy is a migration
+  // someone forgets. ALTER TABLE throws once the column is there, which is the
+  // success case, so the error is swallowed.
+  try {
+    await db.prepare("ALTER TABLE jobs ADD COLUMN role_key TEXT").run?.();
+  } catch {
+    /* already added — the only outcome after the first run */
+  }
+  try {
+    await db.prepare("CREATE INDEX IF NOT EXISTS idx_jobs_role_key ON jobs(role_key)").run?.();
+  } catch {
+    /* best effort: the counts are correct without it, only slower */
+  }
   const stmt = db.prepare(
     `INSERT INTO jobs
-       (job_key, source, title, company, company_id, hub, location, category, salary, url, posted, skills, first_seen, last_seen, seen_count)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, 1)
+       (job_key, role_key, source, title, company, company_id, hub, location, category, salary, url, posted, skills, first_seen, last_seen, seen_count)
+     VALUES (?1, ?14, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?13, 1)
      ON CONFLICT(job_key) DO UPDATE SET
        last_seen  = ?13,
        seen_count = seen_count + 1,
        salary     = COALESCE(salary, ?9),
        url        = COALESCE(NULLIF(url, ''), ?10),
        posted     = COALESCE(NULLIF(posted, ''), ?11),
-       skills     = COALESCE(skills, ?12)`,
+       skills     = COALESCE(skills, ?12),
+       -- Set on re-seen rows too, so the archive fills in without a backfill
+       -- for anything still being advertised. Only the dormant rows need one.
+       role_key   = COALESCE(NULLIF(role_key, ''), ?14)`,
   );
   const seen = new Set<string>();
   const stmts: unknown[] = [];
@@ -167,6 +192,7 @@ export async function archiveJobs(
         r.posted ?? "",
         r.skills && r.skills.length ? JSON.stringify(r.skills) : null,
         today,
+        roleKey(r.companyId, r.company, r.hub, r.location, r.title),
       ),
     );
   }
