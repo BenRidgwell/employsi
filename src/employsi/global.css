@@ -10060,11 +10060,13 @@ body {
   box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
+/* One item now that the count chip is gone, so no gap and nothing to align
+   against — but kept as a flex row so .srpophdmain's `flex: 1; min-width: 0`
+   still bounds the title and lets it ellipsis rather than overflow the card. */
 .srpophd {
   flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
   padding: 15px 16px;
   background: var(--neutral-900, #1c1c1e);
   color: #fff;
@@ -10088,35 +10090,6 @@ body {
   line-height: 1.35;
   color: var(--neutral-400, #a1a1a6);
 }
-.srpopcount {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: nowrap;
-  color: var(--status-success-fg);
-  background: var(--status-success-bg);
-}
-.srpopdot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-success-dot);
-}
-/* ── The tiles, compacted against the company card's own density ───────────
-   The mock's numbers were padding 16, gap 12, a 16px title and 12px chips,
-   which is a ~105px tile. Three of those and the list is taller than the card
-   it hangs off, and this is a panel whose whole job is to show a SET of ads —
-   the case it has to be good at is the one with several in it.
-
-   The reference is the card beside it, not taste: its own list rows (.rolet)
-   are 13px/600, so a role title at 14 is one notch up from them, which is
-   right because here the title is the row's whole subject rather than a label
-   beside a bar. Everything else steps down with it. */
 .srpoprows {
   flex: 1 1 auto;
   min-height: 0;
