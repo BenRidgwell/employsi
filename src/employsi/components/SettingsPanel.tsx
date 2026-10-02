@@ -30,7 +30,7 @@ import { IconClose } from "./ActionIcons";
  * have stranded anyone who had turned labels OFF with no way to turn them
  * back on.
  *
- * The other four cannot be backed without inventing something:
+ * The other three cannot be backed without inventing something:
  *
  *   Night mode      — no dark theme exists. The design ALREADY marks this one
  *                     "Coming soon", which is the honest treatment; it is worth
@@ -43,12 +43,19 @@ import { IconClose } from "./ActionIcons";
  *                     quoted. Converting between them needs FX rates we do not
  *                     hold, and a converted salary that is silently wrong is
  *                     worse than an unconverted one that is right.
- *   Language        — there is no translation layer; switching the value would
- *                     relabel nothing.
+ *
+ * LANGUAGE IS NOT HERE, and was until 2026-10-02. It had the same honest
+ * treatment as the rest — a disabled "English (UK)" select with a Coming soon
+ * chip — but it was the one row whose placeholder said nothing a visitor did
+ * not already know: the app is in English, they are reading it, and the row
+ * only promised that one day it might not be. The others each name a real
+ * capability the product is missing. Removed rather than disabled, so the card
+ * is shorter and every row left on it is a thing worth waiting for.
  *
  * Rather than drop them (which loses the design) or ship them live (which lies),
- * they use the design's own "Coming soon" pattern: disabled control, muted
- * label, chip. The card then says exactly what the product can do.
+ * the remaining three use the design's own "Coming soon" pattern: disabled
+ * control, muted label, chip. The card then says exactly what the product can
+ * do.
  *
  * There is no separate admin variant. Everything here is a per-device display
  * preference, and an admin's map differs only in which markets are released —
@@ -208,16 +215,6 @@ export function SettingsPanel() {
                 AUD
               </button>
             </div>
-          </div>
-
-          <div className="strow muted stinline">
-            <span className="strowtitle">
-              Language
-              <Soon />
-            </span>
-            <select className="stselect" value="en-GB" disabled aria-label="Language">
-              <option value="en-GB">English (UK)</option>
-            </select>
           </div>
 
           <Row title="Use my location" sub="Centre the map on where you are.">
