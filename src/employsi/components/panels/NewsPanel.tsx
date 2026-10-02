@@ -187,6 +187,7 @@ export function NewsPanel({
   collapsed,
   onToggleCollapse,
   loading,
+  matchHeight,
 }: {
   name: string;
   sector: string;
@@ -197,6 +198,20 @@ export function NewsPanel({
   onToggleCollapse?: () => void;
   /** True while the company card itself is still resolving. */
   loading?: boolean;
+  /**
+   * The company card's measured height, so this panel is the same size as it.
+   *
+   * The two are a designed PAIR — same width rule, same radius, same shadow —
+   * and the stage centres each on its own, so two different heights showed as
+   * two cards agreeing on neither their top nor their bottom edge. The number
+   * comes from the card's own observed height (cardFloor in CompanyPanel), so
+   * it is what the card actually is rather than a second guess at it.
+   *
+   * 0 before the card has been measured, which renders no style at all and
+   * leaves the panel at its content height — the same first frame the card
+   * itself has.
+   */
+  matchHeight?: number;
 }) {
   const generated = useMemo(() => companyNews(name, sector), [name, sector]);
   // EVERY company fetches the live feed, keyed on the company name alone (the
@@ -380,6 +395,19 @@ export function NewsPanel({
   return (
     <aside
       className={`newspanel${collapsed ? " collapsed" : ""}`}
+      /* `height`, not `min-height`: a company with more articles than the card
+         has content would otherwise grow PAST it and the pair would disagree
+         again, the other way round. .nwscroll is `flex: 1 1 auto; min-height:
+         0; overflow: auto`, so a longer list scrolls inside the matched box
+         rather than stretching it. Capped in CSS for the same reason the
+         card's floor is: a height set from a measurement taken before the
+         window shrank would otherwise beat the max-height meant to contain
+         it. */
+      style={
+        matchHeight
+          ? { height: `min(${matchHeight}px, calc(100vh - var(--head-height) - 48px))` }
+          : undefined
+      }
       /* Collapsed, the whole panel is one big target: only a ~26px sliver of it
          is on screen, and asking someone to hit a 15px button inside that
          sliver would be a worse control than the one it replaced. */
