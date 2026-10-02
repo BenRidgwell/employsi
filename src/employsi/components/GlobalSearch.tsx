@@ -16,7 +16,6 @@ import {
   type DemandTone,
 } from "../lib/skillHeat";
 import { employmentFor, vacancyRate } from "../lib/vacancyRate";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { describeSkills } from "../lib/describeSkills";
 import { useOntologyReady } from "../hooks/useOntologyReady";
 import {
@@ -28,6 +27,10 @@ import {
   SKILL_ICONS,
   TIMELINE_LABEL,
   TIMELINE_SPAN,
+  TIMELINE_MONTHS,
+  monthAt,
+  beyondIvi,
+  IVI_LAST_MONTH,
 } from "../lib/skillCard";
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
@@ -331,11 +334,11 @@ export function GlobalSearch() {
   // the toggle rather than showing it next to a blank.
   const setDemandMode = useAppStore((s) => s.setDemandMode);
   const cardRate = useMemo(
-    () => (cardSkill ? vacancyRate(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    () => (cardSkill ? vacancyRate(cardSkill, "national", monthAt(heatMonth)) : null),
     [cardSkill, heatMonth],
   );
   const cardEmployed = useMemo(
-    () => (cardSkill ? employmentFor(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    () => (cardSkill ? employmentFor(cardSkill, "national", monthAt(heatMonth)) : null),
     [cardSkill, heatMonth],
   );
   /**
@@ -368,14 +371,16 @@ export function GlobalSearch() {
    * that looks uniformly scrubbable and silently is not.
    */
   const covered = useMemo(() => {
-    const idx = (skillMonths?.months ?? []).map((m) => IVI_MONTHS.indexOf(m)).filter((i) => i >= 0);
+    const idx = (skillMonths?.months ?? [])
+      .map((m) => TIMELINE_MONTHS.indexOf(m))
+      .filter((i) => i >= 0);
     if (!idx.length) return null;
     const lo = Math.min(...idx);
     const hi = Math.max(...idx);
     return {
       left: (lo / TIMELINE_SPAN) * 100,
       width: ((hi - lo) / TIMELINE_SPAN) * 100,
-      from: monthLabel(IVI_MONTHS[lo]),
+      from: monthLabel(TIMELINE_MONTHS[lo]),
       has: heatMonth >= lo && heatMonth <= hi,
     };
   }, [skillMonths, heatMonth]);
@@ -897,8 +902,24 @@ export function GlobalSearch() {
               {covered && (
                 <p className="gstimecovnote">
                   {covered.has
-                    ? `Employers on the map are the ones advertising this in ${monthLabel(IVI_MONTHS[heatMonth])}.`
+                    ? `Employers on the map are the ones advertising this in ${monthLabel(monthAt(heatMonth))}.`
                     : `The archive names employers from ${covered.from}. Before that the map holds today's, and only the city shading follows the timeline.`}
+                </p>
+              )}
+              {/* THE TWO SIDES OF THIS TIMELINE END ON DIFFERENT DAYS. Our own
+                  archive is scraped nightly; the Internet Vacancy Index is a
+                  monthly release and runs a few months behind it. The axis now
+                  reaches the present month so the ads can be current, which
+                  means the last stretch of it has employer figures and no
+                  national index — and the city shading holds at the last month
+                  the index covers rather than going dark, because an unlit map
+                  reads as a world nobody is hiring in instead of one nobody has
+                  published yet. Said here rather than left for a reader to
+                  infer from two numbers that stop agreeing. */}
+              {beyondIvi(heatMonth) && (
+                <p className="gstimecovnote">
+                  National vacancy figures are published to {monthLabel(IVI_LAST_MONTH)}; the city
+                  shading holds there. Employer counts are our own and follow the handle.
                 </p>
               )}
               {event && (

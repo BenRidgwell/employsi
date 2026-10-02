@@ -2,7 +2,7 @@ import { useAppStore } from "../state/store";
 import { COMPANIES, type Company } from "../data/companies";
 import { CITY_COMPANIES } from "../data/mapboxGeo";
 import { GLOBAL_HUB_LABEL } from "../data/geo";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
+import { monthAt } from "../lib/skillCard";
 import { activeSkill } from "../lib/skillHeat";
 import { cityEmployment, localSupplyFor } from "../lib/localSupply";
 
@@ -85,7 +85,7 @@ export function LocalBanner() {
     // sentence, which is the one thing that type exists to stop.
     const skill = activeSkill(searchQuery);
     if (skill) {
-      const emp = cityEmployment(skill, localCity, IVI_MONTHS[heatMonth] ?? "");
+      const emp = cityEmployment(skill, localCity, monthAt(heatMonth));
       stats.push(
         emp === null
           ? { value: "—", label: `no ${skill} employment for ${cityName}` }

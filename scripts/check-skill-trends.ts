@@ -80,8 +80,20 @@ import {
   searchSkillMatches,
   withParent,
 } from "../src/employsi/data/skillsTaxonomy";
-import { buildSkillCard, TIMELINE_SPAN } from "../src/employsi/lib/skillCard";
+import {
+  buildSkillCard,
+  TIMELINE_SPAN,
+  TIMELINE_MONTHS,
+  IVI_LAST_INDEX,
+  beyondIvi,
+} from "../src/employsi/lib/skillCard";
 import { activeSkill } from "../src/employsi/lib/skillHeat";
+
+/** The month after "YYYY-MM". Used to assert the axis has no gaps. */
+function nextMonth(m: string): string {
+  const [y, mo] = m.split("-").map(Number);
+  return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
+}
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {
@@ -2369,27 +2381,61 @@ console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
 // the vacancy series then gained two months, so the header read "MAR 2006 – JUL
 // 2026", the handle sat on Jul 2026, and the panel under it was badged MAY
 // 2026. Nothing errored; the label had been left behind by its own data.
-console.log("\nthe timeline's present-day event sits on the series' last month:");
+// THE AXIS OUTRUNS THE INDEX ON PURPOSE. It used to be one invariant — the
+// index's last month WAS the timeline's end — and this asserted it. It is now
+// two, because the IVI is a monthly release and our archive is scraped
+// nightly: the axis runs to the present month so the ads at the right-hand end
+// are current, and the index's last month sits wherever it has got to. Both
+// ends are checked, because either drifting on its own is the original bug.
+console.log("\nthe timeline runs to the present month, and the index marker to the index:");
 {
   const last = IVI_MONTHS[IVI_MONTHS.length - 1];
-  const present = LABOUR_EVENTS.find((e) => e.title === "Present day");
-  check("the present-day event exists", !!present, "not found in LABOUR_EVENTS");
+  const present = LABOUR_EVENTS.find((e) => e.title === "Latest vacancy index");
+  check("the index event exists", !!present, "not found in LABOUR_EVENTS");
   if (present) {
     const iso = `${present.year}-${String(present.month + 1).padStart(2, "0")}`;
-    check(`present day is ${last}`, iso === last, `event says ${iso}`);
-    // It must also be ON the axis and at its end, which is what makes the
-    // handle and the badge agree rather than merely reading alike.
+    check(`the index marker is ${last}`, iso === last, `event says ${iso}`);
+    // On the axis, at the index's own last month — not at the end of the track.
     check(
-      "...and lands on the last tick of the timeline",
-      eventIndex(present) === TIMELINE_SPAN,
-      `index ${eventIndex(present)} of ${TIMELINE_SPAN}`,
+      "...and lands on the index's last tick",
+      eventIndex(present) === IVI_LAST_INDEX,
+      `index ${eventIndex(present)} of ${IVI_LAST_INDEX}`,
     );
     check(
-      "...and the header's end month is the same month",
-      TIMELINE_LABEL.endsWith(monthLabel(last)),
-      TIMELINE_LABEL,
+      "...which is not the end of the track, and beyondIvi knows it",
+      !beyondIvi(IVI_LAST_INDEX) && beyondIvi(TIMELINE_SPAN) === TIMELINE_SPAN > IVI_LAST_INDEX,
+      `span ${TIMELINE_SPAN}, index ${IVI_LAST_INDEX}`,
     );
   }
+  // The header must name the month the HANDLE can actually reach, which is the
+  // present one. A label left behind by its own axis is the bug this file was
+  // written for; it has simply moved from the series to the clock.
+  const now = new Date();
+  const thisMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  check(
+    `the axis reaches the present month (${thisMonth})`,
+    TIMELINE_MONTHS[TIMELINE_SPAN] === thisMonth,
+    `ends ${TIMELINE_MONTHS[TIMELINE_SPAN]}`,
+  );
+  check(
+    "...and the header's end month is that month",
+    TIMELINE_LABEL.endsWith(monthLabel(thisMonth)),
+    TIMELINE_LABEL,
+  );
+  // The extension must be an EXTENSION: the index's own months are the axis's
+  // prefix, unchanged. Every country series is indexed by position against
+  // IVI_MONTHS, so a single inserted or shifted month would move eight
+  // datasets at once and nothing would error.
+  check(
+    "the index's months are the axis's prefix, unshifted",
+    IVI_MONTHS.every((m, i) => TIMELINE_MONTHS[i] === m),
+    "TIMELINE_MONTHS diverges from IVI_MONTHS inside the index's own range",
+  );
+  check(
+    "the axis is strictly increasing with no gaps",
+    TIMELINE_MONTHS.every((m, i) => i === 0 || nextMonth(TIMELINE_MONTHS[i - 1]) === m),
+    "a month is missing or out of order",
+  );
   // Every other event is a historical fact and must stay on the axis, or its
   // tick silently disappears from the track.
   const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);

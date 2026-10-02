@@ -114,10 +114,72 @@ const MONTH_SHORT = [
   "Dec",
 ];
 
-export const TIMELINE_SPAN = IVI_MONTHS.length - 1;
-export const TIMELINE_LABEL = `Timeline · ${monthLabel(IVI_MONTHS[0])} – ${monthLabel(
-  IVI_MONTHS[TIMELINE_SPAN],
+/**
+ * The timeline's axis, and why it is NOT IVI_MONTHS.
+ *
+ * IVI_MONTHS is the Jobs and Skills Australia Internet Vacancy Index's own
+ * month list, and it is the shared INDEX AXIS for eight generated datasets —
+ * sg/uk/ca/nz/hk/ph/eu vacancy demand all store one array per skill per hub
+ * whose nth element is IVI_MONTHS[n]. Appending to it would silently shift
+ * every one of those lookups, so it is left exactly as generated.
+ *
+ * But the IVI is a monthly RELEASE and the archive is scraped nightly, so the
+ * two ends do not meet: the index was published to July 2026 while our own ads
+ * were current to October. With the slider stopping at the IVI's last month,
+ * the right-hand end of the timeline — the position that reads as "now" —
+ * showed JULY's ads, because July is a month the archive covers and
+ * demandByCompanyAt therefore answers from `byMonthCity` rather than from the
+ * live rows. Expired ads, presented as current.
+ *
+ * So the axis is the IVI's months carried forward to the present month. The
+ * extension carries no IVI data and is not supposed to: everything that reads
+ * a national series by month gets no answer there and says so, while
+ * everything that reads the ARCHIVE by month — the company pins, the local
+ * banner, the roles call-out — gets the month the person actually asked for.
+ *
+ * Computed at load rather than generated, so the axis stays correct as months
+ * pass without anyone remembering to regenerate a file.
+ */
+export const IVI_LAST_INDEX = IVI_MONTHS.length - 1;
+export const IVI_LAST_MONTH = IVI_MONTHS[IVI_LAST_INDEX];
+
+export const TIMELINE_MONTHS: string[] = (() => {
+  const out = [...IVI_MONTHS];
+  const now = new Date();
+  const present = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  // A guard, not a limit: if the IVI ever publishes AHEAD of the clock, or the
+  // clock is wrong, this stops the loop rather than running forever.
+  for (let i = 0; i < 240 && out[out.length - 1] < present; i++) {
+    const [y, m] = out[out.length - 1].split("-").map(Number);
+    const ny = m === 12 ? y + 1 : y;
+    const nm = m === 12 ? 1 : m + 1;
+    out.push(`${ny}-${String(nm).padStart(2, "0")}`);
+  }
+  return out;
+})();
+
+export const TIMELINE_SPAN = TIMELINE_MONTHS.length - 1;
+export const TIMELINE_LABEL = `Timeline · ${monthLabel(TIMELINE_MONTHS[0])} – ${monthLabel(
+  TIMELINE_MONTHS[TIMELINE_SPAN],
 )}`;
+
+/** The month a slider position means, or "" if it is off the axis. */
+export function monthAt(i: number): string {
+  return TIMELINE_MONTHS[i] ?? "";
+}
+
+/**
+ * Is this position past the last month the Internet Vacancy Index covers?
+ *
+ * The national and global views are IVI-backed and have nothing to show here.
+ * They hold the last published month rather than going dark — an unlit globe
+ * reads as a world where nobody is hiring, not as one nobody has measured yet
+ * (the same reasoning iviCityDemandAt's own comment gives) — so the caller's
+ * job is to SAY which month those figures are, and this is what it asks.
+ */
+export function beyondIvi(i: number): boolean {
+  return i > IVI_LAST_INDEX;
+}
 
 export function monthLabel(iso: string): string {
   const [y, m] = iso.split("-");
@@ -832,8 +894,8 @@ function buildSpecialityCard(
     percentile: demandPercentile(skill, true, idx, "volume"),
     openRoles: now,
     employed: null,
-    month: IVI_MONTHS[mi],
-    monthLabel: monthLabel(IVI_MONTHS[mi]),
+    month: monthAt(mi),
+    monthLabel: monthLabel(monthAt(mi)),
     change,
     spark: spark?.line ?? null,
     sparkArea: spark?.area ?? null,
@@ -891,7 +953,7 @@ export function quarterLabelFor(month: string): string {
 function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null): SkillCard {
   const parent = SKILL_PARENT[skill];
   const atPresent = mi === TIMELINE_SPAN;
-  const month = IVI_MONTHS[mi];
+  const month = monthAt(mi);
   const badge = demandLevel(skill, true, idx, "employment");
   const employed = employmentFor(skill, "national", month);
 
@@ -901,7 +963,7 @@ function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null):
   const series: number[] = [];
   let from = -1;
   for (let i = 0; i <= mi; i++) {
-    const v = employmentFor(skill, "national", IVI_MONTHS[i]);
+    const v = employmentFor(skill, "national", monthAt(i));
     series.push(v ?? 0);
     if (from < 0 && v !== null) from = i;
   }
@@ -912,7 +974,7 @@ function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null):
   // twelve weeks of a quarterly series is one step or none.
   const YOY_MONTHS = 12;
   const before =
-    mi >= YOY_MONTHS ? employmentFor(skill, "national", IVI_MONTHS[mi - YOY_MONTHS]) : null;
+    mi >= YOY_MONTHS ? employmentFor(skill, "national", monthAt(mi - YOY_MONTHS)) : null;
   const change =
     employed !== null && before !== null && before > 0
       ? ((employed - before) / before) * 100
@@ -1013,7 +1075,7 @@ export function buildSkillCard(
     summaryLead =
       now === null
         ? `No statistical agency in employsi publishes a vacancy series for ${skill}, so there is no history to trend.`
-        : `${roles} in ${monthLabel(IVI_MONTHS[mi])}, with too little history before it to measure a move.`;
+        : `${roles} in ${monthLabel(monthAt(mi))}, with too little history before it to measure a move.`;
   } else {
     summaryLead = up ? "Openings are up " : down ? "Openings are down " : "Openings are flat, ";
     summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
@@ -1035,8 +1097,8 @@ export function buildSkillCard(
     percentile: at?.percentile ?? 0,
     openRoles: now,
     employed: null,
-    month: IVI_MONTHS[mi],
-    monthLabel: monthLabel(IVI_MONTHS[mi]),
+    month: monthAt(mi),
+    monthLabel: monthLabel(monthAt(mi)),
     change,
     spark: spark?.line ?? null,
     sparkArea: spark?.area ?? null,

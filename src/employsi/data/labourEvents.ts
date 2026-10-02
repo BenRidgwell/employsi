@@ -29,8 +29,16 @@ import { IVI_MONTHS } from "./iviSkillDemand";
  * The last month of the vacancy series, as [year, 0-indexed month].
  *
  * Null when the series is empty or its last entry is not a YYYY-MM, in which
- * case the present-day event is dropped rather than dated by a fallback — the
- * whole point of this is that a wrong date here looks exactly like a right one.
+ * case the event is dropped rather than dated by a fallback — the whole point
+ * of this is that a wrong date here looks exactly like a right one.
+ *
+ * IT IS NO LONGER THE END OF THE TIMELINE, and the event was renamed for it.
+ * The axis now runs to the present month (TIMELINE_MONTHS in lib/skillCard.ts)
+ * while the IVI is a monthly release a few months behind, so a tick titled
+ * "Present day" would sit three ticks short of the end — the same kind of
+ * quietly-stale label the derivation above exists to prevent, just moved from
+ * the date to the word. What this marks is the latest published index, so that
+ * is what it now says.
  */
 const PRESENT: [number, number] | null = (() => {
   const m = /^(\d{4})-(\d{2})$/.exec(IVI_MONTHS[IVI_MONTHS.length - 1] ?? "");
@@ -122,8 +130,8 @@ export const LABOUR_EVENTS: LabourEvent[] = [
         {
           year: PRESENT[0],
           month: PRESENT[1],
-          title: "Present day",
-          note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive.",
+          title: "Latest vacancy index",
+          note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive. Months after this are our own ads only.",
         },
       ]
     : []),
