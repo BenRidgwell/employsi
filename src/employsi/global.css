@@ -9946,10 +9946,11 @@ body {
 }
 
 /* ── "Show me the ads" call-out ────────────────────────────────────────────
-   A pill to the left of the company card, and the list it opens. It is a flex
-   SIBLING of .cc inside .cardstage rather than a child of it: the card sets
-   `overflow: hidden` for its rounded corners, so anything hung off its edge
-   from the inside would be clipped away.
+   The supplied Role_Card design, to its own numbers: an ink pill with a
+   pulsing ring, over a white card with an ink header. Sizes, radii, paddings
+   and type below are the mock's; the WIDTH is not — it stays at 300px, the
+   size this already was, because the stage's breakpoint is computed from it
+   (see below) and the mock's 420px frame does not fit beside a 440px card.
 
    It is NOT a sibling of .cc any more. Both now sit in .ccwrap, which is what
    lets this align to the card's top edge: as a direct child of the stage it
@@ -9963,154 +9964,210 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 12px;
   pointer-events: auto;
   z-index: 3;
 }
 .srpopbtn {
+  position: relative;
+  /* `isolation: isolate` is what makes the z-index:-1 layers behind this work:
+     without it they would fall behind the nearest ancestor stacking context —
+     the card stage — and be painted under the map rather than under the pill. */
+  isolation: isolate;
   display: flex;
   align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 15px 0 12px;
+  gap: 8px;
+  padding: 10px 18px;
   border: 0;
   border-radius: 999px;
-  background: #1c1c1e;
+  background: var(--neutral-900, #1c1c1e);
   color: #fff;
-  font: 600 13px/1 var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow:
-    0 1px 2px rgba(28, 28, 30, 0.12),
-    0 4px 12px rgba(28, 28, 30, 0.1);
-  transition:
-    transform 160ms,
-    box-shadow 200ms;
 }
-/* THE GLOW. A pulsing ring drawn OUTSIDE the pill with box-shadow rather than
-   an extra element, so it cannot affect layout — the pill sits in a flex row
-   next to a card, and a halo that took space would push the card.
-
-   It stops on hover and while open: by then it has done its job, and a control
-   that keeps pulsing under the cursor reads as unresponsive rather than
-   inviting. */
-@keyframes srpulse {
+/* The design's two animations, kept to its own curves and timings. */
+@keyframes rolePulse {
   0% {
-    box-shadow:
-      0 1px 2px rgba(28, 28, 30, 0.12),
-      0 4px 12px rgba(28, 28, 30, 0.1),
-      0 0 0 0 rgba(28, 28, 30, 0.34);
+    transform: scale(1);
+    opacity: 0.45;
   }
-  70%,
+  70% {
+    transform: scale(1.35, 1.7);
+    opacity: 0;
+  }
   100% {
-    box-shadow:
-      0 1px 2px rgba(28, 28, 30, 0.12),
-      0 4px 12px rgba(28, 28, 30, 0.1),
-      0 0 0 11px rgba(28, 28, 30, 0);
+    opacity: 0;
   }
 }
-.srpopbtn {
-  animation: srpulse 2.4s ease-out infinite;
+@keyframes roleGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 18px 4px rgba(28, 28, 30, 0.22);
+  }
 }
-.srpopbtn:hover,
-.srpopbtn.on {
+.srpopring,
+.srpopglow {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  z-index: -1;
+}
+.srpopring {
+  background: var(--neutral-900, #1c1c1e);
+  animation: rolePulse 2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.srpopglow {
+  animation: roleGlow 2s ease-in-out infinite;
+}
+/* Both stop once the pill has been reached or used: a control that keeps
+   throbbing under the cursor reads as unresponsive rather than inviting. */
+.srpopbtn:hover .srpopring,
+.srpopbtn:hover .srpopglow,
+.srpopbtn.on .srpopring,
+.srpopbtn.on .srpopglow {
   animation: none;
+}
+.srpopbtn:hover {
   background: #2c2c2e;
 }
 .srpopbtn:active {
   transform: scale(0.98);
 }
 /* A pulse is the one thing reduced motion is most often set FOR. The pill
-   keeps its shadow and simply does not throb. */
+   keeps its shape and simply does not throb. */
 @media (prefers-reduced-motion: reduce) {
-  .srpopbtn {
+  .srpopring,
+  .srpopglow {
     animation: none;
+  }
+  .srpopring {
+    display: none;
   }
 }
 .srpoplist {
   width: 300px;
   max-width: 76vw;
-  max-height: min(420px, calc(100vh - var(--head-height) - 120px));
+  max-height: min(460px, calc(100vh - var(--head-height) - 120px));
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-subtle, #ededf0);
-  border-radius: 16px;
+  border-radius: 18px;
   background: #fff;
-  box-shadow:
-    0 1px 2px rgba(28, 28, 30, 0.06),
-    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
 }
 .srpophd {
   flex: none;
   display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+}
+.srpophdmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 14px 16px 12px;
-  border-bottom: 1px solid var(--border-subtle, #ededf0);
 }
 .srpoptitle {
-  font: 600 14px/1.25 var(--font-display, "Mona Sans"), system-ui, sans-serif;
-  letter-spacing: -0.01em;
-  color: #1c1c1e;
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 .srpopsub {
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary, #8e8e93);
-  text-wrap: pretty;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--neutral-400, #a1a1a6);
+}
+.srpopcount {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--status-success-fg);
+  background: var(--status-success-bg);
+}
+.srpopdot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success-dot);
 }
 .srpoprows {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-.srpoprow {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 10px 30px 10px 16px;
-  border-bottom: 1px solid #f4f4f5;
+  gap: 14px;
+  padding: 20px 22px;
+}
+.srpoprow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
   text-decoration: none;
   color: inherit;
-}
-.srpoprow:last-child {
-  border-bottom: 0;
+  transition:
+    border-color 160ms,
+    box-shadow 160ms;
 }
 a.srpoprow:hover {
-  background: var(--surface-subtle, #fafafa);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.srpoprowtop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
 .srpoprole {
-  font-size: 13px;
-  line-height: 1.35;
-  color: #1c1c1e;
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--text-primary);
   text-wrap: pretty;
-}
-.srpopmeta {
-  font-family: var(--font-label);
-  font-size: 10.5px;
-  color: var(--text-tertiary, #8e8e93);
 }
 .srpopgo {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  color: #c7c7cc;
-}
-a.srpoprow:hover .srpopgo {
-  color: #6c6c72;
-}
-.srpopfoot {
   flex: none;
-  margin: 0;
-  padding: 10px 16px 12px;
-  border-top: 1px solid var(--border-subtle, #ededf0);
-  background: #fbfbfc;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--text-tertiary, #8e8e93);
-  text-wrap: pretty;
+  color: var(--text-tertiary);
+}
+.srpopchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.srpopchip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
 }
 /* THE BREAKPOINT IS MEASURED, NOT ROUND. The stage is a row that ends at the
    right edge and holds card (440) + gap (14) + this (300) inside its 22px

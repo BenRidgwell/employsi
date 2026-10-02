@@ -86,43 +86,76 @@ export function SkillRolesPopout({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        <svg
-          viewBox="0 0 24 24"
-          width="15"
-          height="15"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          aria-hidden
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="M20 20l-3.6-3.6" />
-        </svg>
+        {/* The design's two layers behind the pill: a ring that scales out and
+            a glow that breathes. Both are absolutely positioned at z-index -1
+            under `isolation: isolate`, so they cannot take layout space in a
+            flex row that sits beside a card — a halo that occupied width would
+            push the card sideways. */}
+        <span className="srpopring" aria-hidden />
+        <span className="srpopglow" aria-hidden />
+        <IconSearch />
         {n} {n === 1 ? "role" : "roles"}
       </button>
 
       {open && (
         <div className="srpoplist" role="dialog" aria-label={`${skill} roles at ${companyName}`}>
           <div className="srpophd">
-            <span className="srpoptitle">{skill}</span>
-            <span className="srpopsub">
-              {n} {n === 1 ? "ad" : "ads"} at {companyName} · {when}
+            <div className="srpophdmain">
+              <span className="srpoptitle">{skill}</span>
+              {/* The design's second line is the company. The WINDOW is added
+                  to it because this list follows the timeline handle, and a
+                  list of August ads under a card headed only by a company name
+                  would not say which August it meant. */}
+              <span className="srpopsub">
+                {companyName} · {when}
+              </span>
+            </div>
+            {/* ONE TONE, NOT A TRAFFIC LIGHT. The mock carries low/medium/high
+                colour variants whose text is identical in all three — it is
+                showing the component's swatches, not asserting a rule, and
+                there is no banding of "ads at one employer" this product can
+                back. Inventing thresholds to light it amber would be a
+                judgement with no source, so it stays on the design's default.
+                The word is the design's own and carries the caveat the list
+                needs: these are ADVERTISEMENTS. */}
+            <span
+              className="srpopcount"
+              title="Advertisements, not hires. One role carried on two boards is two rows — the same count the card shows."
+            >
+              <span className="srpopdot" aria-hidden />
+              {n} {n === 1 ? "Advertisement" : "Advertisements"}
             </span>
           </div>
           <div className="srpoprows">
             {roles.map((r, i) => {
-              const inner = (
+              const chips = (
+                <span className="srpopchips">
+                  {!!r.location && (
+                    <span className="srpopchip">
+                      <IconPin />
+                      {r.location}
+                    </span>
+                  )}
+                  {!!r.salary && <span className="srpopchip">{r.salary}</span>}
+                  {/* Where neither was collected the source is still something
+                      true to say, rather than an empty row of chips. */}
+                  {!r.location && !r.salary && !!r.source && (
+                    <span className="srpopchip">{r.source}</span>
+                  )}
+                </span>
+              );
+              const body = (
                 <>
-                  <span className="srpoprole">{r.title}</span>
-                  <span className="srpopmeta">
-                    {[r.location, r.salary].filter(Boolean).join(" · ") || r.source}
+                  <span className="srpoprowtop">
+                    <span className="srpoprole">{r.title}</span>
+                    {!!r.url && <IconGo />}
                   </span>
+                  {chips}
                 </>
               );
               // A LINK ONLY WHERE THERE IS ONE. Several feeds give no url, and
               // an anchor with nowhere to go is a control that does nothing —
-              // so those rows are plain text rather than dead links.
+              // so those rows are plain, and keep the arrow off too.
               return r.url ? (
                 <a
                   key={`${r.title}-${i}`}
@@ -131,37 +164,77 @@ export function SkillRolesPopout({
                   target="_blank"
                   rel="noreferrer noopener"
                 >
-                  {inner}
-                  <svg
-                    className="srpopgo"
-                    viewBox="0 0 24 24"
-                    width="13"
-                    height="13"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    aria-hidden
-                  >
-                    <path d="M7 17L17 7M9 7h8v8" />
-                  </svg>
+                  {body}
                 </a>
               ) : (
                 <span key={`${r.title}-${i}`} className="srpoprow">
-                  {inner}
+                  {body}
                 </span>
               );
             })}
           </div>
-          {/* The limit of what a list of ADS can say, on the surface that
-              shows them rather than in a methodology note nobody opens. */}
-          <p className="srpopfoot">
-            Advertisements, not hires. One role carried on two boards is two rows — the same count
-            the card shows.
-          </p>
         </div>
       )}
     </div>
+  );
+}
+
+/** lucide `search`, at the design's 17px. */
+function IconSearch() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="17"
+      height="17"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+/** lucide `arrow-up-right`, at the design's 18px. */
+function IconGo() {
+  return (
+    <svg
+      className="srpopgo"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M7 7h10v10M7 17 17 7" />
+    </svg>
+  );
+}
+
+/** lucide `map-pin`, at the design's 12px. */
+function IconPin() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="12"
+      height="12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
   );
 }
 
