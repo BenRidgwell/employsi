@@ -690,6 +690,14 @@ if (ACCOUNT && DB && TOKEN) {
 // Titles are verbatim from the archive, with the counts measured 2026-09-28.
 {
   const MUST: [string, string][] = [
+    // ...and the HR roles that gate must leave alone.
+    ["HR Driver", "Truck Driving"],
+    ["HR Manager", "Human Resources"],
+    ["Plant HR Executive", "Human Resources"],
+    ["HR Operations Analyst", "Human Resources"],
+    ["District 3 HR Specialist", "Human Resources"],
+    ["Summer Intern 2027 - HR", "Human Resources"],
+    ["HR HC Master Data Management Specialist", "Human Resources"],
     // [title, skill it must carry]
     ["Commercial Cleaner", "Cleaning & Facilities"],
     ["Commercial Cleaner (FT) – Shopping Centre", "Cleaning & Facilities"],
@@ -777,6 +785,16 @@ if (ACCOUNT && DB && TOKEN) {
     // starting with those three letters.
     ["Sreekanth Consulting", "Cloud & DevOps"],
     ["Sreekanth Consulting", "Site Reliability & Platform"],
+    // "HR" as Heavy Rigid (the truck licence) and as an hour — 2026-10-02.
+    ["HR Driver", "Human Resources"],
+    ["HR Truck Driver", "Human Resources"],
+    ["HR Multi System Operator", "Human Resources"],
+    ["Store Person / Delivery Driver - Rural Products (min HR licence)", "Human Resources"],
+    ["FIFO Logistics Officers (HR LF required)", "Human Resources"],
+    ["Amazon Package Delivery Driver - Earn $15.00 - $25.50/hr", "Human Resources"],
+    ["Production Operator- $31.65/hr", "Human Resources"],
+    ["Equipment Technician (12-hr Shift, Manufacturing)", "Human Resources"],
+    ["Licensed Practical Nurse (LPN) - up to $41/hr", "Human Resources"],
   ];
   const bad: string[] = [];
   for (const [title, skill] of MUST) {
