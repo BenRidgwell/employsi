@@ -445,7 +445,14 @@ export function NotificationBell() {
                     )}
                     <button
                       type="button"
-                      className={`nbrow${shut ? " shut" : ""}${dx ? " swiping" : ""}`}
+                      // `read` and `shut` are SEPARATE classes because they are
+                      // separate facts: an alert the person has read and then
+                      // re-opened is still read. Keying the grey on `shut`
+                      // would un-grey it the moment they looked again, which is
+                      // exactly when they are comparing it against the new ones.
+                      className={`nbrow${isRead ? " read" : ""}${shut ? " shut" : ""}${
+                        dx ? " swiping" : ""
+                      }`}
                       aria-expanded={!shut}
                       // NO OPACITY FADE. The row used to fade as it travelled,
                       // which was right when there was nothing behind it; over
@@ -533,7 +540,20 @@ export function NotificationBell() {
                           <span className="nbco">{r.company}</span>
                           <span className={`nbpill ${PILL[r.kind] ?? "spike"}`}>{r.kind}</span>
                           <span className="nbwhen">{r.week} ads</span>
-                          {!read[r.id] && <span className="nbdot" />}
+                          {/* The dot and the tag occupy the same slot, so the
+                              row's top line has one status mark rather than a
+                              mark for new and nothing for read.
+
+                              A SPAN, NOT A BUTTON: this row IS a <button>, and
+                              a button inside a button is invalid markup that
+                              browsers recover from by breaking the outer
+                              control. It is a label on the row, and the row
+                              itself is the thing you click. */}
+                          {isRead ? (
+                            <span className="nbread">Read</span>
+                          ) : (
+                            <span className="nbdot" />
+                          )}
                         </span>
                         <span className="nbheadlinerow">
                           <SkillGlyph skill={r.skill} />

@@ -15891,12 +15891,64 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Read, so it should not compete with anything still unread above it. The
-   badge and glyph keep their own colour — dimming a company's logo reads as
-   the logo being broken rather than as the row being finished. */
-.nbrow.shut .nbco,
-.nbrow.shut .nbheadline {
+/* ── A read alert is monotone ──────────────────────────────────────────────
+   The point of the list is which alerts are NEW, and when every row carries a
+   company's brand colour that is the loudest thing on screen in both of them.
+   So a read row goes to one tone and the unread ones keep their colour.
+
+   THIS FILE SAID THE OPPOSITE until 2026-10-02 — that the badge and glyph
+   should keep their colour because "dimming a company's logo reads as the logo
+   being broken rather than as the row being finished". That is true of
+   OPACITY, which is what it was weighing; it is not true of grayscale, which
+   is the ordinary idiom for an inactive item and leaves the logo fully drawn
+   and perfectly legible. Hence `filter` rather than a fade, and only a slight
+   opacity trim underneath it.
+
+   Keyed on `.read`, not `.shut`: see the note in NotificationBell. */
+.nbrow.read .nbco,
+.nbrow.read .nbheadline {
   color: var(--text-secondary, #636366);
+}
+/* The WRAPPER only. .nbinitials holds either the logo <img> or the initials
+   fallback, so one rule covers both — and selecting the img as well would
+   apply the opacity twice (0.72 of 0.72), which is a visibly different grey
+   from the one written here. */
+.nbrow.read .nbinitials {
+  filter: grayscale(1);
+  opacity: 0.72;
+}
+/* The kind pill and the skill glyph are the row's other two colours. The pill
+   keeps its SHAPE so the row still says spike or cooling at a glance — it is
+   the hue that is carrying "new", not the word. */
+.nbrow.read .nbpill {
+  background: var(--surface-sunken, #f1f1f3);
+  color: var(--text-tertiary, #8e8e93);
+}
+.nbrow.read .nbskillglyph {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.nbrow.read .nbbarfill {
+  background: var(--neutral-400, #a1a1a6);
+}
+/* The unread dot's slot, filled. Same height as the kind pill so the top line
+   does not change height between a read row and a new one — a list that
+   reflows as you read down it is harder to scan, which is the opposite of the
+   point. */
+.nbread {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 999px;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #8e8e93);
 }
 /* The alert row's company badge. ROUND, not the 9px-rounded square it was:
    this is an employer's logo now rather than its initials, and the round crop
