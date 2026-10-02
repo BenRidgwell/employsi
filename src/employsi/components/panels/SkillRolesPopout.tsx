@@ -198,14 +198,14 @@ function IconSearch() {
   );
 }
 
-/** lucide `arrow-up-right`, at the design's 18px. */
+/** lucide `arrow-up-right`. 15px, down from the mock's 18, with the tiles. */
 function IconGo() {
   return (
     <svg
       className="srpopgo"
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
+      width="15"
+      height="15"
       fill="none"
       stroke="currentColor"
       strokeWidth={2}
@@ -218,13 +218,13 @@ function IconGo() {
   );
 }
 
-/** lucide `map-pin`, at the design's 12px. */
+/** lucide `map-pin`. 11px, matching the chip text it sits in. */
 function IconPin() {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="12"
-      height="12"
+      width="11"
+      height="11"
       fill="none"
       stroke="currentColor"
       strokeWidth={2}
