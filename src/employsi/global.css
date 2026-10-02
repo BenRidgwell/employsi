@@ -9938,9 +9938,10 @@ body {
   align-self: center;
   display: flex;
   align-items: flex-start;
-  /* Wider than the stage's own 14px: this is a small control standing off a
-     large card, and at the card's gap it read as attached to it. */
-  gap: 20px;
+  /* A touch wider than the stage's own 14px: this is a small control standing
+     off a large card, and at exactly the card's gap it read as attached to
+     it. 20px was too far the other way. */
+  gap: 16px;
   min-width: 0;
   pointer-events: none;
 }
@@ -9958,9 +9959,6 @@ body {
    reach a centred sibling's top. */
 .srpop {
   position: relative;
-  /* Beside the card's HEADER, not its very corner: 22px is the card's own top
-     padding, so the pill's top edge lands on the logo's. */
-  margin-top: 22px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
