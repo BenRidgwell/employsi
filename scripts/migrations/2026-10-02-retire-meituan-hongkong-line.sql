@@ -1,6 +1,12 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- Employsi D1 (employsi-jobs-archive, 1c5f3ffb-…) — retire the Hong Kong
--- Meituan roster line into the Beijing one.          Prepared 2026-10-02.
+-- Meituan roster line into the Beijing one.
+--                      Prepared and RUN 2026-10-02 06:2x UTC, after the code
+--                      that stops the Zhaopin feed writing the retired id was
+--                      merged. Verified: the backup holds 41 rows,
+--                      hongkong-03690 reads 0, and beijing-03690 reads 2,546 —
+--                      2,505 + 41, as predicted. The backup table is still
+--                      there; section 3 drops it.
 --
 --   retired id        -> kept id         company
 --   hongkong-03690    -> beijing-03690   Meituan
