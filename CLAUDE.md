@@ -59,6 +59,7 @@ bun run scripts/check-career-card.ts       # the career card's series, trend and
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
 python scripts/test_rosters.py             # roster parsers still read their data files
+python scripts/test_collector_pace.py      # the LinkedIn collector's pacing + halt
 python -m compileall -q scripts/*.py
 ```
 

@@ -20,7 +20,7 @@ production D1).
 | Monthly rows | `workers/jobs-cron/migrations/0005_talent_flows_months.sql`, `flow_months.csv` | **Applied 2026-09-25.** The same rows split by month; the loader refuses a delivery whose months do not sum to its whole-window rows |
 | **Source: Bright Data** (chosen) | `scripts/brightdata-talent-flows.py` + `talent_flows.positions_from_brightdata` | Built; tested end to end against a **fake** Bright Data MCP server. Filters confirmed live 2026-09-24. **7 of 10 real profiles parse to nothing** — see below |
 | Collection state | `workers/jobs-cron/migrations/0003_talent_flows_collect.sql` | **Applied to production D1 2026-09-25.** Holds 15,640 BHP profiles (of 21,359), all 7,928 Fortescue and all 16,752 Rio Tinto. Counts by month plus a bare list of hashed ids; no person's name, url, title or history |
-| Source: LinkedIn sample (parked) | `scripts/collect-talent-flows.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server only. Parked: it needs a personal LinkedIn account |
+| Source: LinkedIn sample | `scripts/collect-talent-flows.py` + `collector_pace.py` + `scripts/talent_flows.py` | Built; tested against a fake MCP server and a stub session only — **never run against LinkedIn**. Pacing and the persistent halt added 2026-10-02 at the user's request (120 profiles/local day across runs, 45–90s jittered, 08:00–20:00 Mon–Fri, halt stays until cleared by hand). Runs on the user's own machine, in their own signed-in session; it cannot run from CI or a cloud sandbox, where a datacentre IP is itself the loudest signal |
 
 ### The Bright Data source
 
@@ -387,11 +387,24 @@ as the profile is parsed. `--export` writes this document's canonical files and
 
 What it will and won't do:
 
-- **It stops on the first sign of push-back.** A rate-limit section error, a
-  checkpoint, a sign-in wall, or three failures in a row ends the run (exit 3).
-  Nothing is retried. It uses no proxy and no second account, and it doesn't
-  randomise its timing. By default it reads 40 profiles a run, 60s apart. That
-  is a courtesy pace, not a measured safe limit.
+- **It stops on the first sign of push-back, and stays stopped.** A rate-limit
+  section error, a checkpoint, a sign-in wall, or three failures in a row ends
+  the run (exit 3). Nothing is retried, and the stop is written to
+  `pace_halt`, so **every later run refuses to start** until someone clears it
+  by hand (`--clear-halt --yes`). The run that meets a checkpoint is not the
+  one qualified to decide it has passed; pushing through one is how a warning
+  becomes a restriction. A plain timeout is not push-back and does not halt.
+- **The pace is in `scripts/collector_pace.py`**, asserted by
+  `scripts/test_collector_pace.py` in CI. Defaults: **120 profiles per local
+  day across all runs**, 45–90s apart (drawn at random — a fixed interval is
+  its own tell), a 5–12 minute break every 25 profiles, inside 08:00–20:00
+  Mon–Fri local. Every request is logged for `--pace-log` to report, with no
+  profile identifier. These replace the old fixed 60s gap and per-run cap,
+  which reset every time the command was re-run.
+- **It is still not a measured safe limit**, and there isn't one to quote.
+  Pacing also does nothing about the signals it cannot touch: reading hundreds
+  of strangers' profiles, from a browser fingerprint and an IP that are not
+  your usual ones. It lowers the rate and stops on refusal. That is all.
 - **Calibrate before collecting.** `--inspect <username>` prints one real
   profile's raw text beside what the parser made of it, and stores nothing. The
   parser rules come from LinkedIn's documented layout, not a captured page.
@@ -414,6 +427,7 @@ pip install "mcp>=1.28,<3"
 uvx mcp-server-linkedin@4.24.4 --login                 # sign in once, by hand
 python scripts/collect-talent-flows.py --inspect <a-username>
 python scripts/collect-talent-flows.py --seed bhp=bhp --seed wds=woodside-energy
+python scripts/collect-talent-flows.py --pace-log          # audit the pace, by day
 python scripts/collect-talent-flows.py --stats
 python scripts/collect-talent-flows.py --export out/
 python scripts/flows-to-d1.py out/                     # dry run; --write to load

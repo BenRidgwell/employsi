@@ -33,6 +33,8 @@ on:
       - 'scripts/talent_flows.py'
       - 'scripts/test_talent_flows.py'
       - 'scripts/collect-talent-flows.py'
+      - 'scripts/collector_pace.py'
+      - 'scripts/test_collector_pace.py'
       - 'scripts/brightdata-talent-flows.py'
       # A reformat of these data files is what silently emptied the SEEK and
       # Zhaopin rosters, so a change to either has to re-run the parsers.
@@ -52,6 +54,8 @@ on:
       - 'scripts/*-to-d1.py'
       - 'scripts/talent_flows.py'
       - 'scripts/collect-talent-flows.py'
+      - 'scripts/collector_pace.py'
+      - 'scripts/test_collector_pace.py'
       - 'scripts/brightdata-talent-flows.py'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
@@ -129,6 +133,15 @@ jobs:
       # any of them still produces a clean-looking flow count.
       - name: Talent-flow parser keeps its move rules
         run: python scripts/test_talent_flows.py
+
+      # The LinkedIn collector's pacing. Every control here fails SILENTLY —
+      # a cap that resets between runs, a halt that lifts itself, a window
+      # checked only at the start, a "jittered" gap that is not — and the
+      # collector would go on looking like it was working while reading more,
+      # later, or more rhythmically than anyone intended. The account that
+      # pays for that is a real one.
+      - name: LinkedIn collector keeps its pacing and halt rules
+        run: python scripts/test_collector_pace.py
 
       - name: Byte-compile the scrapers
         run: python -m compileall -q scripts/*.py

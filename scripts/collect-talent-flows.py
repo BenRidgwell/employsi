@@ -22,15 +22,21 @@ READ BEFORE RUNNING
 - This uses your LinkedIn account. LinkedIn's User Agreement prohibits
   automated access, and the usual consequence is a restricted account. That is
   your call; this script does not try to hide what it is doing from LinkedIn.
-  It uses the server exactly as shipped: no proxy, no second account, no
-  randomised timing, and it STOPS on the first rate-limit, checkpoint or
-  sign-in signal instead of retrying past it.
+  It uses the server exactly as shipped: no proxy and no second account. It
+  STOPS on the first rate-limit, checkpoint or sign-in signal instead of
+  retrying past it, and that stop is PERMANENT until cleared by hand
+  (--clear-halt), because the run that meets a checkpoint is not the one
+  qualified to decide it has passed.
 - The people whose profiles are read have not been asked. The Privacy Act
   applies to collecting their information even transiently; the
   minimisation above (hash, discard, counts only) reduces what is held, it
   does not make the question go away.
-- The defaults (40 profiles a run, 60s apart) are a courtesy pace for a
-  personal account, not a measured safe limit. No limit is measured.
+- THE PACE IS NOT A SAFE LIMIT. The defaults — 120 profiles per local day
+  across all runs, 45–90s apart with a longer break every 25, inside
+  08:00–20:00 Mon–Fri — are deliberately slow, not measured. There is no
+  measured safe limit to quote. Pacing also does not address the signals it
+  cannot touch: reading hundreds of strangers' profiles, from a browser and
+  an IP that are not your usual ones. See scripts/collector_pace.py.
 
 WHAT THE NUMBERS MEAN
 A sample: people LinkedIn lists as current employees of the seed companies,
@@ -54,13 +60,25 @@ USAGE
     CLOUDFLARE_API_TOKEN=... python scripts/collect-talent-flows.py --seed-from-d1
 
     python scripts/collect-talent-flows.py --stats
+    python scripts/collect-talent-flows.py --pace-log        # audit the pace, by day
     python scripts/collect-talent-flows.py --export out/     # flows.csv + import.json
+
+    # after a halt, once you have checked the account by hand:
+    python scripts/collect-talent-flows.py --clear-halt --yes
 
     python scripts/collect-talent-flows.py --purge           # delete local state
 
 Options:
     --max-profiles N   profiles fetched this run (default 40)
-    --pause S          seconds between LinkedIn calls (default 60)
+    --daily-cap N      profiles per local day, ALL runs together (default 120)
+    --min-gap S        shortest wait between reads (default 45)
+    --max-gap S        longest wait between reads (default 90); each is random
+                       between the two, because a fixed interval is its own tell
+    --start-hour H     collecting window opens, local clock (default 8)
+    --end-hour H       and closes (default 20; a read may not start at or after it)
+    --weekends         collect at weekends too (off by default)
+    --pace-log         per-day request counts and times; --pace-log-days N
+    --clear-halt       lift a halt, with --yes, after checking the account
     --state PATH       local SQLite (default ~/.employsi/talent-flows.sqlite)
     --server-cmd CMD   MCP server command (default "uvx mcp-server-linkedin@4.24.4")
     --window-months N  export window length (default 24)
@@ -82,11 +100,13 @@ import secrets
 import shlex
 import sqlite3
 import sys
-import time
 import urllib.request
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from collector_pace import (  # noqa: E402
+    CapReached, Halted, Pacer, clear_halt, format_log, halt)
+from collector_pace import halted as halted_state  # noqa: E402  (not the Halted exception)
 from talent_flows import (  # noqa: E402
     MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, parse_experience,
     person_key, tail_counts, window_note)
@@ -107,7 +127,18 @@ STATE = _opt('--state', os.path.join(HOME, 'talent-flows.sqlite'))
 SALT_FILE = os.path.join(os.path.dirname(STATE), 'talent-flows.salt')
 SERVER_CMD = _opt('--server-cmd', 'uvx mcp-server-linkedin@4.24.4')
 MAX_PROFILES = int(_opt('--max-profiles', 40))
-PAUSE = float(_opt('--pause', 60))
+# Pacing lives in collector_pace.py; these only override its defaults. --pause
+# is gone rather than aliased: one fixed gap is the thing that needed
+# replacing, and keeping the flag would let a single argument switch the
+# jitter back off without looking like it had.
+PACE = dict(
+    min_gap=float(_opt('--min-gap', 45)),
+    max_gap=float(_opt('--max-gap', 90)),
+    daily_cap=int(_opt('--daily-cap', 120)),
+    start_hour=int(_opt('--start-hour', 8)),
+    end_hour=int(_opt('--end-hour', 20)),
+    weekends='--weekends' in args,
+)
 WINDOW_MONTHS = int(_opt('--window-months', 24))
 LAG_MONTHS = int(_opt('--lag-months', 3))
 # A call that fails this many times running, for reasons that are NOT a rate
@@ -207,26 +238,45 @@ def check_sections(data: dict) -> None:
 
 
 class LinkedIn:
-    def __init__(self, session):
+    def __init__(self, session, pacer: Pacer | None = None):
         self.s = session
         self.calls = 0
-        self.last = 0.0
+        self.pacer = pacer
 
-    async def call(self, tool: str, arguments: dict) -> dict:
-        wait = self.last + PAUSE - time.monotonic()
-        if self.calls and wait > 0:
-            await asyncio.sleep(wait)
+    async def call(self, tool: str, arguments: dict, kind: str = 'other') -> dict:
+        """One request, once the pacer allows it and its gap has been waited
+        out. Every outcome is logged, refusals included: a run that stopped is
+        exactly what someone auditing the pace afterwards needs to see."""
+        if self.pacer is not None:
+            if kind == 'profile':
+                self.pacer.check_continue()
+            gap, why = self.pacer.next_gap()
+            print(f'      waiting {gap / 60:.1f} min'
+                  f'{" (longer break)" if why == "break" else ""}…', flush=True)
+            await asyncio.sleep(gap)
         self.calls += 1
         try:
             res = await self.s.call_tool(tool, arguments)
-        finally:
-            self.last = time.monotonic()
-        data = payload(res)
-        check_sections(data)
+            data = payload(res)
+            check_sections(data)
+        except Stop as e:
+            # LinkedIn pushed back. Recorded where the NEXT run will see it,
+            # before the exception leaves this method — a halt written only by
+            # the caller is a halt that a crash on the way out loses.
+            if self.pacer is not None:
+                self.pacer.log(tool, kind, 'stop', str(e))
+                halt(self.pacer.conn, str(e))
+            raise
+        except Exception as e:  # noqa: BLE001
+            if self.pacer is not None:
+                self.pacer.log(tool, kind, 'error', str(e))
+            raise
+        if self.pacer is not None:
+            self.pacer.log(tool, kind, 'ok')
         return data
 
     async def employees(self, slug: str) -> list[str]:
-        data = await self.call('get_company_employees', {'company_name': slug})
+        data = await self.call('get_company_employees', {'company_name': slug}, 'list')
         refs = (data.get('references') or {}).get('employees') or []
         out = []
         for r in refs:
@@ -237,13 +287,14 @@ class LinkedIn:
 
     async def experience(self, username: str) -> tuple[str, list]:
         data = await self.call('get_person_profile',
-                               {'linkedin_username': username, 'sections': 'experience'})
+                               {'linkedin_username': username, 'sections': 'experience'},
+                               'profile')
         text = (data.get('sections') or {}).get('experience') or ''
         refs = (data.get('references') or {}).get('experience') or []
         return text, refs
 
 
-async def with_server(fn):
+async def with_server(fn, pacer: Pacer | None = None):
     try:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
@@ -256,7 +307,7 @@ async def with_server(fn):
     async with stdio_client(params) as (r, w):
         async with ClientSession(r, w) as session:
             await session.initialize()
-            return await fn(LinkedIn(session))
+            return await fn(LinkedIn(session, pacer))
 
 
 # ── commands ────────────────────────────────────────────────────────────────
@@ -379,10 +430,22 @@ async def collect(li: LinkedIn, conn: sqlite3.Connection, seeds: list[tuple[str,
                 print(f'    profile {fetched}/{MAX_PROFILES} ({slug}): '
                       f'{len(parsed.positions)} positions, {len(mv.moves)} moves')
     except Stop as e:
-        print(f'\nSTOPPED: {e}\nLinkedIn pushed back or the session is not usable. '
-              'Nothing was retried. Wait before running again.')
+        # The halt itself was written in LinkedIn.call, so it survives even if
+        # this handler never runs.
+        print(f'\nSTOPPED: {e}\n'
+              'LinkedIn pushed back. Nothing was retried, and collecting is now '
+              'HALTED: every later run will refuse to start.\n'
+              'Sign in to LinkedIn in a normal browser, check the account is in '
+              'good standing, and only then run --clear-halt.')
         return 3
-    print(f'\n{fetched} profiles read, {li.calls} LinkedIn calls.')
+    except CapReached as e:
+        # Not a failure: the budget or the window ran out, which is the design
+        # working. Exit 0 so a scheduled run does not page anyone.
+        print(f'\nStopping for now: {e}.')
+        print(f'{fetched} profiles read this run, {li.calls} LinkedIn calls.')
+        return 0
+    print(f'\n{fetched} profiles read, {li.calls} LinkedIn calls. '
+          f'{li.pacer.remaining_today() if li.pacer else "?"} left in today\'s budget.')
     return 0
 
 
@@ -491,6 +554,24 @@ def main() -> int:
     conn = db()
     if '--stats' in args:
         return stats(conn)
+    if '--pace-log' in args:
+        print(format_log(conn, int(_opt('--pace-log-days', 14))))
+        return 0
+    if '--clear-halt' in args:
+        # Deliberately manual. The whole point of the halt is that the process
+        # which met the push-back is not the one that decides it has passed.
+        h = halted_state(conn)
+        if not h:
+            print('Not halted.')
+            return 0
+        print(f'Halted {h[0]}: {h[1]}')
+        if '--yes' not in args:
+            print('\nClear it only after signing in to LinkedIn in a normal browser and '
+                  'confirming the account is in good standing.\nRe-run with --yes to clear.')
+            return 2
+        clear_halt(conn)
+        print('Cleared. The next run may start.')
+        return 0
     if '--export' in args:
         return export(conn, _opt('--export'))
     seeds = [tuple(s.split('=', 1)) for s in _all('--seed') if '=' in s]
@@ -499,7 +580,20 @@ def main() -> int:
     if not seeds:
         print(__doc__)
         return 2
-    return asyncio.run(with_server(lambda li: collect(li, conn, seeds)))
+    pacer = Pacer(conn, **PACE)
+    # Gated BEFORE the server starts: a halted or out-of-hours run should not
+    # open a browser session at all, let alone sign in.
+    try:
+        pacer.check_start()
+    except Halted as e:
+        print(f'HALTED: {e}')
+        return 3
+    except CapReached as e:
+        print(f'Not collecting: {e}.')
+        return 0
+    print(f'{pacer.remaining_today()} profiles left in today\'s budget '
+          f'(cap {pacer.daily_cap}); {PACE["min_gap"]:.0f}–{PACE["max_gap"]:.0f}s between reads.')
+    return asyncio.run(with_server(lambda li: collect(li, conn, seeds), pacer))
 
 
 if __name__ == '__main__':
