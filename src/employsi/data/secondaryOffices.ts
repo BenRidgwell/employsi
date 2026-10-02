@@ -57,6 +57,10 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   "sydney-org": ["brisbane", "melbourne", "adelaide"],
   "sydney-agl": ["melbourne", "adelaide"],
   "sydney-apa": ["brisbane", "perth"],
+  // The cities whose roster lines were retired into these ids on 2026-10-02,
+  // kept as pins so one card still shows every office (mergedCompanies.ts).
+  rio: ["london"],
+  chevron: ["houston"],
   "sydney-ald": ["brisbane"],
   "sydney-whc": ["brisbane"], // Whitehaven — QLD coal operations run from Brisbane
   "melbourne-ori": ["perth", "brisbane"],
@@ -99,7 +103,10 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // company does not have a presence in, which is the exact thing this file
   // exists to prevent.
   bhp: ["kualalumpur", "manila"],
-  "london-hsba": ["kualalumpur", "manila"],
+  // Hong Kong is here because the HKEX roster line was retired into this one
+  // on 2026-10-02 (data/mergedCompanies.ts): one HSBC card, every office
+  // still on the map.
+  "london-hsba": ["kualalumpur", "manila", "hongkong"],
   // QBE and ANZ are here on the strength of their service centres being
   // publicly known, NOT on archive evidence: QBE's Workday site currently
   // returns no postings at all, and ANZ's Manila roles are not in what we
@@ -120,6 +127,13 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
 export const HQ_OVERRIDE: Record<string, string> = {
   bhp: "melbourne", // 171 Collins St — BHP Group's global head office
   sto: "adelaide", // 60 Flinders St — Santos is an Adelaide company
-  rio: "melbourne", // 360 Collins St — the principal Australian office (the
-  // London line is carried separately as `london-rio`)
+  rio: "melbourne", // 360 Collins St — the principal Australian office. Rio is
+  // dual-HQ (plc in London, Ltd in Melbourne); the London roster line was
+  // retired into `rio` on 2026-10-02 and London is a secondary-office pin, so
+  // Melbourne stays the head office the card names.
+  chevron: "houston", // Chevron Corporation's head office. `chevron` began as a
+  // hand-placed Australian resources line and its only geocoded building is
+  // Elizabeth Quay in Perth; the Houston roster line was retired into it on
+  // 2026-10-02, so the card has to name the real head office. The Houston pin
+  // is city-level because no street address here has been verified.
 };

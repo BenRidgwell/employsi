@@ -355,7 +355,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["00001", "CK Hutchison Holdings", INF],
       ["00002", "CLP Holdings", INF],
       ["00003", "Hong Kong and China Gas", INF],
-      ["00005", "HSBC Holdings", FIN],
+      // HSBC Holdings is on the London roster as `london-hsba`, which carries
+      // the Eightfold feed; this HKEX line was a second card for one employer
+      // and was retired on 2026-10-02, its 49 JobStreet rows moving with it.
+      // Hong Kong stays a pin through data/secondaryOffices.ts.
       ["00006", "Power Assets Holdings", INF],
       ["00011", "Hang Seng Bank", FIN],
       ["02318", "Ping An Insurance", FIN],
@@ -431,7 +434,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["GSK", "GSK", HLT],
       ["DGE", "Diageo", CON],
       ["BATS", "British American Tobacco", CON],
-      ["RIO", "Rio Tinto", ENR],
+      // Rio Tinto is on the Australian roster as `rio`, which carries its
+      // career-portal feed and every aggregator row; this London line was a
+      // second card for one employer and was retired on 2026-10-02. London
+      // stays a pin through data/secondaryOffices.ts.
       ["RR", "Rolls-Royce Holdings", IND],
       ["BA.", "BAE Systems", IND],
       ["HLN", "Haleon", HLT],
@@ -827,7 +833,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   houston: {
     exchange: "NYSE",
     companies: [
-      ["CVX", "Chevron", ENR],
+      // Chevron is on the Australian roster as `chevron`, which carries the
+      // careers.chevron.com feed; this Houston line was a second card for one
+      // employer and was retired on 2026-10-02. Houston stays a pin through
+      // data/secondaryOffices.ts, and HQ_OVERRIDE names it the head office.
       ["HPE", "Hewlett Packard Enterprise", TMT],
       ["LYB", "LyondellBasell", IND],
       ["PWR", "Quanta Services", INF],

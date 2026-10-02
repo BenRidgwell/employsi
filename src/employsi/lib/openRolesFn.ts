@@ -465,47 +465,20 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   "nz-gov": "NZ Government",
 };
 
-// One issuer, two roster lines. HSBC Holdings plc is listed on both the LSE and
-// the HKEX, so the roster carries it twice, but it runs a single global careers
-// portal. The portal is archived once, against the primary (LSE) line; the Hong
-// Kong line reads those same rows rather than the scrape running twice and the
-// roles being counted twice in market-wide totals.
+// Every id that USED to be on the roster and now resolves to another one —
+// data/mergedCompanies.ts is the single list, spread in here so the archive
+// readers honour it. A straggler row, an old follow or a stale link resolves
+// to the card that is actually drawn.
 //
-// Rio Tinto is the same dual-listed shape: Rio Tinto plc (LSE, `london-rio`)
-// and Rio Tinto Limited (ASX, `rio`) are one company under a dual-listed
-// structure, with one global careers portal. It is archived against `rio` —
-// the Australian line, which is also where the Adzuna, SEEK and Jora rows
-// land and where HQ_OVERRIDE puts the head office — so `london-rio` reads
-// those same rows. Measured 2026-10-02: `rio` held 2,489 rows across eight
-// sources, `london-rio` held none, and batch 13 deliberately did not wire a
-// second walk of the same board.
-//
-// Chevron is the same shape with the two lines the other way round. The roster
-// carries NYSE:CVX twice: `chevron`, the hand-placed resources line that is
-// wired to careers.chevron.com (the global board, homeHub perth for the
-// Australian business), and `houston-cvx`, the listed line at the real head
-// office. The feed is archived once against `chevron`, so the Houston line
-// reads those rows. Measured 2026-10-02: `chevron` held 698 rows across eight
-// sources, 412 of them its own board; `houston-cvx` held none, which is why it
-// topped the "no own board" list while the board was already being read.
-//
-// Both lines stay on the roster BECAUSE the pin belongs in both places: this
-// is one employer that hires in Perth and is headquartered in Houston, and the
-// local layer places each ad by its own hub. Whether the roster should instead
-// carry one Chevron card is a roster-design question, not an archive one.
-//
-// It also carries every RETIRED id (data/mergedCompanies.ts): a company folded
-// into another is read under the kept id, so a straggler row, an old follow or
-// a stale link resolves to the card that is actually drawn. Those are spread in
-// rather than repeated so the two lists cannot drift. scripts/scraper-gap.ts
-// parses the literal pairs above the spread, which is all it needs — a retired
-// id is off the roster and never on its list.
-export const COMPANY_ID_ALIAS: Record<string, string> = {
-  "hongkong-00005": "london-hsba",
-  "london-rio": "rio",
-  "houston-cvx": "chevron",
-  ...MERGED_COMPANY_ID,
-};
+// IT USED TO CARRY LITERAL PAIRS TOO, and does not any more. HSBC, Rio Tinto
+// and Chevron were each carried as two roster lines with one reading the
+// other's rows, which drew two cards for one employer and showed the whole
+// company on neither. On 2026-10-02 they were folded into one card each and
+// the second line's city kept as a pin (data/secondaryOffices.ts), so there is
+// no longer a kind of alias where both lines stay. If one is ever needed
+// again, add it as a literal pair above the spread — scripts/scraper-gap.ts
+// reads the literal pairs AND the merge map, and needs at least one of them.
+export const COMPANY_ID_ALIAS: Record<string, string> = { ...MERGED_COMPANY_ID };
 
 // NZ public-sector agency ids. These need an explicit set rather than an
 // `nz-` prefix test, because the NZ *private* roster (data/nzCompanies.ts) uses

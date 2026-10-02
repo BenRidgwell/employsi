@@ -310,8 +310,15 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     cityId: 702,
     hub: "hongkong",
   },
+  // The HKEX roster line was retired into `london-hsba` on 2026-10-02
+  // (data/mergedCompanies.ts), so this target FILES under the one HSBC card.
+  // The hub stays hongkong, which is where these ads are: the id decides whose
+  // card they land on, the hub decides which city counts them. The comment is
+  // ABOVE the object on purpose — zhaopin-to-d1.py's TARGET_RE wants `id:`
+  // straight after the brace, and a comment inside dropped this target from
+  // the 89 the scraper reads. test_rosters.py caught it.
   {
-    id: "hongkong-00005",
+    id: "london-hsba",
     name: "HSBC Holdings",
     kw: "HSBC Holdings",
     cityId: 702,

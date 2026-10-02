@@ -8,12 +8,19 @@
  * now belongs, so every reader can resolve it to the company that is actually
  * drawn rather than to a card that no longer exists.
  *
- * This is NOT the HSBC case. `COMPANY_ID_ALIAS` in lib/openRolesFn.ts also
- * carries `hongkong-00005 -> london-hsba`, where BOTH lines stay on the roster
- * and one reads the other's rows. The ids below are gone from the roster; the
- * alias map spreads this one in so the archive readers honour both kinds, and
- * the follow paths use `canonicalCompanyId` (which does NOT apply the HSBC
- * pair, because following Hong Kong's HSBC line is a real, distinct choice).
+ * THE TWO-CARD ARRANGEMENT IS GONE. Until 2026-10-02 three global companies
+ * were carried as two roster lines each, with `COMPANY_ID_ALIAS` making the
+ * second line READ the first one's rows: HSBC (LSE + HKEX), Rio Tinto (its
+ * dual-listed plc and Ltd) and Chevron (a hand-placed resources line beside
+ * the listed one). Both cards drew, which is confusing — one employer, two
+ * pins, two cards, and neither showing the whole company. For a global
+ * employer the card should show total activity, because that is its scale.
+ *
+ * So they are folded in here like any other duplicate, and the city each
+ * retired line stood for is kept as a pin through data/secondaryOffices.ts:
+ * Rio Tinto still appears in London, Chevron in Houston, HSBC in Hong Kong —
+ * one card each, every office still on the map. COMPANY_ID_ALIAS now holds
+ * nothing but this map.
  *
  * Merged 2026-09-30 — the same employer on the roster twice. The kept id is the
  * one wired as a scraper feed or plotted at the company's real head office:
@@ -30,6 +37,18 @@
  *
  * Merged 2026-10-02 — the same case, missed on 2026-09-30:
  *
+ *   HSBC Holdings         `london-hsba` carries the Eightfold feed and every
+ *                         aggregator row (4,535); London is the plc's head
+ *                         office. 00005 is its HKEX line, which had 49
+ *                         JobStreet rows of its own.
+ *   Rio Tinto             `rio` carries the career-portal feed and every
+ *                         aggregator row (2,501); `london-rio` had none. Rio
+ *                         is dual-HQ, and HQ_OVERRIDE keeps Melbourne as the
+ *                         head office with London a further pin.
+ *   Chevron               `chevron` carries the careers.chevron.com feed (698
+ *                         rows); `houston-cvx` had none. HQ_OVERRIDE now names
+ *                         Houston, the real head office, and the geocoded
+ *                         Perth building stays as its Australian office.
  *   Meituan               head office Beijing; HKEX 03690 is its only listing,
  *                         so the roster carried one listing as two lines and
  *                         the Hong Kong one had its own 41 Zhaopin ads, none of
@@ -51,6 +70,9 @@ export const MERGED_COMPANY_ID: Record<string, string> = {
   "hongkong-01810": "beijing-01810",
   "hongkong-02628": "beijing-601628",
   "hongkong-03690": "beijing-03690",
+  "london-rio": "rio",
+  "houston-cvx": "chevron",
+  "hongkong-00005": "london-hsba",
   "sydney-clw": "sydney-chc",
   "sydney-cqr": "sydney-chc",
 };
