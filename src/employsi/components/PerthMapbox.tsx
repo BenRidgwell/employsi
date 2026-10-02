@@ -28,7 +28,7 @@ import {
   SUPPLY_MIN_SCALE,
   type LocalSupply,
 } from "../lib/localSupply";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
+import { monthAt } from "../lib/skillCard";
 import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import { buildMarker, MARKER_FOOT } from "../lib/mapMarker";
 import {
@@ -497,8 +497,7 @@ function skillDemandOf(s: {
   const sk = activeSkill(s.searchQuery);
   // AT the scrubbed month, so the pins follow the timeline the card scrubs.
   return sk
-    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, IVI_MONTHS[s.heatMonth] ?? "", s.localCity)
-        .demand
+    ? demandByCompanyAt(s.skillIndex, s.skillMonths, sk, monthAt(s.heatMonth), s.localCity).demand
     : null;
 }
 

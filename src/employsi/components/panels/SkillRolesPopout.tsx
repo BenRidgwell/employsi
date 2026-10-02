@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCompanySkillRoles } from "../../lib/jobHistoryFn";
 import { activeSkill } from "../../lib/skillHeat";
 import { useAppStore } from "../../state/store";
-import { IVI_MONTHS } from "../../data/iviSkillDemand";
+import { monthAt } from "../../lib/skillCard";
 
 /**
  * "Show me the ads behind that number."
@@ -53,7 +53,7 @@ export function SkillRolesPopout({
   // The same two branches demandByCompanyAt takes. `covered` is whether the
   // archive holds the scrubbed month at all; when it does not, the pin shows
   // live figures and so must this.
-  const monthIso = IVI_MONTHS[heatMonth] ?? "";
+  const monthIso = monthAt(heatMonth);
   const covered = !!monthIso && !!skillMonths?.months.includes(monthIso);
   const month = covered ? monthIso : "";
 

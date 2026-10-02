@@ -17,7 +17,7 @@ import type { SkillIndex } from "../lib/skillsFn";
 import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import type { DemandMode } from "../lib/skillHeat";
 import type { FlowView } from "../lib/flows";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
+import { TIMELINE_MONTHS } from "../lib/skillCard";
 
 export interface Account {
   /** Real user id from the auth provider. Absent only on a pre-auth leftover. */
@@ -118,8 +118,11 @@ export interface AppState {
    * employers.
    */
   skillMonths: SkillCompanyMonths | null;
-  // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
-  // latest month). Lets the user scrub the skill heat map back to 2006.
+  // Index into TIMELINE_MONTHS for the time slider (defaults to the present
+  // month). Lets the user scrub the skill heat map back to 2006 — and, since
+  // the axis is the IVI's months carried forward to today rather than the
+  // IVI's own list, all the way back UP to now. See TIMELINE_MONTHS in
+  // lib/skillCard.ts for why those are not the same thing.
   heatMonth: number;
   // Whether skill demand is read as a VOLUME of vacancies or as a RATE per
   // 1,000 people already employed in the work. Two different questions — "where
@@ -611,7 +614,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: "",
   skillIndex: null,
   skillMonths: null,
-  heatMonth: Math.max(0, IVI_MONTHS.length - 1),
+  heatMonth: Math.max(0, TIMELINE_MONTHS.length - 1),
   demandMode: "volume",
   activeSectors: [],
   listingType: null,
@@ -917,7 +920,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSkillIndex: (idx) => set({ skillIndex: idx }),
   setSkillMonths: (m) => set({ skillMonths: m }),
   setHeatMonth: (i) =>
-    set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
+    set({ heatMonth: Math.max(0, Math.min(TIMELINE_MONTHS.length - 1, Math.round(i))) }),
   setDemandMode: (m) => set({ demandMode: m }),
   toggleSector: (cat) =>
     set((s) => {
