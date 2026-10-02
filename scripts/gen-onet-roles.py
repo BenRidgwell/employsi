@@ -85,7 +85,11 @@ TABLE: dict[str, dict[int, str | None]] = {
     # Human resources
     'hr|generalist': {1: '43-4161.00', 2: '13-1071.00', 3: '13-1071.00', 4: '11-3121.00',
                       5: '11-3121.00', 6: '11-3121.00'},
-    'hr|employee-relations': {2: '13-1075.00', 3: '13-1075.00', 4: '11-3121.00', 5: '11-3121.00'},
+    # Rung 1 (ER/IR interns, graduates, a workplace-relations coordinator) keeps
+    # the track's specialist occupation, as hr|hr-systems|1 and hr|learning|1 do:
+    # the work is labour relations from the first rung, not HR administration.
+    'hr|employee-relations': {1: '13-1075.00', 2: '13-1075.00', 3: '13-1075.00',
+                              4: '11-3121.00', 5: '11-3121.00'},
     # O*NET files "HRIS analyst" under Human Resources Specialists itself.
     'hr|hr-systems': {1: '13-1071.00', 2: '13-1071.00', 3: '13-1071.00', 4: '11-3121.00'},
     'hr|learning': {1: '13-1151.00', 2: '13-1151.00', 3: '13-1151.00', 4: '11-3131.00',
@@ -132,8 +136,12 @@ TABLE: dict[str, dict[int, str | None]] = {
     'technology|architecture': {4: '15-1299.08'},
     'technology|enterprise-apps': {1: '15-1211.00', 2: '15-1211.00', 3: '15-1211.00',
                                    4: '11-3021.00', 5: '11-3021.00'},
+    # Rung 6 is None: of its 12 roles a chief data officer and a data-governance
+    # VP are data executives, but an SVP Communications and an SVP Clinical
+    # Insights landed here on the word 'analytics'. The matcher suggested
+    # Database Architects via 'chief data officer', which is not that job.
     'data|generalist': {1: '15-2051.01', 2: '15-2051.01', 3: '15-2051.01', 4: '11-3021.00',
-                        5: '11-3021.00'},
+                        5: '11-3021.00', 6: None},
     'data|engineering': {1: '15-1243.00', 2: '15-1243.00', 3: '15-1243.00', 4: '15-1243.00',
                          5: '11-3021.00'},
     'data|science': {1: '15-2051.00', 2: '15-2051.00', 3: '15-2051.00', 4: '15-2051.00',
@@ -145,7 +153,11 @@ TABLE: dict[str, dict[int, str | None]] = {
     # Retail and sales
     'retail|generalist': {1: '41-2031.00', 2: '41-1011.00', 3: '41-1011.00', 4: '41-1011.00',
                           5: '11-1021.00'},
-    'retail|visual-merchandising': {2: '27-1026.00'},
+    # Rungs 3 and 4 (senior VM, assistant VM manager, VM manager) stay on the
+    # display occupation: O*NET has no visual-merchandising management entry, and
+    # First-Line Supervisors of Retail Sales Workers supervises selling, not
+    # display. The matcher agreed on rung 3 via 'senior visual merchandiser'.
+    'retail|visual-merchandising': {2: '27-1026.00', 3: '27-1026.00', 4: '27-1026.00'},
     'sales|generalist': {1: '41-4012.00', 2: '41-4012.00', 3: '41-4012.00', 4: '11-2022.00',
                          5: '11-2022.00', 6: '11-2022.00'},
     'sales|account-management': {1: '41-4012.00', 2: '41-4012.00', 3: '41-4012.00',
@@ -165,9 +177,14 @@ TABLE: dict[str, dict[int, str | None]] = {
     'commercial|quantity-surveying': {1: '13-1051.00', 2: '13-1051.00', 3: '13-1051.00',
                                       4: '13-1051.00'},
     # Management consultants are O*NET's own entry under Management Analysts.
+    # Rung 6 (SVP / VP strategy) keeps Management Analysts: the whole track is
+    # that occupation and O*NET has no strategy-executive entry.
     'strategy|generalist': {1: '13-1111.00', 2: '13-1111.00', 3: '13-1111.00', 4: '13-1111.00',
-                            5: '13-1111.00'},
-    'strategy|consulting': {2: '13-1111.00', 3: '13-1111.00', 4: '13-1111.00', 5: '13-1111.00'},
+                            5: '13-1111.00', 6: '13-1111.00'},
+    # Rung 1 is strategy-consulting interns and graduate programmes — the same
+    # occupation from the first rung, as strategy|generalist|1 already is.
+    'strategy|consulting': {1: '13-1111.00', 2: '13-1111.00', 3: '13-1111.00',
+                            4: '13-1111.00', 5: '13-1111.00'},
     'policy|generalist': {1: '19-3094.00', 2: '19-3094.00', 3: '19-3094.00', 4: '19-3094.00',
                           5: '19-3094.00'},
     # Stakeholder and government relations are PR occupations in the SOC.
@@ -194,8 +211,15 @@ TABLE: dict[str, dict[int, str | None]] = {
     'insurance|claims': {1: '43-9041.00', 2: '13-1031.00', 3: '13-1031.00', 4: '13-1031.00'},
     'insurance|underwriting': {1: '43-9041.00', 2: '13-2053.00', 3: '13-2053.00',
                                4: '13-2053.00', 5: '13-2053.00'},
-    'banking|generalist': {1: '43-3071.00', 2: '43-4141.00', 3: None, 5: None},
-    'banking|advice': {1: '13-2052.00', 2: '13-2052.00', 4: '13-2052.00'},
+    # Rung 4 is None for the reason rungs 3 and 5 are: it mixes branch managers
+    # (whom O*NET files under Financial Managers) with transactional and health
+    # banking relationship managers, who are sellers. 4 of 7 roles one way.
+    'banking|generalist': {1: '43-3071.00', 2: '43-4141.00', 3: None, 4: None, 5: None},
+    # Rungs 3 and 5 are the same advice work retitled (financial planner /
+    # relationship manager; wealth advisor director). Financial Managers' tasks
+    # are statements and treasury, so a director of advice is not one.
+    'banking|advice': {1: '13-2052.00', 2: '13-2052.00', 3: '13-2052.00', 4: '13-2052.00',
+                       5: '13-2052.00'},
     'banking|investment-banking': {2: '13-2051.00', 3: '13-2051.00', 4: '13-2051.00',
                                    5: '13-2051.00'},
     'banking|lending': {1: '43-4131.00', 2: '13-2072.00', 3: '13-2072.00', 4: '13-2072.00',
@@ -207,12 +231,16 @@ TABLE: dict[str, dict[int, str | None]] = {
     # Property, records, creative
     'property|generalist': {1: '11-9141.00', 2: '11-9141.00', 3: '11-9141.00', 4: '11-9141.00'},
     'property|agency': {2: '41-9022.00', 4: '11-9141.00'},
-    'property|valuation': {2: '13-2023.00'},
+    # Rung 3 is senior and managing valuers — the same appraisal occupation.
+    'property|valuation': {2: '13-2023.00', 3: '13-2023.00'},
     'library|generalist': {1: '25-4031.00', 2: '25-4022.00', 3: '25-4022.00', 4: '25-4022.00'},
     'library|records': {1: '15-1299.03', 2: '15-1299.03', 3: '15-1299.03', 4: '15-1299.03'},
     'creative|generalist': {1: None, 2: None, 3: None, 4: '27-1011.00', 5: '27-1011.00'},
     'creative|media': {1: None, 2: None, 3: None, 4: '27-3042.00'},
-    'creative|performing': {2: None, 4: '27-2012.00'},
+    # Rung 3 is None for the reason rung 2 is: one senior portrait photographer
+    # beside a 3D artist, a videographer, a footwear designer and a performer.
+    # The matcher's Photographers would describe one role of five.
+    'creative|performing': {2: None, 3: None, 4: '27-2012.00'},
     # Health. An Australian "medical scientist" works a diagnostic lab — US
     # Medical and Clinical Laboratory Technologists, not research Medical
     # Scientists.
@@ -272,9 +300,12 @@ TABLE: dict[str, dict[int, str | None]] = {
     'operations|mining': {1: '47-5044.00', 2: '47-5022.00', 3: '47-1011.00', 4: '11-1021.00'},
     'facilities|generalist': {1: '37-2011.00', 3: '37-1011.00', 4: '37-1011.00',
                               5: '37-1011.00'},
+    # Rung 5 (head of / director of facilities) is still a Facilities Manager.
     'facilities|facilities': {1: '37-3011.00', 2: '11-3013.00', 3: '11-3013.00',
-                              4: '11-3013.00'},
-    'agriculture|generalist': {1: '45-2093.00', 2: None, 3: '45-2093.00', 4: '11-9013.00'},
+                              4: '11-3013.00', 5: '11-3013.00'},
+    # Rung 5 (agriculture director) keeps rung 4's agricultural-manager filing.
+    'agriculture|generalist': {1: '45-2093.00', 2: None, 3: '45-2093.00', 4: '11-9013.00',
+                               5: '11-9013.00'},
     # Services
     'personal|fitness': {2: '39-9031.00', 3: '27-2022.00', 4: '11-9179.01'},
     'personal|generalist': {1: '39-5012.00', 2: '39-5012.00', 3: '39-5012.00',
@@ -289,8 +320,9 @@ TABLE: dict[str, dict[int, str | None]] = {
     'education|early-childhood': {1: '39-9011.00', 2: '25-2011.00', 3: '11-9031.00',
                                   4: '11-9031.00'},
     'education|education-support': {1: '25-9042.00', 2: '25-9042.00', 4: '25-9042.00'},
+    # Rung 5 (warehouse director, head of logistics) keeps rung 4's filing.
     'logistics|generalist': {1: '53-7062.00', 2: '13-1081.00', 3: '53-1043.00',
-                             4: '11-3071.00'},
+                             4: '11-3071.00', 5: '11-3071.00'},
     'logistics|driving': {1: '53-3033.00', 2: '53-3032.00', 3: '53-3032.00', 4: '11-3071.00'},
     'admin|generalist': {1: '43-6014.00', 2: '43-9061.00', 3: '43-9061.00', 4: '11-3012.00'},
     'admin|executive-assistant': {1: '43-6011.00', 2: '43-6011.00', 3: '43-6011.00',

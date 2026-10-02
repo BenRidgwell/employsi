@@ -1,6 +1,23 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- Employsi D1 (employsi-jobs-archive, 1c5f3ffb-…) — merge duplicate roster ids
--- and retire the two Charter Hall REITs.            Prepared 2026-09-30. Section 0 (backups) was RUN 2026-09-30 06:0x UTC; sections 1-7 NOT RUN.
+-- and retire the two Charter Hall REITs.            Prepared 2026-09-30.
+-- Section 0 (backups) was RUN 2026-09-30 06:0x UTC. Sections 1-6 were RUN
+-- 2026-10-02 00:5x UTC and section 7 verified clean: every retired id reads 0
+-- in jobs, company_slugs, flow_company_map, flows, flow_months, user_follow and
+-- views; smr 118 · shenzhen-00700 2,697 · hongkong-00992 1,179 ·
+-- beijing-01810 1,925 · beijing-601628 33 · sydney-chc 101; flows 35 out / 39
+-- in on smr with no smr->smr self-move; views folded onto hongkong-00992 at 2.
+-- The backup tables are still in place; section 8 drops them.
+--
+-- RUN IT SECTION BY SECTION, one file each. The whole file in one
+-- `wrangler d1 execute --file` fails with {"D1_RESET_DO":true} — reproducibly,
+-- twice — and rolls back, leaving nothing applied. Split on the section rules
+-- and each part goes through in seconds. Measured 2026-10-02.
+--
+-- Two counts in the comments below were measured on 2026-09-30 and had moved by
+-- the time it ran: section 2 deleted 10 duplicate SimplyHired rows rather than 7
+-- (three more acquired a Hong Kong twin in between), so section 3 re-pointed 11
+-- of beijing-00992's rows rather than 14. 21 rows in, 21 rows accounted for.
 --
 --   retired id        -> kept id           company
 --   brisbane-smr      -> smr               Stanmore Resources
