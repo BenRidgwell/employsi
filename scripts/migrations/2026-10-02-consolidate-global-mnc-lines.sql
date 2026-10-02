@@ -1,6 +1,12 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- Employsi D1 (employsi-jobs-archive, 1c5f3ffb-…) — fold the second roster line
--- of three global companies into the first.          Prepared 2026-10-02.
+-- of three global companies into the first.
+--                      Prepared and RUN 2026-10-02 07:0x UTC, after the code
+--                      was merged. Verified: backups hold 49 jobs and 2 views;
+--                      no retired id is left in either table; jobs rio 2,501,
+--                      chevron 698, london-hsba 4,584 (4,535 + 49); views
+--                      london-hsba 3 (2 + 1), chevron 9, rio 58. The backup
+--                      tables are still there; section 4 drops them.
 --
 --   retired id        -> kept id       company        rows to move
 --   london-rio        -> rio           Rio Tinto      0 jobs, 0 views
@@ -96,8 +102,14 @@ SELECT 'views', ref, SUM(count) FROM views
                'hongkong-00005', 'london-hsba')
  GROUP BY ref;
 -- Expect: jobs rio 2,501 · chevron 698 · london-hsba 4,584 (4,535 + 49) and no
--- retired id; views chevron 1, london-hsba 3 (2 + 1), no retired id. The jobs
--- figures move with the nightly; the retired ids reading nothing is the check.
+-- retired id; views london-hsba 3 (2 + 1), no retired id. The jobs figures move
+-- with the nightly; the retired ids reading nothing is the check.
+--
+-- The views line above first said "chevron 1", which was wrong and the run
+-- showed it: `chevron` already had 8 views of its own, so folding Houston's one
+-- gives 9. Only the retired ref's count was measured when that was written. The
+-- fold is right; the expectation was half-measured, which is the easier mistake
+-- to make in a file like this than a bad statement.
 
 
 -- ── 4. CLEAN-UP, once verified ─────────────────────────────────────────────
