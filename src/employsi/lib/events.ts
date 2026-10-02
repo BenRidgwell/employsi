@@ -60,7 +60,8 @@ export interface ClientEvent {
   detail?: string;
   sessionId?: string;
   anonKey?: string;
-  /** session_end only. Clamped; a browser can report anything. */
+  /** DURATION_EVENTS only; 0 everywhere else. Clamped, because a browser can
+   *  report anything and one forgotten tab would otherwise own the total. */
   ms?: number;
 }
 
