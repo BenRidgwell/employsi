@@ -471,6 +471,15 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 // Kong line reads those same rows rather than the scrape running twice and the
 // roles being counted twice in market-wide totals.
 //
+// Rio Tinto is the same dual-listed shape: Rio Tinto plc (LSE, `london-rio`)
+// and Rio Tinto Limited (ASX, `rio`) are one company under a dual-listed
+// structure, with one global careers portal. It is archived against `rio` —
+// the Australian line, which is also where the Adzuna, SEEK and Jora rows
+// land and where HQ_OVERRIDE puts the head office — so `london-rio` reads
+// those same rows. Measured 2026-10-02: `rio` held 2,489 rows across eight
+// sources, `london-rio` held none, and batch 13 deliberately did not wire a
+// second walk of the same board.
+//
 // It also carries every RETIRED id (data/mergedCompanies.ts): a company folded
 // into another is read under the kept id, so a straggler row, an old follow or
 // a stale link resolves to the card that is actually drawn. Those are spread in
@@ -479,6 +488,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 // id is off the roster and never on its list.
 export const COMPANY_ID_ALIAS: Record<string, string> = {
   "hongkong-00005": "london-hsba",
+  "london-rio": "rio",
   ...MERGED_COMPANY_ID,
 };
 
