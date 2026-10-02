@@ -9899,8 +9899,19 @@ body {
   transform: translateX(-76px);
   cursor: pointer;
 }
+/* THE CALL-OUT RIDES WITH THE CARD. It is a flex sibling, so its LAYOUT
+   position never moves — but the card's does not either: tucking translates
+   the card 394px without reflowing anything, which is the whole point of
+   doing it with a transform. Left out of this rule the pill stays at the
+   card's old position and a 394px gap opens between them, which is exactly
+   what it looked like. Same distance, same duration, same curve, so the two
+   travel as one object. */
+.cardstage.newstucked .srpop {
+  transform: translateX(394px);
+}
 .cc,
-.newspanel {
+.newspanel,
+.srpop {
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* The card has to paint OVER the news panel for "behind" to read as behind. */
