@@ -1321,6 +1321,17 @@ const RAW_SKILLS: SkillDef[] = [
       "workforce",
       "employee relations",
       "industrial relations",
+      // "People" as HR's own word, without "and culture" (added 2026-10-02).
+      // Edith Cowan's "Chief People Officer" matched no skill at all, so an HR
+      // search could not find it; measured then, these six phrases named 216
+      // archived titles, ~185 matching nothing — every one an HR role ("People
+      // Advisor", "Associate People Partner", "Head of People Partnering").
+      // "people advis" covers adviser and advisor.
+      "chief people officer",
+      "head of people",
+      "director of people",
+      "people partner",
+      "people advis",
     ],
   },
   // ── Human Resources · specialities ─────────────────────────────────────
