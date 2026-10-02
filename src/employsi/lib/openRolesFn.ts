@@ -480,6 +480,20 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 // sources, `london-rio` held none, and batch 13 deliberately did not wire a
 // second walk of the same board.
 //
+// Chevron is the same shape with the two lines the other way round. The roster
+// carries NYSE:CVX twice: `chevron`, the hand-placed resources line that is
+// wired to careers.chevron.com (the global board, homeHub perth for the
+// Australian business), and `houston-cvx`, the listed line at the real head
+// office. The feed is archived once against `chevron`, so the Houston line
+// reads those rows. Measured 2026-10-02: `chevron` held 698 rows across eight
+// sources, 412 of them its own board; `houston-cvx` held none, which is why it
+// topped the "no own board" list while the board was already being read.
+//
+// Both lines stay on the roster BECAUSE the pin belongs in both places: this
+// is one employer that hires in Perth and is headquartered in Houston, and the
+// local layer places each ad by its own hub. Whether the roster should instead
+// carry one Chevron card is a roster-design question, not an archive one.
+//
 // It also carries every RETIRED id (data/mergedCompanies.ts): a company folded
 // into another is read under the kept id, so a straggler row, an old follow or
 // a stale link resolves to the card that is actually drawn. Those are spread in
@@ -489,6 +503,7 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
 export const COMPANY_ID_ALIAS: Record<string, string> = {
   "hongkong-00005": "london-hsba",
   "london-rio": "rio",
+  "houston-cvx": "chevron",
   ...MERGED_COMPANY_ID,
 };
 

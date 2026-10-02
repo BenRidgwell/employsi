@@ -28,6 +28,17 @@
  *   Xiaomi                head office Beijing.
  *   China Life Insurance  head office Beijing (SSE 601628); 02628 is its H share.
  *
+ * Merged 2026-10-02 — the same case, missed on 2026-09-30:
+ *
+ *   Meituan               head office Beijing; HKEX 03690 is its only listing,
+ *                         so the roster carried one listing as two lines and
+ *                         the Hong Kong one had its own 41 Zhaopin ads, none of
+ *                         them a duplicate of the Beijing line's 85. Those are
+ *                         re-pointed rather than left under a card nothing
+ *                         draws, which an alias would have done. `beijing-03690`
+ *                         is the kept id: it carries the zhaopin.meituan.com
+ *                         feed (2,420 rows).
+ *
  * Removed 2026-09-30 — Charter Hall Long WALE REIT and Charter Hall Retail
  * REIT are externally managed by Charter Hall Group (`sydney-chc`) and employ
  * nobody of their own: every ad the archive held under them names "Charter
@@ -39,6 +50,7 @@ export const MERGED_COMPANY_ID: Record<string, string> = {
   "beijing-00992": "hongkong-00992",
   "hongkong-01810": "beijing-01810",
   "hongkong-02628": "beijing-601628",
+  "hongkong-03690": "beijing-03690",
   "sydney-clw": "sydney-chc",
   "sydney-cqr": "sydney-chc",
 };
