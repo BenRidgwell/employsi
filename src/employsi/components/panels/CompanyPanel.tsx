@@ -1484,6 +1484,10 @@ export function CompanyPanel() {
           collapsed={newsCollapsed}
           onToggleCollapse={toggleNewsCollapsed}
           loading={cardLoading}
+          /* The same observed height the card holds itself to, so the pair is
+             one size. See cardFloor above for how it is measured and why it
+             only ever grows. */
+          matchHeight={cardFloor}
         />
       )}
     </div>
