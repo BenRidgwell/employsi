@@ -40,8 +40,17 @@ const ENDPOINT = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/da
 const argv = process.argv.slice(2);
 const DRY = argv.includes("--dry");
 const LIMIT = Number(argv[argv.indexOf("--limit") + 1]) || Infinity;
-/** D1 caps bound parameters per statement; two per row plus headroom. */
-const BATCH = 40;
+/**
+ * Rows read, and rows written, per round trip.
+ *
+ * ONE UPDATE PER REQUEST DOES NOT FINISH. The first version of this sent a
+ * statement per row; measured against the live archive that is 726,428
+ * requests, which at any realistic latency is days. The D1 REST API accepts
+ * several statements in one `sql` string (verified against the live database:
+ * "SELECT 1; SELECT 2;" returns two result sets), so a page is read in one
+ * request and written in one more.
+ */
+const PAGE = 500;
 
 type Row = Record<string, unknown>;
 
@@ -88,17 +97,28 @@ async function main() {
     return;
   }
 
+  /**
+   * A SQLite string literal. Doubling the single quote is the whole of it —
+   * SQLite has no backslash escape inside a string, so there is no second
+   * sequence to handle. Inlined rather than bound because a request carrying
+   * several hundred statements cannot sensibly share one positional parameter
+   * list, and the values are a key this script just computed (lowercase
+   * alphanumerics, spaces and pipes) plus a job_key already in the table.
+   */
+  const lit = (v: string) => `'${v.replace(/'/g, "''")}'`;
+
   let done = 0;
   let skipped = 0;
+  const started = Date.now();
   for (;;) {
     if (done + skipped >= LIMIT) break;
     const rows = await sql(
       `SELECT job_key, company_id, company, hub, location, title FROM jobs
         WHERE role_key IS NULL OR role_key = '' LIMIT ?1`,
-      [BATCH],
+      [PAGE],
     );
     if (!rows.length) break;
-    const writes: Promise<unknown>[] = [];
+    const stmts: string[] = [];
     for (const r of rows) {
       const k = roleKey(
         str(r.company_id),
@@ -112,35 +132,55 @@ async function main() {
       // never terminate, so it is given its own job_key instead — which is
       // exactly what ROLE_COUNT_SQL falls back to anyway, so the count is
       // unchanged and the row stops being re-read.
-      writes.push(
-        sql("UPDATE jobs SET role_key = ?1 WHERE job_key = ?2", [
-          k || str(r.job_key),
-          str(r.job_key),
-        ]),
-      );
+      const jk = str(r.job_key);
+      stmts.push(`UPDATE jobs SET role_key = ${lit(k || jk)} WHERE job_key = ${lit(jk)};`);
       if (k) done++;
       else skipped++;
     }
-    await Promise.all(writes);
-    if ((done + skipped) % 1000 < BATCH) {
-      console.log(`  ${(done + skipped).toLocaleString()} / ${pending.toLocaleString()}`);
-    }
+    await sql(stmts.join("\n"));
+    const n = done + skipped;
+    const rate = n / Math.max(1, (Date.now() - started) / 1000);
+    console.log(
+      `  ${n.toLocaleString()} / ${pending.toLocaleString()} · ${Math.round(rate)}/s` +
+        ` · ~${Math.round((pending - n) / Math.max(rate, 0.01) / 60)} min left`,
+    );
   }
 
   const left = Number(
     (await sql("SELECT COUNT(*) AS n FROM jobs WHERE role_key IS NULL OR role_key = ''"))[0]?.n ??
       0,
   );
-  const roles = Number((await sql("SELECT COUNT(DISTINCT role_key) AS n FROM jobs"))[0]?.n ?? 0);
+  /**
+   * The overstatement, measured ONLY over rows that have a key.
+   *
+   * COUNT(DISTINCT role_key) ignores NULLs in SQLite, so dividing the whole
+   * table by it mid-backfill compares every row against the keyed handful: the
+   * first test slice printed "726,948 rows describing 4,270 distinct roles —
+   * rows overstate roles by 16925%", which is not a fact about the archive, it
+   * is a fact about how far the backfill had got. Both sides of the ratio are
+   * now the same population.
+   */
+  const keyed = Number(
+    (await sql("SELECT COUNT(*) AS n FROM jobs WHERE role_key IS NOT NULL AND role_key <> ''"))[0]
+      ?.n ?? 0,
+  );
+  const roles = Number(
+    (
+      await sql(
+        "SELECT COUNT(DISTINCT role_key) AS n FROM jobs WHERE role_key IS NOT NULL AND role_key <> ''",
+      )
+    )[0]?.n ?? 0,
+  );
   const all = Number((await sql("SELECT COUNT(*) AS n FROM jobs"))[0]?.n ?? 0);
   console.log(`\nfilled ${done.toLocaleString()} (${skipped.toLocaleString()} had no title)`);
-  console.log(`${left.toLocaleString()} still unfilled`);
-  console.log(
-    `archive: ${all.toLocaleString()} rows describing ${roles.toLocaleString()} distinct roles` +
-      (all
-        ? ` — rows overstate roles by ${Math.round((all / Math.max(roles, 1) - 1) * 100)}%`
-        : ""),
-  );
+  console.log(`${left.toLocaleString()} of ${all.toLocaleString()} rows still unfilled`);
+  if (keyed) {
+    console.log(
+      `keyed so far: ${keyed.toLocaleString()} rows describing ${roles.toLocaleString()} distinct roles` +
+        ` — rows overstate roles by ${Math.round((keyed / Math.max(roles, 1) - 1) * 100)}%` +
+        (left ? " (over the keyed rows only — run to completion for the archive's figure)" : ""),
+    );
+  }
 }
 
 main().catch((e) => {
