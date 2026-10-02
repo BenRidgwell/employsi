@@ -46,9 +46,32 @@ destination is also seeded. The export says `count_kind: sampled` and carries
 the per-company sample size so the app can say "N moves among M profiles"
 rather than implying a workforce total.
 
+A PROXY IS USUALLY THE WRONG ANSWER HERE
+You are signed in as yourself, so the account is the identity and the address
+only adds or removes suspicion. The server's own README: "LinkedIn scores the
+address a session signs in from. Your account's usual IP address is the safe
+one." Running this at home therefore wants NO proxy; routing your session
+through IPRoyal moves it to an address LinkedIn has never seen you on.
+
+A proxy earns its place only when the collector is NOT at your usual address —
+a VPS, a spare box, another country — where a sticky residential session in
+your own city beats a datacentre address. Then: sticky session only (never
+per-request rotation), proxy configured BEFORE --login, and the same address
+every run. scripts/collector_proxy.py checks all three and refuses otherwise;
+the exit address is pinned on first use and a move halts the run.
+
 SETUP (once)
     pip install "mcp>=1.28,<3"
+
+    # only if you are NOT collecting from your usual address:
+    export PROXY_SERVER=http://geo.iproyal.com:12321   # IPRoyal, or any provider
+    export PROXY_USERNAME='...sticky session token...' # NOT a rotating endpoint
+    export PROXY_PASSWORD=...
+    python scripts/collect-talent-flows.py --proxy-check --proxy-country au
+    python scripts/collect-talent-flows.py --pin-proxy --proxy-country au
+
     uvx mcp-server-linkedin@4.24.4 --login     # sign in by hand in the window
+                                               # (AFTER the proxy, never before)
 
 USAGE
     # calibrate the parser against one real profile; stores nothing
@@ -79,6 +102,9 @@ Options:
     --weekends         collect at weekends too (off by default)
     --pace-log         per-day request counts and times; --pace-log-days N
     --clear-halt       lift a halt, with --yes, after checking the account
+    --proxy-check      read the proxy's exit address and judge it; signs in to nothing
+    --pin-proxy        record the current exit address as this session's
+    --proxy-country XX fail the run if the exit is not in this country (e.g. au)
     --state PATH       local SQLite (default ~/.employsi/talent-flows.sqlite)
     --server-cmd CMD   MCP server command (default "uvx mcp-server-linkedin@4.24.4")
     --window-months N  export window length (default 24)
@@ -107,6 +133,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from collector_pace import (  # noqa: E402
     CapReached, Halted, Pacer, clear_halt, format_log, halt)
 from collector_pace import halted as halted_state  # noqa: E402  (not the Halted exception)
+import collector_proxy as proxy  # noqa: E402
 from talent_flows import (  # noqa: E402
     MAX_GAP_MONTHS, aggregate, coverage_end, exclusion_report, moves_from, parse_experience,
     person_key, tail_counts, window_note)
@@ -139,6 +166,11 @@ PACE = dict(
     end_hour=int(_opt('--end-hour', 20)),
     weekends='--weekends' in args,
 )
+# The proxy is configured through the SERVER's own PROXY_* environment
+# variables, not here; this is only the country the exit is expected to be in,
+# checked before signing in. See scripts/collector_proxy.py for why the usual
+# answer is to use no proxy at all.
+PROXY_COUNTRY = _opt('--proxy-country')
 WINDOW_MONTHS = int(_opt('--window-months', 24))
 LAG_MONTHS = int(_opt('--lag-months', 3))
 # A call that fails this many times running, for reasons that are NOT a rate
@@ -334,6 +366,69 @@ async def inspect(li: LinkedIn, username: str) -> int:
     if mv.skipped:
         print(f'  not counted: {dict(mv.skipped)}')
     print('\nNothing was stored.')
+    return 0
+
+
+def proxy_gate(conn: sqlite3.Connection) -> int:
+    """The check every command that touches LinkedIn runs first. 0 to proceed.
+
+    No proxy configured is a pass, and deliberately so: at home that is the
+    right setting. What is refused is a proxy that rotates, exits in the wrong
+    country, or has moved since the session was created."""
+    if not proxy.configured():
+        if PROXY_COUNTRY:
+            print(f'--proxy-country {PROXY_COUNTRY} was given but {proxy.PROXY_SERVER} is '
+                  'not set, so nothing would be proxied. Unset one or set the other.')
+            return 2
+        return 0
+    try:
+        ip, country = proxy.preflight(PROXY_COUNTRY)
+        print(f'proxy {proxy.describe()} -> {ip}'
+              f'{" (" + country.upper() + ")" if country else ""}')
+        print(proxy.check_stable(conn, ip, country))
+    except proxy.ProxyProblem as e:
+        print(f'PROXY: {e}')
+        return 3
+    return 0
+
+
+def proxy_check(conn: sqlite3.Connection, repin: bool = False) -> int:
+    """Read the exit address and say whether it is usable, WITHOUT signing in.
+
+    Run this before `--login`: the server's README is explicit that a session
+    created on one address and then moved to another triggers a checkpoint, so
+    the order is proxy first, sign in second, collect third.
+    """
+    if not proxy.configured():
+        print(f'{proxy.PROXY_SERVER} is not set, so no proxy is in use.\n'
+              'That is the right setting when the collector runs on your own machine at '
+              'home: your account\'s usual address is the one LinkedIn already trusts.')
+        was = proxy.pinned(conn)
+        if was:
+            print(f'\nNote: a previous run pinned the proxy exit {was[0]} on {was[2]}. '
+                  'Collecting without a proxy now means signing in from a different '
+                  'address than that session used. Re-run --login first.')
+        return 0
+    print(f'proxy: {proxy.describe()}')
+    try:
+        ip, country = proxy.preflight(PROXY_COUNTRY)
+    except proxy.ProxyProblem as e:
+        print(f'\nPROBLEM: {e}')
+        return 3
+    print(f'exit:   {ip}{" (" + country.upper() + ")" if country else " (country unknown)"}')
+    was = proxy.pinned(conn)
+    if repin:
+        proxy.pin(conn, ip, country)
+        print(f'pinned: {ip}'
+              + (f' (replacing {was[0]} from {was[2]})' if was and was[0] != ip else ''))
+        print('\nSign in from this address before collecting: '
+              'uvx mcp-server-linkedin@4.24.4 --login')
+        return 0
+    try:
+        print(proxy.check_stable(conn, ip, country))
+    except proxy.ProxyProblem as e:
+        print(f'\nPROBLEM: {e}')
+        return 3
     return 0
 
 
@@ -549,9 +644,15 @@ def main() -> int:
                 os.remove(p)
                 print(f'deleted {p}')
         return 0
-    if '--inspect' in args:
-        return asyncio.run(with_server(lambda li: inspect(li, _opt('--inspect'))))
     conn = db()
+    if '--inspect' in args:
+        # --inspect is one REAL profile read, so it goes through the same proxy
+        # gate as a collecting run. It is usually the first command anyone
+        # runs, which makes it the likeliest place to sign in from an address
+        # the session was not created on.
+        if proxy_gate(conn) != 0:
+            return 3
+        return asyncio.run(with_server(lambda li: inspect(li, _opt('--inspect'))))
     if '--stats' in args:
         return stats(conn)
     if '--pace-log' in args:
@@ -572,6 +673,8 @@ def main() -> int:
         clear_halt(conn)
         print('Cleared. The next run may start.')
         return 0
+    if '--proxy-check' in args or '--pin-proxy' in args:
+        return proxy_check(conn, repin='--pin-proxy' in args)
     if '--export' in args:
         return export(conn, _opt('--export'))
     seeds = [tuple(s.split('=', 1)) for s in _all('--seed') if '=' in s]
@@ -591,6 +694,11 @@ def main() -> int:
     except CapReached as e:
         print(f'Not collecting: {e}.')
         return 0
+    # And the proxy before that too: an exit address that rotates, sits in the
+    # wrong country or has moved since the session was created is a checkpoint
+    # waiting to happen, and the cheapest moment to find out is now.
+    if proxy_gate(conn) != 0:
+        return 3
     print(f'{pacer.remaining_today()} profiles left in today\'s budget '
           f'(cap {pacer.daily_cap}); {PACE["min_gap"]:.0f}–{PACE["max_gap"]:.0f}s between reads.')
     return asyncio.run(with_server(lambda li: collect(li, conn, seeds), pacer))

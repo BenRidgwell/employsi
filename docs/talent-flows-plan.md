@@ -401,6 +401,22 @@ What it will and won't do:
   Mon–Fri local. Every request is logged for `--pace-log` to report, with no
   profile identifier. These replace the old fixed 60s gap and per-run cap,
   which reset every time the command was re-run.
+- **A proxy is usually the WRONG answer, and the code says so.** The server's
+  own README: *"LinkedIn scores the address a session signs in from. Your
+  account's usual IP address is the safe one."* Signed in as yourself, the
+  account is the identity; the address only adds or removes suspicion, so
+  routing a home run through IPRoyal moves the session to an address LinkedIn
+  has never seen you on. A proxy earns its place only when the collector is
+  **not** at your usual address (a VPS, a spare box, another country), and
+  then only as a sticky residential session in your own city.
+  `scripts/collector_proxy.py` enforces the three rules that follow, with
+  `--proxy-check` / `--pin-proxy` / `--proxy-country`:
+  **rotation is refused by measurement** (the exit is probed several times and
+  a change fails the run — a plausible host and port prove nothing, since
+  IPRoyal selects stickiness in the *username*); **the country is checked**;
+  and **the exit address is pinned on first use**, so a later run from a
+  different address halts rather than walking into the checkpoint that moving
+  a session between addresses triggers. Credentials are never logged.
 - **It is still not a measured safe limit**, and there isn't one to quote.
   Pacing also does nothing about the signals it cannot touch: reading hundreds
   of strangers' profiles, from a browser fingerprint and an IP that are not

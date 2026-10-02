@@ -35,6 +35,8 @@ on:
       - 'scripts/collect-talent-flows.py'
       - 'scripts/collector_pace.py'
       - 'scripts/test_collector_pace.py'
+      - 'scripts/collector_proxy.py'
+      - 'scripts/test_collector_proxy.py'
       - 'scripts/brightdata-talent-flows.py'
       # A reformat of these data files is what silently emptied the SEEK and
       # Zhaopin rosters, so a change to either has to re-run the parsers.
@@ -56,6 +58,8 @@ on:
       - 'scripts/collect-talent-flows.py'
       - 'scripts/collector_pace.py'
       - 'scripts/test_collector_pace.py'
+      - 'scripts/collector_proxy.py'
+      - 'scripts/test_collector_proxy.py'
       - 'scripts/brightdata-talent-flows.py'
       - 'src/employsi/data/seekAdvertisers.ts'
       - 'src/employsi/data/chinaJobsTargets.ts'
@@ -142,6 +146,13 @@ jobs:
       # pays for that is a real one.
       - name: LinkedIn collector keeps its pacing and halt rules
         run: python scripts/test_collector_pace.py
+
+      # The proxy gate. Each failure it guards looks like success right up
+      # until LinkedIn hands over a checkpoint: a rotating endpoint, an exit
+      # in the wrong country, or an address that moved since the session was
+      # created. The stub opener means this touches no proxy and no network.
+      - name: LinkedIn collector keeps its proxy rules
+        run: python scripts/test_collector_proxy.py
 
       - name: Byte-compile the scrapers
         run: python -m compileall -q scripts/*.py
