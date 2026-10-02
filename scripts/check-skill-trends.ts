@@ -2444,6 +2444,41 @@ console.log("\nthe timeline runs to the present month, and the index marker to t
   check("every event falls inside the series", off.length === 0, off.join(", "));
 }
 
+// ── one job, counted once, wherever it is counted ──────────────────────────
+// The archive's key is `source|title|company|location` and SOURCE IS FIRST, so
+// one job carried by an employer's careers site and by a job board is two rows
+// by construction — nothing about locations can merge them. Every surface that
+// reports "roles" therefore has to fold by normalised title, and a future edit
+// that goes back to counting rows would read as a plausible number with a real
+// duplicate behind it, which is the shape of bug this file exists for.
+console.log("\nper-company skill demand counts roles, not archive rows:");
+{
+  const src = readFileSync("src/employsi/lib/jobHistoryFn.ts", "utf8");
+  const months = src.slice(src.indexOf("export const getSkillCompanyMonths"));
+  const monthsBody = months.slice(0, months.indexOf("\nexport "));
+  check(
+    "getSkillCompanyMonths reads the title it folds by",
+    /SELECT company_id, hub, title,/.test(monthsBody),
+    "the title is not selected, so nothing can be folded",
+  );
+  check(
+    "...and groups by company, hub and normRoleTitle",
+    /normRoleTitle\(String\(r\.title/.test(monthsBody) && /groups\.set\(/.test(monthsBody),
+    "no fold found — it is counting rows again",
+  );
+  check(
+    "...and unions each copy's spans rather than merging them end to end",
+    /for \(const \[fs, ls\] of g\.spans\)/.test(monthsBody),
+    "spans are not walked per copy",
+  );
+  const roles = src.slice(src.indexOf("export const getCompanySkillRoles"));
+  check(
+    "the roles list folds by the same key",
+    /normRoleTitle\(role\.title\)/.test(roles),
+    "the list is returning one entry per archive row",
+  );
+}
+
 // ── the headline and the chart counting the same thing ─────────────────────
 // They are one figure in two places: "Open roles" on the card and the vacancy
 // chart's last point. They agree only while they fold titles the same way, and

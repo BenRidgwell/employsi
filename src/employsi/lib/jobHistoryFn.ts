@@ -2327,7 +2327,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       const likes = names.map((_, i) => `skills LIKE ?${i + 2}`).join(" OR ");
       const res = await db
         .prepare(
-          `SELECT company_id, hub, first_seen, last_seen FROM jobs
+          `SELECT company_id, hub, title, first_seen, last_seen FROM jobs
             WHERE (${likes})
               AND company_id IS NOT NULL
               AND last_seen >= ?1
@@ -2338,6 +2338,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       let rows = (res?.results ?? []) as {
         company_id: string | null;
         hub: string | null;
+        title: string | null;
         first_seen: string | null;
         last_seen: string | null;
       }[];
@@ -2355,26 +2356,65 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       // archive's newest day (to), not of today — the span actually read.
       const liveFrom = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
       const known = new Set(months);
+
+      /**
+       * DISTINCT ROLES, NOT ARCHIVE ROWS, and this used to count rows.
+       *
+       * The archive's key is `source|title|company|location` and source is the
+       * FIRST field, so one job carried by an employer's own careers site and
+       * by a job board is two rows by construction. Counting rows therefore
+       * reported one role as two — Rio Tinto's "Adviser Global Payroll Systems
+       * ESPS" was 2 ads on the pin and appeared twice in the roles list, the
+       * two copies differing only in how they spelled Perth.
+       *
+       * Folding by (company, hub, normalised title) is the unit "Open roles"
+       * and the vacancy chart already use, so the map, the card and the list
+       * now say the same number for the same thing.
+       *
+       * The fold keeps each copy's SPAN rather than merging them into one.
+       * Merging min(first_seen) to max(last_seen) would claim the role was
+       * open through any gap between the two boards carrying it; a union says
+       * it was open on the days at least one board had it up, which is what
+       * was actually observed. Same construction getVacancyTrend uses.
+       */
+      type Group = { id: string; hub: string; spans: [string, string][] };
+      const groups = new Map<string, Group>();
       for (const r of rows) {
         const id = (r.company_id || "").trim();
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         if (!id || !fs || !ls) continue;
+        const hub = (r.hub || "").trim();
+        const t = normRoleTitle(String(r.title || ""));
+        // A row with no usable title cannot be folded against anything, so it
+        // stands alone rather than collapsing every untitled row into one.
+        const key = `${id}|${hub}|${t || `#${groups.size}`}`;
+        const g = groups.get(key);
+        if (g) g.spans.push([fs, ls]);
+        else groups.set(key, { id, hub, spans: [[fs, ls]] });
+      }
+
+      for (const g of groups.values()) {
         // An ad counts in EVERY month it was up, not only the one it appeared
         // in — the question is who was advertising then, and a role posted in
         // July and still open in September was being advertised in August.
-        const hub = (r.hub || "").trim();
-        for (const m of monthsBetween(monthOf(fs), monthOf(ls))) {
+        const ms = new Set<string>();
+        let live = false;
+        for (const [fs, ls] of g.spans) {
+          for (const m of monthsBetween(monthOf(fs), monthOf(ls))) ms.add(m);
+          if (ls >= liveFrom) live = true;
+        }
+        for (const m of ms) {
           if (!known.has(m)) continue;
-          (byMonth[m] ||= {})[id] = (byMonth[m][id] || 0) + 1;
-          if (hub) {
-            const c = ((byMonthCity[m] ||= {})[hub] ||= {});
-            c[id] = (c[id] || 0) + 1;
+          (byMonth[m] ||= {})[g.id] = (byMonth[m][g.id] || 0) + 1;
+          if (g.hub) {
+            const c = ((byMonthCity[m] ||= {})[g.hub] ||= {});
+            c[g.id] = (c[g.id] || 0) + 1;
           }
         }
-        if (hub && ls >= liveFrom) {
-          const c = (liveByCity[hub] ||= {});
-          c[id] = (c[id] || 0) + 1;
+        if (g.hub && live) {
+          const c = (liveByCity[g.hub] ||= {});
+          c[g.id] = (c[g.id] || 0) + 1;
         }
       }
       return { months, byMonth, byMonthCity, liveByCity };
@@ -2503,18 +2543,50 @@ export const getCompanySkillRoles = createServerFn({ method: "GET" })
         );
       }
       const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      /**
+       * ONE ROW PER ROLE, NOT PER ARCHIVE ROW.
+       *
+       * The archive's key is `source|title|company|location`, and source is
+       * the FIRST field — so one job carried by the employer's own careers
+       * site and by a job board is two rows by construction, whatever the
+       * location says. Rio Tinto's "Adviser Global Payroll Systems ESPS"
+       * appeared twice in this list for that reason, the two differing only in
+       * how they spelled Perth.
+       *
+       * That is not something location normalisation could fix: the rows
+       * differ in `source` before they differ in anything else. Folding by
+       * normalised title is what the rest of the card already does —
+       * normRoleTitle is the same fold behind "Open roles" and the vacancy
+       * chart — so this list now answers in the same unit they do.
+       *
+       * The kept row is the one most useful to click: a link beats no link,
+       * and a salary beats none. The others only contribute their existence.
+       */
+      const byRole = new Map<string, SkillRole>();
+      for (const r of rows) {
+        const role: SkillRole = {
+          title: str(r.title),
+          url: str(r.url),
+          location: str(r.location),
+          salary: str(r.salary),
+          source: str(r.source),
+          firstSeen: str(r.first_seen),
+          lastSeen: str(r.last_seen),
+        };
+        if (!role.title) continue;
+        const key = normRoleTitle(role.title);
+        if (!key) continue;
+        const kept = byRole.get(key);
+        if (!kept) {
+          byRole.set(key, role);
+          continue;
+        }
+        const better =
+          (role.url ? 2 : 0) + (role.salary ? 1 : 0) > (kept.url ? 2 : 0) + (kept.salary ? 1 : 0);
+        if (better) byRole.set(key, role);
+      }
       return {
-        roles: rows
-          .map((r) => ({
-            title: str(r.title),
-            url: str(r.url),
-            location: str(r.location),
-            salary: str(r.salary),
-            source: str(r.source),
-            firstSeen: str(r.first_seen),
-            lastSeen: str(r.last_seen),
-          }))
-          .filter((r) => !!r.title),
+        roles: [...byRole.values()],
         asOf: byMonth ? month : to,
         /** True when `asOf` is a month rather than the archive's newest day. */
         dated: byMonth,
