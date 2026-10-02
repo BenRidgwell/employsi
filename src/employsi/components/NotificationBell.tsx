@@ -639,7 +639,6 @@ export function NotificationBell() {
                         <span className="nbtop">
                           <span className="nbco">{r.company}</span>
                           <span className={`nbpill ${PILL[r.kind] ?? "spike"}`}>{r.kind}</span>
-                          <span className="nbwhen">{r.week} ads</span>
                           {/* The dot and the tag occupy the same slot, so the
                               row's top line has one status mark rather than a
                               mark for new and nothing for read.
