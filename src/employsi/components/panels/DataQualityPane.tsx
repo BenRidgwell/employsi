@@ -10,7 +10,8 @@ import {
 import { CRAWL_FAMILIES, nextForFamily, untilLabel } from "../../lib/crawlSchedule";
 import { crawlTriggerAvailable, runCrawl } from "../../lib/runCrawlFn";
 import { CardLoader } from "./CardLoader";
-import { getEngagement, type Cohort } from "../../lib/engagementFn";
+import { getEngagement, type Cohort, type TopTerm } from "../../lib/engagementFn";
+import { COMPANIES } from "../../data/companies";
 import { useAppStore } from "../../state/store";
 
 /**
@@ -288,6 +289,59 @@ function duration(ms: number | null): string {
   const m = Math.floor(total / 60);
   const sec = total % 60;
   return m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+/**
+ * A SUM of durations rather than one session's — hours, where `duration` would
+ * print "412m 9s". Rounded to the minute: a total measured in hours does not
+ * become truer for carrying a seconds figure.
+ */
+function spanLabel(ms: number): string {
+  if (ms <= 0) return "—";
+  const mins = Math.round(ms / 60_000);
+  if (mins < 60) return `${mins || 1}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+/**
+ * Company ids back to company NAMES.
+ *
+ * `company_open` stores the app's id ("melbourne-csl"), which is right for the
+ * event log — it is stable where a display name is not — and useless on a card
+ * a person reads. Resolved here rather than server-side because the roster is
+ * app data, and the server function would have to carry the whole of it into
+ * the Worker bundle to answer one label.
+ *
+ * An id with no company is shown AS the id rather than dropped: a roster entry
+ * since renamed or removed is exactly what this console should surface, and
+ * discarding the row would make a popular company look unvisited.
+ */
+let companyNames: Map<string, string> | null = null;
+function companyName(id: string): string {
+  if (!companyNames) companyNames = new Map(COMPANIES.map((c) => [c.id, c.name]));
+  return companyNames.get(id) ?? id;
+}
+
+/** The "most looked at" lists. Bars are shares of the TOP row, not of the
+ *  total: these are the top eight of a long tail, so a share of the total would
+ *  be a share of a number not shown. */
+function TermList({ terms, empty }: { terms: TopTerm[]; empty: string }) {
+  if (!terms.length) return <p className="dqmsg">{empty}</p>;
+  return (
+    <div className="dqterms">
+      {terms.map((t) => (
+        <div className="dqtermrow" key={t.ref}>
+          <span className="dqterm" title={t.label}>
+            {t.label}
+          </span>
+          <span className="dqtermbar" aria-hidden>
+            <span style={{ width: t.n ? `${Math.max(2, t.pct)}%` : "0" }} />
+          </span>
+          <span className="dqtermn">{t.n.toLocaleString()}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /** A retention cell: a share of its cohort, shaded by that share. */
@@ -1029,6 +1083,122 @@ export function DataQualityPane({ onClose }: { onClose: () => void }) {
                   )}
                 </section>
               </div>
+            </div>
+
+            <section className="dqcard">
+              <div className="dqcardhd">
+                <div className="dqcardtext">
+                  <span className="dqcardtitle">Feature use</span>
+                  <span className="dqcardsub">
+                    The four main cards over the last {windowLabel}, ranked by how often they were
+                    opened. Opens are complete — an open always records. Time is best effort: a
+                    panel left open when the TAB closes records no close, so the time column is
+                    lower than reality by however much that happens, and the average is per closed
+                    visit rather than per open.
+                  </span>
+                </div>
+              </div>
+              {eng.features.some((f) => f.opens) ? (
+                <div className="dqfeat">
+                  {eng.features.map((f) => (
+                    <div className="dqfeatrow" key={f.id}>
+                      <span className="dqfeatlbl">{f.label}</span>
+                      {/* A floor of 2% so a real-but-tiny share is still a
+                          visible mark — but only when there IS one. A feature
+                          nobody opened draws nothing, because a stub of bar
+                          against a zero is the card contradicting itself. */}
+                      <span className="dqfeatbar" aria-hidden>
+                        <span style={{ width: f.opens ? `${Math.max(2, f.pct)}%` : "0" }} />
+                      </span>
+                      <span className="dqfeatn">{f.opens.toLocaleString()}</span>
+                      <span className="dqfeatms">{spanLabel(f.ms)}</span>
+                      <span className="dqfeatavg">
+                        {f.avgMs === null ? "—" : duration(f.avgMs)} avg
+                      </span>
+                    </div>
+                  ))}
+                  <div className="dqfeatkey">
+                    <span />
+                    <span />
+                    <span className="dqfeatn">opens</span>
+                    <span className="dqfeatms">total</span>
+                    <span className="dqfeatavg">per visit</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="dqmsg">
+                  No feature opens recorded yet. This capture started with the release that added
+                  it, so it is empty rather than low.
+                </p>
+              )}
+            </section>
+
+            <div className="dqpair dqpairwide">
+              <section className="dqcard">
+                <div className="dqcardhd">
+                  <div className="dqcardtext">
+                    <span className="dqcardtitle">What the search bar finds</span>
+                    <span className="dqcardsub">
+                      {eng.searches.toLocaleString()} searches in the last {windowLabel}. The lists
+                      are what people OPENED — the app's own skill and company names — not what they
+                      typed. Search text is never stored, so a query that found nothing leaves a
+                      count here and no name.
+                    </span>
+                  </div>
+                </div>
+                <div className="dqtermpair">
+                  <div>
+                    <span className="dqtermhd">Skills</span>
+                    <TermList terms={eng.topSkills} empty="No skills opened in this window." />
+                  </div>
+                  <div>
+                    <span className="dqtermhd">Companies</span>
+                    <TermList
+                      terms={eng.topCompanies.map((t) => ({ ...t, label: companyName(t.ref) }))}
+                      empty="No companies opened in this window."
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="dqcard">
+                <div className="dqcardhd">
+                  <div className="dqcardtext">
+                    <span className="dqcardtitle">Demand side vs supply side</span>
+                    <span className="dqcardsub">
+                      Time with the app on each side over the last {windowLabel}. The clock stops
+                      when the tab is hidden, so this is time spent looking rather than time the
+                      page existed.
+                    </span>
+                  </div>
+                </div>
+                {eng.modeSplit.supplyPct === null ? (
+                  <p className="dqmsg">
+                    No side time recorded yet. This capture started with the release that added it.
+                  </p>
+                ) : (
+                  <div className="dqsides">
+                    <div className="dqsidesbar" aria-hidden>
+                      <span
+                        className="demand"
+                        style={{ width: `${100 - eng.modeSplit.supplyPct}%` }}
+                      />
+                      <span className="supply" style={{ width: `${eng.modeSplit.supplyPct}%` }} />
+                    </div>
+                    <div className="dqsideskey">
+                      <span>
+                        <i className="demand" />
+                        Demand {100 - eng.modeSplit.supplyPct}%
+                        <b>{spanLabel(eng.modeSplit.demandMs)}</b>
+                      </span>
+                      <span>
+                        <i className="supply" />
+                        Supply {eng.modeSplit.supplyPct}%<b>{spanLabel(eng.modeSplit.supplyMs)}</b>
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </section>
             </div>
 
             <p className="dqfoot">Read from the event log · {eng.generated}</p>

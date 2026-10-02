@@ -104,6 +104,36 @@ export interface TimeBand {
   pct: number;
 }
 
+/** One main feature, as the console ranks them. */
+export interface FeatureUse {
+  id: string;
+  label: string;
+  /** panel_open rows: complete, because an open always fires. */
+  opens: number;
+  /** Summed panel_close ms: best effort — a closed TAB fires no close. */
+  ms: number;
+  /** ms / closes, or null when nothing closed cleanly. */
+  avgMs: number | null;
+  /** opens as a share of the busiest feature's, for the bar. */
+  pct: number;
+}
+
+/** A searched-for thing, by how many times it was opened. */
+export interface TopTerm {
+  ref: string;
+  label: string;
+  n: number;
+  pct: number;
+}
+
+/** How the app's time divides between the two sides. */
+export interface ModeSplit {
+  supplyMs: number;
+  demandMs: number;
+  /** Supply's share of the two, 0-100; null when neither side has time yet. */
+  supplyPct: number | null;
+}
+
 export interface Engagement {
   ok: boolean;
   error?: string;
@@ -119,6 +149,12 @@ export interface Engagement {
   lagging: Lagging[];
   timeBands: TimeBand[];
   medianSessionMs: number | null;
+  features: FeatureUse[];
+  topSkills: TopTerm[];
+  topCompanies: TopTerm[];
+  /** `search` events in the window: how much the bar is used at all. */
+  searches: number;
+  modeSplit: ModeSplit;
 }
 
 const EMPTY = (error?: string, days = 30): Engagement => ({
@@ -133,7 +169,21 @@ const EMPTY = (error?: string, days = 30): Engagement => ({
   lagging: [],
   timeBands: [],
   medianSessionMs: null,
+  features: [],
+  topSkills: [],
+  topCompanies: [],
+  searches: 0,
+  modeSplit: { supplyMs: 0, demandMs: 0, supplyPct: null },
 });
+
+/** The features the console tracks, and what to call them. The id is what the
+ *  client sends as panel_open/panel_close detail (hooks/useFeatureTracking). */
+const FEATURE_LABEL: Record<string, string> = {
+  trending: "What's trending",
+  analyst: "Ask an analyst",
+  flows: "Talent flows",
+  career: "Career pathways",
+};
 
 /** Session-length buckets. Fixed edges so the shape is comparable week to week. */
 const BANDS: { band: string; lo: number; hi: number }[] = [
@@ -369,6 +419,97 @@ export const getEngagement = createServerFn({ method: "GET" })
       // enough to make a typical session look twice as long as it is.
       const medianSessionMs = total ? lens[Math.floor((total - 1) / 2)] : null;
 
+      // ── Most-used features ──────────────────────────────────────────────────
+      // Opens and durations come from DIFFERENT rows and are counted
+      // separately on purpose: panel_open always fires, panel_close does not
+      // when the tab is closed outright. Dividing the summed ms by the OPENS
+      // would therefore divide real time by a larger number and under-report
+      // every average, so the average is per CLOSE and the card says so.
+      const featRows = await all(
+        db,
+        "SELECT detail, name, COUNT(*) AS n, SUM(ms) AS ms FROM app_event" +
+          " WHERE name IN ('panel_open','panel_close') AND day >= ? AND detail <> ''" +
+          " GROUP BY detail, name",
+        dayString(days),
+      );
+      const featAcc = new Map<string, { opens: number; closes: number; ms: number }>();
+      for (const r of featRows) {
+        const id = String(r.detail || "");
+        if (!FEATURE_LABEL[id]) continue; // an id the console does not show
+        const acc = featAcc.get(id) ?? { opens: 0, closes: 0, ms: 0 };
+        if (String(r.name) === "panel_open") acc.opens += n(r.n);
+        else {
+          acc.closes += n(r.n);
+          acc.ms += n(r.ms);
+        }
+        featAcc.set(id, acc);
+      }
+      const maxOpens = Math.max(0, ...[...featAcc.values()].map((v) => v.opens));
+      const features: FeatureUse[] = Object.keys(FEATURE_LABEL)
+        .map((id) => {
+          const a = featAcc.get(id) ?? { opens: 0, closes: 0, ms: 0 };
+          return {
+            id,
+            label: FEATURE_LABEL[id],
+            opens: a.opens,
+            ms: a.ms,
+            avgMs: a.closes ? Math.round(a.ms / a.closes) : null,
+            pct: maxOpens ? Math.round((a.opens / maxOpens) * 100) : 0,
+          };
+        })
+        .sort((x, y) => y.opens - x.opens || y.ms - x.ms);
+
+      // ── What the search bar is used for ─────────────────────────────────────
+      // From skill_open / company_open, NOT from search text, which this app
+      // deliberately never stores (lib/analytics.ts). Those two fire when a
+      // query resolves to a canonical skill or a company card opens, so they
+      // answer "what are people looking for" in the app's own vocabulary
+      // rather than in whatever was typed.
+      const topOf = async (name: string): Promise<TopTerm[]> => {
+        const rows = await all(
+          db,
+          "SELECT detail AS ref, COUNT(*) AS n FROM app_event" +
+            " WHERE name = ? AND day >= ? AND detail <> ''" +
+            " GROUP BY detail ORDER BY n DESC LIMIT 8",
+          name,
+          dayString(days),
+        );
+        const top = rows.length ? n(rows[0].n) : 0;
+        return rows.map((r) => ({
+          ref: String(r.ref),
+          label: String(r.ref),
+          n: n(r.n),
+          pct: top ? Math.round((n(r.n) / top) * 100) : 0,
+        }));
+      };
+      const topSkills = await topOf("skill_open");
+      const topCompanies = await topOf("company_open");
+      const searches = n(
+        (
+          await all(
+            db,
+            "SELECT COUNT(*) AS n FROM app_event WHERE name = 'search' AND day >= ?",
+            dayString(days),
+          )
+        )[0]?.n,
+      );
+
+      // ── Supply vs demand ────────────────────────────────────────────────────
+      const modeRows = await all(
+        db,
+        "SELECT detail, SUM(ms) AS ms FROM app_event" +
+          " WHERE name = 'mode_use' AND day >= ? AND ms > 0 GROUP BY detail",
+        dayString(days),
+      );
+      const supplyMs = n(modeRows.find((r) => String(r.detail) === "supply")?.ms);
+      const demandMs = n(modeRows.find((r) => String(r.detail) === "demand")?.ms);
+      const modeTotal = supplyMs + demandMs;
+      const modeSplit: ModeSplit = {
+        supplyMs,
+        demandMs,
+        supplyPct: modeTotal ? Math.round((supplyMs / modeTotal) * 100) : null,
+      };
+
       return {
         ok: true,
         days,
@@ -380,6 +521,11 @@ export const getEngagement = createServerFn({ method: "GET" })
         lagging,
         timeBands,
         medianSessionMs,
+        features,
+        topSkills,
+        topCompanies,
+        searches,
+        modeSplit,
       };
     } catch (e) {
       return EMPTY(String((e as Error)?.message || e), days);

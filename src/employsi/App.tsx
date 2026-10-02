@@ -27,6 +27,7 @@ import { useAuthSession } from "./hooks/useAuthSession";
 import { useWelcome } from "./hooks/useWelcome";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
+import { useFeatureTracking } from "./hooks/useFeatureTracking";
 import { startSession } from "./lib/analytics";
 import { useEffect } from "react";
 
@@ -79,6 +80,8 @@ function App() {
   // the What's Trending pane, and the product events behind the admin console's
   // engagement tab.
   useViewTracking();
+  // Which features get opened, for how long, and the supply/demand time split.
+  useFeatureTracking();
 
   // One session per page load, closed out with its length on unload. This is
   // the only source of "time in app" — see lib/analytics.ts for why the unload

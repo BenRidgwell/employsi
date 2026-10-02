@@ -198,6 +198,12 @@ function TalentFlowHome({
               >
                 Talent flows
               </span>
+              {/* Beta, said on the card itself rather than in a release note:
+                  this is the one surface whose movements are INFERRED from ads
+                  rather than counted, so a reader needs to know before they
+                  quote a figure, not after. Both of this component's headers
+                  carry it — the intro state and the loaded card. */}
+              <span className="betatag">Beta</span>
               <span
                 style={{
                   font: "400 11px/1 'Inter',system-ui,sans-serif",
@@ -555,14 +561,17 @@ export function TalentFlowPane() {
               gap: 12,
             }}
           >
-            <span
-              style={{
-                font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
-                letterSpacing: "-0.02em",
-                textWrap: "pretty",
-              }}
-            >
-              {heading}
+            <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
+                  letterSpacing: "-0.02em",
+                  textWrap: "pretty",
+                }}
+              >
+                {heading}
+              </span>
+              <span className="betatag">Beta</span>
             </span>
             <button type="button" className="paneclose" onClick={close} aria-label="Close">
               <IconClose />
