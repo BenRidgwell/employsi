@@ -3872,6 +3872,26 @@ export interface SkillContext {
  * principal", "school principal") are separate terms and are never gated.
  */
 const GATED_TERMS: Record<string, RegExp> = {
+  // "HR" is two other things in a job title, and both are common.
+  //
+  //   - HEAVY RIGID, the truck licence class: "HR Driver", "HR Truck Driver",
+  //     "HR Multi System Operator", "min HR licence", "HR LF required". Measured
+  //     2026-10-02: ~150 archived rows, every one tagged Human Resources beside
+  //     the Driving & Transport they already, correctly, carried.
+  //   - AN HOUR: "$15.00/hr", "12 hr DS NS", "up to $41/hr". ~180 rows, the
+  //     largest of them Amazon delivery drivers, production operators and nurses.
+  //
+  // So "hr " counts only in a title with neither: no hourly form ("/hr",
+  // "per hr", or a number JOINED to it — "12 hr", "12hr", "12-hr" — unless an
+  // HR job word follows, so "District 3 HR Specialist", "Intern 2027 - HR" and
+  // "RH / HR Advisor" keep HR), no licence word (licence, ticket, rigid, the LF/MR classes — not
+  // HC, which is also "headcount"), and no vehicle word anywhere (driver,
+  // truck, tipper, tanker, rear or side lift, water cart, forklift) or an
+  // "operator" after it. A real HR role still matches on its other terms —
+  // "human resources", "people and culture", "people partner" — which are not
+  // gated.
+  "hr ":
+    /^(?!.*(?:(?:\/|\bper)\s*hr\b(?!\s*(?:and\s+|\/\s*)?(?:specialist|manager|advis|business|executive|assistant|officer|coordinator|generalist|partner|admin|director|lead|consult|analyst|intern))|(?<![a-z])\d\s?-?hr\b(?!\s*(?:and\s+|\/\s*)?(?:specialist|manager|advis|business|executive|assistant|officer|coordinator|generalist|partner|admin|director|lead|consult|analyst|intern))|\bhr\s+(?:lf|mr|licen[cs]e|ticket)\b|\b(?:licen[cs]e|ticket|rigid)\b|\b(?:drivers?|truck|tipper|tanker|rear lift|side lift|water cart|forklift)\b|\bhr\b.*\boperators?\b))/i,
   principal:
     /educat|school|colleg|campus|academy|kindergarten|preschool|primary|secondary|teach|curriculum|student|pupil|tafe|universit|childcare|early learning/i,
   // "AWS" is Amazon Web Services in a technology title and the ANNUAL WAGE
