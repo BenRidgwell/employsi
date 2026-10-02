@@ -9892,42 +9892,74 @@ body {
    Not applied under prefers-reduced-motion via .reduce-motion, which already
    kills every transition app-wide — the end states still hold, so the panel
    still tucks, it just does not slide. */
-.cardstage.newstucked .cc {
+/* THE PAIR MOVES, NOT THE CARD. Tucking translates rather than reflowing —
+   that is what lets the news panel keep its scroll position, feed and
+   in-flight fetches — so anything that must stay beside the card has to take
+   the same transform. It was on .cc alone, and the skill call-out beside it
+   was left behind at the card's old position with a 394px hole between them.
+   Moving the whole .ccwrap makes that true by construction rather than by two
+   rules someone has to remember to keep in step. */
+.cardstage.newstucked .ccwrap {
   transform: translateX(394px);
+}
+/* AND THE PILL CLEARS THE SPINE. Tucked, the news panel ends up 16px to the
+   LEFT of the card and paints under it — that dark sliver down the card's
+   left edge is the whole point of the tuck. The pill is positioned off the
+   card's box, so a 20px gap there is 20px to the SPINE'S far side: 4px of
+   daylight and then the sliver, which reads as the pill resting against it.
+   The extra 16px keeps 20px of clear space before the first thing the eye
+   meets in either state. */
+.cardstage.newstucked .srpop {
+  transform: translateX(-16px);
 }
 .cardstage.newstucked .newspanel {
   transform: translateX(-76px);
   cursor: pointer;
 }
-/* THE CALL-OUT RIDES WITH THE CARD. It is a flex sibling, so its LAYOUT
-   position never moves — but the card's does not either: tucking translates
-   the card 394px without reflowing anything, which is the whole point of
-   doing it with a transform. Left out of this rule the pill stays at the
-   card's old position and a 394px gap opens between them, which is exactly
-   what it looked like. Same distance, same duration, same curve, so the two
-   travel as one object. */
-.cardstage.newstucked .srpop {
-  transform: translateX(394px);
-}
 .cc,
 .newspanel,
+.ccwrap,
 .srpop {
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* The card has to paint OVER the news panel for "behind" to read as behind. */
+/* The call-out and the company card, as one object.
+
+   `align-items: flex-start` is the point of it: the call-out lines up with the
+   TOP of the card rather than its middle. `align-self: center` keeps the pair
+   where the card alone used to sit, so nothing else on the stage moves.
+
+   It inherits the stage's pointer-events: none and its children set their own
+   back to auto, exactly as .cc and .newspanel already did — a full-height
+   transparent box over the map would otherwise swallow clicks on it. */
+.ccwrap {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  display: flex;
+  align-items: flex-start;
+  /* Wider than the stage's own 14px: this is a small control standing off a
+     large card, and at the card's gap it read as attached to it. */
+  gap: 20px;
+  min-width: 0;
+  pointer-events: none;
+}
+
 /* ── "Show me the ads" call-out ────────────────────────────────────────────
    A pill to the left of the company card, and the list it opens. It is a flex
    SIBLING of .cc inside .cardstage rather than a child of it: the card sets
    `overflow: hidden` for its rounded corners, so anything hung off its edge
    from the inside would be clipped away.
 
-   `align-self: center` because .cardstage centres its row and the card's
-   height follows its content — pinning this to the stage's top would leave it
-   floating above a short card. Centred, it sits against the card whatever
-   height the card is. */
+   It is NOT a sibling of .cc any more. Both now sit in .ccwrap, which is what
+   lets this align to the card's top edge: as a direct child of the stage it
+   could only centre, because the stage centres its row and no selector can
+   reach a centred sibling's top. */
 .srpop {
   position: relative;
-  align-self: center;
+  /* Beside the card's HEADER, not its very corner: 22px is the card's own top
+     padding, so the pill's top edge lands on the logo's. */
+  margin-top: 22px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
