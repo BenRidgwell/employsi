@@ -129,6 +129,11 @@ function loadDismissed(): Record<string, true> {
 
 /** How far a row must travel before letting go dismisses it. */
 const SWIPE_PX = 88;
+/** How long the leaving animation runs. Must match `nbexit`/`nbcollapse` in
+ *  global.css — the row is removed from state when this elapses, so a timer
+ *  shorter than the animation cuts it off and a longer one leaves a dead row
+ *  sitting at zero height. */
+const EXIT_MS = 320;
 
 function loadRead(): Record<string, true> {
   try {
@@ -217,6 +222,31 @@ export function NotificationBell() {
   /** Set when a gesture turned into a drag, so the click it ends with is not
    *  treated as a tap on the row. */
   const swiped = useRef(false);
+  /**
+   * The row currently playing its leaving animation.
+   *
+   * A dismissal used to be instant: `setDrag(null)` then remove the row, which
+   * snapped it back to x=0 for one frame before it vanished and the rows below
+   * jumped up to fill the gap. So the gesture ended by undoing itself.
+   *
+   * `h` is the wrapper's MEASURED height, read at the moment of release. The
+   * collapse animates from it, which is what makes the list close the gap
+   * smoothly rather than from a guessed max-height that is too large and eases
+   * wrongly for every row that is shorter than the guess (every collapsed one).
+   */
+  const [exiting, setExiting] = useState<{
+    key: string;
+    dir: 1 | -1;
+    h: number;
+    from: number;
+  } | null>(null);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    },
+    [],
+  );
   const [muted, setMuted] = useState(false);
   const [ringing, setRinging] = useState(false);
   const prevUnread = useRef(0);
@@ -253,6 +283,40 @@ export function NotificationBell() {
       /* private mode — it comes back on the next load, which is the honest
          failure: nothing was stored, so nothing is hidden. */
     }
+  };
+
+  /**
+   * Play the row out, then dismiss it.
+   *
+   * The animation is cosmetic, so it is never allowed to be the thing that
+   * decides whether an alert goes: the dismissal is on a timer that runs
+   * whatever happens to the element, and reduced motion skips straight to it.
+   * One at a time, because one pointer is one gesture — a second call while a
+   * row is leaving dismisses the first immediately rather than losing it.
+   *
+   * `el` is the row button; its parent is the wrapper whose height collapses.
+   */
+  const beginDismiss = (
+    key: string,
+    el: HTMLElement | null,
+    dir: 1 | -1,
+    all: AlertRow[],
+    from = 0,
+  ) => {
+    const reduced =
+      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const h = el?.parentElement?.getBoundingClientRect().height ?? 0;
+    if (reduced || !h) {
+      dismiss(key, all);
+      return;
+    }
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+    setExiting({ key, dir, h, from });
+    exitTimer.current = setTimeout(() => {
+      dismiss(key, all);
+      setExiting(null);
+      exitTimer.current = null;
+    }, EXIT_MS);
   };
 
   // Only asked for when signed in: the handler answers `signedOut` for everyone
@@ -403,8 +467,29 @@ export function NotificationBell() {
                 // it deepens and the label sharpens, so the commit point is
                 // felt before the finger lifts rather than discovered after.
                 const armed = Math.abs(dx) >= SWIPE_PX;
+                const out = exiting?.key === key ? exiting : null;
                 return (
-                  <div className="nbrowwrap" key={r.id}>
+                  <div
+                    className={`nbrowwrap${out ? " leaving" : ""}`}
+                    key={r.id}
+                    // The measured height and the direction of travel, handed to
+                    // the keyframes. Custom properties rather than two classes
+                    // because the height is per row and cannot be a stylesheet
+                    // value at all.
+                    style={
+                      out
+                        ? ({
+                            "--nbh": `${out.h}px`,
+                            // Where the finger left it, so the animation
+                            // CONTINUES the gesture. Starting from 0 would snap
+                            // the row back under the pointer before throwing it
+                            // the other way, which is the jump this replaces.
+                            "--nbdx": `${out.from}px`,
+                            "--nbout": out.dir > 0 ? "115%" : "-115%",
+                          } as React.CSSProperties)
+                        : undefined
+                    }
+                  >
                     {/* The delete strip, revealed by the row sliding off it.
                         Rendered only while a swipe is in progress — a red
                         panel sitting permanently behind every row would show
@@ -413,12 +498,18 @@ export function NotificationBell() {
 
                         `side` follows the direction of travel, because the
                         space that opens up is on the side the row came from. */}
-                    {!!dx && (
+                    {(!!dx || !!out) && (
                       <div
-                        className={`nbswipe${armed ? " armed" : ""}`}
-                        data-side={dx < 0 ? "right" : "left"}
+                        /* It stays through the leaving animation, at full
+                           width: the row slides off ITS OWN strip, so the red
+                           and the word are what fills the space rather than
+                           the panel showing through a hole where a row was. */
+                        className={`nbswipe${armed || out ? " armed" : ""}`}
+                        data-side={(out ? out.dir < 0 : dx < 0) ? "right" : "left"}
                         aria-hidden
-                        style={{ width: `${Math.min(Math.abs(dx), 240)}px` }}
+                        style={
+                          out ? { width: "100%" } : { width: `${Math.min(Math.abs(dx), 240)}px` }
+                        }
                       >
                         <span className="nbswipelbl">
                           <svg
@@ -439,7 +530,7 @@ export function NotificationBell() {
                               delete, "Delete" always fits. Below that it would be
                               clipped mid-word ("Del"), which reads as a rendering
                               fault rather than a label, so only the bin shows. */}
-                          {armed && "Delete"}
+                          {(armed || !!out) && "Delete"}
                         </span>
                       </div>
                     )}
@@ -488,12 +579,18 @@ export function NotificationBell() {
                         swiped.current = true;
                         setDrag({ key, dx: mx });
                       }}
-                      onPointerUp={() => {
+                      onPointerUp={(e) => {
                         const g = gesture.current;
                         gesture.current = null;
-                        const far = Math.abs(drag?.key === key ? drag.dx : 0) >= SWIPE_PX;
+                        const at = drag?.key === key ? drag.dx : 0;
+                        const far = Math.abs(at) >= SWIPE_PX;
+                        const el = e.currentTarget as HTMLElement;
                         setDrag(null);
-                        if (g?.axis === "x" && far) dismiss(key, allRows);
+                        // It leaves the way it was pushed. Sending every row off
+                        // to the right would fight the gesture on a left swipe,
+                        // which is the half of them that reads as wrong.
+                        if (g?.axis === "x" && far)
+                          beginDismiss(key, el, at < 0 ? -1 : 1, allRows, at);
                       }}
                       // A cancelled gesture (the browser took over, the pointer
                       // left the window) springs back rather than dismissing.
@@ -507,7 +604,10 @@ export function NotificationBell() {
                       onKeyDown={(e) => {
                         if (e.key !== "Delete" && e.key !== "Backspace") return;
                         e.preventDefault();
-                        dismiss(key, allRows);
+                        // No gesture to follow, so it leaves to the right —
+                        // through the same animation, so a keyboard dismissal
+                        // is not a different-looking event from a swipe.
+                        beginDismiss(key, e.currentTarget as HTMLElement, 1, allRows);
                       }}
                       // Unread: reading it is what collapses it. Read: the click
                       // is the way back in, and out again — otherwise marking
