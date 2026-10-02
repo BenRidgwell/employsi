@@ -25,6 +25,7 @@ import { cityForCompany } from "../../data/mapboxGeo";
 import { CITY_COUNTRY, COUNTRY_MEMBERS } from "../../data/mapboxWorldGeo";
 import { marketForCity } from "../../data/cityMarket";
 import { NewsPanel } from "./NewsPanel";
+import { SkillRolesPopout } from "./SkillRolesPopout";
 import { CardLoader } from "./CardLoader";
 import { ChartTooltip } from "./ChartTooltip";
 import { IconClose } from "../ActionIcons";
@@ -989,6 +990,18 @@ export function CompanyPanel() {
 
   return (
     <div className={`cardstage ${open ? "open" : ""}${newsCollapsed ? " newstucked" : ""}`}>
+      {/* The call-out sits BEFORE the card in the stage's flex row, so it
+          lands to its left — the same side, and the same idiom, as the talent
+          flow mode pills. It renders nothing at all unless a skill is searched
+          AND this employer has ads naming it here, so the card's default state
+          is untouched. */}
+      {open && panel && (
+        <SkillRolesPopout
+          companyId={panel.companyId}
+          companyName={panel.name}
+          city={lastId ? cityForCompany(lastId, localCity) : localCity}
+        />
+      )}
       <aside className={`cc ${open ? "open" : ""}`} ref={cardRef} style={cardStyle}>
         {cardLoading && <CardLoader tone="light" />}
         {card && panel && (

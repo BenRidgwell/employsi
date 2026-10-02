@@ -2382,3 +2382,145 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       return NO_SKILL_MONTHS;
     }
   });
+
+/**
+ * The ADS behind one company's skill count, in one city.
+ *
+ * WHY IT IS BUILT FROM getSkillCompanyMonths' QUERY, LINE FOR LINE. The number
+ * this list has to explain is `liveByCity[hub][companyId]` from that handler —
+ * what the pin and the company card show when a skill is searched. A list that
+ * answered the same question a slightly different way (today instead of the
+ * archive's newest day, a looser LIKE, a different feed filter) would come back
+ * with a different count, and a card saying "2 ads" above a list of three is
+ * worse than no list at all. So the WHERE clause here is that one plus a
+ * company and a hub, and the two must be changed together.
+ *
+ * In particular:
+ *  - `liveFrom` is the archive's newest `last_seen` minus a day, NOT today.
+ *    Today is never fully collected (see the coverage note in CLAUDE.md), so
+ *    "live" means the last day the feeds actually reported.
+ *  - the LIKE patterns are quoted on both sides, so `%"Audit"%` cannot match
+ *    "Internal Audit".
+ *  - the same release gate: an end user gets nothing for a company outside the
+ *    released markets, so this cannot be used to read around the coverage gate.
+ *
+ * ONE CITY, because the pin is one city. A company id is one employer
+ * everywhere, and without the hub filter Rio Tinto's Perth card would list its
+ * Brisbane and Montreal roles too.
+ */
+export interface SkillRole {
+  title: string;
+  /** The ad's own link, or "" — not every feed gives one. */
+  url: string;
+  location: string;
+  /** As the source quoted it; never converted. "" when the ad gave none. */
+  salary: string;
+  /** Which board or portal carried it, for the "collected from" line. */
+  source: string;
+  /** First and last day the archive saw it, ISO. */
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface SkillRoles {
+  roles: SkillRole[];
+  /** The window the list was read over: the archive's newest DAY when live
+   *  (never today — see the note in the handler), or the "YYYY-MM" asked for. */
+  asOf: string;
+  /** Whether `asOf` is a scrubbed month rather than the live day. */
+  dated: boolean;
+  /** True when the archive could not answer at all, as against answering none. */
+  unavailable: boolean;
+}
+
+const NO_SKILL_ROLES: SkillRoles = { roles: [], asOf: "", dated: false, unavailable: true };
+
+export const getCompanySkillRoles = createServerFn({ method: "GET" })
+  .validator((data: { companyId: string; hub: string; skill: string; month?: string }) => data)
+  .handler(async ({ data }): Promise<SkillRoles> => {
+    const skill = (data.skill || "").trim();
+    const companyId = (data.companyId || "").trim();
+    const hub = (data.hub || "").trim();
+    // The same allowlist getSkillCompanyMonths uses: an exact taxonomy name,
+    // because the LIKE patterns are built from this string.
+    if (!skill || !(skill in SKILL_CATEGORY) || !companyId || !hub) return NO_SKILL_ROLES;
+    const db = await getArchiveDb();
+    if (!db) return NO_SKILL_ROLES;
+    try {
+      const span = await db
+        .prepare(
+          `SELECT MAX(last_seen) AS mx FROM jobs
+            WHERE company_id IS NOT NULL AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
+        .first();
+      const to = String(span?.mx || "");
+      if (!to) return NO_SKILL_ROLES;
+      const liveFrom = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+
+      // WHICH WINDOW, AND WHY IT IS THE CALLER'S TO SAY. The pin's number is
+      // the SCRUBBED month's when the timeline is on a covered month and the
+      // live count otherwise (demandByCompanyAt in skillHeat.ts). Listing live
+      // ads under a pin showing August would be a list that contradicts the
+      // number it is explaining, so the month comes in from the caller and the
+      // two windows are written to match that function's two branches exactly.
+      //
+      // The month test is the SQL form of `monthsBetween(monthOf(first_seen),
+      // monthOf(last_seen))` containing it — an ad counts in every month it was
+      // up, not only the one it appeared in. Not a `first_seen <= D` day
+      // reconstruction compared against an exact-day count, which CLAUDE.md
+      // records as mostly measuring the difference between the two methods;
+      // this is the same method, in the same units, as the count it explains.
+      const month = (data.month || "").trim();
+      const byMonth = /^\d{4}-\d{2}$/.test(month);
+      const names = archivedNamesFor(skill);
+      const base = byMonth ? 5 : 4;
+      const likes = names.map((_, i) => `skills LIKE ?${i + base}`).join(" OR ");
+      const window = byMonth
+        ? "substr(first_seen, 1, 7) <= ?3 AND substr(last_seen, 1, 7) >= ?4"
+        : "last_seen >= ?3";
+      const res = await db
+        .prepare(
+          `SELECT title, url, location, salary, source, hub, company_id, first_seen, last_seen
+             FROM jobs
+            WHERE company_id = ?1
+              AND hub = ?2
+              AND ${window}
+              AND (${likes})
+              AND ${LIVE_FEEDS_ONLY_SQL}
+            ORDER BY first_seen DESC`,
+        )
+        .bind(
+          companyId,
+          hub,
+          ...(byMonth ? [month, month] : [liveFrom]),
+          ...names.map((n) => `%"${n}"%`),
+        )
+        .all();
+      let rows = (res?.results ?? []) as Record<string, unknown>[];
+      if ((await callerRole()) !== "admin") {
+        rows = rows.filter((r) =>
+          isReleasedRow(r.hub as string | null, r.company_id as string | null),
+        );
+      }
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      return {
+        roles: rows
+          .map((r) => ({
+            title: str(r.title),
+            url: str(r.url),
+            location: str(r.location),
+            salary: str(r.salary),
+            source: str(r.source),
+            firstSeen: str(r.first_seen),
+            lastSeen: str(r.last_seen),
+          }))
+          .filter((r) => !!r.title),
+        asOf: byMonth ? month : to,
+        /** True when `asOf` is a month rather than the archive's newest day. */
+        dated: byMonth,
+        unavailable: false,
+      };
+    } catch {
+      return NO_SKILL_ROLES;
+    }
+  });

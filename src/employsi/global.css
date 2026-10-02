@@ -9904,6 +9904,200 @@ body {
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* The card has to paint OVER the news panel for "behind" to read as behind. */
+/* ── "Show me the ads" call-out ────────────────────────────────────────────
+   A pill to the left of the company card, and the list it opens. It is a flex
+   SIBLING of .cc inside .cardstage rather than a child of it: the card sets
+   `overflow: hidden` for its rounded corners, so anything hung off its edge
+   from the inside would be clipped away.
+
+   `align-self: center` because .cardstage centres its row and the card's
+   height follows its content — pinning this to the stage's top would leave it
+   floating above a short card. Centred, it sits against the card whatever
+   height the card is. */
+.srpop {
+  position: relative;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 3;
+}
+.srpopbtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 15px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #1c1c1e;
+  color: #fff;
+  font: 600 13px/1 var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.12),
+    0 4px 12px rgba(28, 28, 30, 0.1);
+  transition:
+    transform 160ms,
+    box-shadow 200ms;
+}
+/* THE GLOW. A pulsing ring drawn OUTSIDE the pill with box-shadow rather than
+   an extra element, so it cannot affect layout — the pill sits in a flex row
+   next to a card, and a halo that took space would push the card.
+
+   It stops on hover and while open: by then it has done its job, and a control
+   that keeps pulsing under the cursor reads as unresponsive rather than
+   inviting. */
+@keyframes srpulse {
+  0% {
+    box-shadow:
+      0 1px 2px rgba(28, 28, 30, 0.12),
+      0 4px 12px rgba(28, 28, 30, 0.1),
+      0 0 0 0 rgba(28, 28, 30, 0.34);
+  }
+  70%,
+  100% {
+    box-shadow:
+      0 1px 2px rgba(28, 28, 30, 0.12),
+      0 4px 12px rgba(28, 28, 30, 0.1),
+      0 0 0 11px rgba(28, 28, 30, 0);
+  }
+}
+.srpopbtn {
+  animation: srpulse 2.4s ease-out infinite;
+}
+.srpopbtn:hover,
+.srpopbtn.on {
+  animation: none;
+  background: #2c2c2e;
+}
+.srpopbtn:active {
+  transform: scale(0.98);
+}
+/* A pulse is the one thing reduced motion is most often set FOR. The pill
+   keeps its shadow and simply does not throb. */
+@media (prefers-reduced-motion: reduce) {
+  .srpopbtn {
+    animation: none;
+  }
+}
+.srpoplist {
+  width: 300px;
+  max-width: 76vw;
+  max-height: min(420px, calc(100vh - var(--head-height) - 120px));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-subtle, #ededf0);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 24px 48px -28px rgba(28, 28, 30, 0.5);
+  overflow: hidden;
+}
+.srpophd {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border-subtle, #ededf0);
+}
+.srpoptitle {
+  font: 600 14px/1.25 var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  color: #1c1c1e;
+}
+.srpopsub {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-tertiary, #8e8e93);
+  text-wrap: pretty;
+}
+.srpoprows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.srpoprow {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 30px 10px 16px;
+  border-bottom: 1px solid #f4f4f5;
+  text-decoration: none;
+  color: inherit;
+}
+.srpoprow:last-child {
+  border-bottom: 0;
+}
+a.srpoprow:hover {
+  background: var(--surface-subtle, #fafafa);
+}
+.srpoprole {
+  font-size: 13px;
+  line-height: 1.35;
+  color: #1c1c1e;
+  text-wrap: pretty;
+}
+.srpopmeta {
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  color: var(--text-tertiary, #8e8e93);
+}
+.srpopgo {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #c7c7cc;
+}
+a.srpoprow:hover .srpopgo {
+  color: #6c6c72;
+}
+.srpopfoot {
+  flex: none;
+  margin: 0;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border-subtle, #ededf0);
+  background: #fbfbfc;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-tertiary, #8e8e93);
+  text-wrap: pretty;
+}
+/* THE BREAKPOINT IS MEASURED, NOT ROUND. The stage is a row that ends at the
+   right edge and holds card (440) + gap (14) + this (300) inside its 22px
+   gutters: 798px. Above that the row fits and the call-out sits beside the
+   card; below it the card would be pushed off screen. It was 900px first,
+   which fired while the row still had 62px to spare.
+
+   BELOW IT THE CALL-OUT IS NOT SHOWN AT ALL, and the two obvious alternatives
+   were both tried and measured first:
+
+   - Keeping it in the row pushes the card off screen, which is the whole
+     reason for a breakpoint here.
+   - Floating it over the card does not work from inside this stage. .cardstage
+     carries a `transform` (translateX, for its open/closed slide), and a
+     transformed ancestor becomes the containing block for `position: fixed`
+     descendants — so fixed coordinates resolve against the STAGE, not the
+     viewport. Measured at 760px: `left: 12px` landed the pill at x=288, and
+     `top` put it 120px ABOVE the card it belongs to, because the stage is
+     shrink-to-fit and the card is centred inside it.
+
+   So on a narrow viewport the card is exactly what it was before this
+   existed, which is the same state it has with no skill searched. The ads are
+   still reachable on any wider window. A proper narrow treatment belongs
+   inside the card rather than beside it, and that is a different change. */
+@media (max-width: 798px) {
+  .srpop {
+    display: none;
+  }
+}
+
 .cc {
   z-index: 2;
 }
