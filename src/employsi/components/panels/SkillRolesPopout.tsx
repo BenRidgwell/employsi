@@ -110,40 +110,25 @@ export function SkillRolesPopout({
                 {companyName} · {when}
               </span>
             </div>
-            {/* ONE TONE, NOT A TRAFFIC LIGHT. The mock carries low/medium/high
-                colour variants whose text is identical in all three — it is
-                showing the component's swatches, not asserting a rule, and
-                there is no banding of "ads at one employer" this product can
-                back. Inventing thresholds to light it amber would be a
-                judgement with no source, so it stays on the design's default.
-                The word is the design's own and carries the caveat the list
-                needs: these are ADVERTISEMENTS. */}
-            <span
-              className="srpopcount"
-              title="Advertisements, not hires. One role carried on two boards is two rows — the same count the card shows."
-            >
-              <span className="srpopdot" aria-hidden />
-              {n} {n === 1 ? "Advertisement" : "Advertisements"}
-            </span>
           </div>
           <div className="srpoprows">
             {roles.map((r, i) => {
-              const chips = (
+              /* WHERE ONLY. The tile carried a salary chip and, failing both,
+                 the source name — three different kinds of fact competing on
+                 one line of a 300px card. The salary was the worst of them:
+                 the archive stores whatever the board printed, so it is as
+                 often "Annual Salary + Short-term Incentive Program" as a
+                 figure, and a chip that wide pushed the tile to two rows to
+                 say nothing. A role with no location shows no chip at all
+                 rather than a substitute for one. */
+              const chips = r.location ? (
                 <span className="srpopchips">
-                  {!!r.location && (
-                    <span className="srpopchip">
-                      <IconPin />
-                      {r.location}
-                    </span>
-                  )}
-                  {!!r.salary && <span className="srpopchip">{r.salary}</span>}
-                  {/* Where neither was collected the source is still something
-                      true to say, rather than an empty row of chips. */}
-                  {!r.location && !r.salary && !!r.source && (
-                    <span className="srpopchip">{r.source}</span>
-                  )}
+                  <span className="srpopchip">
+                    <IconPin />
+                    {r.location}
+                  </span>
                 </span>
-              );
+              ) : null;
               const body = (
                 <>
                   <span className="srpoprowtop">
