@@ -120,9 +120,12 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
  *
  * Everything else falls back to the first city in CITY_COMPANIES holding the
  * company, which for single-city companies is the only answer there is. These
- * four are plotted in Perth first because the app grew out of a Perth map, but
+ * three are plotted in Perth first because the app grew out of a Perth map, but
  * their registered head offices are elsewhere — and global search is supposed to
  * take you to the head office, so it has to say so.
+ *
+ * A head office in a region that is still admin-only does NOT belong here — see
+ * the Chevron note at the bottom.
  */
 export const HQ_OVERRIDE: Record<string, string> = {
   bhp: "melbourne", // 171 Collins St — BHP Group's global head office
@@ -131,9 +134,13 @@ export const HQ_OVERRIDE: Record<string, string> = {
   // dual-HQ (plc in London, Ltd in Melbourne); the London roster line was
   // retired into `rio` on 2026-10-02 and London is a secondary-office pin, so
   // Melbourne stays the head office the card names.
-  chevron: "houston", // Chevron Corporation's head office. `chevron` began as a
-  // hand-placed Australian resources line and its only geocoded building is
-  // Elizabeth Quay in Perth; the Houston roster line was retired into it on
-  // 2026-10-02, so the card has to name the real head office. The Houston pin
-  // is city-level because no street address here has been verified.
+  // DELIBERATELY NOT HERE: Chevron. Chevron Corporation's registered head
+  // office is in Houston, and the Houston roster line was retired into
+  // `chevron` on 2026-10-02 — so by the rule above this entry should say
+  // "houston", and it did for one commit. It is out again on purpose: the US
+  // is an admin-only region while it is built out, and naming a head office
+  // in a region end users cannot reach would point global search at a city
+  // with nothing behind it. `chevron` keeps Perth, its only geocoded
+  // building (Elizabeth Quay). Restore `chevron: "houston"` in the change
+  // that makes the US hub visible to end users.
 };
