@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../../state/store";
 import { buildPanel } from "../../lib/panel";
 import { buildCompanyCard, filedHeadcount, TREND_UP, TREND_DOWN } from "../../lib/companyCard";
@@ -800,7 +800,6 @@ export function CompanyPanel() {
    * further is possible and fine; nothing shrinks.
    */
   const [cardFloor, setCardFloor] = useState(0);
-  const paneRef = useRef<HTMLDivElement | null>(null);
   const cardRef = useRef<HTMLElement | null>(null);
   /**
    * Capped in CSS rather than in JS. The floor is an observed card height, so
@@ -840,40 +839,58 @@ export function CompanyPanel() {
   }, [liveHiring]);
 
   /**
-   * Measured in a layout effect so the floor lands in the same frame the pane
-   * is painted — from a passive effect the short tab renders at its own height
-   * for one frame, which is the flicker this exists to remove.
+   * Attached as a CALLBACK REF, not watched by an effect, and that is the fix.
    *
-   * A ResizeObserver rather than a dependency list, because the height moves
-   * for reasons a list cannot name: the skill trends and the news arrive after
-   * the card does, and the map inside Skills sizes itself from them. Watching
-   * the element catches all of it. It cannot loop — raising the floor raises
-   * the pane, the observer fires again with the height it just set, and
-   * `h > f` is false, so React bails on an unchanged state.
+   * It was a `useLayoutEffect` keyed on `[tab]`, and the floor was therefore
+   * never measured on the one path that matters most. `.ccpane` does not exist
+   * until the card has data: the first render has `card` null, the effect
+   * returned early on a null ref — and with `[tab]` alone it had no reason to
+   * run again, because a card OPENS on Overview and `tab` never changed. So
+   * the floor stayed 0 for the life of a card unless someone clicked a tab,
+   * and the first height ever recorded was then whichever tab they clicked.
+   *
+   * Measured 2026-10-02 against the built app: 411px on open with no
+   * min-height at all, then 264px after one click on Skills — the card SHRANK,
+   * because the short tab was the first measurement. The news panel beside it,
+   * which is sized from this same number, stayed at its own content height for
+   * the same reason.
+   *
+   * A callback ref runs exactly when the element mounts and unmounts, so there
+   * is no dependency list left to get wrong — which is what went wrong.
+   *
+   * THE CARD IS FOUND FROM THE PANE, not from cardRef. React attaches a
+   * child's ref before its parent's, so during the pane's own mount cardRef is
+   * still null and a read through it would measure nothing — exactly the
+   * silent zero this is replacing.
    */
-  useLayoutEffect(() => {
-    const el = paneRef.current;
+  const roRef = useRef<ResizeObserver | null>(null);
+  const paneRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    roRef.current = null;
     if (!el) return;
     const read = () => {
-      // THE CARD'S height, not the pane's — the pane is watched only because
-      // it is what changes. Flooring the PANE was the first attempt and it
-      // made the short tab scroll: its content became as tall as Overview's,
-      // so the body had hundreds of pixels of nothing under three rows to
-      // scroll through. The card is the thing that must not resize; the
-      // content should stay its own length, and .ccbody's `flex: 1 1 auto`
-      // fills the difference with no scrollable void.
+      // THE CARD'S height, not the pane's. Flooring the PANE was the first
+      // attempt and it made the short tab scroll: its content became as tall
+      // as Overview's, so the body had hundreds of pixels of nothing under
+      // three rows. The card is the thing that must not resize; the content
+      // stays its own length and .ccbody's `flex: 1 1 auto` fills the gap.
       //
       // An observed height cannot exceed the max-height that produced it, so
       // the floor needs no clamping of its own.
-      const h = cardRef.current?.offsetHeight ?? 0;
+      const h = (el.closest(".cc") as HTMLElement | null)?.offsetHeight ?? 0;
       if (h) setCardFloor((f) => (h > f ? h : f));
     };
     read();
     if (typeof ResizeObserver === "undefined") return;
+    // A ResizeObserver rather than a dependency list, because the height moves
+    // for reasons a list cannot name: the skill trends and the news arrive
+    // after the card does, and the map inside Skills sizes itself from them.
+    // It cannot loop — raising the floor raises the pane, the observer fires
+    // with the height it just set, and `h > f` is false, so React bails.
     const ro = new ResizeObserver(read);
     ro.observe(el);
-    return () => ro.disconnect();
-  }, [tab]);
+    roRef.current = ro;
+  }, []);
 
   // The Overview tile's top skill. The archive is preferred so it names the
   // same skill the Skills tab leads with; the live job sample is the fallback
