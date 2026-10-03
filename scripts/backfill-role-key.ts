@@ -39,6 +39,17 @@ if (!ACCOUNT || !DB || !TOKEN) {
 const ENDPOINT = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT}/d1/database/${DB}/query`;
 const argv = process.argv.slice(2);
 const DRY = argv.includes("--dry");
+/**
+ * Recompute EVERY row rather than only the unkeyed ones.
+ *
+ * Needed whenever roleKey's definition changes: rows keyed under the old rule
+ * keep the old value, so the same role sits under two keys and the
+ * double-counting this column exists to remove comes back for exactly the rows
+ * the change was meant to fix. Used when the CJK branch was added — under the
+ * ASCII-only rule a mixed-script title had its Japanese half deleted, so
+ * "サウンドプログラマー / Sound Programmer" keyed as "sound programmer".
+ */
+const REKEY = argv.includes("--rekey");
 const LIMIT = Number(argv[argv.indexOf("--limit") + 1]) || Infinity;
 /**
  * Rows read, and rows written, per round trip.
@@ -87,11 +98,9 @@ async function main() {
     console.log("could not create the index — counts are still correct, just slower");
   }
 
-  const pending = Number(
-    (await sql("SELECT COUNT(*) AS n FROM jobs WHERE role_key IS NULL OR role_key = ''"))[0]?.n ??
-      0,
-  );
-  console.log(`${pending.toLocaleString()} rows to fill`);
+  const WHERE = REKEY ? "1 = 1" : "role_key IS NULL OR role_key = ''";
+  const pending = Number((await sql(`SELECT COUNT(*) AS n FROM jobs WHERE ${WHERE}`))[0]?.n ?? 0);
+  console.log(`${pending.toLocaleString()} rows to ${REKEY ? "recompute" : "fill"}`);
   if (!pending || DRY) {
     if (DRY) console.log("--dry: nothing written");
     return;
@@ -109,13 +118,17 @@ async function main() {
 
   let done = 0;
   let skipped = 0;
+  let unchanged = 0;
   const started = Date.now();
   for (;;) {
-    if (done + skipped >= LIMIT) break;
+    if (done + skipped + unchanged >= LIMIT) break;
+    // In rekey mode every row already has a key, so "still unkeyed" cannot
+    // page through them — it walks by OFFSET instead, which is stable here
+    // because an update never changes whether a row matches `1 = 1`.
     const rows = await sql(
-      `SELECT job_key, company_id, company, hub, location, title FROM jobs
-        WHERE role_key IS NULL OR role_key = '' LIMIT ?1`,
-      [PAGE],
+      `SELECT job_key, role_key, company_id, company, hub, location, title FROM jobs
+        WHERE ${WHERE} LIMIT ?1${REKEY ? " OFFSET ?2" : ""}`,
+      REKEY ? [PAGE, done + skipped + unchanged] : [PAGE],
     );
     if (!rows.length) break;
     const stmts: string[] = [];
@@ -133,12 +146,20 @@ async function main() {
       // exactly what ROLE_COUNT_SQL falls back to anyway, so the count is
       // unchanged and the row stops being re-read.
       const jk = str(r.job_key);
-      stmts.push(`UPDATE jobs SET role_key = ${lit(k || jk)} WHERE job_key = ${lit(jk)};`);
-      if (k) done++;
-      else skipped++;
+      const want = k || jk;
+      // Only write what actually moves. In rekey mode almost every row is
+      // already correct, and an UPDATE for each would spend the whole run
+      // rewriting values that already hold.
+      if (!REKEY || str(r.role_key) !== want) {
+        stmts.push(`UPDATE jobs SET role_key = ${lit(want)} WHERE job_key = ${lit(jk)};`);
+        if (k) done++;
+        else skipped++;
+      } else {
+        unchanged++;
+      }
     }
-    await sql(stmts.join("\n"));
-    const n = done + skipped;
+    if (stmts.length) await sql(stmts.join("\n"));
+    const n = done + skipped + unchanged;
     const rate = n / Math.max(1, (Date.now() - started) / 1000);
     console.log(
       `  ${n.toLocaleString()} / ${pending.toLocaleString()} · ${Math.round(rate)}/s` +
@@ -172,7 +193,11 @@ async function main() {
     )[0]?.n ?? 0,
   );
   const all = Number((await sql("SELECT COUNT(*) AS n FROM jobs"))[0]?.n ?? 0);
-  console.log(`\nfilled ${done.toLocaleString()} (${skipped.toLocaleString()} had no title)`);
+  console.log(
+    `\n${REKEY ? "rewrote" : "filled"} ${done.toLocaleString()}` +
+      ` (${skipped.toLocaleString()} had no title` +
+      (REKEY ? `, ${unchanged.toLocaleString()} already correct)` : ")"),
+  );
   console.log(`${left.toLocaleString()} of ${all.toLocaleString()} rows still unfilled`);
   if (keyed) {
     console.log(

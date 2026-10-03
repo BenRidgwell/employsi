@@ -4,8 +4,10 @@ import { useAppStore } from "../state/store";
 import { getAlerts, type AlertRow } from "../lib/alertsFn";
 import { IconClose } from "./ActionIcons";
 import { COMPANIES, type Company } from "../data/companies";
+import { cityForCompany } from "../data/mapboxGeo";
 import { SKILL_PARENT } from "../data/skillsTaxonomy";
 import { logoFor } from "../lib/companyLogo";
+import { activeSkill } from "../lib/skillHeat";
 import { SKILL_ICONS, skillIcon } from "../lib/skillCard";
 
 /** Module-level, as in PerthMapbox and TalentFlowPane: COMPANIES is static and
@@ -190,6 +192,14 @@ export function NotificationBell() {
   const open = useAppStore((s) => s.alertsOpen);
   const toggleAlerts = useAppStore((s) => s.toggleAlerts);
   const closeAlerts = useAppStore((s) => s.closeAlerts);
+  // Everything "Explore" needs to land the reader on the company's card. Same
+  // four as AccountButton's saved-companies list, because it is the same move.
+  const select = useAppStore((s) => s.select);
+  const zoomInCity = useAppStore((s) => s.zoomInCity);
+  const zoomedOut = useAppStore((s) => s.zoomedOut);
+  const localCity = useAppStore((s) => s.localCity);
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery);
+  const setRoleFocus = useAppStore((s) => s.setRoleFocus);
   const [tab, setTab] = useState<Tab>("all");
   const [read, setRead] = useState<Record<string, true>>({});
   /**
@@ -263,6 +273,68 @@ export function NotificationBell() {
     } catch {
       /* private mode — the badge just won't survive a reload */
     }
+  };
+
+  /**
+   * "Explore" — take the reader from the alert to what it is about.
+   *
+   * An alert states a movement and shows two bars; everything that would let
+   * someone judge it (the skill's own series, the roles behind the count, the
+   * company's other skills) is on the company card, and until now the panel was
+   * a dead end — the only way through was to remember the employer's name and
+   * find it on the map.
+   *
+   * IT CARRIES THE SKILL, NOT JUST THE COMPANY. Every alert is a company AND a
+   * skill — "Geotechnical hiring has slowed" at BHP — and landing on the bare
+   * company card drops half the question at the door: the card opens on its
+   * overview, the pins light by headcount, and nothing on screen is about
+   * Geotechnical. Searching the skill on the way in is what makes the card
+   * answer the alert: the company's skill demand is the skill's, the city's
+   * pins are lit by who else is advertising it, and the magnifying-glass
+   * call-out beside the card opens the actual roles behind the number — the
+   * one surface that exists purely to explain a count like the alert's.
+   *
+   * THE SKILL SEARCH CARD ITSELF STAYS SHUT, and that is not a side effect to
+   * fix: GlobalSearch stands it down whenever a company card is open
+   * (`cardBlocked`), because both dock in the same top-right corner. So this
+   * lands on exactly the state you get by searching a skill and then clicking
+   * the company's pin, which is the point — one state, reached two ways.
+   *
+   * `activeSkill` rather than the row's string: it returns the taxonomy's own
+   * spelling, which is what the search matches on, and null for anything it
+   * does not recognise. A name that has left the taxonomy would otherwise go
+   * into the search box and light nothing, which reads as a company with no
+   * demand for the skill the alert just named. Unrecognised, the skill is
+   * simply left off and the company card opens as it would have.
+   *
+   * roleFocus goes for the same reason toggleSkillQuery drops it: a career
+   * role highlight and a skill search are the same slot on the map, and
+   * leaving one under the other lights two different things at once.
+   *
+   * IT FLIES THE MAP FIRST. A card opened while the globe is pulled back, or
+   * sitting on another city, is a card about a company the map is not showing;
+   * the same three lines are in AccountButton's saved-companies list, which is
+   * the other place a company is opened from a panel rather than from a pin.
+   *
+   * The panel closes, because the card it just opened is behind it.
+   *
+   * IT DOES NOT MARK THE ALERT READ. Acting on an alert and having read it are
+   * different things, and conflating them would take this button away at the
+   * moment it was used: a read row is minimised and shows the Read tag in this
+   * slot, so the way back to the company would vanish on the click that used
+   * it. Reading stays the explicit act it was — a click on the row, or Mark all
+   * read.
+   */
+  const explore = (id: string, skill: string) => {
+    const canonical = activeSkill(skill);
+    if (canonical) {
+      setRoleFocus(null);
+      setSearchQuery(canonical);
+    }
+    const target = cityForCompany(id, localCity);
+    if (zoomedOut || target !== localCity) zoomInCity(target);
+    select(id);
+    closeAlerts();
   };
 
   /**
@@ -468,6 +540,30 @@ export function NotificationBell() {
                 // felt before the finger lifts rather than discovered after.
                 const armed = Math.abs(dx) >= SWIPE_PX;
                 const out = exiting?.key === key ? exiting : null;
+                /**
+                 * What a plain activation of the row does.
+                 *
+                 * Unread: reading it is what collapses it. Read: the click is
+                 * the way back in, and out again — otherwise marking something
+                 * read would hide its figures for good.
+                 *
+                 * Lifted out of the click handler because the row is a div with
+                 * role="button" now and the keyboard has to reach the same
+                 * behaviour; two copies of this would be two chances for the
+                 * mouse and the keyboard to drift apart.
+                 */
+                const toggleRow = () => {
+                  if (isRead) {
+                    setExpanded((prev) => {
+                      const next = { ...prev };
+                      if (next[r.id]) delete next[r.id];
+                      else next[r.id] = true;
+                      return next;
+                    });
+                  } else {
+                    persist({ ...read, [r.id]: true });
+                  }
+                };
                 return (
                   <div
                     className={`nbrowwrap${out ? " leaving" : ""}`}
@@ -534,8 +630,19 @@ export function NotificationBell() {
                         </span>
                       </div>
                     )}
-                    <button
-                      type="button"
+                    <div
+                      /* A DIV WITH role="button", NOT A <button>, and the
+                         Explore control is why. An unread row now carries a
+                         real button in its top line, and interactive content
+                         inside a <button> is invalid markup that browsers
+                         recover from by breaking the OUTER control — the row
+                         would stop being clickable at all. So the row takes the
+                         button role explicitly and brings its own keyboard
+                         activation below; everything else about it is
+                         unchanged, including the class names the stylesheet
+                         already resets a <button> with. */
+                      role="button"
+                      tabIndex={0}
                       // `read` and `shut` are SEPARATE classes because they are
                       // separate facts: an alert the person has read and then
                       // re-opened is still read. Keying the grey on `shut`
@@ -602,6 +709,22 @@ export function NotificationBell() {
                       // dismiss would be unreachable without a pointer, and this
                       // list is otherwise fully keyboard-operable.
                       onKeyDown={(e) => {
+                        // ENTER AND SPACE ARE NO LONGER FREE. A <button> got
+                        // them from the browser; a div with role="button" has
+                        // to activate itself, and without this the row would be
+                        // focusable and silent to the keyboard.
+                        //
+                        // Only when the ROW itself has focus: the Explore
+                        // button is the one focusable thing inside it, and its
+                        // own Enter already fires its click, which bubbles here
+                        // as a keydown too. Unguarded, one Enter would both
+                        // navigate and toggle the row.
+                        if (e.key === "Enter" || e.key === " ") {
+                          if (e.target !== e.currentTarget) return;
+                          e.preventDefault();
+                          toggleRow();
+                          return;
+                        }
                         if (e.key !== "Delete" && e.key !== "Backspace") return;
                         e.preventDefault();
                         // No gesture to follow, so it leaves to the right —
@@ -622,16 +745,7 @@ export function NotificationBell() {
                           swiped.current = false;
                           return;
                         }
-                        if (isRead) {
-                          setExpanded((prev) => {
-                            const next = { ...prev };
-                            if (next[r.id]) delete next[r.id];
-                            else next[r.id] = true;
-                            return next;
-                          });
-                        } else {
-                          persist({ ...read, [r.id]: true });
-                        }
+                        toggleRow();
                       }}
                     >
                       <AlertBadge company={COMPANY_BY_ID[r.companyId]} initials={r.initials} />
@@ -639,19 +753,41 @@ export function NotificationBell() {
                         <span className="nbtop">
                           <span className="nbco">{r.company}</span>
                           <span className={`nbpill ${PILL[r.kind] ?? "spike"}`}>{r.kind}</span>
-                          {/* The dot and the tag occupy the same slot, so the
-                              row's top line has one status mark rather than a
-                              mark for new and nothing for read.
+                          {/* One slot, two states. Read is a LABEL — there is
+                              nothing to do with an alert you have already
+                              dealt with, and the row itself is still the way
+                              back into it. Unread is a CONTROL: it was a bare
+                              black dot, which said "new" and offered nothing,
+                              and the thing a new alert makes you want is the
+                              company it is about.
 
-                              A SPAN, NOT A BUTTON: this row IS a <button>, and
-                              a button inside a button is invalid markup that
-                              browsers recover from by breaking the outer
-                              control. It is a label on the row, and the row
-                              itself is the thing you click. */}
+                              Both are 18px tall so the top line does not change
+                              height as rows are read — a list that reflows as
+                              you scan down it is the thing this slot was
+                              already shaped to avoid. */}
                           {isRead ? (
                             <span className="nbread">Read</span>
                           ) : (
-                            <span className="nbdot" />
+                            <button
+                              type="button"
+                              className="nbexplore"
+                              // The row is a button too, so both halves of the
+                              // gesture have to be stopped. The CLICK would
+                              // otherwise bubble and mark the alert read as it
+                              // navigated — taking this control away on the
+                              // press that used it. POINTERDOWN would start the
+                              // row's swipe gesture, so a press-and-drag on the
+                              // button would fling the row and still fire this
+                              // on release.
+                              onPointerDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                explore(r.companyId, r.skill);
+                              }}
+                              aria-label={`Explore ${r.skill} at ${r.company}`}
+                            >
+                              Explore
+                            </button>
                           )}
                         </span>
                         <span className="nbheadlinerow">
@@ -681,7 +817,7 @@ export function NotificationBell() {
                           </span>
                         </span>
                       </span>
-                    </button>
+                    </div>
                   </div>
                 );
               })}

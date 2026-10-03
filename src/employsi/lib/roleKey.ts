@@ -44,6 +44,10 @@
  *    answering in one unit.
  */
 
+/** Han, kana and Hangul: a string containing any of them keeps every letter
+ *  and digit, because the ASCII rule below deletes them all. */
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
 /**
  * Lowercase, collapse anything non-alphanumeric to single spaces, trim.
  *
@@ -51,8 +55,43 @@
  * jobHistoryFn (the vacancy chart) and `normTitle` in openRolesFn (the
  * headline) — identical by hand, with a CI check asserting they stayed that
  * way. Both now re-export this one, so there is nothing left to drift.
+ *
+ * CJK TAKES THE UNICODE PATH, and leaving it out was a bug this file
+ * introduced. The ASCII rule deletes Han, kana and Hangul outright, so a
+ * Japanese or Chinese title normalised to "" and got no role key at all:
+ * measured on the live archive after the first backfill, 19,284 rows — every
+ * one of which HAD a title ("プラントオペレーター", "政府事务经理",
+ * "双语经济老师", from jooble and mycareersfuture) — fell back to counting
+ * individually, so those employers got no cross-board dedupe whatsoever.
+ *
+ * jobArchive's own `norm()` already carried this branch for `job_key`, with
+ * the measurement next to it: NetEase fetched 2,654 roles and wrote 172 rows
+ * because title and company both normalised to nothing. The same mistake was
+ * made one layer up.
+ *
+ * ONLY STRINGS WITH CJK TAKE THE UNICODE PATH, which is what makes this safe
+ * to change in place: every pure-Latin key — accents included, "Crédit" still
+ * keys as "cr dit" — is byte-for-byte what it was, so no Latin role splits in
+ * two. Measured against the live archive before shipping: of 40,000 keyed
+ * rows, 633 changed and every one of them contained CJK; 0 of the 39,361
+ * pure-Latin rows moved. The property is asserted in check-skill-trends
+ * rather than trusted.
+ *
+ * MIXED-SCRIPT TITLES DO CHANGE, and that is the repair rather than a side
+ * effect. "サウンドプログラマー / Sound Programmer" keyed as "sound programmer"
+ * under the ASCII rule — the Japanese half silently deleted — so it collided
+ * with any other row whose title reduced to those two words. It now keys as
+ * "サウンドプログラマー sound programmer". Rows written under the old rule have
+ * to be re-keyed or the same role sits under both spellings; that is what
+ * `backfill-role-key.ts --rekey` is for.
  */
 export function normRoleTitle(s: string): string {
+  if (CJK.test(s || "")) {
+    return (s || "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+  }
   return (s || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")

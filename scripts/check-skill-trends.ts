@@ -2444,6 +2444,64 @@ console.log("\nthe timeline runs to the present month, and the index marker to t
   check("every event falls inside the series", off.length === 0, off.join(", "));
 }
 
+// ── the title fold survives non-Latin scripts ──────────────────────────────
+// The ASCII rule (`[^a-z0-9]`) deletes Han, kana and Hangul outright, so a
+// Japanese or Chinese title normalises to "" and gets no role key at all. That
+// shipped: 19,284 rows on the live archive, every one WITH a title, counted
+// individually because their key was empty — so those employers had no
+// cross-board dedupe whatsoever. jobArchive's own norm() already carried the
+// CJK branch for job_key; the copy one layer up did not.
+//
+// The second half of this is the constraint that makes the branch safe to add
+// in place: only strings CONTAINING CJK may take the Unicode path, so no
+// pure-Latin key moves and no existing Latin role splits in two.
+console.log("\nthe role fold keeps non-Latin titles, and leaves Latin ones alone:");
+{
+  const cjk: [string, string][] = [
+    ["プラントオペレーター", "プラントオペレーター"],
+    ["政府事务经理", "政府事务经理"],
+    ["【オープンポジション】障がい者採用", "オープンポジション 障がい者採用"],
+    ["사원 모집", "사원 모집"],
+  ];
+  const lost = cjk.filter(([input]) => normRoleTitle(input) === "");
+  check(
+    "a CJK title still has a key",
+    lost.length === 0,
+    `${lost.map(([s]) => s).join(", ")} normalised to nothing`,
+  );
+  const wrong = cjk.filter(([input, want]) => normRoleTitle(input) !== want);
+  check(
+    "...and keeps every letter and digit in it",
+    wrong.length === 0,
+    wrong.map(([s, w]) => `${s}: ${normRoleTitle(s)} != ${w}`).join(" | "),
+  );
+  // A mixed title must keep BOTH halves. Under the ASCII rule the Japanese was
+  // deleted and this collided with any row reducing to the same two words.
+  check(
+    "a mixed-script title keeps both halves",
+    normRoleTitle("サウンドプログラマー / Sound Programmer") ===
+      "サウンドプログラマー sound programmer",
+    normRoleTitle("サウンドプログラマー / Sound Programmer"),
+  );
+  // THE SAFETY PROPERTY. Measured against the live archive before shipping:
+  // of 40,000 keyed rows, 633 changed and every one contained CJK; 0 of the
+  // 39,361 pure-Latin rows moved.
+  const latin: [string, string][] = [
+    ["Senior Payroll Officer", "senior payroll officer"],
+    ["People & Culture  Officer", "people culture officer"],
+    ["Mining Engineer — Pilbara, FIFO 8/6", "mining engineer pilbara fifo 8 6"],
+    ["Développeur Sénior", "d veloppeur s nior"],
+    ["Crédit Analyst", "cr dit analyst"],
+    ["", ""],
+  ];
+  const moved = latin.filter(([input, want]) => normRoleTitle(input) !== want);
+  check(
+    "a Latin title is byte-for-byte what it was, accents included",
+    moved.length === 0,
+    moved.map(([s, w]) => `${JSON.stringify(s)}: ${normRoleTitle(s)} != ${w}`).join(" | "),
+  );
+}
+
 // ── the role key, written and counted ──────────────────────────────────────
 // Deduping across boards cannot live in the readers: it was fixed four times
 // in four surfaces and the fifth still had it. It is a COLUMN now — role_key,
