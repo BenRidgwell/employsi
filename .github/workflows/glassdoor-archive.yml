@@ -1,0 +1,120 @@
+# Glassdoor -> D1, through JobSpy. See scripts/glassdoor-to-d1.py's header for
+# the measurement and for the robots.txt position; both are decisions, not
+# oversights, and neither belongs only in a commit message.
+#
+# THERE IS NO SCHEDULE, AND ADDING ONE IS A DECISION SOMEONE HAS TO MAKE WITH A
+# MEASUREMENT IN HAND. Glassdoor was in this repo until 2026-08-09 and was
+# removed because a Cloudflare interstitial refused it from a datacentre
+# address, from rotating IPRoyal and from a sticky IPRoyal session alike
+# (workers/jobs-cron/ARCHIVE.md). Re-measured 2026-10-03 from the authoring
+# sandbox, the JobSpy GraphQL path is refused there too: 403, and the search
+# pages answer `cf-mitigated: challenge`.
+#
+# What is NOT yet known is whether a GitHub runner's address is refused, and
+# that is the only open question. It is not rhetorical: the Indeed feed POSTs to
+# apis.indeed.com/graphql from `ubuntu-latest` nightly and is never challenged,
+# while several things in this repo fail from the sandbox and work here.
+#
+# SO RUN `mode: dry` FIRST. It walks and reports and writes nothing, and its
+# exit code answers the question on its own:
+#
+#   0  listings came back          -> the address is fine; a schedule is now a
+#                                     real choice rather than a hope
+#   2  not one listing anywhere    -> refused. Leave this unscheduled. Do NOT
+#                                     reach for a CAPTCHA solver or buy a
+#                                     residential pool to look like a visitor
+#                                     the challenge exists to exclude — that is
+#                                     the line the NGA.NET note in
+#                                     workers/jobs-cron/careerSites.ts holds,
+#                                     and it is held here too
+#   3  partially refused           -> rows landed AND a tenth or more of the
+#                                     walk was blocked. The dangerous one: it
+#                                     writes real rows, so nothing looks broken
+#                                     while every card it touches under-reports
+#
+# A feed that cannot run must not be on a cron. A workflow that is red every
+# morning for a known reason stops being read, which is the lesson the
+# browser-portals ECU step is still paying for.
+#
+# Required repo secrets: CLOUDFLARE_API_TOKEN (D1 edit).
+# Optional repo variables: CF_ACCOUNT_ID, D1_DATABASE_ID.
+
+name: glassdoor-archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry = walk and report, write nothing; write = archive to D1'
+        type: choice
+        options: [dry, write]
+        default: dry
+      limit:
+        description: 'How many roster companies to walk (blank = all)'
+        type: string
+        required: false
+      country:
+        description: 'Roster country code'
+        type: string
+        default: 'au'
+
+concurrency:
+  group: glassdoor-archive
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      # bun runs scripts/map-skills.ts, so these rows carry exactly the skills
+      # the same title would get from any other feed. Needed even on a dry run:
+      # a walk that cannot map skills has not proven the walk.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install JobSpy
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-jobspy
+          python -c "import jobspy, importlib.metadata as m; print('python-jobspy', m.version('python-jobspy'))"
+
+      # NO PROXY AND NO CREDENTIAL. The runner's own address is the thing being
+      # measured; routing around it would answer a different question.
+      - name: Walk Glassdoor
+        id: walk
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+        run: |
+          set -o pipefail
+          ARGS="--country ${{ inputs.country || 'au' }}"
+          [ -n "${{ inputs.limit }}" ] && ARGS="$ARGS --limit ${{ inputs.limit }}"
+          [ "${{ inputs.mode || 'dry' }}" != "write" ] && ARGS="$ARGS --dry-run"
+          echo "glassdoor-to-d1.py $ARGS"
+          python scripts/glassdoor-to-d1.py $ARGS 2>&1 | tee walk.txt
+
+      # always(), because the interesting outcome is the FAILING one: a 2 is the
+      # answer to the question this workflow exists to ask, and it should be
+      # readable on the run page rather than only in the log.
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo "### Glassdoor walk — ${{ inputs.mode || 'dry' }}"
+            echo
+            echo '```'
+            tail -20 walk.txt 2>/dev/null || echo '(no output)'
+            echo '```'
+            echo
+            case "${{ steps.walk.outcome }}" in
+              success) echo "Listings came back. A schedule is now a real choice." ;;
+              *) echo "Refused or partially refused — see the exit codes in this file's header. Leave it unscheduled." ;;
+            esac
+          } >> "$GITHUB_STEP_SUMMARY"
