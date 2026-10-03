@@ -83,6 +83,21 @@ HUB = {
 # and letting it through would put a $3 or a $9,000,000 role on a card.
 MIN_K, MAX_K = 10, 2000
 
+# A column header that is an EXPERIENCE BAND, not a role.
+#
+# MEASURED: 1,432 of 13,094 figures came back with a "role" of "Up to 2 years",
+# "2 - 4 years", "4+ years", "Senior Manager for 2-5 yrs". Those tables put ONE
+# role in the heading and split its columns by experience, so the role name is
+# the last segment of the breadcrumb above — "… | ACCOUNTANTS | ASSISTANT
+# ACCOUNTANTS" — and the column is a qualifier on it.
+#
+# Left alone they are unmappable: "2 - 4 years" places onto no career rung and
+# never could, so a sixth of the guide's figures would have been dropped at the
+# review stage as junk while being perfectly good data under the wrong name.
+EXP_BAND_RE = re.compile(
+    r'^\s*(?:up\s+to\s+\d|\d+\s*[-–+]\s*\d*\s*(?:years?|yrs?)?|\d+\s*(?:years?|yrs?)'
+    r'|(?:senior\s+)?manager\s+for\s+\d)', re.I)
+
 
 def edition_of(path: str) -> str:
     """FY24/25, FY22/23, 2023 — from the filename, which is the only reliable
@@ -226,9 +241,20 @@ def parse_sheet(ws, edition: str, sheet: str, stats: dict):
                 # typical, keep the band, count it.
                 stats['typ_outside'] += 1
                 typ = None
+            role = re.sub(r'\s+', ' ', name).strip()[:120]
+            qualifier = ''
+            if EXP_BAND_RE.match(role):
+                # The heading's last segment is the role; the column is a
+                # qualifier on it. Keeps BOTH, because "Assistant Accountant"
+                # at 4+ years and at up to 2 years are different numbers and
+                # collapsing them would average two bands into one that is
+                # neither.
+                parts = [x.strip() for x in section.split('|') if x.strip()]
+                if parts:
+                    qualifier, role = role, parts[-1][:120]
             out.append({
                 'edition': edition, 'sheet': sheet, 'section': section,
-                'role': re.sub(r'\s+', ' ', name).strip()[:120],
+                'role': role, 'qualifier': qualifier,
                 'state': state.upper(), 'city': city,
                 'hub': hub_for(state, city),
                 'cur': 'NZD' if state.upper() == 'NZ' else 'AUD',
@@ -298,11 +324,11 @@ def write_ts(records: list, path: str) -> None:
     """
     roles: dict[tuple, int] = {}
     for r in records:
-        roles.setdefault((r['role'], r['section']), len(roles))
+        roles.setdefault((r['role'], r['qualifier'], r['section']), len(roles))
     rows = []
     for r in records:
         rows.append([
-            roles[(r['role'], r['section'])],
+            roles[(r['role'], r['qualifier'], r['section'])],
             r['edition'],
             r['hub'] or '',
             r['state'],
@@ -350,6 +376,10 @@ def write_ts(records: list, path: str) -> None:
 export interface HaysRole {{
   /** The role as the guide names it. */
   role: string;
+  /** An experience band the guide splits the role by ("4+ years"), where it
+   *  does. Kept apart from the role rather than glued on: the role is what maps
+   *  to a career rung, and the band is why two rows for it differ. */
+  qualifier: string;
   /** The headings above it — a "Mine Accountant" under Commerce & Industry |
    *  Mining is not the same job as the same words elsewhere. */
   section: string;
@@ -369,8 +399,9 @@ export const HAYS_SOURCE = {{
 
 export const HAYS_ROLES: HaysRole[] = [
 """)
-        for (role, section), _ in sorted(roles.items(), key=lambda kv: kv[1]):
-            f.write(f'  {{ role: {json.dumps(role)}, section: {json.dumps(section)} }},\n')
+        for (role, qualifier, section), _ in sorted(roles.items(), key=lambda kv: kv[1]):
+            f.write(f'  {{ role: {json.dumps(role)}, qualifier: {json.dumps(qualifier)}, '
+                    f'section: {json.dumps(section)} }},\n')
         f.write('];\n\nexport const HAYS_PAY: HaysPayRow[] = [\n')
         for r in rows:
             f.write('  ' + json.dumps(r) + ',\n')
