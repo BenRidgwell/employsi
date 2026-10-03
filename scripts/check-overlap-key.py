@@ -78,14 +78,52 @@ if py_key and ts_key and py_key != ts_key:
 # Both must read the LIVE window. The panel deliberately ignores its own range
 # control here so its figure describes the rows the company cards count; a
 # 30-day overlap number beside a 1-day card is two measurements presented as one.
+#
+# IT USED TO ASSERT THE LITERAL `last_seen >= date('now','-1 day')`, in both
+# files, and that stopped being the right test on 2026-10-03 when the live cut
+# became PER SOURCE (SOURCE_LIVE_DAYS in jobArchive.ts — a weekly feed cannot
+# satisfy a one-day window). Two spelled-out copies of a rule that now has a
+# CASE in it is exactly the drift this check exists to catch, so what is
+# asserted now is that both files read the SHARED expression rather than
+# writing their own. A literal `date('now','-1 day')` reappearing in either is
+# itself the failure: it would be a second, flat definition of live.
+LIVE_SYMBOL = "LIVE_NOW_SQL"
+LIVE_ON_DAY_SYMBOL = "LIVE_NOW_ON_DAY_SQL"
 with open(TS, encoding="utf-8") as f:
     ts_src = f.read()
-if "last_seen >= date('now','-1 day')" not in squash(ts_src).replace(", ", ","):
-    if "last_seen >= date('now','-1 day')" not in ts_src:
+OPEN_ROLES = os.path.join(ROOT, "src", "employsi", "lib", "openRolesFn.ts")
+with open(OPEN_ROLES, encoding="utf-8") as f:
+    or_src = f.read()
+
+if f"${{{LIVE_SYMBOL}}}" not in ts_src:
+    fails.append(
+        "the panel's overlap query no longer reads the shared live window "
+        f"({LIVE_SYMBOL} from jobArchive.ts). It must use the same cut "
+        "currentFromArchive() uses in openRolesFn.ts, or the panel reports "
+        "duplication over a set nothing on screen counts."
+    )
+if f"${{{LIVE_ON_DAY_SYMBOL}}}" not in or_src:
+    fails.append(
+        f"currentFromArchive() in openRolesFn.ts no longer reads {LIVE_ON_DAY_SYMBOL}. "
+        "The company card and the panel must take their live window from the "
+        "same place in jobArchive.ts."
+    )
+def code_only(src: str) -> str:
+    """The file with its // comments dropped.
+
+    Both files QUOTE the old flat window in prose — openRolesFn.ts explains at
+    length why the window moved off `last_seen >= date('now','-1 day')` — and
+    that history is worth keeping. Only a live occurrence is a failure.
+    """
+    return "\n".join(re.sub(r"//.*$", "", line) for line in src.splitlines())
+
+
+for path, src in ((TS, ts_src), (OPEN_ROLES, or_src)):
+    if "date('now','-1 day')" in squash(code_only(src)).replace(", ", ","):
         fails.append(
-            "the panel's overlap query no longer reads the 1-day live window. "
-            "It must match the cut currentFromArchive() uses in openRolesFn.ts, "
-            "or the panel reports duplication over a set nothing on screen counts."
+            f"{os.path.relpath(path, ROOT)} spells out a flat 1-day live window "
+            "again. The cut is per source now; a second hardcoded copy silently "
+            "drops every weekly feed's ads from whichever figure it feeds."
         )
 
 if fails:

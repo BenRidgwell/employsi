@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
-import { HISTORICAL_SOURCES, type D1Like } from "./jobArchive";
+import { HISTORICAL_SOURCES, LIVE_NOW_SQL, type D1Like } from "./jobArchive";
 import { COMPANIES } from "../data/companies";
 import { normName, sameCompanyName, substringOnlyMatch } from "./advertiserMatch";
 
@@ -301,9 +301,12 @@ export const getDataQuality = createServerFn({ method: "GET" })
     const DAYS = [1, 7, 30].includes(Number(data?.days)) ? Number(data.days) : 30;
 
     try {
-      // 1. Feed freshness. `live` uses the same "currently advertised" rule the
-      //    app itself uses (last_seen within a day), so this panel and a
-      //    company card cannot disagree about what is open.
+      // 1. Feed freshness. `live` uses the same "currently advertised" rule
+      //    the app itself uses — LIVE_NOW_SQL, which is last_seen within a day
+      //    for a nightly feed and within its own cadence for a weekly one — so
+      //    this panel and a company card cannot disagree about what is open.
+      //    Reading it from jobArchive rather than spelling it out here is what
+      //    makes that true; check-overlap-key.py asserts the panel still does.
       const feedRes = await db
         .prepare(
           `SELECT source,
@@ -312,7 +315,7 @@ export const getDataQuality = createServerFn({ method: "GET" })
                   COUNT(*) AS total,
                   COUNT(DISTINCT company_id) AS companies,
                   MAX(company_id) AS a_company,
-                  SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
+                  SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END) AS live
              FROM jobs
             GROUP BY source
             ORDER BY source`,
@@ -473,7 +476,7 @@ export const getDataQuality = createServerFn({ method: "GET" })
         .prepare(
           `SELECT substr(first_seen,1,7) AS ym,
                   COUNT(*) AS total,
-                  SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
+                  SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END) AS live
              FROM jobs
             WHERE first_seen <> '' AND source NOT IN (${histList})
             GROUP BY ym
@@ -513,8 +516,8 @@ export const getDataQuality = createServerFn({ method: "GET" })
       //
       // MEASURED ON THE LIVE WINDOW, NOT THE PANEL'S RANGE, and deliberately.
       // The question this answers is "is the number on the card inflated right
-      // now", and the card's own figure is `last_seen >= date('now','-1 day')`
-      // (see currentFromArchive in openRolesFn.ts). Computing overlap over 30
+      // now", and the card's own figure is LIVE_NOW_SQL — the same shared cut
+      // currentFromArchive uses in openRolesFn.ts, per source. Computing overlap over 30
       // days would describe a set nothing on screen is counting. It is also
       // three times cheaper — measured 2026-09-29 against the live archive:
       // 856ms at 1 day against 2.56s at 30, reading 766k rows against 1.2M.
@@ -547,7 +550,7 @@ export const getDataQuality = createServerFn({ method: "GET" })
                       instr(substr(rest, instr(rest, '|') + 1), '|') - 1) AS comp
         FROM (SELECT source, company_id,
                      substr(job_key, instr(job_key, '|') + 1) AS rest
-              FROM jobs WHERE last_seen >= date('now','-1 day'))`;
+              FROM jobs WHERE ${LIVE_NOW_SQL})`;
       const LOOSE = `
         SELECT source, company_id,
                company_id || '|' ||

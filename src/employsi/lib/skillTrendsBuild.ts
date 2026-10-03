@@ -13,7 +13,7 @@
  * runtime, which is what lets the Worker bundle it — keep it that way. The
  * caller decides WHO is asking (`seesAll`) and supplies the query function.
  */
-import type { SqlValue } from "./jobArchive";
+import { liveDaysFor, type SqlValue } from "./jobArchive";
 import { isReleasedRow } from "./markets";
 import {
   SKILL_CATEGORY,
@@ -346,8 +346,16 @@ export async function buildLiveSkillTrends(
     // last seen on or after it. Walked by index rather than by testing every
     // day against every row: the series is twice as long as it used to be,
     // and this makes it cheaper than the 30-day version it replaces.
+    //
+    // THE TRAILING EDGE RUNS ON PAST `ls` BY THE FEED'S OWN CADENCE, which is
+    // the same rule every live count in the app now applies (SOURCE_LIVE_DAYS
+    // in jobArchive.ts). Ending each ad at its last SIGHTING draws a weekly
+    // feed as a sawtooth: every one of its ads enters the series on the day of
+    // the run and leaves it the next morning, so the line sags for six days and
+    // jumps every Monday — a pattern in the collection, drawn as a pattern in
+    // the market. Nothing moves for a nightly feed, where the grace is zero.
     const lo = Math.max(0, dayIdx(fs));
-    const hi = Math.min(seriesDays.length - 1, dayIdx(ls));
+    const hi = Math.min(seriesDays.length - 1, dayIdx(ls) + liveDaysFor(srcName) - 1);
     for (let i = lo; i <= hi; i++) {
       for (const sk of skills) {
         const arr = (daily[sk] ||= new Array(seriesDays.length).fill(0));
