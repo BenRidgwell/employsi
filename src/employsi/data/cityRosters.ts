@@ -533,6 +533,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["JNJ", "Johnson & Johnson", HLT],
       ["VZ", "Verizon Communications", TMT],
       ["IBM", "IBM", TMT],
+      // Accenture plc is Dublin-headquartered (not a hub) and NYSE-listed, so it
+      // sits here beside IBM; its offices elsewhere — Sydney, Melbourne,
+      // Canberra, London, Tokyo, Chicago … — are secondary-office pins
+      // (secondaryOffices.ts), and its twelve country boards are scraped
+      // daily as `newyork-acn-*` in careerSites.ts.
+      ["ACN", "Accenture", TMT],
       ["PEP", "PepsiCo", CON, "NASDAQ"],
       ["JPM", "JPMorgan Chase", FIN],
       ["PFE", "Pfizer", HLT],
