@@ -298,6 +298,9 @@ jobs:
           set -o pipefail
           latest=$(git -c versionsort.suffix=-beta tag -l 'v*' --sort=-v:refname | head -1)
           export VITE_APP_VERSION="${latest#v} (preview)"
+          # The app's tab reads "employsi - preview" on preview builds only
+          # (src/routes/app.tsx). Production builds the same commit without it.
+          export VITE_PREVIEW=1
           echo "Version label: $VITE_APP_VERSION"
           npm run "$DEPLOY_SCRIPT" -- --message "commit $GITHUB_SHA" --tag "${GITHUB_SHA:0:12}" \
             2>&1 | tee deploy.txt
@@ -454,8 +457,9 @@ jobs:
                   esac ;;
                 200)
                   case "$title" in
-                    # The app's <title> is exactly "Employsi" (src/routes/app.tsx).
-                    "Employsi")
+                    # The app's <title>: "employsi - preview" on a preview build,
+                    # "Employsi" otherwise (src/routes/app.tsx).
+                    "employsi - preview"|"Employsi")
                       echo "::warning::/app served the app to an ANONYMOUS request." \
                            "Expected on a Worker without Better Auth configured" \
                            "(authAvailable false); on one with it, the sign-in gate is not working." ;;
