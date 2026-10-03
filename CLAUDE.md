@@ -156,9 +156,15 @@ hydration and never shows up in the SSR HTML. Read the `<title>` instead —
 "Employsi map — the live labour-market globe" is the app, "employsi — Explore
 the world of work" is the landing page.
 
-The apex serves the marketing pages ONLY: `employsi.com.au/app` and `/api/auth`
-302 away (see `APP_ONLY_PATHS` in `src/lib/siteGate.ts`, which `src/server.ts`
-imports). `/login` reads the same module: on a gated host it shows the waitlist
+**THE APP WAS RELEASED ON THE APEX ON 2026-10-03.** Until then the apex served
+the marketing pages ONLY: `employsi.com.au/app` and `/api/auth` 302'd away.
+`APP_ONLY_PATHS` in `src/lib/siteGate.ts` now holds only `/mobile-frame` (a
+build-time preview, still closed on the public domain), so `/app` and sign-in
+work on employsi.com.au behind the same sign-in + subscription gate as every
+other host. Everything below about the gated apex describes how it worked
+before, and how it works again if `/app` is put back in that list.
+The apex used to serve the marketing pages ONLY (see `APP_ONLY_PATHS`, which
+`src/server.ts` imports). `/login` reads the same module: on a gated host it shows the waitlist
 form instead of OAuth buttons that would 302. Releasing the app is emptying
 `APP_ONLY_PATHS`; the login page switches to real sign-in on the same deploy. So a production deploy of app work is
 reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
@@ -564,10 +570,11 @@ see Workers at all ("No access to the specified resource" on every script), whil
 the repo's Actions secrets carry both tokens. It records the serving version first
 (and refuses without one), deploys with `--name benridgwell-globe-gazer-hr` spelled
 out, then asserts the apex serves the landing page, `/product` and `/login` answer
-200, `/app` and `/api/auth/*` still 302 off the apex, and workers.dev `/app` is the
-app. The same "asked for in this conversation" rule applies to dispatching it.
-**Releasing the app turns its gate check red on purpose** — change the check in the
-same PR that empties `APP_ONLY_PATHS`.
+200, apex sign-in answers 200, `/mobile-frame` still 302s off the apex, and `/app`
+on both the apex and workers.dev redirects an anonymous request to `/login`
+(that redirect is the proof the app deployed AND its gate is live). The same "asked for in this conversation" rule applies to dispatching it.
+**Re-closing the app on the apex turns its checks red on purpose** — change the
+checks in the same PR that puts `/app` back in `APP_ONLY_PATHS`.
 
 Deploys, when actually asked for:
 

@@ -219,45 +219,43 @@ jobs:
             code=$(fetch "https://employsi.com.au$p"); echo "apex $p  $code"
             [ "$code" = 200 ] || { echo "::error::apex $p answered $code"; fail=1; }
           done
-          # /login chooses waitlist vs sign-in IN THE BROWSER (appGatedOn on
-          # window.location), so its HTML carries neither and cannot be grepped.
-          # The server-side half of the same gate is checkable: both of these
-          # 302 off the apex while APP_ONLY_PATHS holds them.
-          for p in /app /api/auth/get-session; do
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au$p")
-            echo "apex $p  $code"
-            [ "$code" = 302 ] || { echo "::error::apex $p answered $code, expected 302 while the app is gated"; fail=1; }
-          done
-          # workers.dev /app: A REDIRECT TO /login IS THE PASS, not the app's title.
-          # The app is signed-in-only as of 2026-09-30 (getAppAccess), so an
-          # unauthenticated request never reaches it and this line used to demand
-          # a title only a signed-in browser can see. Only the app route bounces
+          # THE APP IS RELEASED ON THE APEX (2026-10-03): APP_ONLY_PATHS holds only
+          # /mobile-frame. So the apex now behaves like workers.dev for the app —
+          # /app answers an anonymous request with a redirect to /login (the
+          # sign-in gate, getAppAccess), sign-in itself is open, and only the
+          # mobile-frame preview is still bounced off the public domain.
+          # Re-closing the app (putting "/app" back in APP_ONLY_PATHS) turns the
+          # first of these red on purpose: change this block in the same PR.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au/api/auth/get-session")
+          echo "apex /api/auth/get-session  $code"
+          [ "$code" = 200 ] || { echo "::error::apex sign-in answered $code, expected 200 now the app is released"; fail=1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au/mobile-frame")
+          echo "apex /mobile-frame  $code"
+          [ "$code" = 302 ] || { echo "::error::apex /mobile-frame answered $code, expected 302 (still closed)"; fail=1; }
+          # /app, on BOTH hosts: A REDIRECT TO /login IS THE PASS, not the app's
+          # title. The app is signed-in-only (getAppAccess), so an
+          # unauthenticated request never reaches it. Only the app route bounces
           # to /login, so the redirect proves both that the app is deployed and
-          # that its sign-in gate is live — which is what wanted proving.
-          #
-          # This is the apex /app check's opposite number and must not be
-          # confused with it: the apex 302s because APP_ONLY_PATHS gates the
-          # MARKETING host (it lands on / there), while this one redirects
-          # because the app requires an account. Releasing the app empties
-          # APP_ONLY_PATHS and changes that check; it does not change this one.
-          u=https://benridgwell-globe-gazer-hr.employsi.workers.dev/app
-          read -r code location < <(curl -s --compressed -o page.html \
-            -w '%{http_code} %{redirect_url}\n' --max-time 30 "$u" || echo "000 -")
-          t=$(title)
-          echo "workers.dev /app $code  ${location:-$t}"
-          # 3xx, not 302 specifically: TanStack Router's redirect() in a
-          # beforeLoad answers 307 (measured on employsi-preview, 2026-09-30).
-          case "$code|$location" in
-            3[0-9][0-9]\|*/login*) ;;
-            200\|*)
-              case "$t" in
-                *"labour-market globe"*)
-                  echo "::error::workers.dev /app served the app to an anonymous request —" \
-                       "the sign-in gate is not working on production"; fail=1 ;;
-                *) echo "::error::workers.dev /app answered 200 but is not the app: $t"; fail=1 ;;
-              esac ;;
-            *) echo "::error::workers.dev /app answered $code ${location:-}, expected a redirect to /login"; fail=1 ;;
-          esac
+          # that its sign-in gate is live. 3xx, not 302 specifically: TanStack
+          # Router's redirect() in a beforeLoad answers 307 (measured on
+          # employsi-preview, 2026-09-30).
+          for u in https://employsi.com.au/app https://benridgwell-globe-gazer-hr.employsi.workers.dev/app; do
+            read -r code location < <(curl -s --compressed -o page.html \
+              -w '%{http_code} %{redirect_url}\n' --max-time 30 "$u" || echo "000 -")
+            t=$(title)
+            echo "$u  $code  ${location:-$t}"
+            case "$code|$location" in
+              3[0-9][0-9]\|*/login*) ;;
+              200\|*)
+                case "$t" in
+                  *"labour-market globe"*)
+                    echo "::error::$u served the app to an anonymous request —" \
+                         "the sign-in gate is not working on production"; fail=1 ;;
+                  *) echo "::error::$u answered 200 but is not the app: $t"; fail=1 ;;
+                esac ;;
+              *) echo "::error::$u answered $code ${location:-}, expected a redirect to /login"; fail=1 ;;
+            esac
+          done
           exit $fail
 
       # TAG THE RELEASE, after the live site has been checked — so a tag can
