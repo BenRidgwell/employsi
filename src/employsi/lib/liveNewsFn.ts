@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { officialFeedFor, type OfficialFeed } from "../data/officialNewsFeeds";
 import { scrapeNewsroom } from "./newsroomScrape";
 import { newsQueryFor } from "../data/newsQueries";
@@ -464,6 +465,7 @@ async function fromStore(query: string, limit: number): Promise<LiveNewsItem[] |
 }
 
 export const getLiveNews = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { query: string; limit?: number }) => data)
   .handler(async ({ data }): Promise<{ items: LiveNewsItem[] }> => {
     const query = (data.query || "").trim();

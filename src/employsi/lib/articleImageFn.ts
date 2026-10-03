@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 
 // NB: kept out of any `server/` directory — the bundler denies importing paths
 // under **/server/**. createServerFn provides the client→server RPC bridge, so
@@ -104,6 +105,7 @@ function extractPublisher(head: string, base: string): string {
 // and publisher. Returns empty fields when there's no data (or the fetch fails)
 // so the client can fall back without treating it as an error.
 export const getArticleImage = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { url: string }) => data)
   .handler(async ({ data }): Promise<ArticleMeta> => {
     const url = data.url;

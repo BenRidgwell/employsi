@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
 import {
@@ -80,6 +81,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 export const getRoleHistory = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RoleHistory | null> => {
     const id = (data.id || "").trim();
@@ -171,6 +173,7 @@ const TREND_WEEKS = 13; // ~3 months of weekly buckets for the per-skill sparkli
 // Sparse until the archive has more than one window of history — it fills in as
 // the daily pulls accumulate.
 export const getSkillTrends = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<SkillMover[]> => {
     const id = (data.id || "").trim();
@@ -490,6 +493,7 @@ export interface MoverScope {
 }
 
 export const getMarketSkillMovers = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: MoverScope) => data)
   .handler(async ({ data }): Promise<MarketSkillMovers> => {
     const db = await getArchiveDb();
@@ -642,6 +646,7 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" })
 // private companies get. Builds forward as the archive accumulates, so a
 // freshly-seeded company shows a short series that lengthens over the days.
 export const getVacancyTrend = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
     const id = (data.id || "").trim();
@@ -1008,6 +1013,7 @@ async function archiveCoverageStart(db: D1Like): Promise<string | null> {
 }
 
 export const getCompanySkillTrends = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string; days?: number }) => data)
   .handler(async ({ data }): Promise<CompanySkillTrends> => {
     const id = (data.id || "").trim();
@@ -1141,6 +1147,7 @@ function archivedNamesFor(skill: string): string[] {
  * roleKeyByCompanyTitle.
  */
 export const getSkillTrend = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string; days?: number }) => data)
   .handler(async ({ data }): Promise<SkillArchiveTrend> => {
     const skill = (data.skill || "").trim();
@@ -1706,6 +1713,7 @@ export interface SkillRank {
 export type SkillRanks = Record<string, SkillRank>;
 
 export const getSkillMarketRanks = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { hubs?: string[] }) => data)
   .handler(async ({ data }): Promise<SkillRanks> => {
     const db = await getArchiveDb();
@@ -2163,6 +2171,7 @@ export function marketWindowDays(days: unknown): number {
 }
 
 export const getSkillMarket = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { hubs?: string[]; label?: string; days?: number }) => data)
   .handler(async ({ data }): Promise<SkillMarket> => {
     const db = await getArchiveDb();
@@ -2304,6 +2313,7 @@ export function monthsBetween(a: string, b: string): string[] {
 }
 
 export const getSkillCompanyMonths = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string }) => data)
   .handler(async ({ data }): Promise<SkillCompanyMonths> => {
     const skill = (data.skill || "").trim();
@@ -2496,6 +2506,7 @@ export interface SkillRoles {
 const NO_SKILL_ROLES: SkillRoles = { roles: [], asOf: "", dated: false, unavailable: true };
 
 export const getCompanySkillRoles = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { companyId: string; hub: string; skill: string; month?: string }) => data)
   .handler(async ({ data }): Promise<SkillRoles> => {
     const skill = (data.skill || "").trim();

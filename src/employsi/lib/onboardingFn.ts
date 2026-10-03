@@ -19,7 +19,7 @@ import { getAuth, type AuthEnv } from "./auth";
  * silently reset it. One row per user answers the question that was asked.
  *
  * THE TABLE IS CREATED LAZILY, like llm_usage (analystLlmFn), views (viewsFn)
- * and billing_subscription (billing) — no migration, so a preview Worker and
+ * and billing_subscriptions (billing) — no migration, so a preview Worker and
  * production both grow it on first use rather than needing a deploy step that
  * can be forgotten.
  *
