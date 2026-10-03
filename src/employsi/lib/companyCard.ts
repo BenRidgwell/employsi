@@ -372,6 +372,14 @@ export interface CardInputs {
    *  none do — the seed `Company.salary` is illustrative, so a card with no
    *  live salary shows a gap rather than that number. */
   medianPay?: { text: string; n: number } | null;
+  /** A MODELLED pay range across the live roles, for the case where not one ad
+   *  states a figure. Shown INSTEAD OF medianPay and never alongside or mixed
+   *  into it: that one is the middle of what employers advertised, this is a
+   *  third party's estimate of what roles like these pay, and a figure built
+   *  from both would be part measurement and part guess with nothing on screen
+   *  able to say which part. `src` names whose model it is and reaches the
+   *  label, because a number on this card has to be traceable to something. */
+  payEstimate?: { text: string; n: number; src: string } | null;
   /** The busiest hiring area right now, for the "Biggest hiring area" fact.
    *  Passed in for the same reason as `topSkill`: the Hiring bars are drawn
    *  from the archive where it has areas, and a fact naming a different area
@@ -616,6 +624,26 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     // Displaced from the headline tiles by the top skill, but still a real
     // measurement off live ads — it keeps a row rather than leaving the card.
     facts.push({ k: "Median advertised salary", v: `${pay.text} · ${pay.n} live ads` });
+  } else if (input.payEstimate) {
+    // NOTHING DISCLOSED. Until now this row simply vanished, which is honest
+    // and not very useful: most Australian ads state no figure at all, so the
+    // card went quiet on pay for the employers a reader most wants it for.
+    //
+    // THE MODEL IS NAMED IN THE LABEL, and that is deliberate rather than
+    // decorative. This row is one line — no sub-line to explain it in — so the
+    // label is the only place the source can live, and an unattributed range
+    // sitting where a measured median sits would read as this employer's band.
+    // It is not: nobody advertised it.
+    //
+    // "Estimated", not "Median", for the same reason. The two are different
+    // questions and the words have to stay different, or a reader comparing
+    // two cards is comparing a measurement against a guess without being told.
+    facts.push({
+      k: `Estimated salary · ${input.payEstimate.src}`,
+      v: `${input.payEstimate.text} · ${input.payEstimate.n} live ${
+        input.payEstimate.n === 1 ? "role" : "roles"
+      }`,
+    });
   }
   if (!isPrivate && c.exchange) {
     facts.push({ k: "Listed on", v: c.exchange });

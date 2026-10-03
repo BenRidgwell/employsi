@@ -805,6 +805,45 @@ why the default is the fetch-speed walk instead.
   and a 30-minute sticky IPRoyal session all got a Cloudflare interstitial
   before the sign-in page could load. The scraper and its UI feature are gone.
 
+  **TRIED AGAIN 2026-10-03 THROUGH JOBSPY, AND REFUSED AGAIN — but the result
+  is the opposite way round from what anyone would predict, which is why it is
+  written down rather than left as "still blocked".** The second attempt used a
+  different door: JobSpy's web GraphQL API (`/graph`), no account, the same
+  package the Indeed feed has run nightly since 2026-09-18. Two addresses,
+  measured hours apart:
+
+  | from | result |
+  | --- | --- |
+  | the authoring sandbox (datacentre, via the agent proxy) | 6 of 14 companies with listings, **69 rows**, 5 blocked |
+  | `ubuntu-latest`, a GitHub runner | **40 of 40 blocked, 0 rows** |
+
+  **The runner is MORE blocked than the datacentre address, not less**, and
+  that inverts the assumption the rest of this file is built on — SEEK, Indeed,
+  Auckland Airport and TechnologyOne are all here *because* a runner gets
+  through where a Cloudflare-adjacent address does not. GitHub's egress ranges
+  are published, so a WAF can blanket them; a generic datacentre host is just
+  one more address. Do not reach for a runner as the fix for a Cloudflare 403
+  without measuring it, and do not read Indeed's success on `ubuntu-latest` as
+  a property of runners.
+
+  The refusal from the sandbox was also INTERMITTENT — single calls 403'd
+  minutes before and after a 14-company walk that mostly worked — so one probe
+  proves nothing in either direction here. `scripts/glassdoor-to-d1.py` retries
+  three times with backoff and still reported 40/40.
+
+  `scripts/glassdoor-to-d1.py` and `.github/workflows/glassdoor-archive.yml`
+  are kept and **deliberately unscheduled**, for the reason the ECU step is
+  kept: the scraper is correct and self-diagnosing — it tells a block from a
+  quiet employer and exits 2, 3 or 0 accordingly — so the day the access
+  question changes it works with no code change. Re-measure with
+  `mode: dry` before any schedule is added. What must not happen meanwhile is a
+  CAPTCHA solver or a residential pool bought to look like a visitor the
+  challenge exists to exclude; see the NGA.NET note in `careerSites.ts`.
+
+  The `pay_estimate` column that feed writes (Glassdoor's modelled p10/p90,
+  never `salary`) therefore has **no rows behind it today**. Anything reading
+  it has to handle empty as the normal case, not the edge one.
+
 ### linkedin-posts, dropped the same day
 
 Not for cost — because it never worked anywhere but behind a paid unblocker, and
