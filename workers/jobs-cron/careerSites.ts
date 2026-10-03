@@ -154,6 +154,7 @@ type Platform =
   | "workpac"
   | "capgemini"
   | "wipro"
+  | "accenture"
   | "eightfoldpcs"
   | "radancy"
   | "adlogic"
@@ -660,6 +661,49 @@ interface SiteDef {
    */
   radancySort?: string;
 }
+
+// Accenture's FIRST location per role, with the row's own country appended
+// (see fetchAccenture). Every needle is a string MEASURED on the board
+// 2026-10-03 (all 2,384 rows across the twelve country feeds), with its count,
+// and each metro call has a precedent elsewhere in this file.
+//
+// Deliberately left unplaced, because they are their own metros or not a
+// hub's: Ballarat (17) — outside Greater Melbourne; Nashville, St. Louis,
+// Albany NY, Kokomo, St. Petersburg FL, "Remote", "Nationwide"; Osaka and the
+// other Japanese cities; Blagnac (Toulouse) and the French regions; Dalian,
+// Guangzhou; Abu Dhabi, Doha, Kuwait City, Istanbul, Ho Chi Minh City.
+const ACCENTURE_HUB_HINTS: [string, string | null][] = [
+  // Washington STATE. HUB_MATCH's " wa," means Western Australia, and
+  // filed "East Wenatchee, WA, USA" (2) and "Redmond, WA, USA" (1) on PERTH.
+  // The Seattle MSA goes first; anything else in the state is unplaced.
+  ["seattle, wa", "seattle"], // 13
+  ["redmond, wa", "seattle"], // 1 — King County
+  ["bellevue, wa", "seattle"],
+  [", wa, usa", null],
+  ["irving, tx", "dallas"], // 23 — Las Colinas, Accenture's Dallas office
+  ["woodlands, tx", "houston"], // 2 — Montgomery County, Houston MSA
+  ["arlington, va", "washington"], // 21 — 1201 Wilson Blvd, Arlington County
+  ["fairfax, va", "washington"], // 1
+  ["largo, md", "washington"], // 1 — Prince George's County
+  ["morristown, nj", "newyork"], // 9 — Morris County, NY MSA
+  ["paterson, nj", "newyork"], // 1 — Passaic County
+  ["brooklyn, ny", "newyork"], // 1
+  ["long island, ny", "newyork"], // 1 — Nassau-Suffolk, NY MSA
+  ["chesterbrook, pa", "philadelphia"], // 9 — Chester County
+  ["berwyn, pa", "philadelphia"], // 1 — Chester County
+  ["culver city, ca", "losangeles"], // 4
+  ["irvine, ca", "losangeles"], // 4 — Orange County, LA MSA
+  ["long beach, ca", "losangeles"], // 2
+  ["mountain view, ca", "sanjose"], // 8 — Santa Clara County
+  ["walnut creek, ca", "sanfrancisco"], // 2 — Contra Costa
+  ["bloomington, mn", "minneapolis"], // 1 — Hennepin County
+  // Toronto CMA: Peel, York and Durham regions.
+  ["mississauga", "toronto"], // 14 — 1 City Centre Dr
+  ["richmond hill", "toronto"], // 2
+  ["pickering", "toronto"], // 1
+  ["yokohama", "tokyo"], // 40 — Kanagawa, Greater Tokyo
+  ["midrand", "johannesburg"], // 22 — City of Johannesburg, Region A
+];
 
 // Google's own board places by METRO, not by city name — the county rule
 // cityRosters.ts states for this hub ("Placement is decided by COUNTY, not by
@@ -22667,6 +22711,156 @@ export const SITES: SiteDef[] = [
       [", sa,", null],
     ],
   },
+  // Accenture — one feed per country page, all on one company. See
+  // fetchAccenture. Listed on the NYSE (ACN); the head office is Dublin,
+  // which is not a hub, so the roster line is New York and the other offices
+  // are secondary-office pins (data/secondaryOffices.ts). India is not read:
+  // 29,257 roles, over the service's 10,000 window and three times the whole
+  // Bengaluru hub on its own.
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-au",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=au-en&jobCountry=Australia&jobLanguage=en", // 250 roles on 2026-10-03
+    origin: "https://www.accenture.com/au-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-us",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=us-en&jobCountry=USA&jobLanguage=en", // 906 roles on 2026-10-03
+    origin: "https://www.accenture.com/us-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-ca",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=ca-en&jobCountry=Canada&jobLanguage=en", // 208 roles on 2026-10-03
+    origin: "https://www.accenture.com/ca-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-gb",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=gb-en&jobCountry=United%20Kingdom&jobLanguage=en", // 288 roles on 2026-10-03
+    origin: "https://www.accenture.com/gb-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-sg",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=sg-en&jobCountry=Singapore&jobLanguage=en", // 176 roles on 2026-10-03
+    origin: "https://www.accenture.com/sg-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-hk",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=hk-en&jobCountry=China%2FHong%20Kong%20SAR&jobLanguage=en", // 30 roles on 2026-10-03
+    origin: "https://www.accenture.com/hk-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-jp",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=jp-ja&jobCountry=%E6%97%A5%E6%9C%AC&jobLanguage=ja", // 310 roles on 2026-10-03
+    origin: "https://www.accenture.com/jp-ja/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-cn",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=cn-zh&jobCountry=%E4%B8%AD%E5%9B%BD%E5%A4%A7%E9%99%86&jobLanguage=zh-cn", // 7 roles on 2026-10-03
+    origin: "https://www.accenture.com/cn-zh/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-ae",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=ae-en&jobCountry=UAE&jobLanguage=en", // 10 roles on 2026-10-03
+    origin: "https://www.accenture.com/ae-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-za",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=za-en&jobCountry=South%20Africa&jobLanguage=en", // 22 roles on 2026-10-03
+    origin: "https://www.accenture.com/za-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-ch",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=ch-en&jobCountry=Switzerland&jobLanguage=en", // 21 roles on 2026-10-03
+    origin: "https://www.accenture.com/ch-en/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
+  {
+    id: "newyork-acn",
+    key: "newyork-acn-fr",
+    name: "Accenture",
+    sector: "Professional Services",
+    platform: "accenture",
+    endpoint:
+      "https://www.accenture.com/api/accenture/elastic/findjobs?countrySite=fr-fr&jobCountry=France&jobLanguage=fr-fr", // 156 roles on 2026-10-03
+    origin: "https://www.accenture.com/fr-fr/careers/jobsearch",
+    homeHub: null,
+    hubHints: ACCENTURE_HUB_HINTS,
+  },
   // Programmed — its OWN staff roles only (company_name "Programmed", 143 of
   // 718 on 2026-09-30); the labour-hire placements on the same board are left
   // out. See fetchApplyFlow.
@@ -26529,7 +26723,23 @@ export const PORTAL_GROUPS: string[][] = [
     "seoul-035420",
     "seoul-000270",
   ],
-  [],
+  // Group 177 — the spare tick batch 13 left empty, now Accenture's twelve
+  // country feeds (2026-10-03): ~2,400 roles in 100-row pages, about 30
+  // requests and 35 s measured, back to back so the feeds are one snapshot.
+  [
+    "newyork-acn-au",
+    "newyork-acn-us",
+    "newyork-acn-ca",
+    "newyork-acn-gb",
+    "newyork-acn-sg",
+    "newyork-acn-hk",
+    "newyork-acn-jp",
+    "newyork-acn-cn",
+    "newyork-acn-ae",
+    "newyork-acn-za",
+    "newyork-acn-ch",
+    "newyork-acn-fr",
+  ],
   ["cincinnati-pg-a"],
   ["cincinnati-pg-b"],
   ["cincinnati-pg-c"],
@@ -30239,6 +30449,134 @@ async function fetchWipro(site: SiteDef): Promise<PortalJob[]> {
     });
   }
   return out;
+}
+
+// ── Accenture (its own Elasticsearch job search) ──────────────────────────────
+interface AccentureJob {
+  title?: string;
+  location?: string[];
+  country?: string;
+  requisitionId?: string;
+  postedDateText?: string;
+  jobDetailUrl?: string;
+  jobFamilyGroup?: string[];
+}
+
+/**
+ * Accenture's careers pages are AEM, and the job list is a component that
+ * POSTs a form to `/api/accenture/elastic/findjobs` — read out of the page's
+ * own `clientlib-rad` bundle (`fetchFindJobs`), not guessed. No token: the
+ * `CSRF-Token` header the bundle sends is empty everywhere but the author
+ * host, and the endpoint answers without it.
+ *
+ * ONE SERVICE, ONE COUNTRY PER CALL. `jobCountry` + `jobLanguage` +
+ * `countrySite` are what each country page sends (its `data-countrycode`,
+ * `data-language-code` and site path), and they are carried in `endpoint`'s
+ * query string the way Capgemini's `country_code` is. A wrong pair is not an
+ * error — `jobCountry=United States` answers `total: 0`; it is `USA` — so each
+ * was read off its own page. Measured 2026-10-03: AU 250, US 906, CA 208,
+ * GB 288, SG 176, HK 30, JP 310, CN 7, AE 10, ZA 22, CH 21, FR 156.
+ *
+ * Bounded by the service's own `totalHits.total`. Elasticsearch caps the
+ * window at 10,000 and says so (`overMaxHits`); a board over it would be read
+ * short and look complete, so it fails the pull instead. India is the one
+ * country there (29,257 roles, Bengaluru 11,702) and is not read.
+ *
+ * Any page failing also fails the pull, rather than archiving what was read:
+ * a short read written as today's list ages the rest out of "currently
+ * advertised" in a day.
+ */
+async function fetchAccenture(site: SiteDef): Promise<PortalJob[]> {
+  const url = new URL(site.endpoint);
+  const countrySite = url.searchParams.get("countrySite") ?? "";
+  const size = site.pageSize ?? 100;
+  const max = site.maxPages ?? DEFAULT_MAX_PAGES;
+  const out: PortalJob[] = [];
+  const seen = new Set<string>();
+  let total = -1;
+  for (let page = 0; page < max; page++) {
+    const form = new FormData();
+    for (const [k, v] of url.searchParams) form.append(k, v);
+    // The rest is what fetchFindJobs sends verbatim. sortBy 1 is the page's
+    // own default (`data-sortby-mode`); minScore 0 so the vector search does
+    // not drop roles below a relevance floor when there is no keyword.
+    const fields: [string, string][] = [
+      ["startIndex", String(page * size)],
+      ["maxResultSize", String(size)],
+      ["jobKeyword", ""],
+      ["sortBy", "1"],
+      ["searchType", "vectorSearch"],
+      ["enableQueryBoost", "true"],
+      ["minScore", "0"],
+      ["getFeedbackJudgmentEnabled", "true"],
+      ["useCleanEmbedding", "true"],
+      ["score", "true"],
+      ["totalHits", "true"],
+      ["debugQuery", "false"],
+      ["jobFilters", "[]"],
+    ];
+    for (const [k, v] of fields) form.append(k, v);
+    let json: {
+      data?: AccentureJob[];
+      totalHits?: { total?: number; overMaxHits?: string | boolean };
+    } | null = null;
+    for (let attempt = 0; attempt < 2 && !json; attempt++)
+      json = await getJson(`${url.origin}${url.pathname}`, {
+        method: "POST",
+        body: form,
+        headers: { Referer: site.origin },
+      });
+    if (!json) return [];
+    if (total < 0) {
+      if (String(json.totalHits?.overMaxHits).toLowerCase() === "true") return [];
+      total = Number(json.totalHits?.total ?? 0);
+    }
+    const rows = json.data ?? [];
+    for (const r of rows) {
+      // "*Forward Deployed Engineer*" — the asterisks are the poster's emphasis.
+      const title = clean(r.title ?? "").replace(/^\*+\s*|\s*\*+$/g, "");
+      const id = clean(r.requisitionId ?? "") || title;
+      if (!title || seen.has(id)) continue;
+      seen.add(id);
+      // The FIRST location only. A US role lists 24 cities on average (one
+      // lists every office), and the first is the posting's own: it agreed
+      // with the office in the Workday apply link on 94% of US and 92% of AU
+      // rows, measured 2026-10-03, and the rest are roles hired from one
+      // office and based in another. Joining all 24 would let hubFor pick
+      // whichever came first in HUB_MATCH. The row's own country is appended
+      // because the city alone ("Perth", "London") does not say which.
+      const loc = [clean(r.location?.[0] ?? ""), clean(r.country ?? "")].filter(Boolean).join(", ");
+      out.push(
+        job(
+          site,
+          title,
+          loc,
+          clean(r.jobDetailUrl ?? "").replace("{0}", countrySite) || site.origin,
+          accenturePosted(r.postedDateText ?? ""),
+          clean(r.jobFamilyGroup?.[0] ?? "") || "Career portal",
+        ),
+      );
+    }
+    if (!rows.length || (page + 1) * size >= total) break;
+  }
+  return seen.size >= total ? out : [];
+}
+
+/**
+ * The board gives only a relative date, in the country page's language:
+ * "Posted 3 days ago", "Posted within last 24 hours", "Posté il y a 3 jours",
+ * "公開 3 日前", "3日前に投稿", "24時間以内に投稿", "已经发布 3 天前". Past a
+ * month it says only "more than 1 month ago" — that is left blank rather than
+ * guessed, and the archive keeps the first date it is ever given.
+ */
+function accenturePosted(s: string): string {
+  const t = s.toLowerCase();
+  if (/hour|heure|時間|小时/.test(t)) return today();
+  const m = /(\d+)\s*(days?|jours?|日|天)/.exec(t);
+  if (!m) return "";
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - Number(m[1]));
+  return d.toISOString().slice(0, 10);
 }
 
 // ── Cornerstone OnDemand (Mirvac) ────────────────────────────────────────────
@@ -39938,6 +40276,7 @@ const FETCHERS: Record<Platform, (s: SiteDef) => Promise<PortalJob[]>> = {
   workpac: fetchWorkPac,
   capgemini: fetchCapgemini,
   wipro: fetchWipro,
+  accenture: fetchAccenture,
   eightfoldpcs: fetchEightfoldPcs,
   talentsoft: fetchTalentsoft,
   cajobs: fetchCaJobs,
@@ -40056,6 +40395,7 @@ export const SOURCE_TAG: Record<Platform, string> = {
   workpac: "workpac",
   capgemini: "cap",
   wipro: "wipro",
+  accenture: "acn",
   // Same vendor as `eightfold`, different product and different API — but an
   // advertisement is an advertisement, so it dedupes against an ef row rather
   // than sitting beside one.

@@ -79,6 +79,45 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // ── International ─────────────────────────────────────────────────────────
   // Both supermajors run their American businesses from Houston.
   "london-bp": ["houston"],
+  // Accenture — from its OWN board, not from memory. Every city here has at
+  // least three of its roles tied to an office in that city by the Workday
+  // apply link, which names the building ("Melbourne-161-Collins-Street",
+  // "Canberra-Brindabella-Business-Park", "Chicago-Accenture-Tower",
+  // "Arlington-1201-Wilson", "Midrand"). Measured 2026-10-03 across 2,384
+  // roles. Left out for one or two roles each: Adelaide, Dubai, Minneapolis,
+  // Cincinnati, Bentonville, Beijing, Shanghai.
+  "newyork-acn": [
+    "sydney",
+    "melbourne",
+    "canberra",
+    "brisbane",
+    "perth",
+    "singapore",
+    "hongkong",
+    "tokyo",
+    "london",
+    "paris",
+    "zurich",
+    "johannesburg",
+    "toronto",
+    "montreal",
+    "ottawa",
+    "calgary",
+    "vancouver",
+    "chicago",
+    "atlanta",
+    "houston",
+    "boston",
+    "charlotte",
+    "washington",
+    "dallas",
+    "seattle",
+    "sanfrancisco",
+    "losangeles",
+    "philadelphia",
+    "austin",
+    "denver",
+  ],
   "london-shel": ["houston"],
 
   // ── Kuala Lumpur and Manila ───────────────────────────────────────────────
