@@ -86,10 +86,14 @@ export const Route = createFileRoute("/app")({
   head: () => ({
     meta: [
       // The browser tab reads just "Employsi" inside the app (owner's call,
-      // 2026-10-03). Deploy checks match this EXACT title to tell the app from
-      // the marketing pages — change deploy-preview.yml and
-      // deploy-production.yml with it.
-      { title: "Employsi" },
+      // 2026-10-03), and "employsi - preview" on a PREVIEW build, so the two
+      // can't be confused side by side. It is a build flag, not the hostname,
+      // because production deploys the very commit a preview ran:
+      // deploy-preview.yml sets VITE_PREVIEW=1 and production never does.
+      // Deploy checks match these EXACT titles to tell the app from the
+      // marketing pages — change deploy-preview.yml and deploy-production.yml
+      // with them.
+      { title: import.meta.env.VITE_PREVIEW === "1" ? "employsi - preview" : "Employsi" },
       {
         name: "description",
         content:
