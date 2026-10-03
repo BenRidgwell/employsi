@@ -1094,6 +1094,7 @@
 }
 .ws-legal h1 {
   margin: 0 0 16px;
+  color: var(--ws-text);
 }
 .ws-legal h2 {
   margin: 36px 0 10px;
