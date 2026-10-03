@@ -1060,6 +1060,66 @@
   width: 100%;
   max-width: 400px;
 }
+/* "Terms and conditions", centred at the foot of the white panel. Absolute so
+   the form keeps its vertical centring; the panel's bottom padding leaves it
+   room on every breakpoint. */
+.ws-auth .pane {
+  position: relative;
+}
+.ws-auth .pane-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  text-align: center;
+  font-size: 12.5px;
+}
+.ws-auth .pane-foot a {
+  color: var(--ws-text-3);
+  text-decoration: none;
+}
+.ws-auth .pane-foot a:hover {
+  color: var(--ws-text);
+  text-decoration: underline;
+}
+
+/* ----- legal pages (/terms) --------------------------------------------- */
+.ws-legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(112px, 10vw, 148px) var(--ws-gutter) 72px;
+  color: var(--ws-text-2, var(--ws-text));
+  font-size: 15.5px;
+  line-height: 1.65;
+}
+.ws-legal h1 {
+  margin: 0 0 16px;
+  color: var(--ws-text);
+}
+.ws-legal h2 {
+  margin: 36px 0 10px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ws-text);
+}
+.ws-legal p {
+  margin: 0 0 12px;
+  text-wrap: pretty;
+}
+.ws-legal-draft {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--ws-surface-sunken);
+  color: var(--ws-text-3);
+  font-size: 13px;
+}
+.ws-legal-foot {
+  margin-top: 40px !important;
+  font-size: 13px;
+  color: var(--ws-text-3);
+}
 .ws-auth .back {
   display: none;
 }
