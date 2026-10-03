@@ -29,8 +29,6 @@ import {
   TIMELINE_SPAN,
   TIMELINE_MONTHS,
   monthAt,
-  beyondIvi,
-  IVI_LAST_MONTH,
 } from "../lib/skillCard";
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
@@ -895,33 +893,6 @@ export function GlobalSearch() {
                   aria-label="Timeline month"
                 />
               </div>
-              {/* Said, not implied. The map's company pins follow this handle
-                  only over the months the archive can name employers for;
-                  before that they hold at today's, and a reader has no way to
-                  tell those apart from the map alone. */}
-              {covered && (
-                <p className="gstimecovnote">
-                  {covered.has
-                    ? `Employers on the map are the ones advertising this in ${monthLabel(monthAt(heatMonth))}.`
-                    : `The archive names employers from ${covered.from}. Before that the map holds today's, and only the city shading follows the timeline.`}
-                </p>
-              )}
-              {/* THE TWO SIDES OF THIS TIMELINE END ON DIFFERENT DAYS. Our own
-                  archive is scraped nightly; the Internet Vacancy Index is a
-                  monthly release and runs a few months behind it. The axis now
-                  reaches the present month so the ads can be current, which
-                  means the last stretch of it has employer figures and no
-                  national index — and the city shading holds at the last month
-                  the index covers rather than going dark, because an unlit map
-                  reads as a world nobody is hiring in instead of one nobody has
-                  published yet. Said here rather than left for a reader to
-                  infer from two numbers that stop agreeing. */}
-              {beyondIvi(heatMonth) && (
-                <p className="gstimecovnote">
-                  National vacancy figures are published to {monthLabel(IVI_LAST_MONTH)}; the city
-                  shading holds there. Employer counts are our own and follow the handle.
-                </p>
-              )}
               {event && (
                 <div className="gsevent">
                   <span className="gseventdate">
