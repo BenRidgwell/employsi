@@ -34,6 +34,18 @@ import { stripeRequest, verifyStripeSignature } from "./stripeApi";
  * WRITES THE SHARED D1. Every preview Worker binds the production database,
  * so a test checkout on a preview writes a real row here — keyed by the user
  * id of whoever signed in there. Use Stripe TEST keys on previews.
+ *
+ * TEST AND LIVE ARE SEPARATE ROWS, AND A WORKER ONLY EVER READS ITS OWN MODE.
+ * Until 2026-10-03 one row per user held "the" subscription with no record of
+ * which Stripe mode wrote it, and the paywall asked only whether it was
+ * active. Because previews share this database, anyone could sign in on a
+ * public preview, pay with Stripe's test card, and be let into production's
+ * paid app for nothing — and the owner's own test subscription was already
+ * sitting there as `active`. Now every row carries `livemode`, the key is
+ * (user_id, livemode), and each Worker reads only the mode of its own
+ * STRIPE_SECRET_KEY (stripeMode). A webhook event in the other mode is
+ * acknowledged and dropped rather than stored, so a test endpoint pointed at
+ * production by mistake cannot write a live row either.
  */
 
 export interface BillingEnv {
@@ -56,6 +68,18 @@ export function billingDb(e: BillingEnv | null): D1Like | null {
   return (e?.JOBS_ARCHIVE as D1Like) ?? null;
 }
 
+/**
+ * Which Stripe mode this Worker's key belongs to: 1 live, 0 test, null if the
+ * key is missing or has an unrecognised prefix — in which case no row matches,
+ * which fails closed on the paywall.
+ */
+export function stripeMode(e: BillingEnv | null): 0 | 1 | null {
+  const k = e?.STRIPE_SECRET_KEY ?? "";
+  if (/^(sk|rk)_live_/.test(k)) return 1;
+  if (/^(sk|rk)_test_/.test(k)) return 0;
+  return null;
+}
+
 /** Checkout can be offered: a key to call Stripe with and a price to sell. */
 export function paymentsConfigured(e: BillingEnv | null): boolean {
   return !!e?.STRIPE_SECRET_KEY && !!e?.STRIPE_PRICE_ID;
@@ -66,6 +90,8 @@ export const LIVE_STATUSES = new Set(["active", "trialing"]);
 
 export interface SubscriptionRow {
   user_id: string;
+  /** 1 = a live-mode Stripe subscription, 0 = test mode. */
+  livemode: number;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   status: string | null;
@@ -76,35 +102,67 @@ export interface SubscriptionRow {
 
 // Created lazily, like llm_usage (analystLlmFn.ts): no migration step exists
 // in this repo, and CREATE ... IF NOT EXISTS is idempotent and cheap.
+//
+// A NEW TABLE, NOT AN ALTER, because the key changes: the old
+// `billing_subscription` was keyed on user_id alone, so a test event could
+// overwrite a user's live row. Its rows are copied across once as TEST mode —
+// measured 2026-10-03, it held exactly one row, the owner's test-mode
+// subscription from the site preview, and no live key had been used before
+// this change. The old table is left in place, unread.
 let tableReady = false;
 async function ensureTable(db: D1Like): Promise<void> {
   if (tableReady) return;
   await db
     .prepare(
-      `CREATE TABLE IF NOT EXISTS billing_subscription (
-         user_id                TEXT PRIMARY KEY,  -- Better Auth user.id
+      `CREATE TABLE IF NOT EXISTS billing_subscriptions (
+         user_id                TEXT NOT NULL,     -- Better Auth user.id
+         livemode               INTEGER NOT NULL,  -- 1 live, 0 test
          stripe_customer_id     TEXT,
          stripe_subscription_id TEXT,
          status                 TEXT,              -- Stripe's subscription status
          current_period_end     INTEGER,           -- unix seconds
-         updated_at             TEXT NOT NULL
+         updated_at             TEXT NOT NULL,
+         PRIMARY KEY (user_id, livemode)
        )`,
     )
     .run();
   await db
     .prepare(
-      `CREATE INDEX IF NOT EXISTS billing_subscription_sub
-         ON billing_subscription (stripe_subscription_id)`,
+      `CREATE INDEX IF NOT EXISTS billing_subscriptions_sub
+         ON billing_subscriptions (stripe_subscription_id, livemode)`,
     )
     .run();
+  const legacy = await db
+    .prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'billing_subscription'`,
+    )
+    .first<{ name: string }>();
+  if (legacy) {
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO billing_subscriptions
+           (user_id, livemode, stripe_customer_id, stripe_subscription_id, status,
+            current_period_end, updated_at)
+         SELECT user_id, 0, stripe_customer_id, stripe_subscription_id, status,
+                current_period_end, updated_at
+           FROM billing_subscription`,
+      )
+      .run();
+  }
   tableReady = true;
 }
 
-export async function subscriptionFor(db: D1Like, userId: string): Promise<SubscriptionRow | null> {
+/** This user's subscription in ONE Stripe mode — the caller's own (stripeMode). */
+export async function subscriptionFor(
+  db: D1Like,
+  userId: string,
+  livemode: 0 | 1 | null,
+): Promise<SubscriptionRow | null> {
+  if (livemode === null) return null;
   await ensureTable(db);
   return await db
-    .prepare(`SELECT * FROM billing_subscription WHERE user_id = ?1`)
-    .bind(userId)
+    .prepare(`SELECT * FROM billing_subscriptions WHERE user_id = ?1 AND livemode = ?2`)
+    .bind(userId, livemode)
     .first<SubscriptionRow>();
 }
 
@@ -115,10 +173,11 @@ async function upsertSubscription(
   await ensureTable(db);
   await db
     .prepare(
-      `INSERT INTO billing_subscription
-         (user_id, stripe_customer_id, stripe_subscription_id, status, current_period_end, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-       ON CONFLICT(user_id) DO UPDATE SET
+      `INSERT INTO billing_subscriptions
+         (user_id, livemode, stripe_customer_id, stripe_subscription_id, status,
+          current_period_end, updated_at)
+       VALUES (?1, ?7, ?2, ?3, ?4, ?5, ?6)
+       ON CONFLICT(user_id, livemode) DO UPDATE SET
          stripe_customer_id     = COALESCE(excluded.stripe_customer_id, stripe_customer_id),
          stripe_subscription_id = COALESCE(excluded.stripe_subscription_id, stripe_subscription_id),
          status                 = COALESCE(excluded.status, status),
@@ -132,12 +191,14 @@ async function upsertSubscription(
       row.status,
       row.current_period_end,
       new Date().toISOString(),
+      row.livemode,
     )
     .run();
 }
 
 type StripeSubscription = {
   id: string;
+  livemode?: boolean;
   status?: string;
   customer?: string | { id: string };
   metadata?: Record<string, string>;
@@ -162,15 +223,22 @@ async function recordSubscription(
   db: D1Like,
   sub: StripeSubscription,
   userId: string | null,
+  livemode: 0 | 1,
 ): Promise<void> {
+  // Stripe states the mode on the object itself; it must agree with the key
+  // that fetched or verified it, or the row would be filed under the wrong one.
+  if (typeof sub.livemode === "boolean" && (sub.livemode ? 1 : 0) !== livemode) return;
   let uid = userId || sub.metadata?.user_id || null;
   if (!uid) {
     // An event for a subscription created before metadata was attached, or
     // outside this app: find the owner by the id we stored at checkout.
     await ensureTable(db);
     const hit = await db
-      .prepare(`SELECT user_id FROM billing_subscription WHERE stripe_subscription_id = ?1`)
-      .bind(sub.id)
+      .prepare(
+        `SELECT user_id FROM billing_subscriptions
+          WHERE stripe_subscription_id = ?1 AND livemode = ?2`,
+      )
+      .bind(sub.id, livemode)
       .first<{ user_id: string }>();
     uid = hit?.user_id ?? null;
   }
@@ -178,6 +246,7 @@ async function recordSubscription(
   if (!uid) return;
   await upsertSubscription(db, {
     user_id: uid,
+    livemode,
     stripe_customer_id: idOf(sub.customer),
     stripe_subscription_id: sub.id,
     status: sub.status ?? null,
@@ -207,22 +276,23 @@ export async function recordCheckoutSession(
   sessionId: string,
   userId: string,
 ): Promise<boolean> {
-  if (!e.STRIPE_SECRET_KEY || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return false;
+  const mode = stripeMode(e);
+  if (mode === null || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return false;
   const session = await stripeRequest<{
     status?: string;
     client_reference_id?: string | null;
     subscription?: unknown;
-  }>(e.STRIPE_SECRET_KEY, "GET", `/v1/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  }>(e.STRIPE_SECRET_KEY!, "GET", `/v1/checkout/sessions/${encodeURIComponent(sessionId)}`);
   // Someone else's session id in the URL proves nothing about this user.
   if (session.client_reference_id !== userId || session.status !== "complete") return false;
   const subId = idOf(session.subscription);
   if (!subId) return false;
   const sub = await stripeRequest<StripeSubscription>(
-    e.STRIPE_SECRET_KEY,
+    e.STRIPE_SECRET_KEY!,
     "GET",
     `/v1/subscriptions/${encodeURIComponent(subId)}`,
   );
-  await recordSubscription(db, sub, userId);
+  await recordSubscription(db, sub, userId, mode);
   return !!sub.status && LIVE_STATUSES.has(sub.status);
 }
 
@@ -253,8 +323,17 @@ export async function handleBillingWebhook(request: Request): Promise<Response> 
 
   const event = JSON.parse(payload) as {
     type?: string;
+    livemode?: boolean;
     data?: { object?: Record<string, unknown> };
   };
+  // An event from the OTHER Stripe mode than this Worker's key is not ours to
+  // store — a test endpoint pointed at production, or the reverse. Acknowledged
+  // so Stripe stops retrying it, and dropped.
+  const mode = stripeMode(e);
+  const eventMode = event.livemode === true ? 1 : 0;
+  if (mode === null || eventMode !== mode) {
+    return Response.json({ received: true, ignored: "mode mismatch" });
+  }
   const obj = event.data?.object ?? {};
   try {
     if (event.type === "checkout.session.completed") {
@@ -271,10 +350,11 @@ export async function handleBillingWebhook(request: Request): Promise<Response> 
           "GET",
           `/v1/subscriptions/${encodeURIComponent(subId)}`,
         );
-        await recordSubscription(db, sub, userId || null);
+        await recordSubscription(db, sub, userId || null, mode);
       } else if (userId) {
         await upsertSubscription(db, {
           user_id: userId,
+          livemode: mode,
           stripe_customer_id: idOf(obj.customer),
           stripe_subscription_id: null,
           status: null,
@@ -286,7 +366,7 @@ export async function handleBillingWebhook(request: Request): Promise<Response> 
       event.type === "customer.subscription.deleted" ||
       event.type === "customer.subscription.created"
     ) {
-      await recordSubscription(db, obj as unknown as StripeSubscription, null);
+      await recordSubscription(db, obj as unknown as StripeSubscription, null, mode);
     }
     return Response.json({ received: true });
   } catch (err) {

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { getRequest } from "@tanstack/react-start/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { D1Like } from "./jobArchive";
@@ -361,6 +362,7 @@ function sourcesOf(messages: LlmMessage[]): string[] {
 // ── The step ─────────────────────────────────────────────────────────────────
 
 export const analystLlmStep = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((d: LlmStepRequest) => d)
   .handler(async ({ data }): Promise<LlmStep> => {
     const env = await workerEnv();

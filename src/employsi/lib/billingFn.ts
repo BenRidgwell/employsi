@@ -1,15 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { authAvailable, getAuth, type AuthEnv } from "./auth";
+import { getAuth, type AuthEnv } from "./auth";
 import { roleForEmail } from "./roles";
 import {
   LIVE_STATUSES,
   billingDb,
   billingEnv,
   paymentsConfigured,
-  recordCheckoutSession,
+  stripeMode,
   subscriptionFor,
 } from "./billing";
+import { accessFor, type AppAccess } from "./appAccess";
 import { StripeError, stripeRequest } from "./stripeApi";
 
 /**
@@ -122,7 +123,7 @@ export const getBillingState = createServerFn({ method: "GET" }).handler(
     const db = billingDb(e);
     if (!user || !db) return base;
     try {
-      const row = await subscriptionFor(db, user.id);
+      const row = await subscriptionFor(db, user.id, stripeMode(e));
       return {
         ...base,
         status: row?.status ?? null,
@@ -160,7 +161,9 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
     const user = await sessionUser();
     if (!user) return { error: "Sign in first, then continue to payment." };
     const db = billingDb(e);
-    const row = db ? await subscriptionFor(db, user.id).catch(() => null) : null;
+    // Same mode as this Worker's key, so a customer id from the other mode is
+    // never sent to Stripe (it would not exist there, and checkout would fail).
+    const row = db ? await subscriptionFor(db, user.id, stripeMode(e)).catch(() => null) : null;
     if (row?.status && LIVE_STATUSES.has(row.status)) return { alreadyActive: true };
 
     // The origin the visitor is on, so a preview's checkout returns to the
@@ -211,43 +214,11 @@ export const startCheckout = createServerFn({ method: "POST" }).handler(
 );
 
 /**
- * Who may open /app, decided on the server.
- *
- * TWO GATES, IN ORDER, and they are configured independently:
- *
- *  1. SIGN-IN, always. The app is for signed-in users only — every surface
- *     inside it (follows, alerts, the career goal, the feedback board) writes
- *     against an account, and the subscription model has no anonymous tier to
- *     serve. A signed-out visitor is sent to /login.
- *  2. THE SUBSCRIPTION, where Stripe is configured on this Worker. A signed-in
- *     visitor without a live subscription (active / trialing, per Stripe, as
- *     recorded by the webhook) goes to the Payment step — never subscribed,
- *     cancelled, or lapsed.
- *
- * Until 2026-09-30 there was only gate 2, and gate 1 rode along inside it: the
- * handler returned `allowed` outright when payments were not configured, so a
- * Worker without Stripe keys — the app preview, and production until its live
- * keys are set — let anonymous visitors all the way in. Requiring sign-in was
- * therefore a property of having set up BILLING, which is not what it should
- * depend on. The two are now asked separately, so the app is signed-in-only on
- * every deployment whether or not it can take money yet.
- *
- * EACH GATE ONLY CLOSES WHERE IT CAN BE PASSED. Gate 2 is skipped without
- * Stripe, as before. Gate 1 is skipped where Better Auth is not configured
- * (authAvailable) — on such a Worker there is no way to sign in, so requiring
- * it would lock the app with no door, and /login already says sign-in is not
- * configured rather than offering a button that 500s. That is the same rule
- * gate 2 follows, not an exemption: a gate nobody can pass is a wall.
- *
- * Administrators (ADMIN_EMAILS) skip gate 2, so the people running the product
- * can use it without paying. They do NOT skip gate 1 — an admin is still a
- * signed-in user, and there is no way to know they are one until they are.
- *
- * This gates the PAGE. The data server functions the map calls stay callable
- * without a session, as several of them already are from the public marketing
- * pages (the landing counters, the skills ticker).
+ * Who may open /app, decided on the server. The rule itself is accessFor in
+ * appAccess.ts — shared with subscriberOnly, which applies the same gates to
+ * every paid data server function, so the page and its data cannot disagree.
  */
-export type AppAccess = { allowed: true } | { allowed: false; to: "signin" | "subscribe" };
+export type { AppAccess };
 
 export const getAppAccess = createServerFn({ method: "GET" })
   // The Checkout Session id Stripe appends to the success URL, when arriving
@@ -255,39 +226,5 @@ export const getAppAccess = createServerFn({ method: "GET" })
   .validator((data?: { checkoutSessionId?: string }) => data ?? {})
   .handler(async ({ data }): Promise<AppAccess> => {
     const e = await billingEnv();
-    const user = await sessionUser();
-
-    // Gate 1 — sign-in.
-    if (!user) {
-      // Wherever signing in is possible, it is required.
-      if (authAvailable(e as AuthEnv | undefined)) return { allowed: false, to: "signin" };
-      // Auth is not configured here, so there is no door — but if this Worker is
-      // set up to CHARGE, an anonymous visitor is not let into a paid product
-      // just because its sign-in is half-configured. /login says sign-in is not
-      // configured on this deployment, which is the true answer and the one that
-      // gets it fixed. This is also exactly what the old single gate did, so
-      // this branch keeps a Stripe-configured Worker no more open than before.
-      if (paymentsConfigured(e)) return { allowed: false, to: "signin" };
-      // Neither gate can be passed and nothing is being sold: an unconfigured
-      // deployment, which stays open as it always has.
-      return { allowed: true };
-    }
-
-    // Gate 2 — the subscription, wherever it can be bought.
-    if (!paymentsConfigured(e)) return { allowed: true };
-    if (roleForEmail(e as never, user.email) === "admin") return { allowed: true };
-    const db = billingDb(e);
-    // The subscription table is the source of truth. If it cannot be read the
-    // visitor is sent to /login, which will show them their actual state —
-    // failing closed on a paywall, rather than open.
-    if (!db) return { allowed: false, to: "subscribe" };
-    const row = await subscriptionFor(db, user.id).catch(() => null);
-    if (row?.status && LIVE_STATUSES.has(row.status)) return { allowed: true };
-    // Just back from paying, ahead of the webhook: confirm with Stripe.
-    const sid = data?.checkoutSessionId;
-    if (sid) {
-      const paid = await recordCheckoutSession(e!, db, sid, user.id).catch(() => false);
-      if (paid) return { allowed: true };
-    }
-    return { allowed: false, to: "subscribe" };
+    return accessFor(e, await sessionUser(), data?.checkoutSessionId);
   });
