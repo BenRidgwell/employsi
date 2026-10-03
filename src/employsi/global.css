@@ -16025,6 +16025,12 @@ a.srpoprow:hover {
   text-align: left;
   font: inherit;
   cursor: pointer;
+  /* THE ROW IS A DIV NOW (role="button" — see NotificationBell for why), and a
+     div selects its text under a drag where a <button> never did. Swiping one
+     away would paint the headline blue and leave a selection behind, so the
+     reset a button gave for free is written out. */
+  user-select: none;
+  -webkit-user-select: none;
   /* `pan-y` is the load-bearing line for swipe-to-dismiss: it hands VERTICAL
      gestures back to the browser so .nblist still scrolls under a finger,
      while horizontal ones reach the pointer handlers. Without it the row
@@ -16371,18 +16377,57 @@ a.srpoprow:hover {
   background: #eceef4;
   color: #42506e;
 }
-/* THE STATUS MARK CARRIES THE `margin-left: auto` NOW. It was on .nbwhen, the
+/* An unread row's status mark, now a way through to the company.
+   THE STATUS MARK CARRIES THE `margin-left: auto`. It was on .nbwhen, the
    "5 ads" label that used to sit between the pill and the mark — the row's top
    line is a flex row, and that one rule is what pushed everything after it to
-   the right edge. Deleting the label without moving it would have left the dot
-   tucked against the kind pill in the middle of the row. */
-.nbdot {
+   the right edge. Deleting the label without moving it would have left the mark
+   tucked against the kind pill in the middle of the row.
+
+   18px tall and the same label type as .nbread, because they share the slot:
+   a row changes from this to the Read tag when it is read, and any difference
+   in height would make the whole list below it shift as you read down it. */
+.nbexplore {
   margin-left: auto;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--neutral-900);
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+.nbexplore:hover {
+  background: #000;
+}
+.nbexplore:active {
+  transform: scale(0.95);
+}
+/* The row is a div with role="button" now, so it has no focus ring of its own
+   either — and a focusable thing with no visible focus is unreachable by
+   keyboard in practice. `:focus-visible` rather than `:focus`, so a mouse click
+   does not leave a ring behind on either. */
+.nbexplore:focus-visible {
+  outline: 2px solid var(--neutral-900, #1c1c1e);
+  outline-offset: 2px;
+}
+/* INSET on the row. .nbrowwrap clips (it has to — the swiped row slides off its
+   own width), so an outline drawn outside the row's edge is cut off on all four
+   sides and the ring reads as four stubs. */
+.nbrow:focus-visible {
+  outline: 2px solid var(--neutral-900, #1c1c1e);
+  outline-offset: -2px;
 }
 /* The skill glyph sits beside the headline that names the skill, not above it.
    `align-items: start` so it stays on the headline's FIRST line when the text
