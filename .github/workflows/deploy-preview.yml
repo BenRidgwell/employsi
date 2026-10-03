@@ -418,7 +418,8 @@ jobs:
                   esac ;;
                 200)
                   case "$title" in
-                    *"labour-market globe"*)
+                    # The app's <title> is exactly "Employsi" (src/routes/app.tsx).
+                    "Employsi")
                       echo "::warning::/app served the app to an ANONYMOUS request." \
                            "Expected on a Worker without Better Auth configured" \
                            "(authAvailable false); on one with it, the sign-in gate is not working." ;;

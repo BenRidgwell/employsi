@@ -153,7 +153,8 @@ This is easy to get backwards, and this file said the opposite until 2026-08-12.
 is not: the frame only wraps the app when the hostname matches `-mobile`, and
 the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
 hydration and never shows up in the SSR HTML. Read the `<title>` instead —
-"Employsi map — the live labour-market globe" is the app, "employsi — Explore
+exactly "Employsi" is the app (it was "Employsi map — the live labour-market
+globe" until 2026-10-03, and older notes here quote that), "employsi — Explore
 the world of work" is the landing page.
 
 **THE APP WAS RELEASED ON THE APEX ON 2026-10-03.** Until then the apex served

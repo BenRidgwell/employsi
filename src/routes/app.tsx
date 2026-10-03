@@ -85,7 +85,11 @@ export const Route = createFileRoute("/app")({
   },
   head: () => ({
     meta: [
-      { title: "Employsi map — the live labour-market globe" },
+      // The browser tab reads just "Employsi" inside the app (owner's call,
+      // 2026-10-03). Deploy checks match this EXACT title to tell the app from
+      // the marketing pages — change deploy-preview.yml and
+      // deploy-production.yml with it.
+      { title: "Employsi" },
       {
         name: "description",
         content:

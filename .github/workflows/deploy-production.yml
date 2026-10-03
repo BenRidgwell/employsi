@@ -248,7 +248,8 @@ jobs:
               3[0-9][0-9]\|*/login*) ;;
               200\|*)
                 case "$t" in
-                  *"labour-market globe"*)
+                  # The app's <title> is exactly "Employsi" (src/routes/app.tsx).
+                  "Employsi")
                     echo "::error::$u served the app to an anonymous request —" \
                          "the sign-in gate is not working on production"; fail=1 ;;
                   *) echo "::error::$u answered 200 but is not the app: $t"; fail=1 ;;
