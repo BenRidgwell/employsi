@@ -1090,12 +1090,37 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           }}
         >
           {[
-            ["MEDIAN PAY", n.payLabel],
-            ["EMPLOYERS", num(n.employers)],
-            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—"],
-          ].map(([label, value]) => (
+            // MEDIAN PAY, or the guide's band where no ad stated a figure.
+            //
+            // The ads answer when they can and the label says "MEDIAN PAY".
+            // When they cannot — 294 of 528 rungs show "—", and 55% have no
+            // disclosing ad at all — the Hays band takes the tile and the label
+            // becomes the attribution: "HAYS FY24/25" names whose number it is
+            // and which year, in the only slot a three-across tile has. An
+            // unlabelled band sitting where a measured median sits would read
+            // as this rung's advertised pay, and nobody advertised it.
+            //
+            // One or the other, never both: they are different instruments and
+            // the guide excludes superannuation where an advertised package
+            // usually includes it. The title carries the rest.
+            n.payGuide
+              ? [
+                  `HAYS ${n.payGuide.edition}`,
+                  n.payGuide.label,
+                  `${n.payGuide.source} ${n.payGuide.edition} — a recruiter's view of what this ` +
+                    `role commands, not pay from our ads. Excludes superannuation. Spans ` +
+                    `${n.payGuide.roles} guide role${n.payGuide.roles === 1 ? "" : "s"} over ` +
+                    `${n.payGuide.figures} published figure${n.payGuide.figures === 1 ? "" : "s"}.`,
+                ]
+              : ["MEDIAN PAY", n.payLabel, ""],
+            ["EMPLOYERS", num(n.employers), ""],
+            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—", ""],
+          ].map(([label, value, hint]) => (
             <div
               key={label}
+              // The provenance a three-across tile has no room to print. Only
+              // the guide tile sets it; the others pass "".
+              title={hint || undefined}
               style={{
                 background: "var(--surface-page,#fff)",
                 padding: 12,

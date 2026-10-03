@@ -47,6 +47,7 @@ import {
   type Rung,
 } from "./careerLadder";
 import { SKILL_PARENT, skillsForText } from "../data/skillsTaxonomy";
+import { haysBandFor, haysBandLabel } from "./haysPay";
 import { AU_CITY_LNGLAT, HUB_LNGLAT, cityLabel } from "../data/mapboxWorldGeo";
 import { ONET_RELATED, ONET_ROLES } from "../data/onetRoles";
 
@@ -117,6 +118,22 @@ export function payLabel(aud: number | null, country: string): string {
 
 const num = (n: number) => n.toLocaleString("en-US");
 
+/** The guide's band for a rung, in the shape the card renders. Null when the
+ *  guide does not cover it, which is the ordinary case: it reaches 164 of the
+ *  528 rungs. */
+function guideBand(node: string, country: string): CardNode["payGuide"] {
+  const b = haysBandFor(node, country);
+  return b
+    ? {
+        label: haysBandLabel(b),
+        edition: b.edition,
+        source: b.source,
+        roles: b.roles,
+        figures: b.figures,
+      }
+    : null;
+}
+
 /** "+14%", "−6%", "0%" — the design's typographic minus. */
 export function pctLabel(pct: number): string {
   return `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct)}%`;
@@ -155,6 +172,20 @@ export interface CardNode {
   stageOf: string;
   /** Median advertised pay, AUD, and the ads behind it. Null below 8 ads. */
   pay: number | null;
+  /** The Hays Salary Guide's band for this rung, where the guide covers it.
+   *
+   *  SHOWN ONLY WHERE `pay` IS NULL, never beside it and never averaged into
+   *  it. `pay` is the middle of what employers advertised; this is a
+   *  recruiter's view of what the role commands, and it excludes
+   *  superannuation where an advertised package usually includes it. Two
+   *  instruments; the card shows one or the other and names which. */
+  payGuide: {
+    label: string;
+    edition: string;
+    source: string;
+    roles: number;
+    figures: number;
+  } | null;
   payN: number;
   payLabel: string;
   /** Live roles in this market. */
@@ -466,6 +497,9 @@ export function careerCard(
       pay: pay?.median ?? null,
       payN: pay?.n ?? 0,
       payLabel: payLabel(pay?.median ?? null, country),
+      // Looked up only when the ads could not answer. A rung with a median has
+      // a measured figure and does not want a modelled one next to it.
+      payGuide: pay?.median == null ? guideBand(`${family}|${n.track}|${n.rung}`, country) : null,
       ads: m.live,
       employers: m.employers,
       daysAdvertised: m.daysAdvertised.median,
