@@ -261,18 +261,40 @@ function FeedCard({ f }: { f: FeedRow }) {
   );
 }
 
-/** The design's inline bar sparkline. Heights are relative to the run's own max. */
-function Spark({ series }: { series: number[] }) {
-  const max = Math.max(1, ...series);
+/**
+ * Eight weeks as a line, oldest first; this week is the solid dot at the end.
+ * Heights are relative to the run's own max, so the shape reads at a glance
+ * while the figure beside it carries the number.
+ *
+ * A null week (before the app's release, ENGAGEMENT_SINCE) is NOT drawn — the
+ * line starts where measurement starts, rather than dropping to a zero that
+ * would read as nobody using the product.
+ */
+function Spark({ series }: { series: (number | null)[] }) {
+  const W = 160;
+  const H = 34;
+  const PAD = 3;
+  const max = Math.max(1, ...series.map((v) => v ?? 0));
+  const step = series.length > 1 ? W / (series.length - 1) : 0;
+  const pts = series
+    .map((v, i) => (v === null ? null : { x: i * step, y: H - PAD - (v / max) * (H - PAD * 2) }))
+    .filter((p): p is { x: number; y: number } => p !== null);
+  if (!pts.length) return <span className="dqspark" aria-hidden />;
+  const line = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const area = `${pts[0].x.toFixed(1)},${H} ${line} ${pts[pts.length - 1].x.toFixed(1)},${H}`;
+  const end = pts[pts.length - 1];
   return (
     <span className="dqspark" aria-hidden>
-      {series.map((v, i) => (
-        <span
-          key={i}
-          className="dqsparkbar"
-          style={{ height: `${Math.round((v / max) * 100)}%` }}
-        />
-      ))}
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
+        <polygon points={area} className="dqsparkarea" />
+        <polyline points={line} className="dqsparkline" />
+      </svg>
+      {/* An HTML dot, not an SVG circle: the SVG stretches to the card's width,
+          which would squash a circle into an ellipse. */}
+      <span
+        className="dqsparkdot"
+        style={{ left: `${(end.x / W) * 100}%`, top: `${(end.y / H) * 100}%` }}
+      />
     </span>
   );
 }
