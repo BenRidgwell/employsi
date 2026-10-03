@@ -1,5 +1,5 @@
 /**
- * The employsi Terms and Conditions — FIRST DRAFT (2026-10-03), for legal review.
+ * The employsi Terms and Conditions — first written 2026-10-03, published as final the same day.
  *
  * Written against how the product actually works, so each clause can be
  * checked against the code rather than taken on trust:
@@ -23,7 +23,9 @@
  * liability and refund clauses are written "to the extent the law allows" and
  * clause 9 says so in plain words. A lawyer should still read them.
  */
-export const TERMS_DRAFT = true;
+// Final as of 2026-10-03, at the owner's instruction: the "draft for review"
+// notice is off. Set back to true to show it again while terms are revised.
+export const TERMS_DRAFT = false;
 
 export const TERMS_ENTITY = "Employsi (ABN 59 964 624 290)";
 export const TERMS_CONTACT = "support@employsi.com.au";
