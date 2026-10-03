@@ -95,7 +95,8 @@ export const Route = createFileRoute("/app")({
         content:
           "Zoom from the globe to a single employer: live job-vacancy and skill-demand data on an interactive 3D labour-market map.",
       },
-      { property: "og:title", content: "Employsi map — the live labour-market globe" },
+      // The link-preview headline when /app is shared (owner's wording, 2026-10-03).
+      { property: "og:title", content: "Employsi - explore the world of work." },
       {
         property: "og:description",
         content:
