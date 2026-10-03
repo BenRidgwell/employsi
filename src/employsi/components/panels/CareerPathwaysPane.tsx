@@ -16,6 +16,7 @@ import { CAREER_LAND_PATH, projectHotspot } from "../../data/careerLand";
 import { HEAT_RAMP_FLOOR, heatGradientCss, heatRgb } from "../../lib/heatRamp";
 import { IconClose } from "../ActionIcons";
 import { CardLoader } from "./CardLoader";
+import { ChartTooltip } from "./ChartTooltip";
 import { FollowGlyph } from "../GlobalSearch";
 import { SKILL_PARENT, searchSkillMatches } from "../../data/skillsTaxonomy";
 import { describeSkills } from "../../lib/describeSkills";
@@ -88,6 +89,20 @@ const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`)
     .toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" })
     .toUpperCase();
+/** The scrub flag's date, in the company card's shape: "2 Oct 2026".
+ *
+ *  The YEAR is the whole difference from dayLabel above, which the chart's own
+ *  eyebrow keeps using. A flag is read on its own, often against a series that
+ *  spans a year boundary, so "11 SEPT" alone does not say which September.
+ *  Left in mixed case on purpose — `.ccflag .wttiplabel` uppercases it, the
+ *  same way the company card's does. */
+const flagDay = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 /** The design's smoothed sparkline: Catmull-Rom through every day's count. */
 function sparkPath(counts: number[]) {
@@ -207,6 +222,10 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     const t = setTimeout(() => setHolding(false), OPEN_LOADER_MS);
     return () => clearTimeout(t);
   }, [holding]);
+  // The sparkline's plot box, measured by ChartTooltip so the scrub flag can be
+  // portalled to the body and positioned against it. One chart per card, so one
+  // ref: the rung's series is the selected node's, not a row in a list.
+  const plotRef = useRef<HTMLDivElement | null>(null);
   const [family, setFamily] = useState(() => focus?.split("|")[0] || "hr");
   const [skill, setSkill] = useState<string | null>(null);
   const [lane, setLane] = useState<string | null>(() => focus?.split("|")[1] || null);
@@ -1145,6 +1164,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 );
               }}
               onMouseLeave={() => setScrub(null)}
+              ref={plotRef}
               style={{ position: "relative", flex: 1, minHeight: 110, cursor: "crosshair" }}
             >
               <svg
@@ -1235,20 +1255,43 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                       top: `${(sr.ys[k] / 72) * 100}%`,
                     }}
                   />
-                  {/* The Trending card's tooltip (.tsktip), so every chart in
-                      the app labels a point the same way. The series is the
-                      ROLE's ads per day, even with a skill searched — the
-                      archive has no per-skill daily series for a rung — so
-                      the label says "ads", never "with skill". */}
-                  <span
-                    className={`tsktip${k / Math.max(1, N - 1) > 0.8 ? " end" : k / Math.max(1, N - 1) < 0.2 ? " start" : ""}`}
-                    style={{
-                      left: `${(k / Math.max(1, N - 1)) * 96}%`,
-                      top: `${(sr.ys[k] / 72) * 100}%`,
-                    }}
+                  {/* THE COMPANY CARD'S FLAG (.ccflag), not the Trending card's
+                      .tsktip this used to be. Same callout, same date-over-value
+                      shape, same stem onto the marker — asked for so the two
+                      charts a user moves between label a point identically.
+                      Portalled to the body by ChartTooltip for the reason that
+                      component gives: the pane is a clipped, scrollable card,
+                      and an absolutely-positioned tip on a high point was
+                      painted over by the chart's own header row.
+
+                      THE LABEL STILL SAYS ADS. The series is the ROLE's ads per
+                      day, even with a skill searched — the archive has no
+                      per-skill daily series for a rung — so it is never "with
+                      skill", and it is not relabelled "Vacancies" to match the
+                      company card either: a row is an ad from one board, and
+                      the same role on two boards is two of them (see the
+                      dedupe note in CLAUDE.md). The look is what was shared
+                      here, not the unit.
+
+                      The swatch carries the LINE's colour rather than .ccsw's
+                      green/red, for the reason CompanyPanel gives at its own
+                      swatch: a flag that marks one series must be the colour of
+                      the series it marks. Here that is already the trend's
+                      direction, so they agree — but through sparkStroke, so
+                      they cannot drift if either changes. */}
+                  <ChartTooltip
+                    boxRef={plotRef}
+                    className="ccflag"
+                    leftPct={(k / Math.max(1, N - 1)) * 96}
+                    topPct={(sr.ys[k] / 72) * 100}
                   >
-                    {`${num(n.series!.counts[k])} ads · ${dayAt ? dayLabel(dayAt) : ""}`}
-                  </span>
+                    <div className="wttiplabel">{dayAt ? flagDay(dayAt) : ""}</div>
+                    <div className="wttiprow">
+                      <i className="ccsw" style={{ background: sparkStroke }} />
+                      <b>{num(n.series!.counts[k])}</b>
+                      <span>{n.series!.counts[k] === 1 ? "Ad" : "Ads"}</span>
+                    </div>
+                  </ChartTooltip>
                 </>
               )}
             </div>
