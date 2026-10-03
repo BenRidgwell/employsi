@@ -39,7 +39,7 @@
  * Pre-1.0 and honest about it: "1.0.0-beta.1" rather than the design mock's
  * invented "v2.4.1", for a product that has not had a 1.0.
  */
-export const APP_VERSION = "1.0.0-beta.1";
+export const APP_VERSION = "1.0.0-beta.2";
 
 /**
  * The day APP_VERSION was released, ISO.
@@ -48,4 +48,4 @@ export const APP_VERSION = "1.0.0-beta.1";
  * version with no date cannot answer "is what I am looking at current?", and
  * the deploy workflow prints both.
  */
-export const RELEASED = "2026-08-12";
+export const RELEASED = "2026-10-03";
