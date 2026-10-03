@@ -1,5 +1,7 @@
 import { getAuth, type AuthEnv } from "./auth";
 import type { D1Like } from "./jobArchive";
+import { roleForEmail } from "./roles";
+import { MARKETING_APEX } from "@/lib/siteGate";
 
 /**
  * Where product events land (migrations/0005_app_event.sql).
@@ -97,9 +99,26 @@ export async function writeEvents(
 ): Promise<number> {
   if (!db || !Array.isArray(events) || !events.length) return 0;
 
+  // ONLY THE LIVE SITE, AND ONLY ITS END USERS, ARE RECORDED (2026-10-03).
+  // Every preview Worker binds this same database, so without the host check
+  // the owner's testing on a preview landed in production's Engagement tab;
+  // and an administrator's own use of the product is not user behaviour. Both
+  // were measured in the console the day the app was released — one "weekly
+  // user" and 84 sessions, all of them the owner. Dropped here, before
+  // anything is stored, rather than filtered at read time, so the table only
+  // ever holds what the console is meant to describe.
+  let host = "";
+  try {
+    host = new URL(request.url).hostname.toLowerCase();
+  } catch {
+    return 0;
+  }
+  if (host !== MARKETING_APEX) return 0;
+
   const at = new Date().toISOString();
   const day = at.slice(0, 10);
   const userKey = await callerKey(request, env);
+  if (userKey && roleForEmail(env as AuthEnv, userKey) === "admin") return 0;
 
   const rows = events
     .slice(0, MAX_BATCH)
