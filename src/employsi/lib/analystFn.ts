@@ -119,6 +119,16 @@ export interface AnalystAnswer {
   bars?: AnalystBar[];
   /** Drawn above the stats when the answer has a series worth seeing. */
   chart?: AnalystChart;
+  /**
+   * Where the figures came from, and over what window.
+   *
+   * NO LONGER SHOWN IN THE REPLY. It used to render as a caption under every
+   * answer and was removed by request, so it is NOT dead code on its way out:
+   * an exported chart still carries it, because a chart that leaves the app
+   * without the scope and window behind it is a worse fault than a caption
+   * nobody wanted. It is also deliberately NOT passed to the LLM path — see
+   * analystLlmClient — so the model cannot reinstate it in prose.
+   */
   source?: string;
 }
 
