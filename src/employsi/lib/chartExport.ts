@@ -32,12 +32,13 @@ const MUTED = "#aeaeb2";
 /**
  * The 2026 disclaimer carried on every exported chart.
  *
- * It names the source family rather than claiming the figures are ours, and it
- * says the thing a reader of a labour-market chart most needs to know: these
- * are advertised vacancies, which is not the same as hires.
+ * It names employsi's own datasets as the source, matching the line above it
+ * (the answer's `source`, which no longer names third parties), and it says the
+ * thing a reader of a labour-market chart most needs to know: these are
+ * advertised vacancies, which is not the same as hires.
  */
 export const EXPORT_DISCLAIMER =
-  "© 2026 employsi. Prepared from published labour-market statistics and advertised-vacancy data. " +
+  "© 2026 employsi. Prepared from employsi's job vacancy database and national vacancy series. " +
   "Advertised vacancies are not hires, and counts reflect what employers published, not total demand. " +
   "Provided for information only — not financial, employment or investment advice.";
 

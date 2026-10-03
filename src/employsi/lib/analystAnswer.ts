@@ -97,7 +97,7 @@ function skillHistoryAnswer(
   // skill it narrows — the closest thing published, and not the same thing.
   if (via) {
     parts.push(
-      `${via} is a speciality within ${skill}, and no statistical agency publishes it separately — so this is ${skill} as a whole.`,
+      `${via} is a speciality within ${skill}, and the vacancy series isn't published at that level — so this is ${skill} as a whole.`,
     );
   }
   parts.push(
@@ -134,7 +134,14 @@ function skillHistoryAnswer(
     stats,
     bars,
     chart,
-    source: `${h.sources.join(" · ")} · monthly, ${HISTORY_SPAN}${chartNote}`,
+    // THE EXPORT'S SOURCE LINE, and the only place this string still shows.
+    // It used to lead with the statistical agencies behind the scope
+    // (`h.sources`); it is employsi's own attribution now, by request. The
+    // dataset is still NAMED — "national vacancy series", monthly, over its
+    // span — because an exported chart of monthly published counts that reads
+    // as a count of crawled ads is the kind of mislabelling this footer exists
+    // to prevent.
+    source: `employsi national vacancy series · monthly, ${HISTORY_SPAN}${chartNote}`,
   };
 }
 
@@ -170,8 +177,6 @@ function marketHistoryAnswer(
     .filter(Boolean)
     .join(" ");
 
-  const sources = skillHistory(top[0].skill, keys)?.sources ?? [];
-
   // The distinction matters: these series are published per occupation, so a
   // sector filter here selects the occupations that sector hires, not the
   // employers in it. Saying so is the difference between a figure the user can
@@ -205,7 +210,7 @@ function marketHistoryAnswer(
     bars,
     chart,
     source:
-      `${sources.join(" · ")} · monthly, ${HISTORY_SPAN}` +
+      `employsi national vacancy series · monthly, ${HISTORY_SPAN}` +
       (sector ? ` · narrowed to ${sector} occupations` : "") +
       (chart ? " · categories with 200+ vacancies" : ""),
   };
@@ -267,8 +272,8 @@ export async function answerQuestion(
       // The scope publishes series, but none for this sector's occupations.
       return {
         intent: "history",
-        text: `No statistical agency covering ${scope.label} publishes a vacancy series for the occupations ${sector} hires, so I can't give you its long-run history there. These series are per occupation rather than per employer, so a sector with no matching occupation series simply isn't in them. Ask me what's open right now instead, or set the sector back to all sectors.`,
-        source: `National vacancy series · ${HISTORY_SPAN}`,
+        text: `employsi's national vacancy series has nothing for ${scope.label} covering the occupations ${sector} hires, so I can't give you its long-run history there. The series is published per occupation rather than per employer, so a sector with no matching occupation simply isn't in it. Ask me what's open right now instead, or set the sector back to all sectors.`,
+        source: `employsi national vacancy series · ${HISTORY_SPAN}`,
       };
     }
     if (skill) {
@@ -277,9 +282,9 @@ export async function answerQuestion(
       return {
         intent: "history",
         text: skillVia
-          ? `${skillVia} is a speciality within ${skill}, and no statistical agency publishes it separately — but none covering ${scope.label} publishes ${skill} either, so I can't give you a history there. I can still tell you what's live in the ad archive right now, or you can widen the scope.`
-          : `No statistical agency covering ${scope.label} publishes a vacancy series for ${skill}, so I can't give you its history there. I can still tell you what's live in the ad archive right now, or you can widen the scope.`,
-        source: `National vacancy series · ${HISTORY_SPAN}`,
+          ? `${skillVia} is a speciality within ${skill}, and the vacancy series isn't published at that level — but it doesn't carry ${skill} for ${scope.label} either, so I can't give you a history there. I can still tell you what's live in the ads right now, or you can widen the scope.`
+          : `employsi's national vacancy series doesn't carry ${skill} for ${scope.label}, so I can't give you its history there. I can still tell you what's live in the ads right now, or you can widen the scope.`,
+        source: `employsi national vacancy series · ${HISTORY_SPAN}`,
       };
     }
   }
@@ -288,7 +293,7 @@ export async function answerQuestion(
     return {
       intent: "history",
       text: `${scope.label} has no published vacancy series in employsi — the long-run statistics we carry cover Australia, Canada, New Zealand, Singapore, the UK, the EU and the US. For anywhere else I'm limited to live ads, which can't answer a long-run question. Ask me what's open right now instead, or switch the scope.`,
-      source: `National vacancy series · ${HISTORY_SPAN}`,
+      source: `employsi national vacancy series · ${HISTORY_SPAN}`,
     };
   }
 

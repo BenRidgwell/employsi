@@ -521,7 +521,7 @@ console.log("\nconversation is recognised as conversation:");
 console.log('\n"why?" and "tell me more" say different things:');
 {
   const before = failures;
-  const answer = { text: "", source: "employsi vacancy archive · Perth" } as never;
+  const answer = { text: "", source: "employsi job vacancy database · Perth" } as never;
   for (const intent of Object.keys(INTENT_QUESTION) as (keyof typeof INTENT_QUESTION)[]) {
     const why = chatReply("method", { answer, intent });
     const more = chatReply("more", { answer, intent });
