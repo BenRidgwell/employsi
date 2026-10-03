@@ -181,11 +181,17 @@ export function chatReply(
       if (!intent || intent === "unknown" || !last?.answer) {
         return "Nothing to explain yet — ask me something first and I'll tell you exactly how the figure was arrived at.";
       }
-      const how = METHOD[intent];
-      // The source line is already computed and already on screen under the
-      // answer; repeating it here puts the window and the row count in the
-      // sentence that explains them rather than a caption away from it.
-      return last.answer.source ? `${how}\n\nFor that answer: ${last.answer.source}.` : how;
+      // THE SOURCE LINE USED TO BE APPENDED HERE — "For that answer:
+      // employsi vacancy archive · Perth · to 2 Oct 2026." It made sense while
+      // that caption sat under every answer; the reply was pulling it into the
+      // sentence that explains it. The caption is gone by request, and
+      // reinstating it inside the one reply that is not a caption would be
+      // putting it back through the side door.
+      //
+      // METHOD is untouched, and still names the boards and the agencies. This
+      // reply only runs when someone has ASKED how a figure was arrived at, and
+      // answering that evasively is the failure these texts exist to prevent.
+      return METHOD[intent];
     }
   }
 }

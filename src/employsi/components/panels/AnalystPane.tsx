@@ -74,7 +74,7 @@ interface Msg {
 }
 
 const OPENER =
-  "Ask me about job openings — how many are live, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Every answer is a query over employsi's vacancy data, and I'll show you the source.";
+  'Ask me about job openings — how many are live, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Every answer is a query over employsi\'s vacancy data, and asking "why?" will tell you how it was measured.';
 
 // Scope icons, from the design's SCOPES table.
 const SCOPE_PATHS: Record<string, string[]> = {
@@ -418,8 +418,7 @@ export function AnalystPane() {
         <div className="anhd">
           {/* Title and actions only, set like the filter card's header. The
               avatar and the one-line description that used to sit here were
-              saying what the opening message and every answer's source line
-              already say. */}
+              saying what the opening message already says. */}
           <span className="antitle">Ask an analyst</span>
           {/* Clearing the thread is the only way to drop a carried analysis on
               purpose. Without it the conversation can only be escaped by asking
@@ -542,22 +541,21 @@ export function AnalystPane() {
                     </div>
                   )}
 
-                  {m.answer?.source && (
-                    <div className="ansource">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width={13}
-                        height={13}
-                        fill="none"
-                        stroke="currentColor"
-                        aria-hidden
-                      >
-                        <path d="M6 4h9l4 4v12H6z" />
-                        <path d="M15 4v4h4" />
-                      </svg>
-                      <span>{m.answer.source}</span>
-                    </div>
-                  )}
+                  {/* NO SOURCE LINE. Every answer used to end with a grey
+                      caption naming where the figures came from — "employsi
+                      vacancy archive · Perth · to 2 Oct 2026", the statistical
+                      agencies on a long-run answer. It is gone from the reply
+                      by request.
+
+                      WHAT IT WAS CARRYING IS NOT GONE. The caption was mostly a
+                      restatement: the answers' own prose already names the day
+                      a figure is as at, how many ads disclosed pay, and that a
+                      duration is how long an ad ran rather than time to fill.
+                      `answer.source` is still computed, and still travels on an
+                      exported chart, where a chart that leaves the app without
+                      its scope is a worse fault than a caption nobody wanted.
+                      So this is a rendering change, not a measurement one — and
+                      "why?" still explains the method on request. */}
                 </div>
 
                 {/* Offered on the NEWEST answer only. A follow-up applies to
