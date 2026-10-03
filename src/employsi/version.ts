@@ -39,7 +39,7 @@
  * Pre-1.0 and honest about it: "1.0.0-beta.1" rather than the design mock's
  * invented "v2.4.1", for a product that has not had a 1.0.
  */
-export const APP_VERSION = "1.0.0-beta.2";
+export const APP_VERSION = "1.0.0-beta.3";
 
 /**
  * The day APP_VERSION was released, ISO.
