@@ -328,8 +328,11 @@ def collect(cid: str, name: str) -> list:
             'title': title,
             'company': board,
             'location': _text(r.get('location')),
-            # NO SALARY. See the note above upsert().
+            # NO SALARY — this feed contributes nothing to disclosed pay. The
+            # modelled figure goes in its own field, under its own name, with
+            # its source inside it. See the note above upsert().
             'salary': '',
+            'pay_estimate': _pay_estimate(r),
             'url': _text(r.get('job_url')),
             'date': _text(r.get('date_posted'))[:10],
             'country': COUNTRY,
@@ -364,9 +367,50 @@ def collect(cid: str, name: str) -> list:
 # that column. Suppress rather than fabricate: this feed contributes titles,
 # employers, locations and dates, and contributes nothing at all to pay.
 #
-# If Glassdoor's estimate is ever wanted as a FIGURE IN ITS OWN RIGHT it needs
-# its own column and its own label on screen. It must never arrive through this
-# one.
+# THE ESTIMATE IS KEPT, in `pay_estimate` — a different column, holding JSON
+# that NAMES ITS SOURCE, so nothing can read it without knowing what it is. It
+# is wanted as a floor where an employer advertises no band at all, which is a
+# real gap: most Australian ads disclose nothing. Three rules travel with it:
+#
+#   1. It never enters `salary`, and nothing that computes a disclosed-pay
+#      median may read it. Mixing a modelled figure into a measured one is the
+#      comparison CLAUDE.md says is mostly measuring the difference between two
+#      methods.
+#   2. Whatever shows it says whose model it is, on screen, the way the career
+#      card already says its O*NET tasks are described and not measured.
+#   3. It carries the day it was collected. A model output drifts, and a figure
+#      with no date cannot be aged out or argued with.
+
+
+def _pay_estimate(r: dict) -> str:
+    """Glassdoor's modelled pay for this listing, as traceable JSON — or ''.
+
+    `src` is not decoration and must never be dropped: it is the difference
+    between a figure a reader can weigh and a number from nowhere. `on` is the
+    collection day, because a model's output for a role moves and a reading
+    with no date cannot be aged out.
+
+    p10/p90, not a midpoint. Narrowing it to one number here would throw away
+    the only honest thing about it — that it is a spread Glassdoor fitted, not
+    a point anyone offered."""
+    lo, hi = r.get('min_amount'), r.get('max_amount')
+
+    def ok(v):
+        return v is not None and str(v).lower() not in ('nan', 'nat', 'none', '') \
+            and float(v) > 0
+
+    if not (ok(lo) and ok(hi)):
+        # Both ends or nothing. One end of a percentile spread is not a floor,
+        # it is half a statistic.
+        return ''
+    return json.dumps({
+        'src': 'glassdoor',
+        'lo': round(float(lo)),
+        'hi': round(float(hi)),
+        'cur': _text(r.get('currency')) or None,
+        'per': _text(r.get('interval')) or None,
+        'on': TODAY,
+    }, separators=(',', ':'))
 
 
 def upsert(company_id: str, jobs: list) -> int:
@@ -387,21 +431,39 @@ def upsert(company_id: str, jobs: list) -> int:
                      # that starts passing j['salary'] through has to delete
                      # this line and read that note first.
                      None, j.get('url') or '',
-                     j.get('date') or '', json.dumps(sk) if sk else None))
+                     j.get('date') or '', json.dumps(sk) if sk else None,
+                     j.get('pay_estimate') or None))
+    # Added lazily, the same way role_key is in jobArchive.ts: a migration that
+    # has to be run by hand before a deploy is a migration someone forgets.
+    # ALTER TABLE throws once the column exists, which is the success case.
+    try:
+        d1('ALTER TABLE jobs ADD COLUMN pay_estimate TEXT', [])
+    except Exception:
+        pass
     written = 0
-    for i in range(0, len(rows), 7):  # D1 caps ~100 bound params/query
-        chunk = rows[i:i + 7]
-        values = ','.join(['(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'] * len(chunk))
+    # SIX, NOT SEVEN. Each row now binds 15 parameters (13 columns + the two
+    # dates), and D1 refuses over 100 per statement — 7 rows would be 105 and
+    # every write would 400. Measured the same way the remap script's batch of
+    # 33 was: the cap is real and it is not a guideline.
+    for i in range(0, len(rows), 6):
+        chunk = rows[i:i + 6]
+        values = ','.join(['(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)'] * len(chunk))
         sql = ('INSERT INTO jobs '
                '(job_key, source, title, company, company_id, hub, location, '
-               'category, salary, url, posted, skills, first_seen, last_seen, seen_count) '
+               'category, salary, url, posted, skills, pay_estimate, '
+               'first_seen, last_seen, seen_count) '
                f'VALUES {values} '
                'ON CONFLICT(job_key) DO UPDATE SET '
                'last_seen = excluded.last_seen, seen_count = seen_count + 1, '
                'salary = COALESCE(jobs.salary, excluded.salary), '
                "url = COALESCE(NULLIF(jobs.url, ''), excluded.url), "
                "posted = COALESCE(NULLIF(jobs.posted, ''), excluded.posted), "
-               'skills = COALESCE(jobs.skills, excluded.skills)')
+               'skills = COALESCE(jobs.skills, excluded.skills), '
+               # REFRESHED, not COALESCEd like the rest. Those fields are facts
+               # an ad stated once; this one is a model's current reading, and
+               # the newer reading is the better one. Guarded so a row that
+               # comes back without an estimate does not erase the one held.
+               'pay_estimate = COALESCE(excluded.pay_estimate, jobs.pay_estimate)')
         params = []
         for r in chunk:
             params.extend([*r, TODAY, TODAY])
