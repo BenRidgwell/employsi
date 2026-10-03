@@ -6,7 +6,7 @@ import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
 import { NZ_GOV_IDS } from "../data/nzGov";
 import { MERGED_COMPANY_ID } from "../data/mergedCompanies";
 import type { AdvertisedJob } from "./skillsFn";
-import { archiveJobs, type ArchiveRow, type D1Like } from "./jobArchive";
+import { archiveJobs, LIVE_NOW_ON_DAY_SQL, type ArchiveRow, type D1Like } from "./jobArchive";
 import { asRecord, asRecords, str, type JsonRecord, type JsonValue } from "./json";
 import { kvBinding, type KVLike } from "./kv";
 
@@ -536,12 +536,17 @@ async function currentFromArchive(
         // the scrapers run overnight, so a job whose last_seen is still
         // yesterday is not closed, it just has not been looked at yet. The
         // chart ends there for the same reason, and both move together now.
+        //
+        // The grace is PER SOURCE (LIVE_ON_DAY_SQL / SOURCE_LIVE_DAYS in
+        // jobArchive.ts): a feed that runs weekly cannot have seen an ad
+        // yesterday, so holding its rows to yesterday reports its employers as
+        // advertising nothing six days in seven. Unchanged for every nightly
+        // feed, which is all of them but LinkedIn.
         `SELECT title, source, location, salary, url, posted, skills
            FROM jobs
           WHERE company_id = ?1
             ${includeLiveBoards ? "" : "AND source NOT IN ('adzuna', 'muse')"}
-            AND first_seen <= date('now', '-1 day')
-            AND last_seen >= date('now', '-1 day')`,
+            AND ${LIVE_NOW_ON_DAY_SQL}`,
       )
       .bind(COMPANY_ID_ALIAS[id] ?? id)
       .all();

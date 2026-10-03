@@ -25,7 +25,7 @@ import {
   type PayFigure,
   type Rung,
 } from "./careerLadder";
-import { LIVE_FEEDS_ONLY_SQL } from "./jobArchive";
+import { isLiveOn, LIVE_FEEDS_ONLY_SQL } from "./jobArchive";
 import { employerFamilies } from "./ladderEmployers";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { ALL_SKILLS, parseStoredSkills } from "../data/skillsTaxonomy";
@@ -234,13 +234,18 @@ export class PathwayBuilder {
   };
 
   /**
-   * @param liveFrom rows seen on or after this day are "currently advertised"
-   *                 (the app's definition: the window's last two days).
+   * @param liveDay the reference day for "currently advertised" — the last day
+   *                the feeds have finished reporting, not today. A row counts
+   *                as live if its own FEED could still have seen it by then,
+   *                which is this day for a nightly feed and up to a week
+   *                earlier for a weekly one (isLiveOn / SOURCE_LIVE_DAYS).
+   *                Judging every feed against this one day read every weekly
+   *                feed's employers as advertising nothing six days in seven.
    * @param keepUnplaced collect unplaced titles for the audit — a map of every
-   *                 distinct unplaced title, so off in the Worker.
+   *                distinct unplaced title, so off in the Worker.
    */
   constructor(
-    private liveFrom: string,
+    private liveDay: string,
     private keepUnplaced = false,
   ) {}
 
@@ -282,7 +287,7 @@ export class PathwayBuilder {
     const key = employer
       ? `${this.id(employer)}|${this.id(p.canonical)}|${this.id(r.hub ?? "")}`
       : `anon|${r.rid}`;
-    const live = r.last_seen >= this.liveFrom;
+    const live = isLiveOn(r.last_seen, r.source, this.liveDay);
     const pay = annualAud({ salary: r.salary, hub: r.hub, source: r.source });
     const skills = parseStoredSkills(r.skills).map(this.intern);
     const node = this.intern(`${p.family}|${p.track}|${p.rung}`);

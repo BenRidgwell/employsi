@@ -2041,6 +2041,26 @@ const RAW_SKILLS: SkillDef[] = [
       "midwives",
       "nurse manager",
       "nurse educator",
+
+      // THE TWO ASSISTIVE TITLES THAT NEVER SAY "NURSE". An Assistant in
+      // Nursing reaches "nursing" on its own; a Patient Care Technician — the
+      // US wording for the same unlicensed bedside role — says neither word,
+      // and was the third-largest unmapped title in the archive at 658 rows.
+      // It is here and not only on the speciality below because of the gate:
+      // a child cannot fire unless the title independently claims its parent,
+      // so Nursing Assistants is unreachable without these two terms.
+      //
+      // Measured 2026-10-03 over the last 365 days: "patient care tech" is 60
+      // distinct titles / 774 rows and "patient care assistant" 20 / 44. Both
+      // are deliberately qualified rather than a bare "patient care", which
+      // would also claim the 100-odd Patient Care Coordinator and Patient Care
+      // Manager titles — coordination and management roles, not bedside ones.
+      //
+      // The known cost: "Dialysis Patient Care Technician" (9 rows) now passes
+      // the gate and so also reads as Renal Nursing. That speciality is the
+      // renal WARD rather than the registration, and nine rows do not move it.
+      "patient care tech",
+      "patient care assistant",
     ],
   },
   // ── Nursing · specialities ─────────────────────────────────────────────
@@ -2122,6 +2142,34 @@ const RAW_SKILLS: SkillDef[] = [
     // "HR Generalist (nursing home)" and an "Operations Executive (nursing
     // home)" as nursing specialists.
     terms: ["aged care", "residential aged", "geriatric"],
+  },
+  {
+    skill: "Nursing Assistants",
+    cat: "Health",
+    parent: "Nursing",
+    // Added 2026-10-03, not in the 2026-09-10 mining pass: the candidates were
+    // mined over released markets, where this role is advertised as "Assistant
+    // in Nursing", and the US wordings that make it large arrived with the
+    // overseas feeds. Distinct titles over the last 365 days, measured the same
+    // day: assistant in nursing 163, patient care tech 60, nursing assistant 21
+    // (certified nursing assistant among them), patient care assistant 20,
+    // nursing aide 11, nurse assistant 2, nurse aide 1.
+    //
+    // The unlicensed bedside workforce, which is why it is a speciality OF
+    // nursing rather than a sibling of it: these people work to a nurse's
+    // delegation on a ward. The care workers who do similar work in homes and
+    // residential care are Aged & Disability Care, a top-level skill, and the
+    // gate is what keeps the two apart — "Personal Care Assistant" says
+    // nothing about nursing and never reaches here.
+    terms: [
+      "assistant in nursing",
+      "nursing assistant",
+      "nurse assistant",
+      "patient care tech",
+      "patient care assistant",
+      "nursing aide",
+      "nurse aide",
+    ],
   },
   {
     skill: "Nurse Practitioner",
@@ -3180,6 +3228,19 @@ const RAW_SKILLS: SkillDef[] = [
       "retail team member",
       "nightfill",
       "shop assistant",
+
+      // The two biggest unmapped titles in the archive were shop-floor retail,
+      // and the reason is the gate rather than the vocabulary: "retail sales"
+      // was a term of the Retail Sales SPECIALITY below and of nothing broad,
+      // so a title saying only "Retail Sales" could never claim the parent and
+      // the child could never fire. Measured 2026-10-03 over the last 365 days:
+      // "retail sales" is 1,385 distinct titles / 6,294 rows — "Retail Sales –
+      // Part Time" (1,725 rows), "Retail Sales Associate" (798) and "Mobile
+      // Associate - Retail Sales" (634) alone — and "retail associate" a
+      // further 606 / 1,010. "retail sales consultant" was already here
+      // through "sales consultant"; these are the wordings that were not.
+      "retail sales",
+      "retail associate",
     ],
   },
 
@@ -3206,6 +3267,9 @@ const RAW_SKILLS: SkillDef[] = [
       "sales consultant",
       "store assistant",
       "retail sales",
+      // Added with the parent's, 2026-10-03: "Retail Associate" is the same
+      // shop floor as "Retail Assistant", and the US feeds word it this way.
+      "retail associate",
     ],
   },
   {

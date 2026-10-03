@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { ROLE_COUNT_SQL } from "./roleKey";
-import { LIVE_FEEDS_ONLY_SQL, type D1Like } from "./jobArchive";
+import { LIVE_FEEDS_ONLY_SQL, LIVE_ON_DAY_SQL, liveOnDaySql, type D1Like } from "./jobArchive";
 import {
   SKILL_CATEGORY,
   dropRedundantKin,
@@ -400,8 +400,18 @@ const minusDays = (iso: string, n: number) => {
  * It also spans collection gaps: an ad first seen on the 3rd and last seen on
  * the 9th is live on the 6th whether or not any row carries last_seen = the
  * 6th, so a day the crons skipped does not read as an empty market.
+ *
+ * THE TRAILING EDGE IS PER FEED, which is the one thing the paragraph above
+ * does not cover. "Last seen on or after D" is only answerable by a feed that
+ * ran on or after D; a weekly feed's newest sighting is up to a week old at any
+ * moment, so holding its rows to that test reports its employers as advertising
+ * nothing for six days out of seven — measured on ECU's Chief People Officer ad,
+ * 2026-10-03. LIVE_ON_DAY_SQL (jobArchive.ts) gives each source the grace its
+ * cadence earns, and is byte-identical to the old clause for every nightly feed.
+ *
+ * Still two binds, still the same day twice, so every call site is unchanged.
  */
-const LIVE_ON_DAY = "first_seen <= ? AND last_seen >= ?";
+const LIVE_ON_DAY = LIVE_ON_DAY_SQL;
 
 // Re-exported: check-analyst-scope.ts asserts it from here.
 export { coverageDay };
@@ -1147,7 +1157,7 @@ export const getSkillPay = createServerFn({ method: "GET" })
       const rows = await db
         .prepare(
           `SELECT salary, hub FROM jobs
-             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2
+             WHERE ${liveOnDaySql(1)} AND skills LIKE ?2
                AND salary IS NOT NULL AND salary <> ''`,
         )
         .bind(asOf, quoted)
@@ -1162,7 +1172,7 @@ export const getSkillPay = createServerFn({ method: "GET" })
       const liveRow = await db
         .prepare(
           `SELECT COUNT(*) AS n FROM jobs
-             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2`,
+             WHERE ${liveOnDaySql(1)} AND skills LIKE ?2`,
         )
         .bind(asOf, quoted)
         .first();

@@ -1,7 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
-import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
+import {
+  isLiveOn,
+  LIVE_FEEDS_ONLY_SQL,
+  liveSinceDaySql,
+  type D1Like,
+  type SqlValue,
+} from "./jobArchive";
 import { normRoleTitle } from "./roleKey";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import {
@@ -1027,10 +1033,11 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
       const window: string[] = [];
       for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
-      // The same one-day boundary the rest of the app calls "currently
-      // advertised", and the last day of the window above, so the card's counts
-      // and its line end at the same place.
-      const liveFrom = isoDaysAgo(1);
+      // The same boundary the rest of the app calls "currently advertised",
+      // and the last day of the window above, so the card's counts and its line
+      // end at the same place. One day for a nightly feed; the fold widens it
+      // per source (isLiveOn), since a weekly feed cannot meet a one-day test.
+      const liveDay = isoDaysAgo(1);
 
       const res = await db
         .prepare(
@@ -1055,7 +1062,7 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
       const firstCovered = coverage ? window.findIndex((d) => d >= coverage) : 0;
       const from = firstCovered < 0 ? window.length : firstCovered;
 
-      return foldSkillRows(rows, window, liveFrom, from);
+      return foldSkillRows(rows, window, liveDay, from);
     } catch {
       return NO_SKILL_TRENDS;
     }
@@ -1151,7 +1158,8 @@ export const getSkillTrend = createServerFn({ method: "GET" })
       const window: string[] = [];
       for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
-      const liveFrom = isoDaysAgo(1);
+      // As above: the reference day, widened per source inside the fold.
+      const liveDay = isoDaysAgo(1);
 
       const names = archivedNamesFor(skill);
       // The quotes on BOTH sides are what makes this exact rather than a
@@ -1188,7 +1196,7 @@ export const getSkillTrend = createServerFn({ method: "GET" })
       const from = firstCovered < 0 ? window.length : firstCovered;
 
       // roleKeyByCompanyTitle, NOT the default: this fold spans employers.
-      const folded = foldSkillRows(rows, window, liveFrom, from, roleKeyByCompanyTitle);
+      const folded = foldSkillRows(rows, window, liveDay, from, roleKeyByCompanyTitle);
       const row = folded.skills.find((s) => s.skill === skill);
       if (!row) return NO_ARCHIVE_TREND;
       return {
@@ -1324,7 +1332,7 @@ function midAnnual(values: number[]): number | null {
 export function foldSkillRows(
   rows: SkillRow[],
   window: string[],
-  liveFrom: string,
+  liveDay: string,
   from: number,
   roleKey: RoleKeyFn = roleKeyByTitle,
 ): CompanySkillTrends {
@@ -1437,7 +1445,10 @@ export function foldSkillRows(
       g.spans.push([fs, ls]);
       if (fs < g.opened) g.opened = fs;
       if (area) g.areas.set(area, (g.areas.get(area) || 0) + 1);
-      if (ls >= liveFrom) {
+      // PER FEED, not a flat comparison against liveDay: `src` is already in
+      // hand two lines up, and a weekly feed cannot have seen this ad
+      // yesterday however plainly it is still advertised. See isLiveOn.
+      if (isLiveOn(ls, src, liveDay)) {
         g.live = true;
         // Hub and salary are read off the LIVE rows only, for the same reason
         // the tallies below are: the map answers "where are they hiring this
@@ -2324,7 +2335,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       const likes = names.map((_, i) => `skills LIKE ?${i + 2}`).join(" OR ");
       const res = await db
         .prepare(
-          `SELECT company_id, hub, title, first_seen, last_seen FROM jobs
+          `SELECT company_id, hub, title, source, first_seen, last_seen FROM jobs
             WHERE (${likes})
               AND company_id IS NOT NULL
               AND last_seen >= ?1
@@ -2336,6 +2347,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
         company_id: string | null;
         hub: string | null;
         title: string | null;
+        source: string | null;
         first_seen: string | null;
         last_seen: string | null;
       }[];
@@ -2350,8 +2362,11 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       const byMonthCity: Record<string, Record<string, Record<string, number>>> = {};
       const liveByCity: Record<string, Record<string, number>> = {};
       // "Live" as the app defines it everywhere: seen within a day of the
-      // archive's newest day (to), not of today — the span actually read.
-      const liveFrom = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+      // archive's newest day (to), not of today — the span actually read. The
+      // "within a day" is per SOURCE from here (isLiveOn / SOURCE_LIVE_DAYS in
+      // jobArchive.ts): a weekly feed's newest sighting is up to a week old at
+      // any moment, so one day is not a window it can ever satisfy.
+      const liveDay = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
       const known = new Set(months);
 
       /**
@@ -2374,7 +2389,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
        * it was open on the days at least one board had it up, which is what
        * was actually observed. Same construction getVacancyTrend uses.
        */
-      type Group = { id: string; hub: string; spans: [string, string][] };
+      type Group = { id: string; hub: string; spans: [string, string][]; live: boolean };
       const groups = new Map<string, Group>();
       for (const r of rows) {
         const id = (r.company_id || "").trim();
@@ -2383,12 +2398,20 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
         if (!id || !fs || !ls) continue;
         const hub = (r.hub || "").trim();
         const t = normRoleTitle(String(r.title || ""));
+        // DECIDED HERE, NOT OFF THE MERGED SPAN, because the grace a sighting
+        // earns belongs to the FEED that made it and a group can hold rows from
+        // several. Folding first would leave one `last_seen` to judge against
+        // one rule, and whichever rule that was would be wrong for the other
+        // feed's copy of the ad.
+        const live = isLiveOn(ls, r.source, liveDay);
         // A row with no usable title cannot be folded against anything, so it
         // stands alone rather than collapsing every untitled row into one.
         const key = `${id}|${hub}|${t || `#${groups.size}`}`;
         const g = groups.get(key);
-        if (g) g.spans.push([fs, ls]);
-        else groups.set(key, { id, hub, spans: [[fs, ls]] });
+        if (g) {
+          g.spans.push([fs, ls]);
+          if (live) g.live = true;
+        } else groups.set(key, { id, hub, spans: [[fs, ls]], live });
       }
 
       for (const g of groups.values()) {
@@ -2396,10 +2419,9 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
         // in — the question is who was advertising then, and a role posted in
         // July and still open in September was being advertised in August.
         const ms = new Set<string>();
-        let live = false;
+        const live = g.live;
         for (const [fs, ls] of g.spans) {
           for (const m of monthsBetween(monthOf(fs), monthOf(ls))) ms.add(m);
-          if (ls >= liveFrom) live = true;
         }
         for (const m of ms) {
           if (!known.has(m)) continue;
@@ -2433,9 +2455,10 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
  * company and a hub, and the two must be changed together.
  *
  * In particular:
- *  - `liveFrom` is the archive's newest `last_seen` minus a day, NOT today.
+ *  - `liveDay` is the archive's newest `last_seen` minus a day, NOT today.
  *    Today is never fully collected (see the coverage note in CLAUDE.md), so
- *    "live" means the last day the feeds actually reported.
+ *    "live" means the last day the feeds actually reported — and each feed is
+ *    given the grace its own cadence earns from there (liveSinceDaySql).
  *  - the LIKE patterns are quoted on both sides, so `%"Audit"%` cannot match
  *    "Internal Audit".
  *  - the same release gate: an end user gets nothing for a company outside the
@@ -2492,7 +2515,7 @@ export const getCompanySkillRoles = createServerFn({ method: "GET" })
         .first();
       const to = String(span?.mx || "");
       if (!to) return NO_SKILL_ROLES;
-      const liveFrom = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+      const liveDay = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
 
       // WHICH WINDOW, AND WHY IT IS THE CALLER'S TO SAY. The pin's number is
       // the SCRUBBED month's when the timeline is on a covered month and the
@@ -2514,7 +2537,10 @@ export const getCompanySkillRoles = createServerFn({ method: "GET" })
       const likes = names.map((_, i) => `skills LIKE ?${i + base}`).join(" OR ");
       const window = byMonth
         ? "substr(first_seen, 1, 7) <= ?3 AND substr(last_seen, 1, 7) >= ?4"
-        : "last_seen >= ?3";
+        : // Per source, so this list holds the same ads the count above it
+          // claims. A flat `last_seen >= ?3` would drop every weekly feed's row
+          // and leave a pin reading 3 with two ads listed under it.
+          liveSinceDaySql(3);
       const res = await db
         .prepare(
           `SELECT title, url, location, salary, source, hub, company_id, first_seen, last_seen
@@ -2529,7 +2555,7 @@ export const getCompanySkillRoles = createServerFn({ method: "GET" })
         .bind(
           companyId,
           hub,
-          ...(byMonth ? [month, month] : [liveFrom]),
+          ...(byMonth ? [month, month] : [liveDay]),
           ...names.map((n) => `%"${n}"%`),
         )
         .all();

@@ -237,6 +237,7 @@ jobs:
           retention-days: 7
 
       - name: Scrape Edith Cowan University careers → D1 (rendered, local browser)
+        id: ecu
         timeout-minutes: 10
         if: always()
         # NOT YET WORKING, and allowed to fail the step without failing the run.
@@ -248,6 +249,12 @@ jobs:
         # headless Chromium with the same bot check it gives curl, at 9,519 bytes
         # rather than 2,117. A browser is not enough; this needs a residential
         # exit, and the Oxylabs plan it would use is currently out of quota.
+        #
+        # NAMED 2026-09-21 and re-measured 2026-10-03, unchanged: AWS WAF's
+        # CAPTCHA action on every path of ecu.nga.net.au, /robots.txt included.
+        # So the "needs a residential exit" above is optimistic — a different
+        # address does not clear a CAPTCHA. See the standing NGA.NET note in
+        # workers/jobs-cron/careerSites.ts for why there will not be a reader.
         #
         # It stays here rather than being deleted because the scraper is correct
         # and self-diagnosing — it tells a block apart from a markup change — so
@@ -261,3 +268,35 @@ jobs:
           CF_ACCOUNT_ID: ${{ vars.CF_ACCOUNT_ID }}
           D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
         run: python scripts/ecu-to-d1.py
+
+      # WHAT continue-on-error COSTS, and the one line that buys it back.
+      #
+      # A step allowed to fail reports `success` through the Actions API, so the
+      # run page, the checks list and anything reading the API all say this
+      # board is fine. Measured 2026-10-03: `portal-nga` had written NOT ONE row
+      # since the step was added on 2026-08-17, and every single run in between
+      # was green. The outcome is still in the step's own log, 700 lines down,
+      # which is not where anyone looks.
+      #
+      # So the result is written to the job summary, where the run page shows it
+      # without anyone opening a log. `steps.<id>.outcome` is the real result —
+      # `conclusion` is the one continue-on-error rewrites.
+      - name: Say whether ECU wrote anything
+        if: always()
+        run: |
+          if [ "${{ steps.ecu.outcome }}" = "success" ]; then
+            echo "✅ Edith Cowan (portal-nga): wrote rows." >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "⚠️ **Edith Cowan (portal-nga) wrote nothing.**"
+              echo ""
+              echo "Expected while ecu.nga.net.au sits behind an AWS WAF CAPTCHA"
+              echo "(HTTP 405, \`x-amzn-waf-action: captcha\`, every path including"
+              echo "/robots.txt — re-measured 2026-10-03). The run is NOT failed for"
+              echo "it. ECU still reaches the archive through Adzuna, LinkedIn, SEEK"
+              echo "and SimplyHired."
+              echo ""
+              echo "scripts/scraper-health.py reports this as \`portal-nga NEVER"
+              echo "WRITTEN\` every run; see EXPECTED_SOURCES there."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
