@@ -131,7 +131,7 @@ export const LABOUR_EVENTS: LabourEvent[] = [
           year: PRESENT[0],
           month: PRESENT[1],
           title: "Latest vacancy index",
-          note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive. Months after this are our own ads only.",
+          note: "AI-adjacent and healthcare skills lead the index; generalist tech roles remain competitive.",
         },
       ]
     : []),
