@@ -652,7 +652,46 @@ ON CONFLICT(job_key) DO UPDATE SET last_seen = ?, seen_count = seen_count + 1
 ```
 
 So the archive is append-only and self-deduping; "currently advertised" is
-`last_seen >= date('now','-1 day')`, and taken-down ads age out on their own.
+`last_seen` within the grace period of the FEED that wrote the row, and taken-down
+ads age out on their own.
+
+**THAT GRACE IS PER SOURCE SINCE 2026-10-03, AND THIS FILE SAID A FLAT
+`last_seen >= date('now','-1 day')` BEFORE IT.** One day is right for a nightly
+feed, because yesterday's sighting is the most recent one there can be. It is
+simply wrong for a weekly one: `linkedin-archive.yml` runs Mondays, so from
+Tuesday every LinkedIn-only ad read as closed while it was still up — six days
+in seven. Found 2026-10-03 on Edith Cowan University's Chief People Officer ad,
+which was in the archive, correctly mapped to Human Resources and in Perth, and
+invisible in every live figure in the app.
+
+`SOURCE_LIVE_DAYS` in `src/employsi/lib/jobArchive.ts` is the one definition —
+`{ linkedin: 8 }`, everything else `DEFAULT_LIVE_DAYS` = 1 — and every surface
+reads it from there rather than spelling the window out:
+
+| | |
+| --- | --- |
+| `LIVE_NOW_SQL` | currently advertised, binds nothing |
+| `LIVE_ON_DAY_SQL` / `liveOnDaySql(n)` | open on a bound day (`?` or `?n`) |
+| `liveSinceDaySql(n)` | just the trailing cut, for callers already scoped |
+| `LIVE_NOW_ON_DAY_SQL` | open on yesterday, binds nothing |
+| `isLiveOn(lastSeen, source, day)` | the same test for rows folded in JS |
+
+Every one of them is byte-identical to the old behaviour for a nightly feed, so
+the change moves LinkedIn's ads and nothing else: archive-wide live rows went
+396,580 → 404,171 (+1.9%), measured on production the day it landed.
+
+**ADDING A WEEKLY OR FORTNIGHTLY FEED MEANS ADDING IT TO THAT MAP**, or its ads
+flicker in and out of every live count, and its skills draw a sawtooth in the
+daily series — `skillTrendsBuild.ts` extends each ad's trailing edge by the same
+allowance for exactly that reason. The cost, which is real and stated in the
+code: an ad taken down the day after a weekly run keeps counting until the next
+one. The archive cannot tell that from one still open, and the error it replaces
+was much larger and ran the other way.
+
+It is deliberately TIGHTER than `scraper-health.py`'s staleness allowance for the
+same source (10 days for LinkedIn). Those answer different questions: "has this
+feed stopped working" tolerates one late Monday, where "is this ad still up"
+should expire as soon as a run that would have refreshed it has not happened.
 
 **IT DEDUPES ACROSS RUNS, NOT ACROSS BOARDS, and this file said the opposite until
 2026-09-24.** `source` is the FIRST field of the key, so the same role on SEEK and on

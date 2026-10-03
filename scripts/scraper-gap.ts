@@ -70,7 +70,7 @@ import { join } from "node:path";
 import { COMPANIES } from "../src/employsi/data/companies";
 import { SITES } from "../workers/jobs-cron/careerSites";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
-import { HISTORICAL_SOURCES } from "../src/employsi/lib/jobArchive";
+import { HISTORICAL_SOURCES, LIVE_NOW_SQL } from "../src/employsi/lib/jobArchive";
 
 const ACCOUNT = "080a66721e2d85950d9d7dc939e08b76";
 const DATABASE = "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1";
@@ -182,8 +182,8 @@ const SQL = `
 SELECT company_id,
        COUNT(*)                                                   AS rows_all,
        COUNT(DISTINCT lower(title) || '|' || lower(COALESCE(location,''))) AS ads,
-       SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END)  AS rows_live,
-       COUNT(DISTINCT CASE WHEN last_seen >= date('now','-1 day')
+       SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END)  AS rows_live,
+       COUNT(DISTINCT CASE WHEN ${LIVE_NOW_SQL}
                            THEN lower(title) || '|' || lower(COALESCE(location,'')) END) AS ads_live,
        MIN(first_seen) AS first_seen,
        MAX(last_seen)  AS last_seen,

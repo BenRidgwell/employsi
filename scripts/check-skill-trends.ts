@@ -2481,11 +2481,18 @@ console.log("\nthe archive carries a role key, and counts use it:");
   );
   // The two that must STAY row counts, for reasons stated at each: feed health
   // is about what a board delivered, and the pay share's numerator is rows.
+  //
+  // The pay-share arm matched the spelled-out `first_seen <= ?1` until
+  // 2026-10-03, when the live window became per source and that clause moved
+  // into liveOnDaySql (jobArchive.ts). What is being asserted is COUNT(*) —
+  // the unit — so the day clause beside it is matched loosely on purpose; a
+  // check that pins the window's spelling fails every time the window is
+  // correctly changed, which is how a real assertion gets deleted.
   check(
     "...and the feed-health and pay-share counts are still rows",
     /COUNT\(\*\) AS n FROM jobs\n\s*WHERE \$\{where\} AND last_seen >= \? GROUP BY source/.test(
       an,
-    ) && /COUNT\(\*\) AS n FROM jobs\n\s*WHERE first_seen <= \?1/.test(an),
+    ) && /COUNT\(\*\) AS n FROM jobs\n\s*WHERE \$\{liveOnDaySql\(1\)\}/.test(an),
     "one of the two deliberate row counts was converted, which mixes units",
   );
 }

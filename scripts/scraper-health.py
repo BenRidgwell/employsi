@@ -154,6 +154,49 @@ QUIET_OK = {
                        '"There are no current opportunities" (checked 2026-08-17)',
 }
 
+# Sources a scheduled scraper is SUPPOSED to be writing, with the level to
+# report at when the archive holds NOT ONE ROW from them.
+#
+# WHY THIS HAD TO EXIST, measured 2026-10-03. Every check above reads
+# `SELECT source ... FROM jobs GROUP BY source`, so a feed that has never
+# written a row is not a row in that result — it is absent, and absent is
+# indistinguishable from "not a feed". `portal-nga` had been failing nightly
+# since 2026-08-17 and this check had never once mentioned it, because there
+# was nothing to mention it ABOUT. The NO ROWS branch in main() could not fire
+# either: GROUP BY never yields a count of zero.
+#
+# That is the worst shape a monitoring gap can take. A broken feed goes STALE
+# and is reported; a feed that never started at all is silent forever, and the
+# only evidence is a red step inside a workflow whose other boards all passed —
+# which `continue-on-error` then paints green.
+#
+# A NEW ENTRY SHOULD BE 'CRITICAL'. The level is here so that a feed which
+# cannot run for a settled, understood reason stays VISIBLE without failing
+# every run forever — the trap the QUIET_OK note below describes. It is not for
+# muting a feed that is merely inconvenient: if there is any action that would
+# make the feed write, the entry is CRITICAL and the finding is the thing
+# prompting that action.
+EXPECTED_SOURCES: dict[str, tuple[str, str]] = {
+    # Edith Cowan University, written by scripts/ecu-to-d1.py from
+    # browser-portals.yml. WARN, not CRITICAL, and the reason is not technical:
+    # ecu.nga.net.au answers every path — /cp/index.cfm, /rss, /sitemap.xml and
+    # even /robots.txt — with HTTP 405 and `x-amzn-waf-action: captcha` from
+    # awselb/2.0. Re-measured 2026-10-03, unchanged. That is AWS WAF's CAPTCHA
+    # action, switched on by the site's operator, and the standing NGA.NET note
+    # in careerSites.ts records why defeating it is not something this project
+    # does. So there is no fix to prompt and nothing to wake anyone for; what
+    # there is, is a feed in the repo that writes nothing, and that belongs on
+    # this report rather than in a workflow log nobody opens.
+    'portal-nga': (
+        'WARN',
+        'scripts/ecu-to-d1.py has never written a row — ecu.nga.net.au answers '
+        'every path with an AWS WAF CAPTCHA (HTTP 405, x-amzn-waf-action: '
+        'captcha; re-measured 2026-10-03). Edith Cowan reaches the archive '
+        'through Adzuna, LinkedIn, SEEK and SimplyHired meanwhile. See the '
+        'NGA.NET note in workers/jobs-cron/careerSites.ts.'
+    ),
+}
+
 # A source needs at least this many rows before its baselines mean anything —
 # below it, one row moves a percentage by double digits.
 MIN_ROWS_FOR_BASELINE = 60
@@ -312,6 +355,12 @@ def main() -> int:
     fields_by_src = {r['source']: r for r in fields}
 
     findings: list[Finding] = []
+    # BEFORE the per-source loop, because these sources are precisely the ones
+    # that loop cannot see: they contribute no row to GROUP BY source.
+    present = {t['source'] for t in totals}
+    for src, (level, why) in sorted(EXPECTED_SOURCES.items()):
+        if src not in present:
+            findings.append(Finding(src, level, 'NEVER WRITTEN', why))
     for t in totals:
         src = t['source']
         if t['n'] == 0:

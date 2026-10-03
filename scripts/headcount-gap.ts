@@ -18,6 +18,7 @@
 //      bun run scripts/headcount-gap.ts --csv      # the worklist, by archived + live
 //      bun run scripts/headcount-gap.ts --route private
 import { COMPANIES } from "../src/employsi/data/companies";
+import { LIVE_NOW_SQL } from "../src/employsi/lib/jobArchive";
 import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
 import { filedHeadcount } from "../src/employsi/lib/companyCard";
 import { COMPANY_HEADCOUNT } from "../src/employsi/data/companyHeadcount";
@@ -123,8 +124,7 @@ if (acct && db && tok) {
         // card; `live` stays the "is it advertising now" signal.
         sql: `SELECT company_id,
                      COUNT(*) archived,
-                     SUM(CASE WHEN last_seen >= date('now','-1 day')
-                              THEN 1 ELSE 0 END) live,
+                     SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END) live,
                      MAX(last_seen) last_seen
               FROM jobs GROUP BY company_id`,
       }),
