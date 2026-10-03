@@ -29,6 +29,14 @@
  *            the rung is not; usually a seniority word the guide words oddly.
  *   none     neither. Nothing is proposed, and nothing should be invented.
  *
+ * `role_idx` IS THE JOIN KEY AND MUST SURVIVE A ROUND TRIP. It indexes
+ * HAYS_ROLES, and without it the only way back from a reviewed file is the
+ * role name — which is NOT unique: 45 (role, band, section) keys appear more
+ * than once across the 1,163 rows ("PROJECT MANAGER" under CONSTRUCTION three
+ * times), so a name join would attribute ~58 decisions to the wrong figures.
+ * The first review file shipped without it and the mapping generator had to
+ * reconstruct the order to get back.
+ *
  * AND THE ONE THAT ACTUALLY FINDS ERRORS: `section_odd`. Every Hays role sits
  * under a section heading ("ACCOUNTANCY AND FINANCE", "CONSTRUCTION"), and the
  * roles under one section almost all place into the same family. A role that
@@ -150,6 +158,7 @@ out.push(
   "",
   [
     "DECISION",
+    "role_idx",
     "confidence",
     "section_odd",
     "hays_role",
@@ -175,6 +184,7 @@ for (const r of rows) {
   out.push(
     [
       "",
+      String(r.idx),
       r.conf,
       isOdd ? "Y" : "",
       r.role,

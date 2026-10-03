@@ -39,6 +39,7 @@ export default tseslint.config(
       "src/employsi/data/euVacancyDemand.ts",
       "src/employsi/data/govWorkforceAu.ts",
       "src/employsi/data/haysSalary.ts",
+      "src/employsi/data/haysRoleMap.ts",
       "src/employsi/data/hkVacancyDemand.ts",
       "src/employsi/data/iviSkillDemand.ts",
       "src/employsi/data/nzVacancyDemand.ts",
