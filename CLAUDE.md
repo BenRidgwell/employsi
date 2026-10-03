@@ -841,10 +841,27 @@ blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
 - **Per-Worker secrets**: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
   `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
   are not set up; without the third the webhook answers 503 and Stripe retries.
-- **Previews write the production D1**, so use TEST keys on them.
-- **`/app` HAS TWO GATES, configured independently** (`getAppAccess` in
-  `billingFn.ts`, run by the route's `beforeLoad`). It gates the PAGE only — the
-  data server functions stay callable, as the marketing pages need.
+- **Previews write the production D1**, so use TEST keys on them — and
+  **test and live subscriptions are separate rows** (`billing_subscriptions`,
+  keyed `user_id, livemode`). Each Worker reads only the mode of its own
+  `STRIPE_SECRET_KEY` (`stripeMode`), and webhook events in the other mode are
+  dropped. Until 2026-10-03 there was one row per user with no mode, so a
+  Stripe test-card payment on a public preview opened production's paid app.
+  The old `billing_subscription` table is left in place, unread; its one row
+  (the owner's test subscription) was copied across as test mode.
+- **Every response carries browser security headers** (`SECURITY_HEADERS` in
+  `server.ts`). Framing is `'self'`, not `'none'`, because the mobile preview
+  and the landing Showcase frame our own pages. There is no `script-src` yet:
+  Mapbox's blob workers and TanStack's inline hydration need listing, and a
+  wrong policy blanks the map, so it wants a report-only rollout first.
+- **`/app` HAS TWO GATES, configured independently.** The rule is `accessFor`
+  in `appAccess.ts`; the page applies it through `getAppAccess` (the route's
+  `beforeLoad`) and **the paid data applies the same rule** through the
+  `subscriberOnly` middleware on 32 server functions. Until 2026-10-03 only the
+  page was gated: an anonymous request to production returned the full skill
+  index (180 KB). Only `getLandingStats` and `getLiveSkillTrends` stay public,
+  because the marketing pages show them; a NEW data server function the app
+  calls needs `.middleware([subscriberOnly])` or it reopens the hole.
   1. **Signed in — always.** Enforced wherever Better Auth is configured
      (`authAvailable`). Signed-out visitors go to `/login`.
   2. **Subscribed — where Stripe is configured.** Signed-in visitors without an
