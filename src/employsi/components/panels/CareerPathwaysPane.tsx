@@ -1649,7 +1649,7 @@ function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => vo
           key={mv.id}
           type="button"
           className={`cpbranchbtn${hover === i ? " on" : ""}`}
-          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. Related occupation per O*NET, not a tracked career move.`}
+          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. A related occupation, not a tracked career move.`}
           onMouseEnter={() => setHover(i)}
           onFocus={() => setHover(i)}
           onBlur={() => setHover(null)}
@@ -1717,8 +1717,8 @@ function OnetSection({ id }: { id: string }) {
           <span style={EYEBROW}>TASKS &amp; TOOLS</span>
         </div>
         <p className="cponetnone">
-          No single O*NET occupation matches this role closely enough to describe it — the titles it
-          covers span several occupations, or none has a US counterpart.
+          No single occupation profile matches this role closely enough to describe it — the titles
+          it covers span several occupations, or none has a counterpart.
         </p>
       </section>
     );
