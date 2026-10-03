@@ -1,4 +1,7 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
+import { getBillingState, openBillingPortal } from "../lib/billingFn";
 import { APP_VERSION } from "../version";
 import { IconClose } from "./ActionIcons";
 
@@ -124,6 +127,65 @@ function Row({
   );
 }
 
+/**
+ * Subscription: status, and the way to manage or cancel it — Stripe's
+ * customer portal (openBillingPortal). The terms (site/terms.ts, clause 4)
+ * point here, so this row is a promise, not a convenience.
+ *
+ * Shown only where it means something: on a Worker that takes payments, to an
+ * account that has a subscription in this Worker's Stripe mode. An admin with
+ * no subscription, or a deployment without Stripe, sees nothing rather than a
+ * button that cannot work.
+ *
+ * "Paid until", not "renews on": a subscription cancelled in the portal stays
+ * active to the end of its period, and that date is true either way.
+ */
+function SubscriptionGroup() {
+  const q = useQuery({
+    queryKey: ["billing-state"],
+    queryFn: () => getBillingState(),
+    staleTime: 60_000,
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const b = q.data;
+  if (!b?.payments || !b.status) return null;
+
+  const until = b.currentPeriodEnd
+    ? new Date(b.currentPeriodEnd * 1000).toLocaleDateString("en-AU", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+  const sub = b.active
+    ? `Active${until ? ` · paid until ${until}` : ""}. Cancel, change card or get invoices.`
+    : `Not active (${b.status.replace(/_/g, " ")}). Update your payment details or invoices.`;
+
+  const open = async () => {
+    setBusy(true);
+    setErr(null);
+    const r = await openBillingPortal().catch(() => ({ error: "Could not reach the server." }));
+    if ("url" in r) {
+      window.location.assign(r.url);
+      return; // leaving the page; keep the button disabled
+    }
+    setErr(r.error);
+    setBusy(false);
+  };
+
+  return (
+    <div className="stgroup">
+      <span className="steyebrow">Subscription</span>
+      <Row title="employsi subscription" sub={err ?? sub}>
+        <button type="button" className="stghost stoutline" onClick={open} disabled={busy}>
+          {busy ? "Opening…" : "Manage subscription"}
+        </button>
+      </Row>
+    </div>
+  );
+}
+
 export function SettingsPanel() {
   const closeSettings = useAppStore((s) => s.closeSettings);
   const reduceMotion = useAppStore((s) => s.reduceMotion);
@@ -157,6 +219,8 @@ export function SettingsPanel() {
       </div>
 
       <div className="stbody">
+        <SubscriptionGroup />
+
         <div className="stgroup">
           <span className="steyebrow">Appearance</span>
 

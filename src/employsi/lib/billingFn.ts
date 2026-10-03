@@ -228,3 +228,65 @@ export const getAppAccess = createServerFn({ method: "GET" })
     const e = await billingEnv();
     return accessFor(e, await sessionUser(), data?.checkoutSessionId);
   });
+
+export type OpenBillingPortalResult = { url: string } | { error: string };
+
+/**
+ * A Stripe customer-portal session for the signed-in subscriber, opened from
+ * Settings → Subscription → "Manage subscription". There they can cancel
+ * (at the end of the paid period, Stripe's default — what the terms promise),
+ * change card and download invoices. Stripe then sends them back to /app.
+ *
+ * Works with Managed Payments (Stripe docs, read 2026-10-03: the portal lists
+ * Managed Payments under interoperability). Customers ALSO get order
+ * management on link.com, as the merchant of record's own channel; this is the
+ * in-app route the terms point to.
+ *
+ * THE PORTAL MUST BE ACTIVATED in the Stripe Dashboard (Settings → Billing →
+ * Customer portal) once in EACH mode. Until it is, Stripe refuses with "No
+ * configuration provided…", and that message is passed through rather than
+ * dressed up, because the fix is in the dashboard, not here.
+ *
+ * Changes made in the portal reach the app through the subscription webhooks
+ * already handled in billing.ts (customer.subscription.updated / .deleted), so
+ * nothing new is stored here.
+ */
+export const openBillingPortal = createServerFn({ method: "POST" }).handler(
+  async (): Promise<OpenBillingPortalResult> => {
+    const e = await billingEnv();
+    if (!paymentsConfigured(e)) return { error: "Payments are not set up on this deployment." };
+    const user = await sessionUser();
+    if (!user) return { error: "Sign in first." };
+    const db = billingDb(e);
+    // Same mode as this Worker's key: a customer id from the other mode does
+    // not exist in this Stripe account and the portal would refuse it.
+    const row = db ? await subscriptionFor(db, user.id, stripeMode(e)).catch(() => null) : null;
+    if (!row?.stripe_customer_id) {
+      return { error: "There is no subscription on this account to manage." };
+    }
+    let origin = "";
+    try {
+      origin = new URL(getRequest().url).origin;
+    } catch {
+      return { error: "Could not work out where to return you afterwards." };
+    }
+    try {
+      const session = await stripeRequest<{ url?: string | null }>(
+        e!.STRIPE_SECRET_KEY!,
+        "POST",
+        "/v1/billing_portal/sessions",
+        { customer: row.stripe_customer_id, return_url: `${origin}/app` },
+      );
+      if (!session.url) return { error: "Stripe did not return a portal page." };
+      return { url: session.url };
+    } catch (err) {
+      console.error("openBillingPortal:", err);
+      return {
+        error:
+          err instanceof StripeError
+            ? `Stripe refused: ${err.message}`
+            : "Could not reach Stripe. Please try again.",
+      };
+    }
+  },
+);

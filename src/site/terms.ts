@@ -13,8 +13,10 @@
  *     but its wording can still be wrong;
  *   - O*NET (CC BY 4.0) and map credits are licence conditions.
  *
- * [CONFIRM: …] marks a fact only the owner or a lawyer can supply; they are
- * shown on the page as written rather than guessed. TERMS_DRAFT keeps a
+ * The three facts first left as [CONFIRM] markers were supplied by the owner on
+ * 2026-10-03: Western Australian law; Stripe as merchant of record (Managed
+ * Payments); self-service cancellation through Settings → Manage subscription
+ * (openBillingPortal in lib/billingFn.ts). TERMS_DRAFT keeps a
  * "draft" notice on the page until the text is final — set it to false then.
  *
  * Australian Consumer Law: guarantees under the ACL cannot be excluded, so the
@@ -50,14 +52,14 @@ export const TERMS: TermsSection[] = [
     heading: "3. Subscription and payment",
     paragraphs: [
       "Access to the app needs an active subscription. The price and billing period are shown before you pay, and include GST where it applies.",
-      "Your subscription is billed in advance and renews automatically at the end of each billing period until you cancel it. Payments are processed by our payments provider, Stripe, which [CONFIRM: acts as merchant of record for the sale and] calculates and collects any applicable tax. Stripe's own terms apply to the payment itself.",
+      "Your subscription is billed in advance and renews automatically at the end of each billing period until you cancel it. Your purchase is sold through Stripe, which acts as the merchant of record for the sale: Stripe processes the payment, issues your receipts and invoices, and calculates and collects any applicable tax. Stripe's own terms apply to the payment itself.",
       "If we change the price, we will tell you by email at least 30 days before it applies to you, and the new price will apply from your next renewal after that notice. You can cancel before then if you do not want to continue.",
     ],
   },
   {
     heading: "4. Cancelling and refunds",
     paragraphs: [
-      `You can cancel at any time by contacting us at ${TERMS_CONTACT} [CONFIRM: or through the billing link in your account settings]. When you cancel, you keep access until the end of the period you have already paid for, and you will not be charged again.`,
+      `You can cancel at any time yourself, from Settings → Subscription → Manage subscription in the app, or by contacting us at ${TERMS_CONTACT}. When you cancel, you keep access until the end of the period you have already paid for, and you will not be charged again.`,
       "Except where the law requires otherwise, payments are not refunded for partly used periods. Nothing in these terms limits any right to a refund, repair or replacement you have under the Australian Consumer Law — see clause 9.",
     ],
   },
@@ -114,7 +116,7 @@ export const TERMS: TermsSection[] = [
   {
     heading: "12. General",
     paragraphs: [
-      "These terms are governed by the laws of [CONFIRM: State or Territory], Australia, and you and we submit to the courts of that place. If any part of these terms is unenforceable, the rest continues to apply.",
+      "These terms are governed by the laws of Western Australia, and you and we submit to the courts of Western Australia. If any part of these terms is unenforceable, the rest continues to apply.",
       `Questions about these terms: ${TERMS_CONTACT}.`,
     ],
   },
