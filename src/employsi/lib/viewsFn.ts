@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import type { D1Like } from "./jobArchive";
 
 // Real "Most viewed" tracking for the What's Trending pane. Every time a user
@@ -49,6 +50,7 @@ export interface ViewInput {
 
 // Record one view (fire-and-forget from the client). Upserts the running count.
 export const recordView = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((d: ViewInput) => d)
   .handler(async ({ data }): Promise<{ ok: boolean }> => {
     const kind = (data?.kind || "").trim();
@@ -89,8 +91,9 @@ export interface ViewedRow {
 // The most-viewed items across all kinds, each with its share of total views.
 // Returns [] until any views have been recorded; the pane falls back to its
 // static seed in that case.
-export const getMostViewed = createServerFn({ method: "GET" }).handler(
-  async (): Promise<ViewedRow[]> => {
+export const getMostViewed = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
+  .handler(async (): Promise<ViewedRow[]> => {
     const db = await getDb();
     if (!db) return [];
     try {
@@ -115,5 +118,4 @@ export const getMostViewed = createServerFn({ method: "GET" }).handler(
     } catch {
       return [];
     }
-  },
-);
+  });

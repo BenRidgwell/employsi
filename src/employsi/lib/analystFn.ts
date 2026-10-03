@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { ROLE_COUNT_SQL } from "./roleKey";
 import { LIVE_FEEDS_ONLY_SQL, LIVE_ON_DAY_SQL, liveOnDaySql, type D1Like } from "./jobArchive";
 import {
@@ -471,6 +472,7 @@ export interface AnalystRequest {
 // overrun the request-line limit and fail as a 414 rather than an answer. The
 // call is a read either way; only the transport changed.
 export const askAnalyst = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
     const { question, scope, hubs, country, sector, companyIds } = data;
@@ -1132,6 +1134,7 @@ export interface SkillPay {
 const PAY_MIN_SAMPLE = 20;
 
 export const getSkillPay = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string }) => data)
   .handler(async ({ data }): Promise<SkillPay | null> => {
     const skill = (data.skill || "").trim();

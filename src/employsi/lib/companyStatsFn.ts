@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { isReleasedTicker } from "./markets";
 import { yahooSymbol } from "./shareSeriesFn";
@@ -114,6 +115,7 @@ const cache = new Map<string, { at: number; data: CompanyStats }>();
 const TTL = 60 * 60 * 1000;
 
 export const getCompanyStats = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { ticker: string; exchange?: string }) => data)
   .handler(async ({ data }): Promise<CompanyStats> => {
     const ticker = (data.ticker || "").trim().toUpperCase();
