@@ -44,10 +44,19 @@ on:
         type: string
         required: false
       release:
-        description: 'significant = bumps the version shown in Settings; maintenance = hotfix/finishing, reuses it'
+        description: 'significant = next version number (shown in Settings, tagged); maintenance = hotfix/finishing, keeps the current number'
         type: choice
         options: [maintenance, significant]
         default: maintenance
+      from:
+        description: 'Which preview to mirror: production deploys the exact commit that preview is serving'
+        type: choice
+        options: [app-preview, site-preview]
+        default: app-preview
+      version:
+        description: 'Optional: an explicit version for a significant release (e.g. 1.0.0 to drop beta). Blank = next number automatically'
+        type: string
+        required: false
 
 concurrency:
   group: deploy-production
@@ -87,39 +96,6 @@ jobs:
         with:
           node-version: '20'
 
-      # THE VERSION SHOWN IN SETTINGS, AND WHETHER THIS RELEASE SHOULD HAVE
-      # BUMPED IT. Read from src/employsi/version.ts, which is the single
-      # source — see the bump rule written there.
-      #
-      # A machine cannot judge "significant", so the operator declares it on
-      # dispatch and this enforces consistency with that declaration. For a
-      # significant release the check is simply that this version has not
-      # already shipped: if a v<version> tag exists, the number is one that
-      # went out under a previous release, which is exactly what forgetting to
-      # bump looks like.
-      #
-      # A maintenance deploy is EXPECTED to reuse the version and is not
-      # checked — a hotfix restores the version that was claimed rather than
-      # advancing it.
-      - name: Version and release type
-        env:
-          RELEASE: ${{ inputs.release }}
-        run: |
-          v=$(sed -n 's/^export const APP_VERSION = "\(.*\)";$/\1/p' src/employsi/version.ts)
-          [ -n "$v" ] || { echo "::error::Could not read APP_VERSION from src/employsi/version.ts"; exit 1; }
-          echo "APP_VERSION=$v" >> "$GITHUB_ENV"
-          echo "Shipping version $v  (${RELEASE:-maintenance} release)"
-          if [ "${RELEASE:-maintenance}" = "significant" ]; then
-            if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
-              echo "::error::v$v is already tagged, so this version has shipped before."
-              echo "::error::A significant release needs a new number — bump APP_VERSION in"
-              echo "::error::src/employsi/version.ts (the rule for what counts is in that file),"
-              echo "::error::or re-run this deploy as 'maintenance' if it is a hotfix."
-              exit 1
-            fi
-            echo "v$v is new — it will be tagged after a successful deploy."
-          fi
-
       - name: Tokens and account
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -141,6 +117,108 @@ jobs:
           echo "::add-mask::$acct"
           echo "VITE_MAPBOX_TOKEN=$token" >> "$GITHUB_ENV"
           echo "CLOUDFLARE_ACCOUNT_ID=$acct" >> "$GITHUB_ENV"
+
+      # PRODUCTION MIRRORS PREVIEW (2026-10-03). The flow is: deploy to a
+      # preview, look at it, then run this — and this deploys the EXACT commit
+      # that preview is serving, not whatever main happens to be by then.
+      #
+      # The commit is read from Cloudflare, not from git: deploy-preview.yml
+      # stamps every preview version with `--message "commit <sha>"`, so the
+      # answer is what the preview Worker is actually running. A preview
+      # version without that stamp (a hand deploy, a secret-only version) is
+      # refused rather than guessed at — redeploy the preview through its
+      # workflow and run this again.
+      #
+      # The commit must already be on main. A preview can be deployed from a
+      # branch for review; it reaches production only once it is merged, so
+      # nothing unreviewed can go live through here.
+      - name: Find the commit the preview is serving
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          FROM: ${{ inputs.from }}
+        run: |
+          set -o pipefail
+          case "${FROM:-app-preview}" in
+            app-preview)  w=employsi-preview ;;
+            site-preview) w=employsi-site-preview ;;
+            *) echo "::error::unknown preview '$FROM'"; exit 1 ;;
+          esac
+          npx wrangler deployments list --name "$w" > preview-deps.txt 2>&1 \
+            || { echo "::error::cannot list $w's deployments"; tail -20 preview-deps.txt; exit 1; }
+          # The listing runs oldest to newest, so the last version id is the one
+          # serving now (the same reading the rollback-point step relies on).
+          pv=$(grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' preview-deps.txt | tail -1)
+          [ -n "$pv" ] || { echo "::error::no version id in $w's listing"; tail -20 preview-deps.txt; exit 1; }
+          npx wrangler versions view "$pv" --name "$w" > preview-ver.txt 2>&1 || true
+          sha=$(grep -oE 'commit [0-9a-f]{40}' preview-ver.txt | head -1 | awk '{print $2}')
+          if [ -z "$sha" ]; then
+            echo "::error::$w is serving version $pv, which carries no commit stamp —"
+            echo "::error::it was not deployed by deploy-preview.yml (or is a secret-only version)."
+            echo "::error::Redeploy the preview through its workflow, check it, then run this again."
+            sed -n '1,30p' preview-ver.txt
+            exit 1
+          fi
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$w is serving $sha, which is not on main. Merge it first —"
+            echo "::error::production only takes commits that have been merged."
+            exit 1
+          fi
+          git checkout --quiet --detach "$sha"
+          echo "PREVIEW_WORKER=$w" >> "$GITHUB_ENV"
+          echo "PREVIEW_VERSION=$pv" >> "$GITHUB_ENV"
+          echo "DEPLOY_SHA=$sha" >> "$GITHUB_ENV"
+          echo "Mirroring $w (version $pv) -> commit $sha"
+          git log -1 --format='  %h %s (%an, %ad)' --date=short
+
+      # THE VERSION SHOWN IN SETTINGS, worked out from the release tags and
+      # built in as VITE_APP_VERSION (src/employsi/version.ts says the rule).
+      #   maintenance  the newest tag's number again
+      #   significant  the next one: -beta.N -> -beta.N+1; after the betas, a
+      #                minor bump (1.0.0 -> 1.1.0)
+      #   version      an explicit number for a significant release — dropping
+      #                "beta" is the case a counter cannot decide. It must be new
+      #                and later than the newest tag.
+      - name: Version and release type
+        env:
+          RELEASE: ${{ inputs.release }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          v=$(python3 - <<'PY'
+          import os, re, subprocess, sys
+          tags = subprocess.run(["git", "tag", "-l", "v*"], capture_output=True, text=True).stdout.split()
+          pat = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$")
+          def key(t):
+              m = pat.match(t)
+              if not m: return None
+              a, b, c, beta = m.groups()
+              # A beta sorts before its release: 1.0.0-beta.9 < 1.0.0.
+              return (int(a), int(b), int(c), 0 if beta else 1, int(beta or 0))
+          known = sorted((key(t), t.lstrip("v")) for t in tags if key(t))
+          if not known:
+              sys.exit("no v* release tags found")
+          latest_key, latest = known[-1]
+          release = os.environ.get("RELEASE") or "maintenance"
+          override = (os.environ.get("OVERRIDE") or "").strip().lstrip("v")
+          if release != "significant":
+              if override:
+                  sys.exit("a version can only be given for a significant release")
+              print(latest); sys.exit(0)
+          if override:
+              k = key(override)
+              if not k: sys.exit(f"'{override}' is not a version like 1.0.0 or 1.0.0-beta.4")
+              if k <= latest_key: sys.exit(f"{override} is not later than the newest release, {latest}")
+              print(override); sys.exit(0)
+          a, b, c, is_release, beta = latest_key
+          print(f"{a}.{b + 1}.0" if is_release else f"{a}.{b}.{c}-beta.{beta + 1}")
+          PY
+          ) || { echo "::error::could not work out the version — see above"; exit 1; }
+          if [ "${RELEASE:-maintenance}" = "significant" ] && git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "::error::v$v is already tagged — that number has shipped before."; exit 1
+          fi
+          echo "APP_VERSION=$v" >> "$GITHUB_ENV"
+          echo "VITE_APP_VERSION=$v" >> "$GITHUB_ENV"
+          echo "Shipping version $v  (${RELEASE:-maintenance} release)"
 
       - run: npm ci
 
@@ -288,6 +366,8 @@ jobs:
             echo '## employsi.com.au (benridgwell-globe-gazer-hr)'
             echo
             echo "Version: \`${APP_VERSION:-unknown}\`  (${RELEASE:-maintenance} release)"
+            echo
+            echo "Mirrored: \`${PREVIEW_WORKER:-?}\` version \`${PREVIEW_VERSION:-?}\` → commit \`${DEPLOY_SHA:-?}\`"
             if [ "${RELEASE:-}" = "significant" ] && [ -z "${TAGGED:-}" ]; then
               echo
               echo "> Tag did not push. Run: \`git tag -a v${APP_VERSION} -m \"employsi v${APP_VERSION}\" && git push origin v${APP_VERSION}\`"

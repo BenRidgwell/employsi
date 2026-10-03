@@ -577,6 +577,32 @@ on both the apex and workers.dev redirects an anonymous request to `/login`
 **Re-closing the app on the apex turns its checks red on purpose** — change the
 checks in the same PR that puts `/app` back in `APP_ONLY_PATHS`.
 
+**PRODUCTION MIRRORS A PREVIEW (since 2026-10-03).** The release flow is: deploy
+a preview (`deploy-preview.yml`), look at it, then dispatch `deploy-production.yml`
+with `from` = `app-preview` (default) or `site-preview`. Production then deploys
+**the exact commit that preview is serving** — not whatever `main` is by then.
+
+- Every preview deploy stamps its Worker version with `--message "commit <sha>"`
+  (passed through `npm run deploy:* -- …`, which lands on the wrangler command at
+  the end of the script) and fails if the stamp is missing afterwards.
+- Production reads that stamp from Cloudflare (`deployments list` → newest
+  version → `versions view`), refuses a version without one (a hand deploy, a
+  secret-only version: redeploy the preview through its workflow), and refuses a
+  commit that is not on `main` — a branch preview reaches production only once
+  merged.
+- The rollback point, live checks and summary are unchanged; the summary also
+  names the preview version and commit that were mirrored.
+
+**THE VERSION IN SETTINGS IS SET BY THE RELEASE, NOT BY HAND.** `version.ts`
+reads `VITE_APP_VERSION`, which the production workflow works out from the
+`v*` tags: `maintenance` reuses the newest tag's number, `significant` takes the
+next (`1.0.0-beta.3` → `beta.4`; after the betas a minor bump, `1.0.0` → `1.1.0`)
+and tags it once the live checks pass, and the optional `version` input sets an
+explicit number for a significant release — dropping "beta" for `1.0.0` is the
+case a counter cannot decide. Previews show the newest tag plus "(preview)"; a
+build with no number given shows "dev". Do not hard-code a number in
+`version.ts` again: the workflow's number would be silently ignored.
+
 Deploys, when actually asked for:
 
 ```bash
