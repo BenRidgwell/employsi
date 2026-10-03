@@ -7,6 +7,7 @@ import { COMPANIES, type Company } from "../data/companies";
 import { cityForCompany } from "../data/mapboxGeo";
 import { SKILL_PARENT } from "../data/skillsTaxonomy";
 import { logoFor } from "../lib/companyLogo";
+import { activeSkill } from "../lib/skillHeat";
 import { SKILL_ICONS, skillIcon } from "../lib/skillCard";
 
 /** Module-level, as in PerthMapbox and TalentFlowPane: COMPANIES is static and
@@ -197,6 +198,8 @@ export function NotificationBell() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const localCity = useAppStore((s) => s.localCity);
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery);
+  const setRoleFocus = useAppStore((s) => s.setRoleFocus);
   const [tab, setTab] = useState<Tab>("all");
   const [read, setRead] = useState<Record<string, true>>({});
   /**
@@ -273,13 +276,40 @@ export function NotificationBell() {
   };
 
   /**
-   * "Explore" — take the reader from the alert to the company it is about.
+   * "Explore" — take the reader from the alert to what it is about.
    *
    * An alert states a movement and shows two bars; everything that would let
    * someone judge it (the skill's own series, the roles behind the count, the
    * company's other skills) is on the company card, and until now the panel was
    * a dead end — the only way through was to remember the employer's name and
    * find it on the map.
+   *
+   * IT CARRIES THE SKILL, NOT JUST THE COMPANY. Every alert is a company AND a
+   * skill — "Geotechnical hiring has slowed" at BHP — and landing on the bare
+   * company card drops half the question at the door: the card opens on its
+   * overview, the pins light by headcount, and nothing on screen is about
+   * Geotechnical. Searching the skill on the way in is what makes the card
+   * answer the alert: the company's skill demand is the skill's, the city's
+   * pins are lit by who else is advertising it, and the magnifying-glass
+   * call-out beside the card opens the actual roles behind the number — the
+   * one surface that exists purely to explain a count like the alert's.
+   *
+   * THE SKILL SEARCH CARD ITSELF STAYS SHUT, and that is not a side effect to
+   * fix: GlobalSearch stands it down whenever a company card is open
+   * (`cardBlocked`), because both dock in the same top-right corner. So this
+   * lands on exactly the state you get by searching a skill and then clicking
+   * the company's pin, which is the point — one state, reached two ways.
+   *
+   * `activeSkill` rather than the row's string: it returns the taxonomy's own
+   * spelling, which is what the search matches on, and null for anything it
+   * does not recognise. A name that has left the taxonomy would otherwise go
+   * into the search box and light nothing, which reads as a company with no
+   * demand for the skill the alert just named. Unrecognised, the skill is
+   * simply left off and the company card opens as it would have.
+   *
+   * roleFocus goes for the same reason toggleSkillQuery drops it: a career
+   * role highlight and a skill search are the same slot on the map, and
+   * leaving one under the other lights two different things at once.
    *
    * IT FLIES THE MAP FIRST. A card opened while the globe is pulled back, or
    * sitting on another city, is a card about a company the map is not showing;
@@ -295,7 +325,12 @@ export function NotificationBell() {
    * it. Reading stays the explicit act it was — a click on the row, or Mark all
    * read.
    */
-  const openCompany = (id: string) => {
+  const explore = (id: string, skill: string) => {
+    const canonical = activeSkill(skill);
+    if (canonical) {
+      setRoleFocus(null);
+      setSearchQuery(canonical);
+    }
     const target = cityForCompany(id, localCity);
     if (zoomedOut || target !== localCity) zoomInCity(target);
     select(id);
@@ -747,9 +782,9 @@ export function NotificationBell() {
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openCompany(r.companyId);
+                                explore(r.companyId, r.skill);
                               }}
-                              aria-label={`Explore ${r.company}`}
+                              aria-label={`Explore ${r.skill} at ${r.company}`}
                             >
                               Explore
                             </button>
