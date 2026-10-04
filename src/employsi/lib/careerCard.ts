@@ -118,19 +118,14 @@ export function payLabel(aud: number | null, country: string): string {
 
 const num = (n: number) => n.toLocaleString("en-US");
 
-/** The guide's band for a rung, in the shape the card renders. Null when the
- *  guide does not cover it, which is the ordinary case: it reaches 164 of the
+/** The published band for a rung, in the shape the card renders. Null when it
+ *  does not cover the rung, which is the ordinary case: it reaches 164 of the
  *  528 rungs. */
 function guideBand(node: string, country: string): CardNode["payGuide"] {
   const b = haysBandFor(node, country);
+  // b.source is deliberately NOT copied across — see the note on payGuide.
   return b
-    ? {
-        label: haysBandLabel(b),
-        edition: b.edition,
-        source: b.source,
-        roles: b.roles,
-        figures: b.figures,
-      }
+    ? { label: haysBandLabel(b), edition: b.edition, roles: b.roles, figures: b.figures }
     : null;
 }
 
@@ -172,17 +167,27 @@ export interface CardNode {
   stageOf: string;
   /** Median advertised pay, AUD, and the ads behind it. Null below 8 ads. */
   pay: number | null;
-  /** The Hays Salary Guide's band for this rung, where the guide covers it.
+  /** A published market band for this rung, where one covers it.
    *
    *  SHOWN ONLY WHERE `pay` IS NULL, never beside it and never averaged into
    *  it. `pay` is the middle of what employers advertised; this is a
-   *  recruiter's view of what the role commands, and it excludes
-   *  superannuation where an advertised package usually includes it. Two
-   *  instruments; the card shows one or the other and names which. */
+   *  benchmark of what the role commands, and it excludes superannuation
+   *  where an advertised package usually includes it. Two instruments; the
+   *  card shows one or the other and says which.
+   *
+   *  IT CARRIES NO VENDOR NAME, BY CONSTRUCTION. The publisher is not to
+   *  appear in the product, so the field that would carry it does not exist
+   *  on the model that crosses into components — a component cannot render a
+   *  name it was never handed. The provenance is not lost: it lives in
+   *  data/haysSalary.ts and lib/haysPay.ts, where maintainers need it and
+   *  readers never see it. Restoring the credit on screen means adding the
+   *  field back here deliberately, which is the point. */
   payGuide: {
     label: string;
+    /** The period the band describes, e.g. "FY24/25". A financial year, not a
+     *  publication — a band from an older edition is still shown, and a
+     *  reader is entitled to know which year they are looking at. */
     edition: string;
-    source: string;
     roles: number;
     figures: number;
   } | null;

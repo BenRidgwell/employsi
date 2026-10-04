@@ -1090,26 +1090,36 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           }}
         >
           {[
-            // MEDIAN PAY, or the guide's band where no ad stated a figure.
+            // MEDIAN PAY, or a published market band where no ad stated a
+            // figure.
             //
             // The ads answer when they can and the label says "MEDIAN PAY".
             // When they cannot — 294 of 528 rungs show "—", and 55% have no
-            // disclosing ad at all — the Hays band takes the tile and the label
-            // becomes the attribution: "HAYS FY24/25" names whose number it is
-            // and which year, in the only slot a three-across tile has. An
-            // unlabelled band sitting where a measured median sits would read
-            // as this rung's advertised pay, and nobody advertised it.
+            // disclosing ad at all — the band takes the tile under a label
+            // that says it is a different quantity.
             //
-            // One or the other, never both: they are different instruments and
-            // the guide excludes superannuation where an advertised package
-            // usually includes it. The title carries the rest.
+            // "MARKET RANGE", NOT "SALARY RANGE", AND THE DISTINCTION IS THE
+            // WHOLE POINT OF THE WORDING. The publisher is not named in the
+            // product, so the label is the only thing left to tell a reader
+            // that this is not our measurement — and "salary range" would
+            // read as a range WE found in the ads, which is exactly the
+            // confusion to avoid, since nobody advertised it. "Market" says
+            // benchmark. The hint then says it plainly.
+            //
+            // The period stays on screen (in the hint) because bands come
+            // from several years and a 2023 figure shown in 2026 without a
+            // date is a stale number presented as current.
+            //
+            // One or the other, never both: different instruments, and the
+            // band excludes superannuation where an advertised package
+            // usually includes it.
             n.payGuide
               ? [
-                  `HAYS ${n.payGuide.edition}`,
+                  "MARKET RANGE",
                   n.payGuide.label,
-                  `${n.payGuide.source} ${n.payGuide.edition} — a recruiter's view of what this ` +
-                    `role commands, not pay from our ads. Excludes superannuation. Spans ` +
-                    `${n.payGuide.roles} guide role${n.payGuide.roles === 1 ? "" : "s"} over ` +
+                  `Published market range for this role, ${n.payGuide.edition} — a benchmark, ` +
+                    `not pay from our ads, and it excludes superannuation. Spans ` +
+                    `${n.payGuide.roles} role${n.payGuide.roles === 1 ? "" : "s"} over ` +
                     `${n.payGuide.figures} published figure${n.payGuide.figures === 1 ? "" : "s"}.`,
                 ]
               : ["MEDIAN PAY", n.payLabel, ""],
