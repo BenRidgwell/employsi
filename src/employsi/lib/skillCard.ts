@@ -3,7 +3,7 @@ import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
 import { demandLevel, demandPercentile, type DemandMode, type DemandTone } from "./skillHeat";
 import { employmentFor } from "./vacancyRate";
-import { ABS_QUARTERS, ABS_SOURCE } from "../data/absOccupationSupply";
+import { ABS_QUARTERS } from "../data/absOccupationSupply";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillArchiveTrend } from "./jobHistoryFn";
 import { demandAt, skillHistory, vacanciesAt } from "./marketHistory";
@@ -63,7 +63,6 @@ export interface SkillCard {
   summaryTail: string;
   /** Whether the card is resolved to the newest month in the series. */
   atPresent: boolean;
-  sources: string[];
   related: string[];
   /**
    * What the chip row is offering, because the chips cannot say it themselves.
@@ -903,7 +902,6 @@ function buildSpecialityCard(
     summaryPct,
     summaryTail,
     atPresent: true,
-    sources: now === null ? [] : ["employsi collected listings"],
     related: parent ? [parent] : [],
     // The one chip here is the way back UP, not a sideways suggestion.
     relatedLabel: "Part of",
@@ -989,7 +987,7 @@ function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null):
   let summaryPct = "";
   let summaryTail = "";
   if (employed === null) {
-    summaryLead = `The ABS does not publish employment for the occupations carrying ${skill}, so there is no workforce figure to show. Switch to demand for its vacancy series.`;
+    summaryLead = `Employment isn't published for the occupations carrying ${skill}, so there is no workforce figure to show. Switch to demand for its vacancy series.`;
   } else if (change === null) {
     summaryLead = `${people} work in occupations carrying ${skill} across Australia, ${qtr}.`;
     summaryTail = ` Too little history before it to measure a move.`;
@@ -1000,7 +998,7 @@ function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null):
         ? "The workforce is down "
         : "The workforce is flat, ";
     summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
-    summaryTail = ` over the year to the ${qtr} — ${people} in occupations carrying ${skill} across Australia. ABS Labour Force, not an ad count.`;
+    summaryTail = ` over the year to the ${qtr} — ${people} in occupations carrying ${skill} across Australia. Published workforce statistics, not an ad count.`;
   }
 
   return {
@@ -1020,7 +1018,6 @@ function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null):
     summaryPct,
     summaryTail,
     atPresent,
-    sources: [ABS_SOURCE],
     // A speciality has no ABS series of its own — EQ08 stops at ANZSCO4 and the
     // taxonomy's children sit below it — so from here the useful chip is the
     // parent whose workforce this one is part of, and siblings otherwise.
@@ -1106,7 +1103,6 @@ export function buildSkillCard(
     summaryPct,
     summaryTail,
     atPresent,
-    sources: history?.sources ?? [],
     // A skill's OWN specialities lead, where it has any the archive has seen:
     // from a parent card the useful next click is almost always down into the
     // work rather than sideways to a neighbour. Category siblings remain the

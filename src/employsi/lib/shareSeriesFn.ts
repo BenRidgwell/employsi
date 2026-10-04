@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 
 // The slice of Yahoo Finance's chart response this reads, declared rather than
 // parsed into `any` — the close series and the 52-week bounds drive the card's
@@ -218,6 +219,7 @@ async function fetchDaily(sym: string): Promise<{ closes: number[]; dates: strin
 }
 
 export const getShareSeries = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { ticker: string; exchange?: string }) => data)
   .handler(async ({ data }): Promise<ShareSeries> => {
     const ticker = (data.ticker || "").trim().toUpperCase();

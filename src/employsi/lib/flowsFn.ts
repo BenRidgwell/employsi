@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import type { D1Like } from "./jobArchive";
@@ -34,6 +35,7 @@ async function getArchiveDb(): Promise<D1Like | null> {
 }
 
 export const getCompanyFlows = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<CompanyFlows | null> => {
     const id = (data.id || "").trim();
@@ -112,6 +114,7 @@ async function currentImport(db: D1Like, id: string): Promise<FlowImport | null>
 }
 
 export const getTalentFlowView = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string; skill?: string | null }) => data)
   .handler(async ({ data }): Promise<FlowView | null> => {
     const id = (data.id || "").trim();
@@ -171,6 +174,7 @@ export interface FlowSkill {
 }
 
 export const getTalentFlowSkills = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<FlowSkill[]> => {
     const id = (data.id || "").trim();
@@ -213,6 +217,7 @@ export const getTalentFlowSkills = createServerFn({ method: "GET" })
 const MONTH_KIND_PREFERENCE: CountKind[] = ["weighted", "observed", "sampled"];
 
 export const getTalentFlowMonths = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string; skill?: string | null }) => data)
   .handler(async ({ data }): Promise<FlowMonthly | null> => {
     const id = (data.id || "").trim();

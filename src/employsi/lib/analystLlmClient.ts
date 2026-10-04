@@ -82,7 +82,12 @@ async function runData(
   if (answer.bars?.length) {
     lines.push(`Breakdown: ${answer.bars.map((b) => `${b.name} = ${b.v}`).join("; ")}`);
   }
-  if (answer.source) lines.push(`Source: ${answer.source}`);
+  // THE SOURCE LINE IS DELIBERATELY NOT PASSED. Answers no longer name where
+  // their data came from, and the model can only write what a tool handed it —
+  // so withholding it here is what makes that true of the LLM path as well,
+  // rather than relying on the prompt to ask for restraint. It also keeps
+  // `untraced` honest: the caption carried row counts and dates, and a figure
+  // is only traceable to a tool result the model was actually given.
   if (intent) lines.push(`How it was measured: ${METHOD[intent]}`, `Limits: ${LIMITS[intent]}`);
   return { text: lines.join("\n"), answer, query: q };
 }

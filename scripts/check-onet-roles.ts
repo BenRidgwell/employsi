@@ -151,10 +151,31 @@ const pane = readFileSync(
   new URL("../src/employsi/components/panels/CareerPathwaysPane.tsx", import.meta.url),
   "utf8",
 );
-check("the card credits O*NET under CC BY 4.0", /CC BY 4\.0/.test(pane) && /O\*NET/.test(pane));
+/**
+ * THE CARD NAMES NO THIRD-PARTY SOURCE, and this used to assert the opposite.
+ *
+ * It read `/CC BY 4\.0/.test(pane) && /O\*NET/.test(pane)` — "the card credits
+ * O*NET under CC BY 4.0". The credit block was removed from the card on
+ * 2026-09-30 and this check went on passing for three days, because both
+ * patterns still matched the COMMENTS left behind explaining the removal. A
+ * check that reads a comment is not reading the product.
+ *
+ * So the source is stripped of comments first, and the assertion is inverted to
+ * match what the owner asked for: nothing the card renders names O*NET. The
+ * attribution obligation is not met here any more and is not pretended to be —
+ * it is to be carried by a methodology page on the website.
+ */
+const paneCode = pane.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+check("the career card renders no third-party source name", !/O\*NET|CC BY/.test(paneCode));
+/**
+ * The HONEST half of the old assertion, and the half that was never about
+ * attribution. A cross-ladder move is a related occupation, not something the
+ * archive watched anyone do — the archive holds ads, not careers. Dropping the
+ * source's name from that sentence must not drop the disclaimer with it.
+ */
 check(
-  "other directions say they are O*NET's links, not tracked moves",
-  /Related occupation per O\*NET, not a tracked career move/.test(pane),
+  "other directions still say they are not tracked moves",
+  /not a tracked career move/.test(paneCode),
 );
 
 if (failed) {

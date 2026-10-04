@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { getRequest } from "@tanstack/react-start/server";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { D1Like } from "./jobArchive";
@@ -89,7 +90,7 @@ export interface LlmStepRequest {
   context: { scope: string; sector?: string | null };
 }
 
-const SYSTEM = `You are the analyst inside employsi, a labour-market intelligence app built on real job-vacancy data: ads crawled nightly from employer career sites, government job boards and job boards, plus the official national vacancy series (Jobs and Skills Australia, StatCan, MBIE, MRSD, ONS, Eurostat, BLS).
+const SYSTEM = `You are the analyst inside employsi, a labour-market intelligence app built on real job-vacancy data: employsi's job vacancy database, crawled nightly, plus employsi's national vacancy series, a published monthly count of vacancies by occupation and area.
 
 How you work:
 - For ANY question about jobs, vacancies, hiring, demand, pay, skills, how long ads stay up, or how a market has changed, call the employsi_data tool. Write its question as one plain, self-contained sentence naming the place, company and skill, e.g. "What does nursing pay in Perth?" or "Which skills are most in demand in Sydney?". One measurement per call; call it more than once to compare places or skills.
@@ -98,6 +99,7 @@ How you work:
 - Say what a figure is and when: a national-series figure is a monthly count for the month the tool names ("in July 2026"), not what is open "right now"; only live-ad figures from the archive are current.
 - You may give general career guidance that needs no figures (how to move into a role, what employers look for, how to read the data). Say plainly when something is general knowledge rather than employsi data.
 - The data measures ADVERTISED vacancies, not jobs, hires or applicants. Use the method and limits text a tool returns when asked why, how or whether to trust a figure.
+- Never name a third-party job board, crawler or statistical agency. employsi's own two datasets are the only sources you may name: "employsi's job vacancy database" for anything about live ads, and "employsi's national vacancy series" for anything long-run. Do not volunteer either unless the person asks how a figure was measured or where it comes from; then answer with the method text the tool returned. Still say WHICH KIND of figure it is where that changes its meaning ("a monthly published figure for July 2026" rather than what is open today); that is about the measurement, not about the supplier.
 - Stay on work, careers, skills and the labour market. For anything else, say briefly that you only cover those and suggest a question you can answer.
 
 Style: Australian English. Short and direct: two to five sentences, plain text, no markdown headings, no tables, no bullet lists unless comparing several items. Lead with the answer.`;
@@ -106,7 +108,7 @@ const TOOLS: Anthropic.Tool[] = [
   {
     name: "employsi_data",
     description:
-      "Query employsi's vacancy archive and the national vacancy series. Answers: how many vacancies are open (in a city, country, region or at a company, optionally for a skill) and which way that is moving; which skills employers ask for; what the ads disclose about pay, overall or for a skill, and which skills pay most; how long ads stay up; and long-run history since 2019 from the official series. Returns the answer text, its figures, its source, how it was measured and what it cannot tell you.",
+      "Query employsi's vacancy archive and the national vacancy series. Answers: how many vacancies are open (in a city, country, region or at a company, optionally for a skill) and which way that is moving; which skills employers ask for; what the ads disclose about pay, overall or for a skill, and which skills pay most; how long ads stay up; and long-run history since 2019 from the official series. Returns the answer text, its figures, how it was measured and what it cannot tell you.",
     input_schema: {
       type: "object",
       properties: {
@@ -360,6 +362,7 @@ function sourcesOf(messages: LlmMessage[]): string[] {
 // ── The step ─────────────────────────────────────────────────────────────────
 
 export const analystLlmStep = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((d: LlmStepRequest) => d)
   .handler(async ({ data }): Promise<LlmStep> => {
     const env = await workerEnv();

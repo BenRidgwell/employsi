@@ -2,7 +2,7 @@ import { ALL_SKILLS } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 import { seriesFor } from "./skillHeat";
-import { skillHistory, sourceForKey } from "./marketHistory";
+import { skillHistory } from "./marketHistory";
 import type {
   AnalystChartLine,
   AnalystChartMultiples,
@@ -213,10 +213,4 @@ export function multiplesChart(skill: string, keys: string[]): AnalystChartMulti
       down,
     })),
   };
-}
-
-/** The agencies behind a scope, for a chart's source line. */
-export function sourcesFor(keys: string[]): string[] {
-  const scope = keys.length ? keys : Object.keys(seriesFor(ALL_SKILLS[0]) ?? {});
-  return [...new Set(scope.map(sourceForKey).filter(Boolean) as string[])];
 }

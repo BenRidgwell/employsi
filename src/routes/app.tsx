@@ -85,13 +85,22 @@ export const Route = createFileRoute("/app")({
   },
   head: () => ({
     meta: [
-      { title: "Employsi map — the live labour-market globe" },
+      // The browser tab reads just "Employsi" inside the app (owner's call,
+      // 2026-10-03), and "employsi - preview" on a PREVIEW build, so the two
+      // can't be confused side by side. It is a build flag, not the hostname,
+      // because production deploys the very commit a preview ran:
+      // deploy-preview.yml sets VITE_PREVIEW=1 and production never does.
+      // Deploy checks match these EXACT titles to tell the app from the
+      // marketing pages — change deploy-preview.yml and deploy-production.yml
+      // with them.
+      { title: import.meta.env.VITE_PREVIEW === "1" ? "employsi - preview" : "Employsi" },
       {
         name: "description",
         content:
           "Zoom from the globe to a single employer: live job-vacancy and skill-demand data on an interactive 3D labour-market map.",
       },
-      { property: "og:title", content: "Employsi map — the live labour-market globe" },
+      // The link-preview headline when /app is shared (owner's wording, 2026-10-03).
+      { property: "og:title", content: "Employsi - explore the world of work." },
       {
         property: "og:description",
         content:

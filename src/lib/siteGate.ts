@@ -14,9 +14,14 @@
  * gate in employsi/lib/markets.ts is the boundary; it runs server-side on every
  * archive read and is unaffected by which hostname asked.
  *
- * RELEASING THE APP is emptying APP_ONLY_PATHS, and nothing else. The login
- * page reads `appGatedOn` below, so it switches from the waitlist to the real
- * sign-in buttons on the same deploy.
+ * RELEASING THE APP is taking "/app" and "/api/auth" out of APP_ONLY_PATHS,
+ * and nothing else. The login page reads `appGatedOn` below, so it switches
+ * from the waitlist to the real sign-in buttons on the same deploy.
+ *
+ * RELEASED 2026-10-03. The app is public on employsi.com.au from that deploy:
+ * sign-in and the Stripe paywall (appAccess.ts) are what stand in front of it
+ * now, on every host alike. Putting "/app" back here re-closes the apex and
+ * turns /login back into the waitlist.
  *
  * Pure and dependency-free on purpose: the client imports it too.
  */
@@ -35,7 +40,11 @@ export const MARKETING_WWW = "www.employsi.com.au";
  * On a gated host /login shows the waitlist instead of sign-in buttons that
  * would start an OAuth round trip into a 302.
  */
-export const APP_ONLY_PATHS: readonly string[] = ["/app", "/mobile-frame", "/api/auth"];
+//
+// /mobile-frame STAYS CLOSED after the release: it is a desktop preview of the
+// mobile layout for building it, not a page a visitor needs on the public
+// domain. It remains reachable on the workers.dev hosts.
+export const APP_ONLY_PATHS: readonly string[] = ["/mobile-frame"];
 
 export function isAppOnlyPath(pathname: string): boolean {
   return APP_ONLY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));

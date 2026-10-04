@@ -102,9 +102,17 @@ export interface CityEmployment {
   /** The name to show. The skill itself only when grain is "occupation". */
   label: string;
   grain: "occupation" | "group";
-  /** Reporting period, e.g. "Feb 2026 quarter" or "2023 Census". */
+  /**
+   * Reporting period, e.g. "Feb 2026 quarter" or "2023 Census".
+   *
+   * IT CARRIES THE WHOLE PROVENANCE NOW. A `source` field sat beside it and
+   * rendered the agency's name into the banner ("Nursing employed · ABS Feb
+   * 2026 quarter"); the app no longer names where its data comes from, so it
+   * is gone. The period is what still has to be there: a count of PEOPLE as at
+   * a past quarter is a published statistic and must not read as today's ads,
+   * which is the only distinction the banner's one line has room to draw.
+   */
   asof: string;
-  source: string;
   /**
    * The classification level, for a tooltip rather than the visible line.
    *
@@ -155,7 +163,7 @@ export function cityEmployment(
     const n = employmentFor(skill, city, month);
     return n === null
       ? null
-      : { n, label: skill, grain: "occupation", asof: quarterLabelFor(month), source: "ABS" };
+      : { n, label: skill, grain: "occupation", asof: quarterLabelFor(month) };
   }
   if (NZ_SUPPLY_CITIES.includes(city)) {
     const n = employmentFor(skill, city, month);
@@ -170,7 +178,6 @@ export function cityEmployment(
       label,
       grain: "group",
       asof: nzCensusAsof(month),
-      source: "Stats NZ",
       note: `ANZSCO sub-major group — one of 43. Every skill in "${label}" shares this figure.`,
     };
   }
@@ -188,8 +195,7 @@ export function cityEmployment(
       label,
       grain: "group",
       asof: y,
-      source: "MOM",
-      note: `SSOC major group — one of 8, the coarsest supply source in the app. Every skill in "${label}" shares this figure.`,
+      note: `SSOC major group — one of 8, the coarsest supply figure in the app. Every skill in "${label}" shares this figure.`,
     };
   }
   return null;

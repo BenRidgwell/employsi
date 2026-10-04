@@ -91,7 +91,7 @@ export function LocalBanner() {
           ? { value: "—", label: `no ${skill} employment for ${cityName}` }
           : {
               value: emp.n.toLocaleString("en-AU"),
-              label: `${emp.label} employed · ${emp.source} ${emp.asof}`,
+              label: `${emp.label} employed · ${emp.asof}`,
               note: emp.note,
             },
       );

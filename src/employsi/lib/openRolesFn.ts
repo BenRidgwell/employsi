@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { normRoleTitle } from "./roleKey";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
@@ -631,6 +632,7 @@ function regionMatcher(src: string | undefined): RegExp {
 }
 
 export const getOpenRoles = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator(
     (data: { company: string; id?: string; country?: string; where?: string; region?: string }) =>
       data,
@@ -865,6 +867,7 @@ export const getOpenRoles = createServerFn({ method: "GET" })
 // Stored open-roles history for a company, oldest → newest. Empty until the
 // company has been queried at least once (history builds forward from now).
 export const getRolesHistory = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
     const kv = await getKV();

@@ -63,6 +63,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Tags, for the "(preview)" version label below. Shallow history is
+          # fine; only the release tags are needed.
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -280,9 +284,44 @@ jobs:
         # marked green — the run only failed later, by luck, in the verify step.
         # A deploy that fails silently is the exact failure this file's comments
         # spend their length warning about.
+        #
+        # STAMPED WITH ITS COMMIT (2026-10-03). deploy-production.yml deploys
+        # exactly the commit a preview is serving, and reads it from this
+        # message on the preview's Worker version — so every preview deploy
+        # must carry it. The arguments after `--` land on the wrangler command
+        # at the end of the deploy:* script.
+        #
+        # VERSION LABEL: the newest release tag plus "(preview)", built in as
+        # VITE_APP_VERSION (src/employsi/version.ts), so Settings on a preview
+        # names the release it is ahead of. Production builds its own number.
         run: |
           set -o pipefail
-          npm run "$DEPLOY_SCRIPT" 2>&1 | tee deploy.txt
+          latest=$(git -c versionsort.suffix=-beta tag -l 'v*' --sort=-v:refname | head -1)
+          export VITE_APP_VERSION="${latest#v} (preview)"
+          # The app's tab reads "employsi - preview" on preview builds only
+          # (src/routes/app.tsx). Production builds the same commit without it.
+          export VITE_PREVIEW=1
+          echo "Version label: $VITE_APP_VERSION"
+          npm run "$DEPLOY_SCRIPT" -- --message "commit $GITHUB_SHA" --tag "${GITHUB_SHA:0:12}" \
+            2>&1 | tee deploy.txt
+
+      # A preview production cannot read the commit of cannot be promoted, so
+      # confirm the stamp actually landed on the version that was just made.
+      - name: The commit stamp is on the new version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          id=$(grep -oE 'Current Version ID: [0-9a-f-]+' deploy.txt | awk '{print $4}')
+          [ -n "$id" ] || { echo "::error::the deploy printed no version id"; exit 1; }
+          npx wrangler versions view "$id" --name "$WORKER" > stamp.txt 2>&1 || true
+          if grep -q "commit $GITHUB_SHA" stamp.txt; then
+            echo "version $id carries commit $GITHUB_SHA — production can mirror it"
+          else
+            echo "::error::version $id does not carry 'commit $GITHUB_SHA', so deploy-production.yml"
+            echo "::error::could not mirror this preview. Output of versions view:"
+            sed -n '1,30p' stamp.txt
+            exit 1
+          fi
 
       # THE REAL TOKEN HAS TO BE IN THE BUNDLE. A build made with a dummy value
       # deploys happily and breaks the map for everyone, so this asserts the
@@ -418,7 +457,9 @@ jobs:
                   esac ;;
                 200)
                   case "$title" in
-                    *"labour-market globe"*)
+                    # The app's <title>: "employsi - preview" on a preview build,
+                    # "Employsi" otherwise (src/routes/app.tsx).
+                    "employsi - preview"|"Employsi")
                       echo "::warning::/app served the app to an ANONYMOUS request." \
                            "Expected on a Worker without Better Auth configured" \
                            "(authAvailable false); on one with it, the sign-in gate is not working." ;;

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { ROLE_COUNT_SQL } from "./roleKey";
 import { LIVE_FEEDS_ONLY_SQL, LIVE_ON_DAY_SQL, liveOnDaySql, type D1Like } from "./jobArchive";
 import {
@@ -119,6 +120,16 @@ export interface AnalystAnswer {
   bars?: AnalystBar[];
   /** Drawn above the stats when the answer has a series worth seeing. */
   chart?: AnalystChart;
+  /**
+   * Where the figures came from, and over what window.
+   *
+   * NO LONGER SHOWN IN THE REPLY. It used to render as a caption under every
+   * answer and was removed by request, so it is NOT dead code on its way out:
+   * an exported chart still carries it, because a chart that leaves the app
+   * without the scope and window behind it is a worse fault than a caption
+   * nobody wanted. It is also deliberately NOT passed to the LLM path — see
+   * analystLlmClient — so the model cannot reinstate it in prose.
+   */
   source?: string;
 }
 
@@ -461,6 +472,7 @@ export interface AnalystRequest {
 // overrun the request-line limit and fail as a 414 rather than an answer. The
 // call is a read either way; only the transport changed.
 export const askAnalyst = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
     const { question, scope, hubs, country, sector, companyIds } = data;
@@ -530,7 +542,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
         text: sectorOn
           ? `The archive holds no vacancies for ${sector} employers in ${scope.label} yet. A sector filter only sees ads I can attribute to a named employer in that sector — board listings I haven't matched to a company are left out rather than guessed at — so this can read empty even where the wider market is busy. Try another sector, or set it back to all sectors.`
           : `The archive holds no vacancies for ${label} yet, so there's nothing I can tell you about it without making it up. Try a wider scope, or one of the cities with live coverage.`,
-        source: "employsi vacancy archive",
+        source: "employsi job vacancy database",
       };
     }
     /**
@@ -593,7 +605,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // was wording is `canCompare` below, which is code and still runs; the
     // sentence was only ever restating the date it sat next to.
     const archiveNote =
-      `employsi vacancy archive · ${label} · to ${fmtDay(latest)}` +
+      `employsi job vacancy database · ${label} · to ${fmtDay(latest)}` +
       // The archive runs to `latest`, but the figures are measured to the last
       // finished day. BOTH DAYS STAY, because a reader who checks will find
       // rows dated after the day the answer claims and needs to see which day
@@ -979,7 +991,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       if (all.length < MIN_DURATION_ADS) {
         return {
           intent,
-          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Indeed and the state government boards publish no posted date at all, so a scope leaning on those stays thin.`,
+          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Some feeds publish no posted date at all, so a scope leaning on those stays thin.`,
           source: archiveNote,
         };
       }
@@ -1122,6 +1134,7 @@ export interface SkillPay {
 const PAY_MIN_SAMPLE = 20;
 
 export const getSkillPay = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string }) => data)
   .handler(async ({ data }): Promise<SkillPay | null> => {
     const skill = (data.skill || "").trim();

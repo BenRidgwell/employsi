@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import { kvBinding } from "./kv";
@@ -88,6 +89,7 @@ export interface CareerCardResponse {
  * (familyForSkill) and the model carries that skill's specialism lane.
  */
 export const getCareerCard = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator(
     (data: { family?: string | null; skill?: string | null; lane?: string | null }) => data,
   )
@@ -113,6 +115,7 @@ export const getCareerCard = createServerFn({ method: "GET" })
  * because skillsForText carries the whole taxonomy.
  */
 export const searchCareerSkills = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { q: string }) => data)
   .handler(async ({ data }): Promise<string[]> => {
     if (!marketVisible(await callerRole(), CAREER_COUNTRY)) return [];
@@ -126,6 +129,7 @@ export const searchCareerSkills = createServerFn({ method: "GET" })
  * not published this window.
  */
 export const getCareerGoal = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<CareerGoalSummary | null> => {
     if (!marketVisible(await callerRole(), CAREER_COUNTRY)) return null;

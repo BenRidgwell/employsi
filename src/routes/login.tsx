@@ -528,6 +528,13 @@ function LoginPage() {
               <SignIn initial={mode === "create" ? "create" : "login"} />
             )}
           </div>
+          {/* Opens in a new tab so a visitor part-way through signing up does
+              not lose their place. The text is site/terms.ts. */}
+          <footer className="pane-foot">
+            <a href="/terms" target="_blank" rel="noopener">
+              Terms and conditions
+            </a>
+          </footer>
         </div>
       </main>
     </Site>
