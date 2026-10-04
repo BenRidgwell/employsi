@@ -23,6 +23,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["AA", "Alcoa", ENR, "NYSE"],
       ["BGL", "Bellevue Gold", ENR],
       ["BWP", "BWP Trust", FIN],
+      // Added 2026-10-04 for talent flows: 40 moves into BHP, Rio Tinto and
+      // Fortescue over 60 months, clearing the itemisation floor for two of
+      // the three. Heavy engineering and fabrication at Henderson, so grouped
+      // with Austal rather than with the miners it builds for.
+      ["CVL", "Civmec", IND],
       ["CYL", "Catalyst Metals", ENR],
       ["DRR", "Deterra Royalties", ENR],
       ["EMR", "Emerald Resources", ENR],
@@ -37,6 +42,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["PDI", "Predictive Discovery", ENR],
       ["PRN", "Perenti", ENR],
       ["RSG", "Resolute Mining", ENR],
+      // Added 2026-10-04 for talent flows: 16 moves, 11 of them into
+      // Fortescue, which clears the floor on its own. Specialist asset
+      // maintenance and construction services rather than a miner, so INF.
+      ["SRG", "SRG Global", INF],
       ["VAU", "Vault Minerals", ENR],
       ["WAF", "West African Resources", ENR],
     ],
@@ -432,6 +441,17 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["TSCO", "Tesco", CON],
       ["EXPN", "Experian", TMT],
       ["BT.A", "BT Group", TMT],
+      // WOOD GROUP IS NOT HERE, AND WAS FOR ABOUT AN HOUR ON 2026-10-04. It
+      // went in as ["WG.", "Wood Group", ENR] and scripts/check-listings.ts
+      // immediately reported it delisted — correctly. Sidara's takeover of
+      // John Wood Group plc completed 10 March 2026 and the shares came off
+      // the LSE on 11 March. It still trades as Wood from Aberdeen, so it is
+      // a real employer; it is just a PRIVATE one now, and it lives in
+      // topPrivateCompanies.ts with Thiess and Programmed, the other two
+      // foreign-owned private companies plotted on the AU city where their
+      // people are. Worth knowing because BAE Systems' "BA." trips the same
+      // check as a false positive, and the first reading here was that "WG."
+      // had done the same.
     ],
   },
   sanfrancisco: {
@@ -577,6 +597,15 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["POW", "Power Corporation of Canada", FIN],
       ["DOL", "Dollarama", CON],
       ["GIB.A", "CGI Inc.", TMT],
+      // Added 2026-10-04 in place of Calibre, which is this company: WSP
+      // completed its acquisition of Calibre Professional Services One on
+      // 5 June 2023 (wsp.com/en-au/news/2023/calibre-acquisition, and
+      // calibregroup.com now 301s to wsp.com). Calibre's 32 moves, Golder's
+      // 13 — WSP bought Golder in 2021 — and "WSP in Australia"'s 15 are one
+      // employer's 60, which makes it a larger source for these seeds than
+      // anything else off the roster. Montreal is its head office and TSX
+      // listing.
+      ["WSP", "WSP Global", INF],
     ],
   },
   vancouver: {
@@ -1054,6 +1083,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["STMPA", "STMicroelectronics", TMT],
       ["AC", "Accor", CON],
       ["RNO", "Renault", IND],
+      // Added 2026-10-04 for talent flows: 36 moves into the three AU iron-ore
+      // seeds over 60 months, 22 of them into Rio Tinto, which clears the
+      // itemisation floor twice over. It runs the mine villages and the
+      // catering on them, so it is a genuine Pilbara employer — grouped with
+      // Compass Group, the listed peer doing the same work.
+      ["SW", "Sodexo", CON],
     ],
   },
   seoul: {

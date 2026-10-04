@@ -48,15 +48,33 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // "Cotton On" is the name the group's own ads are posted under; ACCEPT_ALIAS
   // in scripts/company_alias.py is the half that lets them through attribution.
   "priv-cotton-on-group": ["Cotton On"],
-  // Seven Group Holdings (ASX:SGH). Its four operating businesses, which are
-  // where essentially all of its ~11,000 people work:
+  // Seven Group Holdings (ASX:SGH). Its operating businesses, which are where
+  // essentially all of its ~11,000 people work:
   //   Boral         — construction materials (acquired outright 2024)
-  //   WesTrac       — Caterpillar dealer, NSW/ACT/WA
   //   Coates        — industrial and general equipment hire
   //   Allight Sykes — lighting and dewatering pumps
   // SGH Energy is an investment arm and advertises under its own name rarely,
   // but is included because when it does, the ad is genuinely SGH's.
-  "sydney-sgh": ["Boral", "WesTrac", "Coates Hire", "Allight Sykes", "SGH Energy"],
+  //
+  // WESTRAC IS DELIBERATELY ABSENT, and was listed here until 2026-10-04. The
+  // Caterpillar dealership now has its own roster entry (priv-westrac), so an
+  // ad found under its name belongs to that card. Searching for it here would
+  // fetch those ads as SGH's; ADVERTISER_ALIAS in scripts/advertiser_match.py
+  // has had the matching 'westrac' entry removed so the gate agrees.
+  "sydney-sgh": ["Boral", "Coates Hire", "Allight Sykes", "SGH Energy"],
+  // Hancock Prospecting hires as Hancock Iron Ore, Roy Hill and Atlas Iron,
+  // never under the holding company's name — so the feeds were asking job
+  // boards for a phrase that returns almost nothing while the group's two
+  // Pilbara mines advertised constantly. royhill.com.au now 301s to
+  // hancockironore.com.au, and Hancock Iron Ore is the merged Roy Hill +
+  // Atlas Iron business (read 2026-10-04). The old names stay because months
+  // of live ads still carry them.
+  //
+  // This is one of three halves: ADVERTISER_ALIAS in
+  // scripts/advertiser_match.py attributes an ad found under these names, and
+  // ACCEPT_ALIAS in scripts/company_alias.py lets a keyword-feed row through
+  // the employer gate.
+  "priv-hancock-prospecting": ["Hancock Iron Ore", "Roy Hill", "Atlas Iron"],
   // Swift Holdings Investments is the holding entity; every one of its
   // dealerships hires under the trading name Autoleague. Nobody advertises a
   // job under "Swift Holdings Investments", so the feeds were searching a

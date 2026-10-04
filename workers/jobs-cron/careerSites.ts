@@ -5295,6 +5295,248 @@ export const SITES: SiteDef[] = [
     maxPages: w === "c" ? 80 : 60,
     hubHints: GOOGLE_HUB_HINTS,
   })),
+  // ── The 2026-10-04 talent-flow batch ──────────────────────────────────────
+  // Ten employers that went on the roster the same day, each because it was
+  // hidden inside the talent-flow `other` bucket on the BHP / Rio Tinto /
+  // Fortescue cards for having no roster id rather than for being small. Every
+  // endpoint and role count below was walked on 2026-10-04 before it was
+  // written here. Wood Group is the eleventh and has NO SiteDef: woodplc.com
+  // 301s to woodgroup.com and every path under it answers 403 from this
+  // network, which is the Cloudflare-interstitial case ARCHIVE.md documents —
+  // it is covered by the keyword feeds only.
+  {
+    // Seven Group Holdings' Caterpillar dealership, on the roster in its own
+    // right rather than folded into sydney-sgh — see the note in
+    // topPrivateCompanies.ts. Measured: 75 roles, the classic
+    // `<tr class="data-row">` theme at 20 a page, 4 pages.
+    //
+    // The hint list is the whole reason this feed is worth having at the right
+    // hub. WesTrac is the dealer for WA, NSW and the ACT, so a third of the
+    // board is east coast — and "Guildford" is BOTH its South Guildford head
+    // office in Perth and a suburb of Sydney. HUB_MATCH cannot settle that for
+    // anyone; scoped to this site it is just a fact about this employer.
+    // Checked against hubFor() the same day: every one of the ten location
+    // strings this board actually prints resolves without the hints, because
+    // each carries its state — the hints are here so a row that loses its
+    // state still lands right.
+    id: "priv-westrac",
+    name: "WesTrac",
+    sector: "Heavy equipment dealership & service",
+    platform: "successfactors",
+    endpoint: "https://careers.westrac.com.au",
+    origin: "https://careers.westrac.com.au",
+    homeHub: "perth",
+    hubHints: [
+      ["guildford pdc", "perth"],
+      ["guildford", "perth"],
+      ["perth precinct", "perth"],
+      ["tomago", "sydney"],
+      ["ravensworth", "sydney"],
+      ["mt thorley", "sydney"],
+      ["grafton", "sydney"],
+      ["tamworth", "sydney"],
+    ],
+  },
+  {
+    // Measured: 66 roles, classic table theme at 25 a page, 3 pages.
+    //
+    // Four of its location strings name a SITE and no state — "Eneabba, AU",
+    // "CSBP, AU", "Workshop Henderson, AU", "BHP Civil, AU" — and all four
+    // fell through to homeHub when checked. Perth is right for all four, but
+    // only by accident of the fallback, so the three that are knowable are
+    // named: Eneabba is Iluka's mid-west WA mine, CSBP is the Kwinana
+    // chemical plant, Henderson is Civmec's own yard. "BHP Civil" is
+    // deliberately NOT hinted — it is a client, not a place, and guessing a
+    // hub for it would be inventing one.
+    id: "perth-cvl",
+    name: "Civmec",
+    sector: "Industrial Manufacturing",
+    platform: "successfactors",
+    endpoint: "https://careers.civmec.com.au",
+    origin: "https://careers.civmec.com.au",
+    homeHub: "perth",
+    hubHints: [
+      ["henderson", "perth"],
+      ["eneabba", "perth"],
+      ["csbp", "perth"],
+      ["regional qld", "brisbane"],
+    ],
+  },
+  {
+    // THIS BOARD PUBLISHES NO LOCATION, AND THAT IS WORTH KNOWING BEFORE
+    // TRUSTING ITS HUBS. Measured: 133 roles over 6 pages of 25, the TILE
+    // theme — and the tenant has configured its tiles with "Employment Type"
+    // and "Work Arrangement" where every other SuccessFactors tenant puts the
+    // location, so `jobLocation` is absent from all 133. The slug carries no
+    // state either ("/job/Receptionist/1366834866/"), so stateFromJobUrl has
+    // nothing to read.
+    //
+    // Every row therefore lands on homeHub. Perth is the honest default — the
+    // head office is Level 2, 500 Hay Street, Subiaco and the board's own ad
+    // text is full of "FIFO ... from Perth" — but it is a DEFAULT, not a
+    // measurement, and the card's hub split for this employer should be read
+    // that way. The `/jobs.xml` feed was checked as an alternative and is no
+    // better: its `<g:location>` resolves to country only, 127 AU and 6 NZ.
+    // Those 6 are the known cost of this, and they plot in Perth.
+    id: "perth-srg",
+    name: "SRG Global",
+    sector: "Infrastructure and Government",
+    platform: "successfactors",
+    endpoint: "https://careers.srgglobal.com.au",
+    origin: "https://careers.srgglobal.com.au",
+    homeHub: "perth",
+  },
+  {
+    // Measured: 29 roles, classic table theme, one page of 25 plus 4. Every
+    // row is WA — Perth CBD, Forrestdale, Kewdale, Jandakot, Balcatta,
+    // Narrogin — and all of them resolve through HUB_MATCH without a hint.
+    id: "priv-western-power",
+    name: "Western Power",
+    sector: "Electricity networks",
+    platform: "successfactors",
+    endpoint: "https://careers.westernpower.com.au",
+    origin: "https://careers.westernpower.com.au",
+    homeHub: "perth",
+  },
+  {
+    // The LiveHire segment code, same shape as Wesfarmers above. Measured: 31
+    // roles, `hasMoreResults: false` on the first page, every one of them WA —
+    // 15 at the John Tonkin Water Centre in Leederville, the rest regional
+    // depots from Mukinbudin to Esperance. All resolve through HUB_MATCH.
+    id: "priv-water-corporation",
+    name: "Water Corporation",
+    sector: "Water utility",
+    platform: "livehire",
+    endpoint: "watercorporation",
+    origin: "https://www.livehire.com",
+    homeHub: "perth",
+  },
+  {
+    // PageUp's "Sites" theme on the employer's own domain (the assets come from
+    // linkforce-external-careers.careerpages.rec-marketing.dc2.pageuppeople.com),
+    // the Calvary and Qube pattern. Measured: 29 roles on one page of 29, no
+    // stated total, and the pagination offers only page 1 — so the lastPage
+    // substitute in fetchPageUpSites is what bounds this walk.
+    //
+    // `?page=1` IS REQUIRED AND IS NOT COSMETIC. The bare /jobs/search returns
+    // a JavaScript shell with zero <article> cards; the same URL with the page
+    // parameter server-renders all 29. The fetcher always appends it, so this
+    // works — but a future reader diffing the endpoint by hand in a browser
+    // will see an empty board and should know why.
+    id: "priv-linkforce",
+    name: "Linkforce",
+    sector: "Mining maintenance & shutdowns",
+    platform: "pageupsites",
+    endpoint: "https://careers.linkforce.com.au/jobs/search",
+    origin: "https://careers.linkforce.com.au",
+    homeHub: "perth",
+  },
+  {
+    // PageUp classic on PageUp's own host, tenant 434. Measured: 97 distinct
+    // roles, served in ONE page at page-items=100 (the board renders two
+    // `job-listing` divs per role, so the reader sees 194 rows and dedupes by
+    // href down to 97).
+    //
+    // This is the board that needed a THIRD theme in fetchPageUpClassic — see
+    // the note there. Against the two-theme reader it reported 5 roles.
+    //
+    // Its location vocabulary is a fixed facet list of 23 values, all read off
+    // the page. The five AU hints below are the ones hubFor could NOT place:
+    // " vic,", " act,", " sa,", " tas," and " wa," are written with a trailing
+    // comma in HUB_MATCH because the bare forms are substrings of ordinary
+    // words, and this board writes "Aus - VIC - Regional" with a dash. VIC -
+    // Regional had 4 live roles filing as Sydney. The NZ hints come from the
+    // facet list rather than from observed rows — there were none on the day —
+    // and follow the NZ placements HUB_MATCH already makes: Waikato to
+    // Auckland, Christchurch to Wellington.
+    id: "priv-cpb-contractors",
+    name: "CPB Contractors",
+    sector: "Civil & building construction",
+    platform: "pageupclassic",
+    endpoint: "https://careers.pageuppeople.com/434/caw/en/listing/",
+    origin: "https://careers.pageuppeople.com",
+    homeHub: "sydney",
+    hubHints: [
+      ["act - regional", "canberra"],
+      ["sa - regional", "adelaide"],
+      ["tas - regional", "hobart"],
+      ["vic - regional", "melbourne"],
+      ["wa - regional", "perth"],
+      ["nz - hamilton", "auckland"],
+      ["nz - dunedin", "wellington"],
+      ["nz - nelson", "wellington"],
+      ["nz - queenstown", "wellington"],
+    ],
+  },
+  {
+    // Taleo. `portalNo` is the `portal` parameter on the board's own
+    // careersection URL, read off it 2026-10-04.
+    //
+    // IT ADVERTISES 221 AND SERVES 188, AND THE SHORTFALL IS THE BOARD'S OWN.
+    // fetchTaleo logs "collected 188 of 221 advertised" on every run, which
+    // reads like truncation and is not. Measured 2026-10-04 by walking the
+    // REST endpoint directly: pages 1-7 return a full 25, page 8 returns 12,
+    // and pages 9 onward return ONE row each, the same one. That is 192 rows
+    // served, 188 of them distinct, against a `pagingData.totalCount` of 221.
+    // The walk ends where it should — the repeat makes `added` zero — and 188
+    // is everything the board will hand over. Do not raise maxPages chasing
+    // the other 33; they are not there.
+    //
+    // Its location cell is a JSON array of Taleo's own codes
+    // ("Australia-WA-Perth CBD, Inner & Western Suburbs"); fetchTaleo takes
+    // the trailing segment and appends the state — see the note there, which
+    // this board is the reason for. After that, 159 of the 188 place.
+    //
+    // THE REMAINING 29 ARE LEFT UNPLACED ON PURPOSE. 24 of them say "Multiple
+    // Locations" and the other five are region names Taleo shipped with no
+    // state at all: "Northern Suburbs", "Western Suburbs & Ipswich",
+    // "Bayside & Eastern Suburbs". Northern Suburbs is every capital city in
+    // the country and Bayside is Melbourne or Brisbane depending on who is
+    // writing, so a hint for any of them would be a guess wearing a
+    // measurement's clothes. They archive and do not appear on the map, which
+    // is the right answer to "we do not know where this is".
+    //
+    // UGL and CPB Contractors above are both CIMIC companies and both are on
+    // the roster separately, which is deliberate — they are different
+    // employers doing different work, and CIMIC itself is not on the roster,
+    // so there is no parent card for either to be confused with.
+    id: "priv-ugl",
+    name: "UGL",
+    sector: "Engineering & asset services",
+    platform: "taleo",
+    endpoint: "https://ugl.taleo.net",
+    origin: "https://ugl.taleo.net",
+    portalNo: "101430233",
+    homeHub: "sydney",
+  },
+  {
+    // SmartRecruiters company slug. THIS TENANT IS THE AUSTRALIAN BOARD, not
+    // Sodexo's global one, which is the only reason it needs no country
+    // narrowing: measured 2026-10-04, totalFound 163 and all 163 postings
+    // carry `country: "au"` — `?country=au` returns the same 163. Worth
+    // re-checking if the count ever jumps, because Sodexo employs ~400,000
+    // people worldwide and a tenant change would file most of them here.
+    //
+    // homeHub is PERTH although the roster plots Sodexo on Paris, its listing
+    // and head office. Every role on this board is Australian, and 63 of the
+    // 163 state only "Western Australia" — these are the mine villages and
+    // the catering on them. Paris as a fallback would put WA FIFO camp roles
+    // in France.
+    id: "paris-sw",
+    name: "Sodexo",
+    sector: "Facilities & food services",
+    platform: "smartrecruiters",
+    endpoint: "Sodexo",
+    origin: "https://au.sodexo.com",
+    homeHub: "perth",
+    // HUB_MATCH holds "victoria, austral" rather than a bare "victoria", so
+    // that Victoria BC and Victoria Island cannot claim a role — and this
+    // board writes the requisition reference where the country would be:
+    // "Victoria, REF28871S, au". Seven roles resolved to no hub because of it.
+    // Scoped to this site the bare needle is safe: all 163 postings on this
+    // tenant carry `country: "au"`.
+    hubHints: [["victoria", "melbourne"]],
+  },
 ];
 
 /**
@@ -5749,6 +5991,28 @@ export const PORTAL_GROUPS: string[][] = [
   ["sanjose-googl-a"],
   ["sanjose-googl-b"],
   ["sanjose-googl-c"],
+  // Groups 87-88 — the nine boards added 2026-10-04 with the talent-flow
+  // roster batch. Split by REQUEST COST rather than evenly, the way groups
+  // 76-77 are: 770 roles between them, but a third of the requests sit in
+  // three feeds.
+  //
+  // 87 is the half that walks. UGL's Taleo is 221 roles at 25 a REST page (9),
+  // SRG Global's SuccessFactors 133 at 25 (6, and SEQUENTIAL — each page's
+  // size is read off the one before), and CPB Contractors spends a PageUp
+  // facet budget of 6 plus its listing. ~24 requests for 451 roles.
+  ["priv-ugl", "perth-srg", "priv-cpb-contractors"],
+  // 88 is the cheap half. WesTrac is 4 SuccessFactors pages, Civmec 3, Western
+  // Power 2; Water Corporation's LiveHire is a token plus one search page,
+  // Linkforce's PageUp board fits on one page, and Sodexo's 163 postings are
+  // two SmartRecruiters calls at 100 a page. ~17 requests for 319 roles.
+  [
+    "priv-westrac",
+    "perth-cvl",
+    "priv-western-power",
+    "priv-water-corporation",
+    "priv-linkforce",
+    "paris-sw",
+  ],
 ];
 
 const UA =
@@ -8068,12 +8332,40 @@ async function fetchTaleo(site: SiteDef): Promise<PortalJob[]> {
       // The locations cell is a JSON array ("[\"AU-SA-Adelaide\"]"). Taleo
       // prefixes each with country/state codes, which hubFor cannot read, so
       // the trailing segment is what gets matched to a hub.
+      //
+      // THE STATE IS APPENDED BACK, because dropping it loses every location
+      // that names a REGION rather than a city. Measured 2026-10-04 on UGL,
+      // whose board writes SEEK-style regions: 68 of its 188 roles resolved to
+      // no hub at all — "Wagga Wagga & Riverina", "Mandurah & Peel", "Blue
+      // Mountains & Central West", "Rockhampton & Capricorn Coast" and eleven
+      // more. HUB_MATCH is a list of cities and state abbreviations, not a
+      // gazetteer, so a region name reaches it with nothing to match on; the
+      // state it was shipped with is exactly what it needed, and `.pop()` had
+      // just thrown it away. An unplaced row still archives but never appears
+      // on the map, so this read as a third of UGL's board not existing.
+      //
+      // Appended, never substituted — the same rule fetchSuccessFactors
+      // applies to the state it recovers from a job slug. It can only ADD a
+      // placement: hubFor returns the first HUB_MATCH needle that matches, and
+      // for every segment shape this board produces the city needle and its
+      // state needle resolve to the same hub (checked across all five live
+      // Taleo tenants on the same day — none changed).
       let loc = "";
       const rawLoc = cells[r.locationsColumns?.[0] ?? -1];
       if (rawLoc) {
         try {
           const parsed = JSON.parse(rawLoc) as string[];
-          loc = (parsed[0] ?? "").split("-").pop()?.trim() ?? "";
+          const parts = (parsed[0] ?? "").split("-").map((p) => p.trim());
+          const tail = parts[parts.length - 1] ?? "";
+          // Only a real state segment is appended: a 2-4 letter code sitting
+          // BETWEEN the country and the place. A two-segment value
+          // ("Australia-Sydney") has no state to recover, and appending
+          // `parts[0]` there would staple the country on as if it were one.
+          const state = parts.length >= 3 ? parts[parts.length - 2] : "";
+          loc =
+            state && /^[A-Za-z]{2,4}$/.test(state) && !new RegExp(`\\b${state}\\b`, "i").test(tail)
+              ? `${tail}, ${state}`
+              : tail;
         } catch {
           loc = clean(rawLoc);
         }
@@ -10550,7 +10842,20 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
     // already splits on its own two themes for the same reason.
     const body = html.split(/<(?:tbody|div) id="search-results-content">/i)[1];
     if (!body) return 0;
-    const isDivTheme = /class="JobItemWP"/i.test(body);
+    // THREE THEMES NOW. CPB Contractors is a third: `<div class="job-listing">`
+    // rows inside the same container, with no <td>s and no JobItemWP. Against
+    // the two-theme reader it fell through to the <tr> split, which found no
+    // </tr> at all — so the whole body was ONE row, the first job-link in it
+    // was the only role read, and a 97-role board reported 5 across 6 pages
+    // (measured 2026-10-04). The same zero-with-no-error this function's note
+    // above describes, one theme further on. It is a div theme for every other
+    // purpose: the location is labelled, not positioned.
+    const divRow = /class="JobItemWP"/i.test(body)
+      ? /<div class="JobItemWP">/i
+      : /class="job-listing"/i.test(body)
+        ? /<div class="job-listing">/i
+        : null;
+    const isDivTheme = divRow !== null;
     // THE COLUMN ORDER IS PER TENANT, so the header decides which cell is the
     // location. Harvey Norman publishes [Position, Location]; Cleanaway
     // publishes [Position, Location, Opened, Closes]. Taking the LAST cell —
@@ -10586,9 +10891,7 @@ async function fetchPageUpClassic(site: SiteDef): Promise<PortalJob[]> {
         ? heads.findIndex((h) => h.startsWith("location"))
         : heads.findIndex((h) => h.includes("location"));
     let onPage = 0;
-    for (const row of isDivTheme
-      ? body.split(/<div class="JobItemWP">/i).slice(1)
-      : body.split(/<\/tr>/i)) {
+    for (const row of divRow ? body.split(divRow).slice(1) : body.split(/<\/tr>/i)) {
       const a = row.match(/<a[^>]*class="job-link"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
       if (!a) continue;
       const href = clean(a[1]);

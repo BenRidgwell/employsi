@@ -112,6 +112,55 @@ ACCEPT_ALIAS: dict[str, set[str]] = {
     # Platinum (JSE:AMS -> JSE:VAL). Every archive row for this employer was
     # posted under the old name and every one is this company hiring.
     'valterra platinum': {'anglo american platinum', 'amplats'},
+    # A RENAME AND A MERGER OF TWO SUBSIDIARIES, 2025: Hancock Prospecting's
+    # two iron-ore businesses, Roy Hill and Atlas Iron, became Hancock Iron
+    # Ore. royhill.com.au 301s to hancockironore.com.au and
+    # mycareer.royhill.com.au redirects to careers.hancockironore.com.au
+    # (both read 2026-10-04). The roster holds the parent, which is a name no
+    # ad is ever posted under — so without this the largest private employer
+    # in WA iron ore reads as one that never advertises. ADVERTISER_ALIAS in
+    # advertiser_match.py carries the same five names for the board feeds, and
+    # EXTRA_QUERIES is what makes the feeds ask for them at all.
+    'hancock prospecting': {'roy hill', 'roy hill mining', 'roy hill iron ore',
+                            'hancock iron ore', 'atlas iron'},
+    # ── Added 2026-10-04 with the talent-flow roster additions ──────────────
+    # Each of these was checked against company_matches() first, and every one
+    # was REJECTED without an alias. The token rule is stricter than it looks:
+    # an extra word that is not corporate form makes it a different company, so
+    # "WesTrac Cat" does not reach "WesTrac" on its own. A new roster entry
+    # whose brand carries such a word therefore arrives with its ads already
+    # being refused, and nothing reports it — the card simply reads zero.
+    #
+    # WesTrac trades as WesTrac Cat (it is the Caterpillar dealer for WA, NSW
+    # and the ACT) and that is also the name the talent-flow data carries.
+    'westrac': {'westrac cat', 'westrac cat australia', 'westrac pty ltd'},
+    # Linkforce Engineering is the operating entity.
+    'linkforce': {'linkforce engineering', 'linkforce engineering pty ltd'},
+    # UGL Regional Linx is UGL's regional-NSW rail maintenance business and
+    # employs its own staff under that name.
+    'ugl': {'ugl regional linx', 'ugl engineering', 'ugl rail', 'ugl unipart rail'},
+    # Civmec Construction & Engineering is the operating entity behind the
+    # listed parent; its Henderson yard advertises under it.
+    'civmec': {'civmec construction engineering',
+               'civmec construction and engineering'},
+    # Wood Group rebranded to plain "Wood" in 2017 and is legally John Wood
+    # Group plc, so all three names are live on job boards. The roster holds
+    # "Wood Group" deliberately — see the cityRosters.ts note on why a
+    # one-word "Wood" would file the timber market — and short_name() reduces
+    # that to 'wood', which is the key this dict is read under. A bare "Wood"
+    # advertiser needs no entry and must not have one — short_name() reduces
+    # both sides to 'wood' and company_matches() accepts on that alone, so
+    # listing it is redundant and test_company_alias.py fails the run for it.
+    'wood': {'wood plc', 'john wood group', 'john wood group plc',
+             'wood group psn', 'wood group kenny'},
+    # WSP Global is the TSX-listed parent; nothing advertises under that exact
+    # string. Golder and Calibre are both WSP now — Golder from 2021, Calibre
+    # from 5 June 2023 — and their ads are WSP's hiring. Bare "calibre" is
+    # DELIBERATELY NOT HERE: it is an ordinary English word and an advertiser
+    # of that name alone cannot be assumed to be this one.
+    'wsp global': {'wsp', 'wsp australia', 'wsp group', 'wsp golder',
+                   'golder', 'golder associates', 'calibre group',
+                   'calibre professional services'},
     # Divisions trading under their own name.
     'wesfarmers': {'wesfarmers health',
                    'wesfarmers chemicals energy fertilisers'},

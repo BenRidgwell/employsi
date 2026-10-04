@@ -80,16 +80,25 @@ ADVERTISER_ALIAS = {
     'norco co operative limited': 'norco co op',
     # Seven Group Holdings is a conglomerate whose operating businesses each
     # advertise under their own brand, never under "SGH". Without these, a
-    # WesTrac or Coates ad is correctly REJECTED as not-SGH by the token rule
+    # Boral or Coates ad is correctly REJECTED as not-SGH by the token rule
     # and the roles simply never reach the group's card.
     #
     # NOTE these only decide ATTRIBUTION — whether an ad already in hand counts
     # as SGH. They do not cause the ads to be found: the keyword feeds search
     # the roster name, and searching "SGH" does not return Boral. Surfacing the
     # subsidiaries needs their names added to the feed's query list as well.
+    #
+    # WESTRAC IS DELIBERATELY NOT HERE, and was until 2026-10-04. It went on
+    # the roster in its own right that day (priv-westrac, a 3,500-person
+    # Caterpillar dealership), because the talent flows measured 51 moves out
+    # of it into BHP, Rio Tinto and Fortescue — the only off-roster company
+    # clearing the floor for all three. An alias to SGH would now take every
+    # WesTrac ad, file it against the parent, and leave WesTrac's own card
+    # reading as an employer that is not hiring. It is also removed from SGH's
+    # EXTRA_QUERIES for the same reason; the two halves have to agree or the
+    # feeds fetch ads this gate then refuses.
     'boral': 'sgh',
     'boral limited': 'sgh',
-    'westrac': 'sgh',
     'coates': 'sgh',
     'coates hire': 'sgh',
     'allight': 'sgh',
@@ -138,6 +147,25 @@ ADVERTISER_ALIAS = {
     'btp group': 'perenti',
     'supply direct': 'perenti',
     'logistics direct': 'perenti',
+    # HANCOCK PROSPECTING HIRES AS HANCOCK IRON ORE, ROY HILL AND ATLAS IRON,
+    # and the group has just renamed. royhill.com.au now 301s to
+    # hancockironore.com.au, whose own page says "Atlas Iron and Roy Hill are
+    # joining forces to become Hancock Iron Ore" (read 2026-10-04), and the ATS
+    # agrees: mycareer.royhill.com.au redirects to careers.hancockironore.com.au.
+    # So these are three names for one employer, not three employers.
+    #
+    # Measured on the 2026-09-25 import: Roy Hill is 67 moves into the three
+    # iron-ore seeds over 60 months (Rio 33, Fortescue 26) — the largest
+    # off-roster source of all — and it was invisible because the group sits on
+    # the roster under the parent's name, which nobody advertises under.
+    # EXTRA_QUERIES is the half that makes the feeds ask for these names;
+    # ACCEPT_ALIAS in company_alias.py is the half that lets a keyword-feed row
+    # through the gate.
+    'roy hill': 'hancock prospecting',
+    'roy hill mining': 'hancock prospecting',
+    'roy hill iron ore': 'hancock prospecting',
+    'hancock iron ore': 'hancock prospecting',
+    'atlas iron': 'hancock prospecting',
     # Alkane Resources advertises under its two producing mines and never under
     # the corporate name. Costerfield (gold-antimony, Victoria) came with the
     # Mandalay Resources merger completed 2025-08-05; Tomingley (gold, NSW) is
@@ -209,6 +237,43 @@ ADVERTISER_ALIAS = {
     # "university"), so the token rule cannot forgive it the way it forgives
     # "Deloitte" for "Deloitte Touche Tohmatsu".
     'monash uni': 'monash university',
+    # ── Added 2026-10-04 with the talent-flow roster additions ──────────────
+    # The same five employers aliased in company_alias.py's ACCEPT_ALIAS, for
+    # the OTHER path: that one decides whether a keyword-feed row belongs to
+    # the company being walked, this one whether a BOARD ADVERTISER string is
+    # that company. Both have to carry an entry or the ads arrive through one
+    # route and are refused on the other, and only the count moves.
+    #
+    # Checked with advertiser_matches() first; each was rejected without an
+    # alias. Values are the roster name as norm() leaves it.
+    'westrac cat': 'westrac',
+    'westrac cat australia': 'westrac',
+    'linkforce engineering': 'linkforce',
+    'ugl regional linx': 'ugl',
+    'ugl engineering': 'ugl',
+    'ugl rail': 'ugl',
+    'civmec construction engineering': 'civmec',
+    'civmec construction and engineering': 'civmec',
+    # Wood Group, which rebranded to plain "Wood" in 2017 and is legally John
+    # Wood Group plc. The roster holds "Wood Group" — see cityRosters.ts for
+    # why not "Wood" — so these map to that. A bare "Wood" advertiser needs no
+    # entry: it is a shortened form of the roster name and the token rule
+    # forgives it.
+    'john wood group': 'wood group',
+    'john wood group plc': 'wood group',
+    'wood plc': 'wood group',
+    'wood group psn': 'wood group',
+    # WSP Global's Australian arm and the two firms it absorbed: Golder (2021)
+    # and Calibre (completed 5 June 2023). Bare 'calibre' is deliberately
+    # absent — an ordinary word, and an advertiser of that name alone is not
+    # safely this company.
+    'wsp': 'wsp global',
+    'wsp australia': 'wsp global',
+    'wsp group': 'wsp global',
+    'golder': 'wsp global',
+    'golder associates': 'wsp global',
+    'calibre group': 'wsp global',
+    'calibre professional services': 'wsp global',
 }
 
 

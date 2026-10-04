@@ -1316,6 +1316,14 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 18 * * *": 84,
   "45 18 * * *": 85,
   "55 18 * * *": 86,
+  // Groups 87-88 — the nine boards added 2026-10-04 with the talent-flow
+  // roster batch. The 18 hour is full (5, 15, 25, 35, 45 and 55 all taken), so
+  // these open the 19 hour, which had no cron of any kind on it. A duplicate
+  // key here is SILENT — the later one just wins — while a duplicate in
+  // `crons` is rejected by Cloudflare at deploy, so the free minute was read
+  // off `crons` rather than assumed.
+  "5 19 * * *": 87,
+  "15 19 * * *": 88,
 };
 
 const NEWS_TICKS: Record<string, number> = {

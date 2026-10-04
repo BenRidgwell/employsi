@@ -217,10 +217,12 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "nt-gov-nt-police-force": [130.920912, -12.408971], // Peter McAulay Centre, McMillans Road, Berrimah NT 0828
   "nt-gov-power-and-water-corporation": [130.839891, -12.463809], // Mitchell Centre, 55 Mitchell Street, Darwin NT 0800
   "nt-gov-territory-generation": [130.952322, -12.444744], // 3/631 Stuart Highway, Berrimah NT 0828
+  "perth-cvl": [115.772711, -32.162824], // 16 Nautical Drive, Henderson WA 6166
   "perth-cyl": [115.841673, -31.949762], // 3/50 Colin Street, West Perth WA 6005
   "perth-emr": [115.846328, -31.949709], // 1110 Hay Street, West Perth WA 6005
   "perth-mad": [115.846322, -32.012896], // 1 Sleat Road, Applecross WA 6153
   "perth-pdi": [115.850448, -31.976711], // 4 Charles Street, South Perth WA 6151
+  "perth-srg": [115.82266, -31.946683], // Level 2, 500 Hay Street, Subiaco WA 6008
   "perth:bhp": [138.598754, -34.926787], // 171 Collins Street, Melbourne VIC 3000
   "perth:rio": [144.969385, -37.813737], // Level 43, 120 Collins Street, Melbourne VIC 3000
   "perth:s32": [115.856832, -31.954441], // 108 St Georges Terrace, Perth WA 6000
@@ -269,6 +271,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-colcap": [150.91967, -33.922984], // Level 12, 77 Castlereagh Street, Sydney NSW 2000
   "priv-consolidated-travel": [144.965828, -37.813294], // Level 7, 246 Bourke Street, Melbourne VIC 3000
   "priv-cotton-on-group": [144.345295, -38.1125], // 14 Shepherd Court, North Geelong VIC 3215
+  "priv-cpb-contractors": [151.206234, -33.837086], // Level 18, 177 Pacific Highway, North Sydney NSW 2060
   "priv-craig-mostyn": [115.745154, -32.053357], // 1/6 Short Street, Fremantle WA 6160
   "priv-creation-homes": [144.977182, -37.843183], // 484 St Kilda Road, Melbourne VIC 3004
   "priv-defence-health": [144.970983, -37.832164], // 380 St Kilda Road, Melbourne VIC 3004
@@ -304,6 +307,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-leader-computers": [138.591074, -34.927599], // 165-187 Franklin Street, Adelaide SA 5000
   "priv-life-without-barriers": [151.773881, -32.92687], // 352 Hunter Street, Newcastle NSW 2300
   "priv-linfox": [145.008765, -37.827262], // 490 Swan Street, Richmond VIC 3121
+  "priv-linkforce": [115.850713, -31.954505], // Level 4, Mia Yellagonga Tower 2, 5 Spring Street, Perth WA 6000
   "priv-loan-market": [153.030092, -27.467849], // Level 18, 111 Eagle Street, Brisbane QLD 4000
   "priv-manildra-group": [151.019219, -33.853203], // 29 Tavistock Street, Auburn NSW 2144
   "priv-mater": [153.025982, -27.484143], // Raymond Terrace, South Brisbane QLD 4101
@@ -366,13 +370,18 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "priv-thiess": [153.021958, -27.479703], // Level 5, 179 Grey Street, South Bank QLD 4101
   "priv-thomas-foods-international": [138.623855, -34.930029], // Level 2, 162 Fullarton Road, Rose Park SA 5067
   "priv-turosi": [144.998029, -37.691032], // 5 Lipton Drive, Thomastown VIC 3074
+  "priv-ugl": [151.206265, -33.840451], // Level 8, 40 Miller Street, North Sydney NSW 2060
   "priv-united-petroleum": [145.035412, -37.824503], // 600 Glenferrie Road, Hawthorn VIC 3122
   "priv-uniting": [151.208181, -33.87194], // 222 Pitt Street, Sydney NSW 2000
   "priv-unitingcare-queensland": [153.0297, -27.463521], // Level 5, 192 Ann Street, Brisbane QLD 4000
   "priv-village-roadshow": [144.996024, -37.838778], // 650 Chapel Street, South Yarra VIC 3141
   "priv-visy": [144.962477, -37.821521], // Level 11, 2 Southbank Boulevard, Southbank VIC 3006
   "priv-walker-corporation": [151.211316, -33.864067], // Level 21, Governor Macquarie Tower, 1 Farrer Place, Sydney NSW 2000
+  "priv-water-corporation": [115.844063, -31.939957], // John Tonkin Water Centre, 629 Newcastle Street, Leederville WA 6007
+  "priv-western-power": [115.859928, -31.951759], // 363 Wellington Street, Perth WA 6000
+  "priv-westrac": [115.958065, -31.920626], // 128-136 Great Eastern Highway, South Guildford WA 6055
   "priv-winslow-constructors": [145.005019, -37.693893], // 50 Mahoneys Road, Thomastown VIC 3074
+  "priv-wood-group": [115.851838, -31.952745], // Level 1, 240 St Georges Terrace, Perth WA 6000
   "priv-workpac": [153.033397, -27.458828], // Level 16, 31 Duncan Street, Fortitude Valley QLD 4006
   "qld-gov-art-gallery": [153.016462, -27.470632], // Stanley Place, South Brisbane QLD 4101
   "qld-gov-cross-river-rail-delivery-authority": [153.02942, -27.462927], // Level 14, 410 Ann Street, Brisbane QLD 4000

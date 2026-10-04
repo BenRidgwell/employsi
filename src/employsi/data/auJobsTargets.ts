@@ -1145,6 +1145,17 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     cities: ["perth"],
   },
   {
+    // Added by hand 2026-10-04 with the cityRosters.ts entry. gen-asx200.py
+    // cannot reparse its own Prettier-formatted output, so a new city-roster
+    // company has to be written here as well or the AU keyword feeds never
+    // search for it — see the perth-mad note below.
+    id: "perth-cvl",
+    name: "Civmec",
+    sector: "Industrial Manufacturing",
+    group: "Industrial Manufacturing",
+    cities: ["perth"],
+  },
+  {
     id: "perth-cyl",
     name: "Catalyst Metals",
     sector: "Energy & Natural Resources",
@@ -1219,6 +1230,15 @@ export const AU_JOBS_TARGETS: JobsTarget[] = [
     name: "Resolute Mining",
     sector: "Energy & Natural Resources",
     group: "Energy & Natural Resources",
+    cities: ["perth"],
+  },
+  {
+    // Added by hand 2026-10-04 with the cityRosters.ts entry, same reason as
+    // perth-cvl above.
+    id: "perth-srg",
+    name: "SRG Global",
+    sector: "Infrastructure and Government",
+    group: "Infrastructure and Government",
     cities: ["perth"],
   },
   {

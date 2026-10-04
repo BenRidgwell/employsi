@@ -317,6 +317,23 @@ const AGRI = {
     "Operations Management",
   ],
 };
+// Added 2026-10-04 for Water Corporation and Western Power. They are
+// state-owned corporations rather than departments, so they are `private` in
+// this file's sense — not exchange-listed — which is the same reading
+// perthGov.ts applies to the WA agencies. CONSTRUCTION carries the right group
+// but the wrong skills: a water utility hires asset managers and field crews,
+// not estimators and construction managers.
+const UTILITIES = {
+  sector: "Utilities",
+  group: "Infrastructure and Government",
+  skills: [
+    "Asset Management",
+    "Civil Engineering",
+    "Field Operations & Trades",
+    "Safety & Compliance",
+    "Customer Service",
+  ],
+};
 
 // Companies whose NAME carries no clue to their industry, so the keyword rules
 // below cannot place them and would silently drop them into the catch-all.
@@ -690,6 +707,68 @@ const OUTSIDE_TOP150: [name: string, city: string, sec: Sec, sub: string][] = [
   // 3008 (programmed.com.au/contact, read 2026-09-25) — the Burswood office
   // a search turns up first is a WA branch, not the head office.
   ["Programmed", "melbourne", INDUSTRIAL, "Maintenance & workforce services"],
+  // ── Added 2026-10-04 from the talent-flow "other" bucket ──────────────────
+  // Each of these was hidden inside `other` on the BHP / Rio Tinto / Fortescue
+  // cards for having no roster id rather than for being small, and each clears
+  // FLOW_MIN_MOVES for at least one of the three. Move counts are over the
+  // 60-month window of the 2026-09-25 Bright Data import.
+  //
+  // WesTrac: 51 moves, and the only off-roster company that clears the floor
+  // for ALL THREE seeds (BHP 15, Rio 19, Fortescue 17). It is Seven Group
+  // Holdings' Caterpillar dealership and SGH is already on the roster as
+  // sydney-sgh — but it is a 3,500-person employer in its own right and the
+  // flows are its people, not the group's. Its own entry is the point, so
+  // `westrac` has been REMOVED from ADVERTISER_ALIAS and from SGH's
+  // EXTRA_QUERIES; leaving either would credit SGH with WesTrac's hiring and
+  // leave this card empty. Head office 128-136 Great Eastern Highway, South
+  // Guildford WA 6055.
+  ["WesTrac", "perth", INDUSTRIAL, "Heavy equipment dealership & service"],
+  // 35 moves, clearing the floor for all three seeds (10/15/10). WA's
+  // state-owned water utility. Head office the John Tonkin Water Centre,
+  // 629 Newcastle Street, Leederville WA 6007 — which is where 15 of its 31
+  // live roles sit.
+  ["Water Corporation", "perth", UTILITIES, "Water utility"],
+  // 30 moves (Rio 12, Fortescue 10). WA's state-owned electricity network
+  // operator, distinct from Synergy, which generates and retails.
+  ["Western Power", "perth", UTILITIES, "Electricity networks"],
+  // 32 moves, clearing the floor for all three seeds (12/10/10). A Pilbara
+  // mining-maintenance and shutdown contractor, so grouped with Mader Group
+  // and Monadelphous rather than with the miners.
+  ["Linkforce", "perth", RESOURCES, "Mining maintenance & shutdowns"],
+  // 24 moves, 14 of them into Rio Tinto. Engineering and asset services across
+  // rail, power and water; owned by CIMIC, which is not on the roster, so
+  // there is no parent for it to be confused with.
+  ["UGL", "sydney", CONSTRUCTION, "Engineering & asset services"],
+  // 16 moves, 10 of them into BHP. CIMIC's civil and building contractor, and
+  // a separate employer from UGL above despite the shared owner — its 97 live
+  // roles are Melbourne and Brisbane led, not Perth.
+  ["CPB Contractors", "sydney", CONSTRUCTION, "Civil & building construction"],
+  // 17 moves, 10 of them into Fortescue. PRIVATE SINCE 11 MARCH 2026, and it
+  // went onto the London city roster first: Sidara's takeover of John Wood
+  // Group plc completed 10 March 2026 and the shares were delisted the next
+  // day. scripts/check-listings.ts caught it the same hour. The brand and the
+  // Aberdeen head office survive, so this is a live employer, not a Marathon
+  // Oil — it just is not a listed one.
+  //
+  // Plotted on Perth rather than anywhere in the UK, which is the Thiess and
+  // Programmed rule above: the city where the people this roster can see
+  // actually work. Its Australian office is Level 1, 240 St Georges Terrace.
+  //
+  // "WOOD GROUP", NOT THE "WOOD" IT REBRANDED TO IN 2017, and that is the ABN
+  // Group lesson. The Adzuna pull searches `what_phrase: <roster name>` and
+  // the advertiser gate rejects only what it can SHOW to be wrong — page
+  // furniture, a name inside a word, or another roster company. A timber firm
+  // advertising under its own name is none of those, so a roster name of
+  // "Wood" would file the whole woodworking market against this card. The
+  // talent-flow data carries the bare "Wood", so that ref needs a
+  // flow_company_map row; one row costs less than a permanently wrong vacancy
+  // count. ACCEPT_ALIAS and ADVERTISER_ALIAS carry "wood", "wood plc" and
+  // "john wood group" so the real ads still attribute.
+  //
+  // It has NO career-portal SiteDef. woodplc.com 301s to woodgroup.com and
+  // every path under it answers 403 to this network — the Cloudflare
+  // interstitial case ARCHIVE.md documents. Keyword feeds only.
+  ["Wood Group", "perth", RESOURCES, "Engineering & asset services"],
 ];
 
 function buildOutsideTop150([name, city, sec, sub]: (typeof OUTSIDE_TOP150)[number]): Company & {

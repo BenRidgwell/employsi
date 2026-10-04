@@ -107,6 +107,27 @@ const KNOWN_DOMAINS: Record<string, string> = {
   "mader group": "madergroup.com.au",
   thiess: "thiess.com",
   programmed: "programmed.com.au",
+  // Added for talent flows, 2026-10-04. Every one of these is here because
+  // deriveDomain's word-join gets it wrong, and a wrong domain is not a
+  // cosmetic miss: the card logo and the talent-flow row logo are both the
+  // favicon service keyed on this string, so a miss renders as initials.
+  // deriveDomain produced, in order: westrac.com, water.com, westernpower.com,
+  // linkforce.com, ugl.com, cpbcontractors.com, civmec.com, srgglobal.com,
+  // wood.com, wspglobal.com. Each domain below was fetched 2026-10-04 and
+  // returned 200 (or a 403 from a WAF, which still resolves for a favicon).
+  westrac: "westrac.com.au",
+  "water corporation": "watercorporation.com.au",
+  "western power": "westernpower.com.au",
+  linkforce: "linkforce.com.au",
+  // ugl.com is a different company; UGL Limited is ugllimited.com.
+  ugl: "ugllimited.com",
+  "cpb contractors": "cpbcon.com.au",
+  civmec: "civmec.com.au",
+  "srg global": "srgglobal.com.au",
+  // woodplc.com 301s to woodgroup.com, so the latter is the live domain.
+  // Keyed on "wood group", the roster name (see cityRosters.ts).
+  "wood group": "woodgroup.com",
+  "wsp global": "wsp.com",
 };
 
 // Best-effort primary domain for a company, so the card logo (Google favicon
