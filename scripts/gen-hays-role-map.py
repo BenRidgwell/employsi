@@ -87,6 +87,35 @@ SENIORITY_COMPLETIONS: dict[str, str] = {
 }
 
 
+# ── decisions the owner CHANGED after seeing the result ──────────────────────
+#
+# These OVERRIDE the workbook. The completions above only fill holes the
+# workbook left; this is the other thing, and conflating the two would hide a
+# reviewed decision being reversed. Each entry needs a reason, because a reader
+# comparing this file to the workbook will otherwise find a disagreement with
+# no explanation and assume the generator is buggy.
+#
+# THE GUIDE PUBLISHES NO CPO OR CHRO ROW. Its most senior HR entry is
+# "HEAD OF HR/ HR DIRECTOR", split three ways by company size, and the workbook
+# put all three on hr|generalist|5 (Head/director). That left hr|generalist|6
+# (Executive — "chief people officer", "chief human resources officer") with
+# nothing at all, and it also let the >1000-employee figure set the TOP of rung
+# 5's band: $140k-$400k, where the $400k is the role the owner considers an
+# executive one rung up.
+#
+# So the >1000-employee row moves to rung 6. At that size the HR Director IS
+# the CHRO, which is the owner's reading and a sound one, and the guide does
+# not contradict it — it simply does not use the title.
+#
+# IT CHANGES A FIGURE ALREADY ON SCREEN, which is why it is an override and not
+# a quiet edit: rung 5 narrows from $140k-$400k to $140k-$280k, because a
+# <250-employee HR Director and a chief people officer should not share a band.
+# That is the point of the change rather than a side effect of it.
+REVIEWED_OVERRIDES: dict[str, str] = {
+    'HEAD OF HR/ HR DIRECTOR > 1000 EMPLOYEES': 'hr|generalist|6',
+}
+
+
 def norm(v) -> str:
     return '' if v is None else str(v).strip()
 
@@ -172,6 +201,17 @@ def main() -> int:
             accepted[idx] = node
             counts['rule'] += 1
 
+    # Overrides last, so they beat both the workbook and the rule.
+    counts['override'] = 0
+    for a in tsv:
+        idx = int(a['role_idx']) if a.get('role_idx') not in (None, '') else None
+        node = REVIEWED_OVERRIDES.get(norm(a.get('hays_role')).upper())
+        if idx is None or not node:
+            continue
+        if accepted.get(idx) != node:
+            accepted[idx] = node
+            counts['override'] += 1
+
     with open(OUT, 'w') as f:
         f.write(f"""// GENERATED — do not edit by hand.
 // Run: python3 scripts/gen-hays-role-map.py
@@ -204,7 +244,8 @@ export const HAYS_ROLE_NODE: Record<number, string> = {{
     sys.stderr.write(
         f'{len(accepted)} roles mapped onto {len(set(accepted.values()))} rungs.\n'
         f'  accepted {counts["ok"]}, corrected {counts["corrected"]}, '
-        f'completed from the seniority rule {counts["rule"]}, refused {counts["no"]}, '
+        f'completed from the seniority rule {counts["rule"]}, '
+        f'overridden {counts["override"]}, refused {counts["no"]}, '
         f'undecided {counts["blank"]}\n'
         f'  STILL NOT MAPPED, needs a decision: {stuck} '
         f'(of {counts["no_rung"] + counts["free"]} the workbook left unactionable, '
