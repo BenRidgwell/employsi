@@ -1,0 +1,1171 @@
+# Hays role -> career rung, PROPOSED. Editions: 2023, FY22/23, FY24/25.
+# Fill DECISION with the node to use (family|track|rung), "ok" to accept the
+# proposal, or "no" to map nothing. Blank is treated as undecided, and an
+# undecided role contributes no salary anywhere — the same way a rung the
+# O*NET table has not decided is simply left off the card.
+# Read section_odd=Y first: those disagree with their own section's family.
+
+DECISION	role_idx	confidence	section_odd	hays_role	hays_band	hays_section	proposed_node	rung	canonical	via	figures	band	editions
+	38	exact		ASSISTANT ACCOUNTANTS	2 - 4 years	COMMERCE AND INDUSTRY	finance|generalist|1	Entry / support	assistant accountant	title	30	60-110k	FY24/25
+	39	exact		ASSISTANT ACCOUNTANTS	4+ years	COMMERCE AND INDUSTRY	finance|generalist|1	Entry / support	assistant accountant	title	30	65-120k	FY24/25
+	414	exact		ENGINEER		RENEWABLE ENERGY	engineering|generalist|2	Practitioner	engineer	title	30	102-220k	FY24/25
+	143	exact		WORKFORCE PLANNER			hr|workforce|2	Practitioner	workforce planner	title	20	55-140k	FY24/25
+	363	exact	Y	CATEGORY MANAGER			procurement|buying|4	Manager	category manager	title	16	100-200k	FY24/25
+	366	exact	Y	COMMERCIAL MANAGER			commercial|generalist|4	Manager	commercial manager	title	16	110-260k	FY24/25
+	364	exact	Y	CONTRACT ADMINISTRATOR			commercial|generalist|2	Practitioner	contract administrator	title	16	80-175k	FY24/25
+	365	exact	Y	CONTRACT MANAGER			commercial|generalist|4	Manager	contract manager	title	16	100-260k	FY24/25
+	928	exact	Y	DRAFTER		MANUFACTURING AND OPERATIONS	architecture|drafting|2	Practitioner	drafter	title	16	51-110k	2023
+	284	exact		ENGINEER		QUALITY CONTROL AND R&D                 	engineering|generalist|2	Practitioner	engineer	title	16	80-150k	FY24/25
+	936	exact	Y	ENGINEER		MANUFACTURING AND OPERATIONS	engineering|generalist|2	Practitioner	engineer	title	16	77-140k	2023
+	929	exact	Y	MECHANICAL DESIGN ENGINEER		MANUFACTURING AND OPERATIONS	engineering|mechanical|2	Practitioner	mechanical design engineer	title	16	61-140k	2023
+	361	exact	Y	PROCUREMENT ANALYST			procurement|generalist|2	Practitioner	procurement analyst	title	16	80-140k	FY24/25
+	358	exact	Y	PROCUREMENT MANAGER			procurement|generalist|4	Manager	procurement manager	title	16	110-240k	FY24/25
+	356	exact	Y	PROCUREMENT OFFICER			procurement|generalist|2	Practitioner	procurement officer	title	16	70-120k	FY24/25
+	357	exact	Y	PROCUREMENT SPECIALIST			procurement|generalist|2	Practitioner	procurement specialist	title	16	85-140k	FY24/25
+	930	exact	Y	PROJECT ENGINEER		MANUFACTURING AND OPERATIONS	engineering|generalist|2	Practitioner	project engineer	title	16	56-135k	2023
+	362	exact	Y	PURCHASING MANAGER			procurement|generalist|4	Manager	purchasing manager	title	16	85-150k	FY24/25
+	359	exact	Y	STRATEGIC SOURCING MANAGER			procurement|generalist|4	Manager	strategic sourcing manager	title	16	110-210k	FY24/25
+	34	exact		ACCOUNTING MANAGER		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	accounting manager	title	15	92-163k	FY24/25
+	37	exact		ASSISTANT ACCOUNTANTS	Up to 2 years	COMMERCE AND INDUSTRY	finance|generalist|1	Entry / support	assistant accountant	title	15	50-80k	FY24/25
+	40	exact	Y	PAYROLL OFFICER		COMMERCE AND INDUSTRY	payroll|generalist|2	Practitioner	payroll officer	title	15	60-95k	FY24/25
+	42	exact	Y	PAYROLL TEAM LEAD		COMMERCE AND INDUSTRY	payroll|generalist|3	Senior / partner	payroll team lead	title	15	80-135k	FY24/25
+	41	exact	Y	SENIOR PAYROLL OFFICER		COMMERCE AND INDUSTRY	payroll|generalist|3	Senior / partner	senior payroll officer	title	15	70-120k	FY24/25
+	26	exact		TREASURY MANAGER		COMMERCE AND INDUSTRY	finance|treasury|4	Manager	treasury manager	title	15	100-210k	FY24/25
+	661	exact		ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	accountant	title	14	66-122k	2023
+	336	exact		ADMINISTRATOR		PROPERTY AND CONSTRUCTION SUPPORT	admin|generalist|1	Entry / support	administrator	title	14	55-100k	FY24/25
+	512	exact	Y	Civil Designer			architecture|drafting|2	Practitioner	civil designer	title	14	51-130k	FY22/23
+	123	exact		CONSTRUCTION MANAGER		CONSTRUCTION CIVIL	construction|generalist|4	Manager	construction manager	title	14	130-300k	FY24/25
+	132	exact		CONSTRUCTION MANAGER		CONSTRUCTION BUILDING	construction|generalist|4	Manager	construction manager	title	14	130-320k	FY24/25
+	731	exact	Y	CONSTRUCTION MANAGER		CONSTRUCTION	construction|generalist|4	Manager	construction manager	title	14	130-300k	2023
+	743	exact	Y	CONSTRUCTION MANAGER		CONSTRUCTION	construction|generalist|4	Manager	construction manager	title	14	120-320k	2023
+	787	exact	Y	CONTRACTS MANAGER		FACILITIES MANAGEMENT	commercial|generalist|4	Manager	contracts manager	title	14	66-168k	2023
+	520	exact	Y	Control Room Operator			operations|generalist|2	Practitioner	control room operator	title	14	51-66k	FY22/23
+	164	exact	Y	CONTROL ROOM OPERATOR		SOFT SERVICES	operations|generalist|2	Practitioner	control room operator	title	14	51-100k	FY24/25
+	796	exact	Y	CONTROL ROOM OPERATOR		FACILITIES MANAGEMENT	operations|generalist|2	Practitioner	control room operator	title	14	51-100k	2023
+	124	exact		DESIGN MANAGER		CONSTRUCTION CIVIL	construction|generalist|4	Manager	design manager	title	14	90-190k	FY24/25
+	133	exact		DESIGN MANAGER		CONSTRUCTION BUILDING	construction|generalist|4	Manager	design manager	title	14	90-240k	FY24/25
+	732	exact	Y	DESIGN MANAGER		CONSTRUCTION	construction|generalist|4	Manager	design manager	title	14	90-190k	2023
+	744	exact	Y	DESIGN MANAGER		CONSTRUCTION	construction|generalist|4	Manager	design manager	title	14	90-240k	2023
+	991	exact		DOCUMENT CONTROLLER		OFFICE SUPPORT	library|records|2	Practitioner	document controller	title	14	48-120k	2023
+	77	exact	Y	DRAFTER			architecture|drafting|2	Practitioner	drafter	title	14	57-125k	FY24/25
+	784	exact		FACILITIES COORDINATOR		FACILITIES MANAGEMENT	facilities|facilities|2	Practitioner	facilities coordinator	title	14	49-90k	2023
+	785	exact		FACILITIES MANAGER		FACILITIES MANAGEMENT	facilities|facilities|4	Manager	facilities manager	title	14	61-150k	2023
+	522	exact	Y	Facilities Officer			facilities|facilities|2	Practitioner	facilities officer	title	14	48-75k	FY22/23
+	166	exact		FACILITIES OFFICER		SOFT SERVICES	facilities|facilities|2	Practitioner	facilities officer	title	14	48-90k	FY24/25
+	798	exact		FACILITIES OFFICER		FACILITIES MANAGEMENT	facilities|facilities|2	Practitioner	facilities officer	title	14	48-80k	2023
+	121	exact		FOREPERSON		CONSTRUCTION CIVIL	construction|generalist|2	Practitioner	foreperson	title	14	80-160k	FY24/25
+	129	exact		FOREPERSON		CONSTRUCTION BUILDING	construction|generalist|2	Practitioner	foreperson	title	14	80-185k	FY24/25
+	729	exact	Y	FOREPERSON		CONSTRUCTION	construction|generalist|2	Practitioner	foreperson	title	14	66-160k	2023
+	740	exact	Y	FOREPERSON		CONSTRUCTION	construction|generalist|2	Practitioner	foreperson	title	14	70-185k	2023
+	606	exact		HEAD OF TAX		ACCOUNTANCY AND FINANCE	finance|tax|5	Head / director	head of tax	title	14	102-400k	2023
+	27	exact		HEAD OF TREASURY		COMMERCE AND INDUSTRY	finance|treasury|5	Head / director	head of treasury	title	14	122-510k	FY24/25
+	618	exact	Y	INTERNAL AUDIT MANAGER		ACCOUNTANCY AND FINANCE	risk|audit|4	Manager	internal audit manager	title	14	97-200k	2023
+	617	exact	Y	INTERNAL AUDITOR		ACCOUNTANCY AND FINANCE	risk|audit|2	Practitioner	internal auditor	title	14	66-120k	2023
+	508	exact	Y	Land Surveyor			geoscience|surveying|2	Practitioner	land surveyor	title	14	56-153k	FY22/23
+	624	exact	Y	PAYROLL OFFICER		ACCOUNTANCY AND FINANCE	payroll|generalist|2	Practitioner	payroll officer	title	14	56-85k	2023
+	626	exact	Y	PAYROLL TEAM LEAD		ACCOUNTANCY AND FINANCE	payroll|generalist|3	Senior / partner	payroll team lead	title	14	70-130k	2023
+	662	exact	Y	PRACTICE MANAGER		ACCOUNTANCY AND FINANCE	admin|generalist|4	Manager	practice manager	title	14	82-160k	2023
+	578	exact		PROJECT ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	project accountant	title	14	87-170k	2023
+	734	exact	Y	PROJECT ENGINEER		CONSTRUCTION	engineering|generalist|2	Practitioner	project engineer	title	14	77-170k	2023
+	122	exact	Y	PROJECT MANAGER		CONSTRUCTION CIVIL	project|generalist|3	Senior / partner	project manager	title	14	100-250k	FY24/25
+	131	exact	Y	PROJECT MANAGER		CONSTRUCTION BUILDING	project|generalist|3	Senior / partner	project manager	title	14	100-280k	FY24/25
+	730	exact	Y	PROJECT MANAGER		CONSTRUCTION	project|generalist|3	Senior / partner	project manager	title	14	85-255k	2023
+	742	exact	Y	PROJECT MANAGER		CONSTRUCTION	project|generalist|3	Senior / partner	project manager	title	14	100-250k	2023
+	521	exact	Y	Security Manager			emergency|security|4	Manager	security manager	title	14	65-87k	FY22/23
+	165	exact	Y	SECURITY MANAGER		SOFT SERVICES	emergency|security|4	Manager	security manager	title	14	65-150k	FY24/25
+	797	exact	Y	SECURITY MANAGER		FACILITIES MANAGEMENT	emergency|security|4	Manager	security manager	title	14	65-150k	2023
+	625	exact	Y	SENIOR PAYROLL OFFICER		ACCOUNTANCY AND FINANCE	payroll|generalist|3	Senior / partner	senior payroll officer	title	14	61-110k	2023
+	125	exact	Y	SITE ENGINEER		CONSTRUCTION CIVIL	engineering|civil|2	Practitioner	site engineer	title	14	65-140k	FY24/25
+	733	exact	Y	SITE ENGINEER		CONSTRUCTION	engineering|civil|2	Practitioner	site engineer	title	14	60-140k	2023
+	745	exact	Y	SITE ENGINEER		CONSTRUCTION	engineering|civil|2	Practitioner	site engineer	title	14	60-150k	2023
+	130	exact		SITE MANAGER		CONSTRUCTION BUILDING	construction|generalist|4	Manager	site manager	title	14	100-260k	FY24/25
+	741	exact	Y	SITE MANAGER		CONSTRUCTION	construction|generalist|4	Manager	site manager	title	14	90-240k	2023
+	604	exact		TAX ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|tax|2	Practitioner	tax accountant	title	14	77-140k	2023
+	605	exact		TAX MANAGER		ACCOUNTANCY AND FINANCE	finance|tax|4	Manager	tax manager	title	14	92-250k	2023
+	515	exact	Y	Town Planner			architecture|planning|2	Practitioner	town planner	title	14	53-125k	FY22/23
+	33	exact		ACCOUNTANT		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	accountant	title	13	77-140k	FY24/25
+	429	exact	Y	BUSINESS ANALYST		PROJECTS AND CHANGE MANAGEMENT	product|generalist|2	Practitioner	business analyst	title	13	90-150k	FY24/25
+	1111	exact	Y	BUSINESS ANALYST		TECHNOLOGY	product|generalist|2	Practitioner	business analyst	title	13	90-170k	2023
+	459	exact	Y	CLOUD ARCHITECT		CLOUD	technology|architecture|4	Manager	cloud architect	title	13	130-280k	FY24/25
+	1141	exact		CLOUD ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	cloud architect	title	13	130-280k	2023
+	458	exact	Y	CLOUD ENGINEER		CLOUD	technology|generalist|2	Practitioner	cloud engineer	title	13	100-200k	FY24/25
+	1140	exact		CLOUD ENGINEER		TECHNOLOGY	technology|generalist|2	Practitioner	cloud engineer	title	13	95-200k	2023
+	473	exact		CYBER SECURITY ANALYST		CYBER SECURITY	technology|security|2	Practitioner	cyber security analyst	title	13	90-180k	FY24/25
+	1155	exact		CYBER SECURITY ANALYST		TECHNOLOGY	technology|security|2	Practitioner	cyber security analyst	title	13	90-170k	2023
+	475	exact		CYBER SECURITY ARCHITECT		CYBER SECURITY	technology|security|4	Manager	cyber security architect	title	13	140-275k	FY24/25
+	1157	exact		CYBER SECURITY ARCHITECT		TECHNOLOGY	technology|security|4	Manager	cyber security architect	title	13	133-275k	2023
+	474	exact		CYBER SECURITY ENGINEER		CYBER SECURITY	technology|security|2	Practitioner	cyber security engineer	title	13	90-180k	FY24/25
+	1156	exact		CYBER SECURITY ENGINEER		TECHNOLOGY	technology|security|2	Practitioner	cyber security engineer	title	13	90-180k	2023
+	466	exact		DATA ANALYST		DATA AND ADVANCED ANALYTICS	data|generalist|2	Practitioner	data analyst	title	13	80-140k	FY24/25
+	1148	exact	Y	DATA ANALYST		TECHNOLOGY	data|generalist|2	Practitioner	data analyst	title	13	75-140k	2023
+	472	exact		DATA ARCHITECT		DATA AND ADVANCED ANALYTICS	data|engineering|4	Manager	data architect	title	13	115-250k	FY24/25
+	1154	exact	Y	DATA ARCHITECT		TECHNOLOGY	data|engineering|4	Manager	data architect	title	13	110-250k	2023
+	470	exact		DATA ENGINEER		DATA AND ADVANCED ANALYTICS	data|engineering|2	Practitioner	data engineer	title	13	100-220k	FY24/25
+	1152	exact	Y	DATA ENGINEER		TECHNOLOGY	data|engineering|2	Practitioner	data engineer	title	13	95-220k	2023
+	471	exact		DATA SCIENTIST		DATA AND ADVANCED ANALYTICS	data|science|2	Practitioner	data scientist	title	13	110-250k	FY24/25
+	1153	exact	Y	DATA SCIENTIST		TECHNOLOGY	data|science|2	Practitioner	data scientist	title	13	105-260k	2023
+	455	exact		DEVOPS ENGINEER		CLOUD	software|generalist|2	Practitioner	devops engineer	title	13	100-200k	FY24/25
+	1137	exact	Y	DEVOPS ENGINEER		TECHNOLOGY	software|generalist|2	Practitioner	devops engineer	title	13	90-200k	2023
+	443	exact	Y	ENTERPRISE ARCHITECT		PROJECTS AND CHANGE MANAGEMENT	technology|architecture|4	Manager	enterprise architect	title	13	125-280k	FY24/25
+	1125	exact		ENTERPRISE ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	enterprise architect	title	13	125-280k	2023
+	136	exact		FACILITIES COORDINATOR		LOCAL GOVERNMENT	facilities|facilities|2	Practitioner	facilities coordinator	title	13	55-90k	FY24/25
+	753	exact	Y	FACILITIES COORDINATOR		CONSTRUCTION	facilities|facilities|2	Practitioner	facilities coordinator	title	13	51-90k	2023
+	137	exact		FACILITIES MANAGER		LOCAL GOVERNMENT	facilities|facilities|4	Manager	facilities manager	title	13	70-130k	FY24/25
+	754	exact	Y	FACILITIES MANAGER		CONSTRUCTION	facilities|facilities|4	Manager	facilities manager	title	13	70-130k	2023
+	7	exact		FINANCE BUSINESS PARTNER		COMMERCE AND INDUSTRY	finance|fpa|3	Senior / partner	finance business partner	title	13	95-180k	FY24/25
+	568	exact		FINANCE BUSINESS PARTNER		ACCOUNTANCY AND FINANCE	finance|fpa|3	Senior / partner	finance business partner	title	13	90-170k	2023
+	436	exact		PMO MANAGER		PROJECTS AND CHANGE MANAGEMENT	project|generalist|5	Head / director	pmo manager	title	13	130-230k	FY24/25
+	1118	exact	Y	PMO MANAGER		TECHNOLOGY	project|generalist|5	Head / director	pmo manager	title	13	125-220k	2023
+	442	exact	Y	PRODUCT OWNER		PROJECTS AND CHANGE MANAGEMENT	product|product|3	Senior / partner	product owner	title	13	100-200k	FY24/25
+	1124	exact	Y	PRODUCT OWNER		TECHNOLOGY	product|product|3	Senior / partner	product owner	title	13	100-220k	2023
+	434	exact		PROGRAM MANAGER		PROJECTS AND CHANGE MANAGEMENT	project|generalist|4	Manager	program manager	title	13	130-240k	FY24/25
+	1116	exact	Y	PROGRAM MANAGER		TECHNOLOGY	project|generalist|4	Manager	program manager	title	13	130-240k	2023
+	431	exact		PROJECT CO-ORDINATOR		PROJECTS AND CHANGE MANAGEMENT	project|generalist|1	Entry / support	project coordinator	title	13	70-140k	FY24/25
+	1113	exact	Y	PROJECT CO-ORDINATOR		TECHNOLOGY	project|generalist|1	Entry / support	project coordinator	title	13	70-130k	2023
+	435	exact		PROJECT DIRECTOR		PROJECTS AND CHANGE MANAGEMENT	project|generalist|5	Head / director	project director	title	13	122-300k	FY24/25
+	1117	exact	Y	PROJECT DIRECTOR		TECHNOLOGY	project|generalist|5	Head / director	project director	title	13	122-300k	2023
+	746	exact	Y	PROJECT ENGINEER		CONSTRUCTION	engineering|generalist|2	Practitioner	project engineer	title	13	80-160k	2023
+	138	exact		PROJECT MANAGER		LOCAL GOVERNMENT	project|generalist|3	Senior / partner	project manager	title	13	80-160k	FY24/25
+	432	exact		PROJECT MANAGER		PROJECTS AND CHANGE MANAGEMENT	project|generalist|3	Senior / partner	project manager	title	13	110-180k	FY24/25
+	755	exact	Y	PROJECT MANAGER		CONSTRUCTION	project|generalist|3	Senior / partner	project manager	title	13	80-160k	2023
+	1114	exact	Y	PROJECT MANAGER		TECHNOLOGY	project|generalist|3	Senior / partner	project manager	title	13	100-190k	2023
+	437	exact		PROJECT SCHEDULER		PROJECTS AND CHANGE MANAGEMENT	project|controls|2	Practitioner	project scheduler	title	13	78-200k	FY24/25
+	1119	exact	Y	PROJECT SCHEDULER		TECHNOLOGY	project|controls|2	Practitioner	project scheduler	title	13	78-200k	2023
+	139	exact		PROPERTY MANAGER		LOCAL GOVERNMENT	property|generalist|2	Practitioner	property manager	title	13	50-140k	FY24/25
+	756	exact	Y	PROPERTY MANAGER		CONSTRUCTION	property|generalist|2	Practitioner	property manager	title	13	50-140k	2023
+	430	exact	Y	SENIOR BUSINESS ANALYST		PROJECTS AND CHANGE MANAGEMENT	product|generalist|3	Senior / partner	senior business analyst	title	13	100-180k	FY24/25
+	1112	exact	Y	SENIOR BUSINESS ANALYST		TECHNOLOGY	product|generalist|3	Senior / partner	senior business analyst	title	13	100-190k	2023
+	1149	exact	Y	SENIOR DATA ANALYST		TECHNOLOGY	data|generalist|3	Senior / partner	senior data analyst	title	13	90-170k	2023
+	433	exact		SENIOR PROJECT MANAGER		PROJECTS AND CHANGE MANAGEMENT	project|generalist|4	Manager	senior project manager	title	13	120-200k	FY24/25
+	1115	exact	Y	SENIOR PROJECT MANAGER		TECHNOLOGY	project|generalist|4	Manager	senior project manager	title	13	120-210k	2023
+	457	exact		SITE RELIABILITY ENGINEER		CLOUD	software|generalist|2	Practitioner	site reliability engineer	title	13	120-200k	FY24/25
+	1139	exact	Y	SITE RELIABILITY ENGINEER		TECHNOLOGY	software|generalist|2	Practitioner	site reliability engineer	title	13	120-200k	2023
+	764	exact		ACCOUNT MANAGER		CONTACT CENTRES	sales|account-management|2	Practitioner	account manager	title	12	51-85k	2023
+	518	exact	Y	Catering Manager			hospitality|generalist|4	Manager	catering manager	title	12	66-100k	FY22/23
+	162	exact	Y	CATERING MANAGER		SOFT SERVICES	hospitality|generalist|4	Manager	catering manager	title	12	66-110k	FY24/25
+	794	exact	Y	CATERING MANAGER		FACILITIES MANAGEMENT	hospitality|generalist|4	Manager	catering manager	title	12	66-110k	2023
+	516	exact	Y	Cleaning Operations Manager			facilities|generalist|4	Manager	cleaning operations manager	title	12	71-122k	FY22/23
+	160	exact		CLEANING OPERATIONS MANAGER		SOFT SERVICES	facilities|generalist|4	Manager	cleaning operations manager	title	12	75-180k	FY24/25
+	792	exact		CLEANING OPERATIONS MANAGER		FACILITIES MANAGEMENT	facilities|generalist|4	Manager	cleaning operations manager	title	12	75-180k	2023
+	119	exact		HEAD OF RISK		COMPLIANCE/RISK	risk|generalist|5	Head / director	head of risk	title	12	122-400k	FY24/25
+	142	exact	Y	REPORTING ANALYST			data|generalist|2	Practitioner	reporting analyst	title	12	55-90k	FY24/25
+	767	exact	Y	REPORTING ANALYST		CONTACT CENTRES	data|generalist|2	Practitioner	reporting analyst	title	12	55-87k	2023
+	760	exact		SALES MANAGER		CONTACT CENTRES	sales|generalist|4	Manager	sales manager	title	12	66-140k	2023
+	421	exact		SERVICE DESK MANAGER		INFRASTRUCTURE	technology|support|4	Manager	service desk manager	title	12	80-140k	FY24/25
+	1103	exact		SERVICE DESK MANAGER		TECHNOLOGY	technology|support|4	Manager	service desk manager	title	12	78-140k	2023
+	420	exact		SERVICE DESK TEAM LEADER		INFRASTRUCTURE	technology|support|3	Senior / partner	service desk team leader	title	12	70-130k	FY24/25
+	1102	exact		SERVICE DESK TEAM LEADER		TECHNOLOGY	technology|support|3	Senior / partner	service desk team leader	title	12	70-130k	2023
+	559	exact	Y	Solution Architect			technology|architecture|4	Manager	solution architect	title	12	140-250k	FY22/23
+	453	exact	Y	SOLUTION ARCHITECT		SOFTWARE DEVELOPMENT	technology|architecture|4	Manager	solution architect	title	12	140-250k	FY24/25
+	558	exact	Y	UX/UI Designer			creative|generalist|2	Practitioner	ux ui designer	title	12	80-170k	FY22/23
+	452	exact	Y	UX/UI DESIGNER		SOFTWARE DEVELOPMENT	creative|generalist|2	Practitioner	ux ui designer	title	12	90-180k	FY24/25
+	768	exact	Y	WORKFORCE PLANNER		CONTACT CENTRES	hr|workforce|2	Practitioner	workforce planner	title	12	51-110k	2023
+	390	exact		ACCOUNT DIRECTOR		IT AND TELECOMMUNICATIONS SALES	sales|account-management|4	Manager	account director	title	11	130-200k	FY24/25
+	389	exact		ACCOUNT MANAGER		IT AND TELECOMMUNICATIONS SALES	sales|account-management|2	Practitioner	account manager	title	11	110-160k	FY24/25
+	399	exact		ACCOUNT MANAGER		INDUSTRIAL AND TECHNICAL SALES	sales|account-management|2	Practitioner	account manager	title	11	65-110k	FY24/25
+	1072	exact		ACCOUNT MANAGER		SALES NOTES All salaries shown are exclu	sales|account-management|2	Practitioner	account manager	title	11	60-110k	2023
+	402	exact		AREA SALES MANAGER		INDUSTRIAL AND TECHNICAL SALES	sales|generalist|4	Manager	area sales manager	title	11	75-120k	FY24/25
+	379	exact		BUSINESS DEVELOPMENT MANAGER		IT & TELECOMMUNICATIONS SALES	sales|generalist|3	Senior / partner	business development manager	title	11	100-170k	FY24/25
+	405	exact		BUSINESS DEVELOPMENT MANAGER		INDUSTRIAL AND TECHNICAL SALES	sales|generalist|3	Senior / partner	business development manager	title	11	85-150k	FY24/25
+	1075	exact		BUSINESS DEVELOPMENT MANAGER		SALES NOTES All salaries shown are exclu	sales|generalist|3	Senior / partner	business development manager	title	11	75-200k	2023
+	1070	exact	Y	CATEGORY MANAGER		SALES NOTES All salaries shown are exclu	procurement|buying|4	Manager	category manager	title	11	75-160k	2023
+	1079	exact		DIRECTOR OF SALES		SALES NOTES All salaries shown are exclu	sales|generalist|5	Head / director	director of sales	title	11	130-300k	2023
+	486	exact	Y	Head of Risk			risk|generalist|5	Head / director	head of risk	title	11	122-306k	FY22/23
+	616	exact	Y	HEAD OF RISK		ACCOUNTANCY AND FINANCE	risk|generalist|5	Head / director	head of risk	title	11	122-400k	2023
+	393	exact		HEAD OF SALES		IT AND TELECOMMUNICATIONS SALES	sales|generalist|5	Head / director	head of sales	title	11	170-230k	FY24/25
+	406	exact		NATIONAL ACCOUNT MANAGER		INDUSTRIAL AND TECHNICAL SALES	sales|account-management|3	Senior / partner	national account manager	title	11	85-160k	FY24/25
+	1074	exact		NATIONAL ACCOUNT MANAGER		SALES NOTES All salaries shown are exclu	sales|account-management|3	Senior / partner	national account manager	title	11	80-150k	2023
+	1078	exact		NATIONAL SALES MANAGER		SALES NOTES All salaries shown are exclu	sales|generalist|5	Head / director	national sales manager	title	11	95-225k	2023
+	383	exact		SALES CONSULTANT		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	sales consultant	title	11	120-160k	FY24/25
+	394	exact		SALES DIRECTOR		IT AND TELECOMMUNICATIONS SALES	sales|generalist|5	Head / director	sales director	title	11	180-250k	FY24/25
+	392	exact		SALES MANAGER		IT AND TELECOMMUNICATIONS SALES	sales|generalist|4	Manager	sales manager	title	11	160-220k	FY24/25
+	398	exact		SALES REPRESENTATIVE		INDUSTRIAL AND TECHNICAL SALES	sales|generalist|2	Practitioner	sales representative	title	11	60-100k	FY24/25
+	1073	exact		SENIOR ACCOUNT MANAGER		SALES NOTES All salaries shown are exclu	sales|account-management|3	Senior / partner	senior account manager	title	11	70-135k	2023
+	1135	exact		SOLUTION ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	solution architect	title	11	140-250k	2023
+	1076	exact		TERRITORY MANAGER		SALES NOTES All salaries shown are exclu	sales|generalist|2	Practitioner	territory manager	title	11	65-105k	2023
+	1134	exact	Y	UX/UI DESIGNER		TECHNOLOGY	creative|generalist|2	Practitioner	ux ui designer	title	11	82-180k	2023
+	415	exact		DESIGN ENGINEER		RENEWABLE ENERGY	engineering|generalist|2	Practitioner	design engineer	title	10	140-250k	FY24/25
+	557	exact	Y	Director of Sales			sales|generalist|5	Head / director	director of sales	title	10	97-300k	FY22/23
+	1092	exact		ELECTRICAL DESIGN ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|electrical|2	Practitioner	electrical design engineer	title	10	102-180k	2023
+	1098	exact		ELECTRICAL ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|electrical|2	Practitioner	electrical engineer	title	10	120-357k	2023
+	413	exact		ENGINEER		ENVIRONMENTAL	engineering|generalist|2	Practitioner	engineer	title	10	140-245k	FY24/25
+	1084	exact	Y	ENVIRONMENTAL OFFICER		SUSTAINABILITY AND ENVIRONMENTAL	science|environmental|2	Practitioner	environmental officer	title	10	60-130k	2023
+	556	exact	Y	National Sales Manager			sales|generalist|5	Head / director	national sales manager	title	10	87-225k	FY22/23
+	233	exact		PARALEGAL		PRIVATE PRACTICE - TOP TIER	legal|generalist|1	Entry / support	paralegal	title	10	60-170k	FY24/25
+	240	exact		PARALEGAL		PRIVATE PRACTICE - MID TIER	legal|generalist|1	Entry / support	paralegal	title	10	55-160k	FY24/25
+	247	exact		PARALEGAL		PRIVATE PRACTICE - SMALL PRACTICES	legal|generalist|1	Entry / support	paralegal	title	10	55-155k	FY24/25
+	982	exact		PR COORDINATOR		MARKETING AND DIGITAL	marketing|communications|1	Entry / support	pr coordinator	title	10	55-90k	2023
+	984	exact		PR MANAGER		MARKETING AND DIGITAL	marketing|communications|4	Manager	pr manager	title	10	70-145k	2023
+	1093	exact		SENIOR ELECTRICAL DESIGN ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|electrical|3	Senior / partner	senior electrical design engineer	title	10	140-220k	2023
+	345	exact	Y	BUSINESS ANALYST			product|generalist|2	Practitioner	business analyst	title	9	71-143k	FY24/25
+	1012	exact	Y	BUSINESS ANALYST		POLICY AND STRATEGY	product|generalist|2	Practitioner	business analyst	title	9	71-143k	2023
+	354	exact	Y	COMPLIANCE OFFICER			risk|compliance|2	Practitioner	compliance officer	title	9	65-120k	FY24/25
+	1021	exact		COMPLIANCE OFFICER		POLICY AND STRATEGY	risk|compliance|2	Practitioner	compliance officer	title	9	65-120k	2023
+	343	exact	Y	DATA ANALYST			data|generalist|2	Practitioner	data analyst	title	9	61-120k	FY24/25
+	1010	exact	Y	DATA ANALYST		POLICY AND STRATEGY	data|generalist|2	Practitioner	data analyst	title	9	61-120k	2023
+	1000	exact	Y	GOVERNMENT RELATIONS MANAGER		POLICY AND STRATEGY	community|generalist|4	Manager	government relations manager	title	9	92-170k	2023
+	346	exact	Y	MINISTERIAL LIAISON OFFICER			policy|generalist|2	Practitioner	ministerial liaison officer	title	9	65-120k	FY24/25
+	1013	exact	Y	MINISTERIAL LIAISON OFFICER		POLICY AND STRATEGY	policy|generalist|2	Practitioner	ministerial liaison officer	title	9	65-120k	2023
+	254	exact		PARALEGAL		IN-HOUSE	legal|generalist|1	Entry / support	paralegal	title	9	60-170k	FY24/25
+	999	exact	Y	POLICY MANAGER		POLICY AND STRATEGY	policy|generalist|4	Manager	policy manager	title	9	92-170k	2023
+	1003	exact	Y	PROGRAMME MANAGER*		POLICY AND STRATEGY	project|generalist|4	Manager	programme manager	title	9	75-180k	2023
+	1005	exact	Y	PROJECT MANAGER*		POLICY AND STRATEGY	project|generalist|3	Senior / partner	project manager	title	9	87-180k	2023
+	1004	exact	Y	PROJECT OFFICER*		POLICY AND STRATEGY	project|generalist|2	Practitioner	project officer	title	9	61-110k	2023
+	353	exact	Y	RISK ADVISOR			risk|generalist|2	Practitioner	risk advisor	title	9	70-140k	FY24/25
+	1020	exact		RISK ADVISOR		POLICY AND STRATEGY	risk|generalist|2	Practitioner	risk advisor	title	9	70-140k	2023
+	534	exact	Y	Account Executive			sales|generalist|2	Practitioner	account executive	title	8	49-85k	FY22/23
+	97	exact		ADMINISTRATOR		SUPERANNUATION AND FUNDS MANAGEMENT	admin|generalist|1	Entry / support	administrator	title	8	55-75k	FY24/25
+	703	exact	Y	ADMINISTRATOR		BANKING	admin|generalist|1	Entry / support	administrator	title	8	55-75k	2023
+	686	exact		ASSISTANT RELATIONSHIP MANAGER		BANKING	banking|relationship|3	Senior / partner	assistant relationship manager	title	8	65-100k	2023
+	302	exact	Y	BID WRITER		MARKETING	creative|media|2	Practitioner	bid writer	title	8	70-140k	FY24/25
+	949	exact	Y	BID WRITER		MARKETING AND DIGITAL	creative|media|2	Practitioner	bid writer	title	8	70-140k	2023
+	278	exact	Y	BOILERMAKER/WELDER		MANUFACTURING AND OPERATIONS	trades|fabrication|2	Practitioner	boilermaker welder	title	8	70-120k	FY24/25
+	922	exact	Y	BOILERMAKER/WELDER		MANUFACTURING AND OPERATIONS	trades|fabrication|2	Practitioner	boilermaker welder	title	8	49-120k	2023
+	298	exact		BRAND MANAGER		MARKETING	marketing|generalist|3	Senior / partner	brand manager	title	8	90-140k	FY24/25
+	945	exact		BRAND MANAGER		MARKETING AND DIGITAL	marketing|generalist|3	Senior / partner	brand manager	title	8	85-150k	2023
+	96	exact		BUSINESS DEVELOPMENT MANAGER		ASSET FINANCE	sales|generalist|3	Senior / partner	business development manager	title	8	85-160k	FY24/25
+	100	exact		BUSINESS DEVELOPMENT MANAGER		SUPERANNUATION AND FUNDS MANAGEMENT	sales|generalist|3	Senior / partner	business development manager	title	8	90-170k	FY24/25
+	691	exact	Y	BUSINESS DEVELOPMENT MANAGER		BANKING	sales|generalist|3	Senior / partner	business development manager	title	8	95-165k	2023
+	702	exact	Y	BUSINESS DEVELOPMENT MANAGER		BANKING	sales|generalist|3	Senior / partner	business development manager	title	8	85-150k	2023
+	706	exact	Y	BUSINESS DEVELOPMENT MANAGER		BANKING	sales|generalist|3	Senior / partner	business development manager	title	8	80-158k	2023
+	1030	exact		CATEGORY MANAGER		PROCUREMENT	procurement|buying|4	Manager	category manager	title	8	100-200k	2023
+	1033	exact	Y	COMMERCIAL MANAGER		PROCUREMENT	commercial|generalist|4	Manager	commercial manager	title	8	120-260k	2023
+	307	exact		COMMUNICATIONS ADVISOR		MARKETING	marketing|communications|2	Practitioner	communications advisor	title	8	80-130k	FY24/25
+	954	exact		COMMUNICATIONS ADVISOR		MARKETING AND DIGITAL	marketing|communications|2	Practitioner	communications advisor	title	8	80-135k	2023
+	308	exact		COMMUNICATIONS MANAGER		MARKETING	marketing|communications|4	Manager	communications manager	title	8	100-170k	FY24/25
+	955	exact		COMMUNICATIONS MANAGER		MARKETING AND DIGITAL	marketing|communications|4	Manager	communications manager	title	8	100-160k	2023
+	1031	exact	Y	CONTRACT ADMINISTRATOR		PROCUREMENT	commercial|generalist|2	Practitioner	contract administrator	title	8	80-150k	2023
+	1032	exact	Y	CONTRACT MANAGER		PROCUREMENT	commercial|generalist|4	Manager	contract manager	title	8	100-220k	2023
+	84	exact		CREDIT ANALYST		LENDING OPERATIONS	banking|lending|2	Practitioner	credit analyst	title	8	55-120k	FY24/25
+	94	exact		CREDIT ANALYST		ASSET FINANCE	banking|lending|2	Practitioner	credit analyst	title	8	55-110k	FY24/25
+	680	exact		CREDIT ANALYST		BANKING	banking|lending|2	Practitioner	credit analyst	title	8	51-110k	2023
+	700	exact		CREDIT ANALYST		BANKING	banking|lending|2	Practitioner	credit analyst	title	8	55-110k	2023
+	315	exact		DIGITAL MARKETING COORDINATOR		DIGITAL	marketing|generalist|1	Entry / support	digital marketing coordinator	title	8	70-100k	FY24/25
+	962	exact		DIGITAL MARKETING COORDINATOR		MARKETING AND DIGITAL	marketing|generalist|1	Entry / support	digital marketing coordinator	title	8	70-100k	2023
+	316	exact		DIGITAL MARKETING EXECUTIVE		DIGITAL	marketing|generalist|2	Practitioner	digital marketing executive	title	8	74-120k	FY24/25
+	963	exact		DIGITAL MARKETING EXECUTIVE		MARKETING AND DIGITAL	marketing|generalist|2	Practitioner	digital marketing executive	title	8	74-120k	2023
+	319	exact		DIGITAL MARKETING MANAGER		DIGITAL	marketing|generalist|4	Manager	digital marketing manager	title	8	100-180k	FY24/25
+	966	exact		DIGITAL MARKETING MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	digital marketing manager	title	8	90-180k	2023
+	329	exact	Y	DIGITAL PRODUCT OWNER		DIGITAL	product|product|3	Senior / partner	digital product owner	title	8	90-160k	FY24/25
+	976	exact	Y	DIGITAL PRODUCT OWNER		MARKETING AND DIGITAL	product|product|3	Senior / partner	digital product owner	title	8	90-155k	2023
+	903	exact		DISTRIBUTION CENTRE MANAGER		LOGISTICS	logistics|generalist|4	Manager	distribution centre manager	title	8	66-155k	2023
+	543	exact	Y	Electrical Engineer			engineering|electrical|2	Practitioner	electrical engineer	title	8	77-140k	FY22/23
+	288	exact	Y	ELECTRICAL ENGINEER		MAINTENANCE AND ENGINEERING	engineering|electrical|2	Practitioner	electrical engineer	title	8	80-150k	FY24/25
+	934	exact	Y	ELECTRICIAN		MANUFACTURING AND OPERATIONS	trades|electrical|2	Practitioner	electrician	title	8	70-125k	2023
+	723	exact		FINANCIAL PLANNER		BANKING	banking|advice|2	Practitioner	financial planner	title	8	82-130k	2023
+	271	exact		FLEET MANAGER		TRANSPORT	logistics|driving|4	Manager	fleet manager	title	8	70-150k	FY24/25
+	915	exact		FLEET MANAGER		LOGISTICS	logistics|driving|4	Manager	fleet manager	title	8	61-120k	2023
+	297	exact	Y	GRAPHIC DESIGNER		MARKETING	creative|generalist|2	Practitioner	graphic designer	title	8	70-125k	FY24/25
+	944	exact	Y	GRAPHIC DESIGNER		MARKETING AND DIGITAL	creative|generalist|2	Practitioner	graphic designer	title	8	70-125k	2023
+	183	exact		HR ADMIN			hr|generalist|1	Entry / support	hr admin	title	8	60-85k	FY24/25
+	181	exact		HR ADVISOR			hr|generalist|2	Practitioner	hr advisor	title	8	80-130k	FY24/25
+	179	exact		HR BUSINESS PARTNER			hr|generalist|3	Senior / partner	hr business partner	title	8	95-170k	FY24/25
+	182	exact		HR COORDINATOR			hr|generalist|1	Entry / support	hr coordinator	title	8	65-95k	FY24/25
+	193	exact		LEARNING & DEVELOPMENT COORDINATOR			hr|learning|1	Entry / support	learning and development coordinator	title	8	65-100k	FY24/25
+	813	exact		LEARNING & DEVELOPMENT COORDINATOR		HUMAN RESOURCES NOTES All salaries shown	hr|learning|1	Entry / support	learning and development coordinator	title	8	50-100k	2023
+	191	exact		LEARNING & DEVELOPMENT MANAGER			hr|learning|4	Manager	learning and development manager	title	8	100-200k	FY24/25
+	811	exact		LEARNING & DEVELOPMENT MANAGER		HUMAN RESOURCES NOTES All salaries shown	hr|learning|4	Manager	learning and development manager	title	8	92-200k	2023
+	541	exact	Y	Maintenance Electrician			trades|electrical|2	Practitioner	maintenance electrician	title	8	70-120k	FY22/23
+	286	exact		MAINTENANCE ELECTRICIAN		MAINTENANCE AND ENGINEERING	trades|electrical|2	Practitioner	maintenance electrician	title	8	80-140k	FY24/25
+	540	exact	Y	Maintenance Fitter			trades|mechanical|2	Practitioner	maintenance fitter	title	8	60-120k	FY22/23
+	285	exact		MAINTENANCE FITTER		MAINTENANCE AND ENGINEERING	trades|mechanical|2	Practitioner	maintenance fitter	title	8	75-120k	FY24/25
+	542	exact	Y	Maintenance Planner			trades|mechanical|2	Practitioner	maintenance planner	title	8	71-120k	FY22/23
+	287	exact		MAINTENANCE PLANNER		MAINTENANCE AND ENGINEERING	trades|mechanical|2	Practitioner	maintenance planner	title	8	71-140k	FY24/25
+	290	exact		MARKETING COORDINATOR		MARKETING	marketing|generalist|1	Entry / support	marketing coordinator	title	8	60-90k	FY24/25
+	937	exact		MARKETING COORDINATOR		MARKETING AND DIGITAL	marketing|generalist|1	Entry / support	marketing coordinator	title	8	60-80k	2023
+	294	exact		MARKETING DIRECTOR		MARKETING	marketing|generalist|5	Head / director	marketing director	title	8	130-255k	FY24/25
+	941	exact		MARKETING DIRECTOR		MARKETING AND DIGITAL	marketing|generalist|5	Head / director	marketing director	title	8	120-255k	2023
+	291	exact		MARKETING EXECUTIVE		MARKETING	marketing|generalist|2	Practitioner	marketing executive	title	8	75-110k	FY24/25
+	938	exact		MARKETING EXECUTIVE		MARKETING AND DIGITAL	marketing|generalist|2	Practitioner	marketing executive	title	8	70-100k	2023
+	292	exact		MARKETING MANAGER		MARKETING	marketing|generalist|4	Manager	marketing manager	title	8	90-150k	FY24/25
+	939	exact		MARKETING MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	marketing manager	title	8	90-150k	2023
+	275	exact	Y	MECHANIC		TRANSPORT	trades|mechanical|2	Practitioner	mechanic	title	8	61-130k	FY24/25
+	919	exact	Y	MECHANIC		LOGISTICS	trades|mechanical|2	Practitioner	mechanic	title	8	61-112k	2023
+	273	exact		MR/HR DRIVER		TRANSPORT	logistics|driving|1	Entry / support	mr driver	title	8	50-90k	FY24/25
+	917	exact		MR/HR DRIVER		LOGISTICS	logistics|driving|1	Entry / support	mr driver	title	8	46-80k	2023
+	204	exact		ORGANISATIONAL DEVELOPMENT ADVISOR			hr|learning|2	Practitioner	organisational development advisor	title	8	75-165k	FY24/25
+	826	exact		ORGANISATIONAL DEVELOPMENT ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hr|learning|2	Practitioner	organisational development advisor	title	8	71-165k	2023
+	203	exact		ORGANISATIONAL DEVELOPMENT MANAGER			hr|learning|4	Manager	organisational development manager	title	8	110-250k	FY24/25
+	825	exact		ORGANISATIONAL DEVELOPMENT MANAGER		HUMAN RESOURCES NOTES All salaries shown	hr|learning|4	Manager	organisational development manager	title	8	102-250k	2023
+	720	exact		PARAPLANNER		BANKING	banking|advice|1	Entry / support	paraplanner	title	8	61-110k	2023
+	1028	exact		PROCUREMENT ANALYST		PROCUREMENT	procurement|generalist|2	Practitioner	procurement analyst	title	8	80-140k	2023
+	1025	exact		PROCUREMENT MANAGER		PROCUREMENT	procurement|generalist|4	Manager	procurement manager	title	8	120-220k	2023
+	1023	exact		PROCUREMENT OFFICER		PROCUREMENT	procurement|generalist|2	Practitioner	procurement officer	title	8	65-120k	2023
+	300	exact	Y	PRODUCT MANAGER		MARKETING	product|product|3	Senior / partner	product manager	title	8	80-150k	FY24/25
+	280	exact		PRODUCTION MANAGER		MANUFACTURING AND OPERATIONS	operations|generalist|4	Manager	production manager	title	8	80-180k	FY24/25
+	924	exact		PRODUCTION MANAGER		MANUFACTURING AND OPERATIONS	operations|generalist|4	Manager	production manager	title	8	77-145k	2023
+	279	exact		PRODUCTION SUPERVISOR		MANUFACTURING AND OPERATIONS	operations|generalist|3	Senior / partner	production supervisor	title	8	65-125k	FY24/25
+	923	exact		PRODUCTION SUPERVISOR		MANUFACTURING AND OPERATIONS	operations|generalist|3	Senior / partner	production supervisor	title	8	64-125k	2023
+	904	exact	Y	PROJECT MANAGER		LOGISTICS	project|generalist|3	Senior / partner	project manager	title	8	71-140k	2023
+	1029	exact		PURCHASING MANAGER		PROCUREMENT	procurement|generalist|4	Manager	purchasing manager	title	8	85-140k	2023
+	198	exact		RECRUITMENT ADVISOR			hr|talent-acquisition|2	Practitioner	recruitment advisor	title	8	75-150k	FY24/25
+	819	exact		RECRUITMENT ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hr|talent-acquisition|2	Practitioner	recruitment advisor	title	8	71-140k	2023
+	199	exact		RECRUITMENT COORDINATOR			hr|talent-acquisition|1	Entry / support	recruitment coordinator	title	8	65-110k	FY24/25
+	820	exact		RECRUITMENT COORDINATOR		HUMAN RESOURCES NOTES All salaries shown	hr|talent-acquisition|1	Entry / support	recruitment coordinator	title	8	60-105k	2023
+	687	exact		RELATIONSHIP MANAGER		BANKING	banking|relationship|3	Senior / partner	relationship manager	title	8	75-150k	2023
+	544	exact	Y	Reliability Engineer			engineering|mechanical|2	Practitioner	reliability engineer	title	8	77-130k	FY22/23
+	207	exact		REMUNERATION & BENEFITS ADVISOR			hr|reward|2	Practitioner	remuneration and benefits advisor	title	8	90-140k	FY24/25
+	829	exact		REMUNERATION & BENEFITS ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hr|reward|2	Practitioner	remuneration and benefits advisor	title	8	66-140k	2023
+	206	exact		REMUNERATION & BENEFITS MANAGER			hr|reward|4	Manager	remuneration and benefits manager	title	8	95-218k	FY24/25
+	828	exact		REMUNERATION & BENEFITS MANAGER		HUMAN RESOURCES NOTES All salaries shown	hr|reward|4	Manager	remuneration and benefits manager	title	8	92-218k	2023
+	85	exact		SENIOR CREDIT ANALYST		LENDING OPERATIONS	banking|lending|3	Senior / partner	senior credit analyst	title	8	64-130k	FY24/25
+	95	exact		SENIOR CREDIT ANALYST		ASSET FINANCE	banking|lending|3	Senior / partner	senior credit analyst	title	8	65-150k	FY24/25
+	681	exact		SENIOR CREDIT ANALYST		BANKING	banking|lending|3	Senior / partner	senior credit analyst	title	8	64-140k	2023
+	701	exact		SENIOR CREDIT ANALYST		BANKING	banking|lending|3	Senior / partner	senior credit analyst	title	8	64-150k	2023
+	178	exact		SENIOR HR BUSINESS PARTNER			hr|generalist|3	Senior / partner	senior hr business partner	title	8	110-225k	FY24/25
+	293	exact		SENIOR MARKETING MANAGER		MARKETING	marketing|generalist|4	Manager	senior marketing manager	title	8	105-175k	FY24/25
+	940	exact		SENIOR MARKETING MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	senior marketing manager	title	8	100-175k	2023
+	721	exact		SENIOR PARAPLANNER		BANKING	banking|advice|1	Entry / support	senior paraplanner	title	8	71-135k	2023
+	1024	exact		SENIOR PROCUREMENT OFFICER		PROCUREMENT	procurement|generalist|3	Senior / partner	senior procurement officer	title	8	85-140k	2023
+	333	exact		SOCIAL MEDIA MANAGER		DIGITAL	marketing|generalist|4	Manager	social media manager	title	8	85-155k	FY24/25
+	980	exact		SOCIAL MEDIA MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	social media manager	title	8	85-155k	2023
+	910	exact		STOREPERSON		LOGISTICS	logistics|generalist|1	Entry / support	storeperson	title	8	45-120k	2023
+	1026	exact		STRATEGIC SOURCING MANAGER		PROCUREMENT	procurement|generalist|4	Manager	strategic sourcing manager	title	8	120-200k	2023
+	268	exact		TRANSPORT MANAGER		TRANSPORT	logistics|driving|4	Manager	transport manager	title	8	80-160k	FY24/25
+	912	exact		TRANSPORT MANAGER		LOGISTICS	logistics|driving|4	Manager	transport manager	title	8	77-163k	2023
+	908	exact		WAREHOUSE COORDINATOR		LOGISTICS	logistics|generalist|2	Practitioner	warehouse coordinator	title	8	48-120k	2023
+	905	exact		WAREHOUSE MANAGER		LOGISTICS	logistics|generalist|4	Manager	warehouse manager	title	8	56-140k	2023
+	906	exact		WAREHOUSE SUPERVISOR		LOGISTICS	logistics|generalist|3	Senior / partner	warehouse supervisor	title	8	50-120k	2023
+	214	exact	Y	WHS COORDINATOR			hse|generalist|1	Entry / support	whs coordinator	title	8	70-110k	FY24/25
+	836	exact	Y	WHS COORDINATOR		HUMAN RESOURCES NOTES All salaries shown	hse|generalist|1	Entry / support	whs coordinator	title	8	66-110k	2023
+	821	exact		WORKFORCE PLANNER		HUMAN RESOURCES NOTES All salaries shown	hr|workforce|2	Practitioner	workforce planner	title	8	71-170k	2023
+	537	exact	Y	Account Director			sales|account-management|4	Manager	account director	title	7	110-210k	FY22/23
+	864	exact		PARALEGAL		LEGAL	legal|generalist|1	Entry / support	paralegal	title	7	52-100k	2023
+	875	exact		PARALEGAL		LEGAL	legal|generalist|1	Entry / support	paralegal	title	7	52-85k	2023
+	886	exact		PARALEGAL		LEGAL	legal|generalist|1	Entry / support	paralegal	title	7	48-85k	2023
+	947	exact	Y	PRODUCT MANAGER		MARKETING AND DIGITAL	product|product|3	Senior / partner	product manager	title	7	80-150k	2023
+	535	exact	Y	Senior Account Executive			sales|generalist|3	Senior / partner	senior account executive	title	7	70-120k	FY22/23
+	548	exact	Y	Social Media Manager			marketing|generalist|4	Manager	social media manager	title	7	75-155k	FY22/23
+	536	exact	Y	Account Manager			sales|account-management|2	Practitioner	account manager	title	6	80-140k	FY22/23
+	692	exact		ASSISTANT RELATIONSHIP MANAGER		BANKING	banking|relationship|3	Senior / partner	assistant relationship manager	title	6	65-130k	2023
+	697	exact	Y	BUSINESS DEVELOPMENT MANAGER		BANKING	sales|generalist|3	Senior / partner	business development manager	title	6	112-180k	2023
+	218	exact		CLAIMS ASSESSOR		WORKERS COMPENSATION	insurance|claims|2	Practitioner	claims assessor	title	6	55-75k	FY24/25
+	849	exact		CLAIMS ASSESSOR		INSURANCE	insurance|claims|2	Practitioner	claims assessor	title	6	55-70k	2023
+	693	exact		RELATIONSHIP MANAGER		BANKING	banking|relationship|3	Senior / partner	relationship manager	title	6	87-170k	2023
+	694	exact		SENIOR RELATIONSHIP MANAGER		BANKING	banking|relationship|4	Manager	senior relationship manager	title	6	100-220k	2023
+	219	exact		CASE MANAGER		WORKERS COMPENSATION	care|social-work|2	Practitioner	case manager	title	5	63-95k	FY24/25
+	850	exact	Y	CASE MANAGER		INSURANCE	care|social-work|2	Practitioner	case manager	title	5	55-95k	2023
+	220	exact		SENIOR CASE MANAGER		WORKERS COMPENSATION	care|social-work|3	Senior / partner	senior case manager	title	5	73-125k	FY24/25
+	851	exact	Y	SENIOR CASE MANAGER		INSURANCE	care|social-work|3	Senior / partner	senior case manager	title	5	65-120k	2023
+	262	exact		SENIOR LEGAL COUNSEL		IN-HOUSE	legal|in-house|3	Senior / partner	senior legal counsel	title	5	160-250k	FY24/25
+	223	exact		CLAIMS ADMINISTRATOR		LIFE INSURANCE	insurance|claims|1	Entry / support	claims administrator	title	4	55-75k	FY24/25
+	854	exact		CLAIMS ADMINISTRATOR		INSURANCE	insurance|claims|1	Entry / support	claims administrator	title	4	52-70k	2023
+	896	exact		SPECIAL COUNSEL		LEGAL	legal|generalist|4	Manager	special counsel	title	4	135-225k	2023
+	224	exact		CLAIMS ASSESSOR		LIFE INSURANCE	insurance|claims|2	Practitioner	claims assessor	title	3	70-95k	FY24/25
+	855	exact		CLAIMS ASSESSOR		INSURANCE	insurance|claims|2	Practitioner	claims assessor	title	3	55-95k	2023
+	230	exact		SENIOR UNDERWRITER		LIFE INSURANCE	insurance|underwriting|3	Senior / partner	senior underwriter	title	3	71-150k	FY24/25
+	861	exact		SENIOR UNDERWRITER		INSURANCE	insurance|underwriting|3	Senior / partner	senior underwriter	title	3	71-150k	2023
+	874	exact		SPECIAL COUNSEL		LEGAL	legal|generalist|4	Manager	special counsel	title	3	185-300k	2023
+	885	exact		SPECIAL COUNSEL		LEGAL	legal|generalist|4	Manager	special counsel	title	3	150-250k	2023
+	229	exact		UNDERWRITER		LIFE INSURANCE	insurance|underwriting|2	Practitioner	underwriter	title	3	57-110k	FY24/25
+	860	exact		UNDERWRITER		INSURANCE	insurance|underwriting|2	Practitioner	underwriter	title	3	57-110k	2023
+	228	exact		UNDERWRITING ASSISTANT		LIFE INSURANCE	insurance|underwriting|1	Entry / support	underwriting assistant	title	3	55-75k	FY24/25
+	859	exact		UNDERWRITING ASSISTANT		INSURANCE	insurance|underwriting|1	Entry / support	underwriting assistant	title	3	55-75k	2023
+	231	exact		UNDERWRITING MANAGER		LIFE INSURANCE	insurance|underwriting|4	Manager	underwriting manager	title	3	90-200k	FY24/25
+	862	exact		UNDERWRITING MANAGER		INSURANCE	insurance|underwriting|4	Manager	underwriting manager	title	3	84-200k	2023
+	663	exact		FINANCE MANAGER		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	finance manager	title	1	120-145k	2023
+	897	exact		PARALEGAL		LEGAL	legal|generalist|1	Entry / support	paralegal	title	1	52-75k	2023
+	622	placed		ASSISTANT ACCOUNTANT 4+ years		ACCOUNTANCY AND FINANCE	finance|generalist|1	Entry / support	assistant accountant 4 years	title	56	61-120k	2023
+	620	placed		ASSISTANT ACCOUNTANT Up to 2 years		ACCOUNTANCY AND FINANCE	finance|generalist|1	Entry / support	assistant accountant up to 2 years	title	56	46-100k	2023
+	639	placed		ACCOUNTS PAYABLE		ACCOUNTANCY AND FINANCE	finance|generalist|1	Entry / support	accounts payable	title	28	61-130k	2023
+	621	placed		ASSISTANT ACCOUNTANT 2 - 4 years		ACCOUNTANCY AND FINANCE	finance|generalist|1	Entry / support	assistant accountant 2	title	28	56-80k	2023
+	931	placed	Y	ELECTRONICS ENGINEER		MANUFACTURING AND OPERATIONS	engineering|generalist|2	Practitioner	electronics engineer	title	16	77-140k	2023
+	51	placed		ACCOUNTS PAYABLE		COMMERCE AND INDUSTRY	finance|generalist|1	Entry / support	accounts payable	title	15	70-110k	FY24/25
+	13	placed		FINANCIAL ACCOUNTANT Turnover > $300m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	financial accountant turnover 300m	title	15	95-190k	FY24/25
+	12	placed		FINANCIAL ACCOUNTANT Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	financial accountant turnover 100m	title	15	85-180k	FY24/25
+	11	placed		FINANCIAL ACCOUNTANT Turnover up to $100m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	financial accountant turnover up to 100m	title	15	75-150k	FY24/25
+	19	placed		FINANCIAL ANALYST Turnover > $300m		COMMERCE AND INDUSTRY	finance|fpa|2	Practitioner	financial analyst turnover 300m	title	15	95-175k	FY24/25
+	18	placed		FINANCIAL ANALYST Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|fpa|2	Practitioner	financial analyst turnover 100m	title	15	90-150k	FY24/25
+	17	placed		FINANCIAL ANALYST Turnover up to $100m		COMMERCE AND INDUSTRY	finance|fpa|2	Practitioner	financial analyst turnover up to 100m	title	15	90-125k	FY24/25
+	22	placed		FINANCIAL SYSTEMS MANAGER		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	financial systems manager	title	15	115-210k	FY24/25
+	16	placed		MANAGEMENT ACCOUNTANT Turnover > $300m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	management accountant turnover 300m	title	15	90-180k	FY24/25
+	15	placed		MANAGEMENT ACCOUNTANT Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	management accountant turnover 100m	title	15	85-160k	FY24/25
+	14	placed		MANAGEMENT ACCOUNTANT Turnover up to $100m		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	management accountant turnover up to 100m	title	15	80-140k	FY24/25
+	20	placed		MANAGER/HEAD OF FINANCIAL PLANNING ANALYSIS		COMMERCE AND INDUSTRY	finance|generalist|5	Head / director	manager head of financial planning analysis	title	15	125-300k	FY24/25
+	21	placed		SYSTEMS ACCOUNTANT		COMMERCE AND INDUSTRY	finance|generalist|2	Practitioner	systems accountant	title	15	95-185k	FY24/25
+	25	placed		TREASURY ACCOUNTANT Turnover > $300m		COMMERCE AND INDUSTRY	finance|treasury|2	Practitioner	treasury accountant turnover 300m	title	15	90-170k	FY24/25
+	24	placed		TREASURY ACCOUNTANT Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|treasury|2	Practitioner	treasury accountant turnover 100m	title	15	85-140k	FY24/25
+	23	placed		TREASURY ACCOUNTANT Turnover up to $100m		COMMERCE AND INDUSTRY	finance|treasury|2	Practitioner	treasury accountant turnover up to 100m	title	15	80-120k	FY24/25
+	632	placed		ACCOUNTS RECEIVABLE/ BILLING OFFICER		ACCOUNTANCY AND FINANCE	finance|generalist|1	Entry / support	accounts receivable billing officer	title	14	51-85k	2023
+	669	placed		ARCHITECT 5 - 10 years exp		ARCHITECTURE	architecture|generalist|2	Practitioner	architect 5	title	14	67-130k	2023
+	671	placed		ARCHITECTURAL TECHNICIAN/ DRAFTER		ARCHITECTURE	architecture|drafting|2	Practitioner	architectural technician drafter	title	14	57-125k	2023
+	373	placed	Y	CLIENT SIDE PROJECT DIRECTOR			project|generalist|5	Head / director	client side project director	title	14	130-300k	FY24/25
+	1047	placed	Y	CLIENT SIDE PROJECT DIRECTOR		PROPERTY	project|generalist|5	Head / director	client side project director	title	14	120-255k	2023
+	371	placed	Y	CLIENT SIDE PROJECT MANAGER 0-3 years exp			project|generalist|3	Senior / partner	client side project manager 0 3 years exp	title	14	70-120k	FY24/25
+	1045	placed	Y	CLIENT SIDE PROJECT MANAGER 0-3 years exp		PROPERTY	project|generalist|3	Senior / partner	client side project manager 0 3 years exp	title	14	65-122k	2023
+	372	placed	Y	CLIENT SIDE PROJECT MANAGER 3+ years exp			project|generalist|3	Senior / partner	client side project manager 3 years exp	title	14	87-250k	FY24/25
+	1046	placed	Y	CLIENT SIDE PROJECT MANAGER 3+ years exp		PROPERTY	project|generalist|3	Senior / partner	client side project manager 3 years exp	title	14	85-184k	2023
+	569	placed	Y	COMMERCIAL MANAGER Turnover > $100m		ACCOUNTANCY AND FINANCE	commercial|generalist|4	Manager	commercial manager turnover 100m	title	14	120-182k	2023
+	570	placed	Y	COMMERCIAL MANAGER Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	commercial|generalist|4	Manager	commercial manager turnover 100m	title	14	112-250k	2023
+	1034	placed		COMMERCIAL/ INDUSTRIAL/ RETAIL PROPERTY MANAGER 0-3 years exp		PROPERTY	property|generalist|2	Practitioner	commercial industrial retail property manager 0 3 years exp	title	14	49-92k	2023
+	1035	placed		COMMERCIAL/ INDUSTRIAL/RETAIL PROPERTY MANAGER 3+ years exp		PROPERTY	property|generalist|2	Practitioner	commercial industrial retail property manager 3 years exp	title	14	56-133k	2023
+	482	placed	Y	Compliance/ Risk Analyst			risk|compliance|2	Practitioner	compliance risk analyst	title	14	71-112k	FY22/23
+	483	placed	Y	Compliance/ Risk Manager			risk|compliance|4	Manager	compliance risk manager	title	14	82-173k	FY22/23
+	115	placed		COMPLIANCE/RISK ANALYSTS		COMPLIANCE/RISK	risk|compliance|2	Practitioner	compliance risk analyst	title	14	71-120k	FY24/25
+	612	placed	Y	COMPLIANCE/RISK ANALYSTS		ACCOUNTANCY AND FINANCE	risk|compliance|2	Practitioner	compliance risk analyst	title	14	71-120k	2023
+	116	placed		COMPLIANCE/RISK MANAGER		COMPLIANCE/RISK	risk|compliance|4	Manager	compliance risk manager	title	14	82-173k	FY24/25
+	613	placed	Y	COMPLIANCE/RISK MANAGER		ACCOUNTANCY AND FINANCE	risk|compliance|4	Manager	compliance risk manager	title	14	82-173k	2023
+	995	placed		CONTRACTS ADMINISTRATOR Residential		OFFICE SUPPORT	commercial|generalist|2	Practitioner	contracts administrator residential	title	14	50-95k	2023
+	747	placed		CONTRACTS ADMINISTRATOR/ QUANTITY SURVEYOR - ENTRY-LEVEL/INTERMEDIATE		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	contracts administrator quantity surveyor	title	14	50-150k	2023
+	748	placed		CONTRACTS ADMINISTRATOR/ QUANTITY SURVEYOR - SENIOR		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	contracts administrator quantity surveyor	title	14	90-200k	2023
+	735	placed		CONTRACTS ADMINISTRATOR/QUANTITY SURVEYOR - JUNIOR/INTERMEDIATE		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	contracts administrator quantity surveyor	title	14	46-140k	2023
+	736	placed		CONTRACTS ADMINISTRATOR/QUANTITY SURVEYOR - SENIOR		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	contracts administrator quantity surveyor	title	14	80-200k	2023
+	581	placed		CORPORATE ACCOUNTANT Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	corporate accountant turnover 300m	title	14	92-185k	2023
+	580	placed		CORPORATE ACCOUNTANT Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	corporate accountant turnover 100m	title	14	82-150k	2023
+	579	placed		CORPORATE ACCOUNTANT Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	corporate accountant turnover up to 100m	title	14	71-135k	2023
+	577	placed		DIVISIONAL ACCOUNTANT Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	divisional accountant turnover 300m	title	14	90-185k	2023
+	576	placed		DIVISIONAL ACCOUNTANT Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	divisional accountant turnover 100m	title	14	90-165k	2023
+	575	placed		DIVISIONAL ACCOUNTANT Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	divisional accountant turnover up to 100m	title	14	80-145k	2023
+	737	placed		ESTIMATOR - JUNIOR/INTERMEDIATE		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	estimator	title	14	48-150k	2023
+	749	placed		ESTIMATOR - JUNIOR/INTERMEDIATE		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	estimator	title	14	50-130k	2023
+	738	placed		ESTIMATOR - SENIOR		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	estimator	title	14	95-275k	2023
+	750	placed		ESTIMATOR - SENIOR		CONSTRUCTION	commercial|quantity-surveying|2	Practitioner	estimator	title	14	90-200k	2023
+	994	placed		FACILITIES ADMINISTRATOR		OFFICE SUPPORT	admin|generalist|1	Entry / support	facilities administrator	title	14	48-80k	2023
+	566	placed		FINANCE MANAGER Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	finance manager turnover 300m	title	14	112-205k	2023
+	565	placed		FINANCE MANAGER Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	finance manager turnover 100m	title	14	107-175k	2023
+	564	placed		FINANCE MANAGER Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	finance manager turnover up to 100m	title	14	96-160k	2023
+	584	placed		FINANCIAL ACCOUNTANT Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	financial accountant turnover 300m	title	14	85-190k	2023
+	583	placed		FINANCIAL ACCOUNTANT Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	financial accountant turnover 100m	title	14	80-170k	2023
+	582	placed		FINANCIAL ACCOUNTANT Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	financial accountant turnover up to 100m	title	14	71-140k	2023
+	590	placed		FINANCIAL ANALYST Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|fpa|2	Practitioner	financial analyst turnover 300m	title	14	85-160k	2023
+	589	placed		FINANCIAL ANALYST Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|fpa|2	Practitioner	financial analyst turnover 100m	title	14	85-140k	2023
+	588	placed		FINANCIAL ANALYST Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|fpa|2	Practitioner	financial analyst turnover up to 100m	title	14	77-120k	2023
+	562	placed		FINANCIAL CONTROLLER Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	financial controller turnover 100m	title	14	112-220k	2023
+	0	placed		FINANCIAL CONTROLLER Turnover up to $100m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	financial controller turnover up to 100m	title	14	115-190k	FY24/25
+	561	placed		FINANCIAL CONTROLLER Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	financial controller turnover up to 100m	title	14	110-180k	2023
+	611	placed		FINANCIAL REPORTING MANAGER		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	financial reporting manager	title	14	92-224k	2023
+	30	placed		FUND/INVESTMENT ACCOUNTANT		COMMERCE AND INDUSTRY FINANCIAL SERVICES	finance|generalist|2	Practitioner	fund investment accountant	title	14	65-120k	FY24/25
+	601	placed		FUND/INVESTMENT ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	fund investment accountant	title	14	61-110k	2023
+	32	placed		FUND/INVESTMENT ACCOUNTANT ACCOUNTING MANAGER		COMMERCE AND INDUSTRY FINANCIAL SERVICES	finance|generalist|4	Manager	fund investment accountant accounting manager	title	14	90-170k	FY24/25
+	603	placed		FUND/INVESTMENT ACCOUNTANT ACCOUNTING MANAGER		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	fund investment accountant accounting manager	title	14	82-170k	2023
+	667	placed		GRADUATE ARCHITECT 2 - 5 years exp		ARCHITECTURE	architecture|generalist|1	Entry / support	graduate architect 2	title	14	60-90k	2023
+	563	placed		GROUP FINANCIAL CONTROLLER/ GM FINANCE* Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	group financial controller gm finance turnover 300m	title	14	130-315k	2023
+	1041	placed	Y	LEASE ADMINISTRATOR		PROPERTY	admin|generalist|1	Entry / support	lease administrator	title	14	45-102k	2023
+	587	placed		MANAGEMENT ACCOUNTANT Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	management accountant turnover 300m	title	14	90-180k	2023
+	586	placed		MANAGEMENT ACCOUNTANT Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	management accountant turnover 100m	title	14	80-150k	2023
+	585	placed		MANAGEMENT ACCOUNTANT Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	management accountant turnover up to 100m	title	14	75-130k	2023
+	591	placed		MANAGER/HEAD OF FINANCIAL PLANNING ANALYSIS		ACCOUNTANCY AND FINANCE	finance|generalist|5	Head / director	manager head of financial planning analysis	title	14	122-300k	2023
+	484	placed	Y	Operations Risk Analyst			risk|generalist|2	Practitioner	operations risk analyst	title	14	71-133k	FY22/23
+	117	placed		OPERATIONS RISK ANALYST		COMPLIANCE/RISK	risk|generalist|2	Practitioner	operations risk analyst	title	14	71-130k	FY24/25
+	614	placed	Y	OPERATIONS RISK ANALYST		ACCOUNTANCY AND FINANCE	risk|generalist|2	Practitioner	operations risk analyst	title	14	71-140k	2023
+	485	placed	Y	Operations Risk Manager			risk|generalist|4	Manager	operations risk manager	title	14	97-170k	FY22/23
+	118	placed		OPERATIONS RISK MANAGER		COMPLIANCE/RISK	risk|generalist|4	Manager	operations risk manager	title	14	100-170k	FY24/25
+	615	placed	Y	OPERATIONS RISK MANAGER		ACCOUNTANCY AND FINANCE	risk|generalist|4	Manager	operations risk manager	title	14	97-170k	2023
+	665	placed	Y	PA TO PARTNER 1 on 1		ACCOUNTANCY AND FINANCE	admin|executive-assistant|2	Practitioner	pa to partner 1 on 1	title	14	48-100k	2023
+	666	placed	Y	PA TO PARTNERS 2 or 3		ACCOUNTANCY AND FINANCE	admin|executive-assistant|2	Practitioner	pa to partners 2 or 3	title	14	51-100k	2023
+	668	placed		PROJECT ARCHITECT 5 - 10 years exp		ARCHITECTURE	architecture|generalist|3	Senior / partner	project architect 5	title	14	67-140k	2023
+	609	placed		REGULATORY ACCOUNTING MANAGER		ACCOUNTANCY AND FINANCE	finance|generalist|4	Manager	regulatory accounting manager	title	14	92-163k	2023
+	44	placed	Y	REMUNERATION AND PAYROLL MANAGER		COMMERCE AND INDUSTRY	payroll|generalist|4	Manager	remuneration and payroll manager	title	14	90-165k	FY24/25
+	1036	placed		RESIDENTIAL PROPERTY MANAGER 0-3 years exp		PROPERTY	property|generalist|2	Practitioner	residential property manager 0 3 years exp	title	14	49-82k	2023
+	1037	placed		RESIDENTIAL PROPERTY MANAGER 3+ years exp		PROPERTY	property|generalist|2	Practitioner	residential property manager 3 years exp	title	14	49-102k	2023
+	670	placed		SENIOR ARCHITECT 10+ years exp		ARCHITECTURE	architecture|generalist|3	Senior / partner	senior architect 10 years exp	title	14	82-160k	2023
+	571	placed	Y	SENIOR COMMERCIAL MANAGER/DIRECTOR Turnover > $300m		ACCOUNTANCY AND FINANCE	commercial|generalist|5	Head / director	senior commercial manager director turnover 300m	title	14	133-300k	2023
+	31	placed		SENIOR FUND/INVESTMENT ACCOUNTANT		COMMERCE AND INDUSTRY FINANCIAL SERVICES	finance|generalist|3	Senior / partner	senior fund investment accountant	title	14	75-140k	FY24/25
+	602	placed		SENIOR FUND/INVESTMENT ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|3	Senior / partner	senior fund investment accountant	title	14	71-130k	2023
+	993	placed		SITE SECRETARY/ADMINISTRATOR		OFFICE SUPPORT	admin|generalist|2	Practitioner	site secretary administrator	title	14	51-130k	2023
+	552	placed	Y	Specialist Finance Personal Assistant			admin|executive-assistant|2	Practitioner	specialist finance personal assistant	title	14	46-102k	FY22/23
+	610	placed		STATUTORY ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	statutory accountant	title	14	82-140k	2023
+	640	placed		SUPERVISOR ACCOUNTS PAYABLE		ACCOUNTANCY AND FINANCE	finance|generalist|3	Senior / partner	supervisor accounts payable	title	14	56-100k	2023
+	126	placed	Y	SURVEYOR - JUNIOR/INTERMEDIATE		CONSTRUCTION CIVIL	geoscience|surveying|2	Practitioner	surveyor	title	14	46-140k	FY24/25
+	127	placed	Y	SURVEYOR - SENIOR		CONSTRUCTION CIVIL	geoscience|surveying|3	Senior / partner	surveyor senior	title	14	80-200k	FY24/25
+	594	placed		SYSTEMS ACCOUNTANT Turnover > $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	systems accountant turnover 300m	title	14	92-180k	2023
+	593	placed		SYSTEMS ACCOUNTANT Turnover $100m - $300m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	systems accountant turnover 100m	title	14	82-150k	2023
+	592	placed		SYSTEMS ACCOUNTANT Turnover up to $100m		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	systems accountant turnover up to 100m	title	14	71-130k	2023
+	511	placed	Y	Traffic Engineer			engineering|civil|2	Practitioner	traffic engineer	title	14	54-145k	FY22/23
+	369	placed	Y	VALUER CPV/RPV 0-3 years exp			property|valuation|2	Practitioner	valuer cpv rpv 0 3 years exp	title	14	49-100k	FY24/25
+	1043	placed		VALUER CPV/RPV 0-3 years exp		PROPERTY	property|valuation|2	Practitioner	valuer cpv rpv 0 3 years exp	title	14	46-100k	2023
+	370	placed	Y	VALUER CPV/RPV 3+ years exp			property|valuation|2	Practitioner	valuer cpv rpv 3 years exp	title	14	66-138k	FY24/25
+	1044	placed		VALUER CPV/RPV 3+ years exp		PROPERTY	property|valuation|2	Practitioner	valuer cpv rpv 3 years exp	title	14	56-138k	2023
+	468	placed	Y	BI DEVELOPER		DATA AND ADVANCED ANALYTICS	software|generalist|2	Practitioner	bi developer	title	13	95-200k	FY24/25
+	1150	placed	Y	BI DEVELOPER		TECHNOLOGY	software|generalist|2	Practitioner	bi developer	title	13	90-200k	2023
+	513	placed	Y	Civil Project Manager			project|generalist|3	Senior / partner	civil project manager	title	13	59-170k	FY22/23
+	8	placed	Y	COMMERCIAL MANAGER Turnover > $100m		COMMERCE AND INDUSTRY	commercial|generalist|4	Manager	commercial manager turnover 100m	title	13	120-190k	FY24/25
+	9	placed	Y	COMMERCIAL MANAGER Turnover $100m - $300m		COMMERCE AND INDUSTRY	commercial|generalist|4	Manager	commercial manager turnover 100m	title	13	120-250k	FY24/25
+	476	placed		CYBER SECURITY MANAGER		CYBER SECURITY	technology|security|4	Manager	cyber security manager	title	13	130-250k	FY24/25
+	1158	placed		CYBER SECURITY MANAGER		TECHNOLOGY	technology|security|4	Manager	cyber security manager	title	13	110-250k	2023
+	550	placed	Y	Data Entry Sales Coordinator Records Officer Medical Secretary Operator			sales|generalist|1	Entry / support	data entry sales coordinator records officer medical secretary operator	title	13	42-65k	FY22/23
+	444	placed		DEVELOPER (.NET/JAVA)		SOFTWARE DEVELOPMENT	software|generalist|2	Practitioner	developer	title	13	80-140k	FY24/25
+	1147	placed		ERP/CRM ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	erp crm architect	title	13	130-250k	2023
+	465	placed		ERP/CRM ARCHITECT New		ERP/CRM	technology|architecture|4	Manager	erp crm architect new	title	13	130-220k	FY24/25
+	461	placed	Y	ERP/CRM DEVELOPER		ERP/CRM	software|generalist|2	Practitioner	erp crm developer	title	13	110-180k	FY24/25
+	1143	placed	Y	ERP/CRM DEVELOPER		TECHNOLOGY	software|generalist|2	Practitioner	erp crm developer	title	13	110-190k	2023
+	462	placed		ERP/CRM FUNCTIONAL CONSULTANT		ERP/CRM	technology|enterprise-apps|2	Practitioner	erp crm functional consultant	title	13	128-220k	FY24/25
+	1144	placed		ERP/CRM FUNCTIONAL CONSULTANT		TECHNOLOGY	technology|enterprise-apps|2	Practitioner	erp crm functional consultant	title	13	128-220k	2023
+	463	placed		ERP/CRM TECHNICAL CONSULTANT		ERP/CRM	technology|enterprise-apps|2	Practitioner	erp crm technical consultant	title	13	125-220k	FY24/25
+	1145	placed		ERP/CRM TECHNICAL CONSULTANT		TECHNOLOGY	technology|enterprise-apps|2	Practitioner	erp crm technical consultant	title	13	125-220k	2023
+	1146	placed	Y	ERP/CRM TEST ANALYST		TECHNOLOGY	software|generalist|2	Practitioner	erp crm test analyst	title	13	80-140k	2023
+	464	placed	Y	ERP/CRM TEST ANALYST New		ERP/CRM	software|generalist|2	Practitioner	erp crm test analyst new	title	13	100-140k	FY24/25
+	5	placed		FINANCE MANAGER Turnover > $300m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	finance manager turnover 300m	title	13	120-220k	FY24/25
+	4	placed		FINANCE MANAGER Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	finance manager turnover 100m	title	13	110-180k	FY24/25
+	3	placed		FINANCE MANAGER Turnover up to $100m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	finance manager turnover up to 100m	title	13	100-160k	FY24/25
+	1	placed		FINANCIAL CONTROLLER Turnover $100m - $300m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	financial controller turnover 100m	title	13	120-220k	FY24/25
+	2	placed		GROUP FINANCIAL CONTROLLER/ GM FINANCE Turnover > $300m		COMMERCE AND INDUSTRY	finance|generalist|4	Manager	group financial controller gm finance turnover 300m	title	13	135-315k	FY24/25
+	479	placed	Y	IDAM ARCHITECT		CYBER SECURITY	architecture|generalist|2	Practitioner	idam architect	title	13	120-240k	FY24/25
+	1161	placed	Y	IDAM ARCHITECT		TECHNOLOGY	architecture|generalist|2	Practitioner	idam architect	title	13	120-220k	2023
+	478	placed	Y	IDAM ENGINEER		CYBER SECURITY	engineering|generalist|2	Practitioner	idam engineer	title	13	95-190k	FY24/25
+	1160	placed	Y	IDAM ENGINEER		TECHNOLOGY	engineering|generalist|2	Practitioner	idam engineer	title	13	95-180k	2023
+	553	placed	Y	Investment Banking Personal Assistant			admin|executive-assistant|2	Practitioner	investment banking personal assistant	title	13	56-100k	FY22/23
+	551	placed	Y	Legal Secretary Legal Secretary Legal Secretary Legal Personal (Up to 2 yrs exp) (2-4 yrs exp) (4+ yrs exp) Assistant			admin|generalist|2	Practitioner	legal secretary legal secretary legal secretary legal personal up to 2 yrs exp 2 4 yrs exp 4 yrs exp assistant	title	13	46-90k	FY22/23
+	43	placed	Y	PAYROLL SYSTEMS ANALYST		COMMERCE AND INDUSTRY	payroll|generalist|2	Practitioner	payroll systems analyst	title	13	66-140k	FY24/25
+	456	placed		PLATFORM ENGINEER		CLOUD	software|generalist|2	Practitioner	platform engineer	title	13	105-180k	FY24/25
+	1138	placed	Y	PLATFORM ENGINEER		TECHNOLOGY	software|generalist|2	Practitioner	platform engineer	title	13	105-180k	2023
+	628	placed	Y	REMUNERATION AND PAYROLL MANAGER		ACCOUNTANCY AND FINANCE	payroll|generalist|4	Manager	remuneration and payroll manager	title	13	82-163k	2023
+	10	placed	Y	SENIOR COMMERCIAL MANAGER/DIRECTOR Turnover > $300m		COMMERCE AND INDUSTRY	commercial|generalist|5	Head / director	senior commercial manager director turnover 300m	title	13	135-300k	FY24/25
+	467	placed		SENIOR DATA ANALYST New		DATA AND ADVANCED ANALYTICS	data|generalist|3	Senior / partner	senior data analyst new	title	13	100-170k	FY24/25
+	496	placed	Y	Team Assistant Office/Admin PA to Partner PA to Partners Manager (1 on 1) (2 or 3)			admin|executive-assistant|2	Practitioner	team assistant office admin pa to partner pa to partners manager	title	13	42-71k	FY22/23
+	490	placed	Y	To Trial Balance To Balance Sheet Senior Bookkeeper			finance|generalist|1	Entry / support	to trial balance to balance sheet senior bookkeeper	title	13	51-87k	FY22/23
+	447	placed		AUTOMATION DEVELOPER/ ENGINEER		SOFTWARE DEVELOPMENT	software|generalist|2	Practitioner	automation developer engineer	title	12	100-170k	FY24/25
+	765	placed		BUSINESS DEVELOPMENT CONSULTANT		CONTACT CENTRES	sales|generalist|2	Practitioner	business development consultant	title	12	55-100k	2023
+	517	placed	Y	Cleaning Area Manager			facilities|generalist|4	Manager	cleaning area manager	title	12	61-100k	FY22/23
+	161	placed		CLEANING AREA MANAGER		SOFT SERVICES	facilities|generalist|4	Manager	cleaning area manager	title	12	61-120k	FY24/25
+	793	placed		CLEANING AREA MANAGER		FACILITIES MANAGEMENT	facilities|generalist|4	Manager	cleaning area manager	title	12	61-120k	2023
+	422	placed		DBA		INFRASTRUCTURE	technology|generalist|2	Practitioner	dba	title	12	90-170k	FY24/25
+	1104	placed		DBA		TECHNOLOGY	technology|generalist|2	Practitioner	dba	title	12	85-170k	2023
+	418	placed		DESKTOP SUPPORT - LEVEL 2		INFRASTRUCTURE	technology|support|1	Entry / support	desktop support	title	12	55-90k	FY24/25
+	1100	placed		DESKTOP SUPPORT - LEVEL 2		TECHNOLOGY	technology|support|1	Entry / support	desktop support	title	12	55-90k	2023
+	1126	placed	Y	DEVELOPER (.NET/JAVA)		TECHNOLOGY	software|generalist|2	Practitioner	developer	title	12	80-140k	2023
+	519	placed	Y	Facilities Helpdesk			technology|support|1	Entry / support	facilities helpdesk	title	12	42-75k	FY22/23
+	163	placed	Y	FACILITIES HELPDESK		SOFT SERVICES	technology|support|1	Entry / support	facilities helpdesk	title	12	49-75k	FY24/25
+	795	placed	Y	FACILITIES HELPDESK		FACILITIES MANAGEMENT	technology|support|1	Entry / support	facilities helpdesk	title	12	49-75k	2023
+	449	placed		FRONT-END DEVELOPER		SOFTWARE DEVELOPMENT	software|generalist|2	Practitioner	front end developer	title	12	80-150k	FY24/25
+	446	placed		FULL STACK DEVELOPER (.NET/JAVA)		SOFTWARE DEVELOPMENT	software|generalist|2	Practitioner	full stack developer	title	12	95-165k	FY24/25
+	426	placed		INFRASTRUCTURE ARCHITECT		INFRASTRUCTURE	technology|architecture|4	Manager	infrastructure architect	title	12	130-250k	FY24/25
+	1108	placed		INFRASTRUCTURE ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	infrastructure architect	title	12	120-250k	2023
+	427	placed		INFRASTRUCTURE MANAGER		INFRASTRUCTURE	technology|generalist|4	Manager	infrastructure manager	title	12	105-200k	FY24/25
+	1109	placed		INFRASTRUCTURE MANAGER		TECHNOLOGY	technology|generalist|4	Manager	infrastructure manager	title	12	105-200k	2023
+	451	placed		MOBILE APPS DEVELOPER		SOFTWARE DEVELOPMENT	software|generalist|2	Practitioner	mobile apps developer	title	12	85-220k	FY24/25
+	425	placed		NETWORK ARCHITECT		INFRASTRUCTURE	technology|architecture|4	Manager	network architect	title	12	120-250k	FY24/25
+	1107	placed		NETWORK ARCHITECT		TECHNOLOGY	technology|architecture|4	Manager	network architect	title	12	110-250k	2023
+	763	placed		OUTBOUND SALES CONSULTANT		CONTACT CENTRES	sales|generalist|2	Practitioner	outbound sales consultant	title	12	48-85k	2023
+	627	placed	Y	PAYROLL SYSTEMS ANALYST		ACCOUNTANCY AND FINANCE	payroll|generalist|2	Practitioner	payroll systems analyst	title	12	66-130k	2023
+	607	placed		REPORTING ACCOUNTANT		ACCOUNTANCY AND FINANCE	finance|generalist|2	Practitioner	reporting accountant	title	12	77-143k	2023
+	759	placed		SALES TEAM LEADER		CONTACT CENTRES	sales|generalist|3	Senior / partner	sales team leader	title	12	56-110k	2023
+	445	placed		SENIOR DEVELOPER (.NET/JAVA)		SOFTWARE DEVELOPMENT	software|generalist|3	Senior / partner	senior developer	title	12	100-180k	FY24/25
+	450	placed		SENIOR FRONT-END DEVELOPER		SOFTWARE DEVELOPMENT	software|generalist|3	Senior / partner	senior front end developer	title	12	100-180k	FY24/25
+	423	placed	Y	SYSTEMS ADMINISTRATION/ ENGINEER		INFRASTRUCTURE	engineering|generalist|2	Practitioner	systems administration engineer	title	12	70-155k	FY24/25
+	1105	placed	Y	SYSTEMS ADMINISTRATION/ ENGINEER		TECHNOLOGY	engineering|generalist|2	Practitioner	systems administration engineer	title	12	70-155k	2023
+	388	placed		ACCOUNT EXECUTIVE - ENTERPRISE		IT AND TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	account executive	title	11	130-200k	FY24/25
+	387	placed		ACCOUNT EXECUTIVE - MID-MARKET		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	account executive	title	11	110-150k	FY24/25
+	386	placed		ACCOUNT EXECUTIVE - SMB		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	account executive	title	11	80-130k	FY24/25
+	1129	placed	Y	AUTOMATION DEVELOPER/ ENGINEER		TECHNOLOGY	software|generalist|2	Practitioner	automation developer engineer	title	11	100-165k	2023
+	385	placed		CHANNEL SALES MANAGER		IT & TELECOMMUNICATIONS SALES	sales|generalist|4	Manager	channel sales manager	title	11	130-200k	FY24/25
+	1131	placed	Y	FRONT-END DEVELOPER		TECHNOLOGY	software|generalist|2	Practitioner	front end developer	title	11	80-150k	2023
+	1128	placed	Y	FULL STACK DEVELOPER (.NET/JAVA)		TECHNOLOGY	software|generalist|2	Practitioner	full stack developer	title	11	95-165k	2023
+	1133	placed	Y	MOBILE APPS DEVELOPER		TECHNOLOGY	software|generalist|2	Practitioner	mobile apps developer	title	11	82-220k	2023
+	384	placed		PARTNER ACCOUNT MANAGER		IT & TELECOMMUNICATIONS SALES	sales|account-management|2	Practitioner	partner account manager	title	11	115-150k	FY24/25
+	382	placed		SALES EXECUTIVE - ENTERPRISE		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	sales executive	title	11	130-200k	FY24/25
+	381	placed		SALES EXECUTIVE - MID-MARKET		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	sales executive	title	11	110-150k	FY24/25
+	380	placed		SALES EXECUTIVE - SMB		IT & TELECOMMUNICATIONS SALES	sales|generalist|2	Practitioner	sales executive	title	11	80-130k	FY24/25
+	1067	placed		SALES EXECUTIVE/ REP		SALES NOTES All salaries shown are exclu	sales|generalist|2	Practitioner	sales executive rep	title	11	55-100k	2023
+	1127	placed	Y	SENIOR DEVELOPER (.NET/JAVA)		TECHNOLOGY	software|generalist|3	Senior / partner	senior developer	title	11	95-180k	2023
+	1132	placed	Y	SENIOR FRONT-END DEVELOPER		TECHNOLOGY	software|generalist|3	Senior / partner	senior front end developer	title	11	100-180k	2023
+	401	placed		TECHNICAL SALES REPRESENTATIVE		INDUSTRIAL AND TECHNICAL SALES	sales|generalist|2	Practitioner	technical sales representative	title	11	70-110k	FY24/25
+	395	placed		VICE PRESIDENT OF SALES		IT AND TELECOMMUNICATIONS SALES	sales|generalist|5	Head / director	vice president of sales	title	11	190-300k	FY24/25
+	1085	placed	Y	ENVIRONMENTAL ADVISOR/CONSULTANT		SUSTAINABILITY AND ENVIRONMENTAL	science|environmental|2	Practitioner	environmental advisor consultant	title	10	70-160k	2023
+	1088	placed		ENVIRONMENTAL ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|generalist|2	Practitioner	environmental engineer	title	10	100-160k	2023
+	1096	placed		GRID CONNECTION ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|generalist|2	Practitioner	grid connection engineer	title	10	120-220k	2023
+	986	placed		MEDIA RELATIONS MANAGER		MARKETING AND DIGITAL	marketing|communications|4	Manager	media relations manager	title	10	90-150k	2023
+	983	placed		PR EXECUTIVE		MARKETING AND DIGITAL	marketing|communications|2	Practitioner	pr executive	title	10	65-100k	2023
+	1094	placed		PRINCIPAL ELECTRICAL DESIGN ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|electrical|4	Manager	principal electrical design engineer	title	10	140-250k	2023
+	1087	placed	Y	PRINCIPAL ENVIRONMENTAL ADVISOR/CONSULTANT		SUSTAINABILITY AND ENVIRONMENTAL	science|environmental|4	Manager	principal environmental advisor consultant	title	10	80-210k	2023
+	1090	placed		PRINCIPAL ENVIRONMENTAL ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|generalist|4	Manager	principal environmental engineer	title	10	140-245k	2023
+	1095	placed	Y	PV DESIGNER		SUSTAINABILITY AND ENVIRONMENTAL	creative|generalist|2	Practitioner	pv designer	title	10	120-230k	2023
+	1086	placed	Y	SENIOR ENVIRONMENTAL ADVISOR/CONSULTANT		SUSTAINABILITY AND ENVIRONMENTAL	science|environmental|3	Senior / partner	senior environmental advisor consultant	title	10	95-205k	2023
+	1089	placed		SENIOR ENVIRONMENTAL ENGINEER		SUSTAINABILITY AND ENVIRONMENTAL	engineering|generalist|3	Senior / partner	senior environmental engineer	title	10	110-200k	2023
+	352	placed	Y	GOVERNANCE MANAGER			risk|generalist|4	Manager	governance manager	title	9	92-170k	FY24/25
+	1019	placed		GOVERNANCE MANAGER		POLICY AND STRATEGY	risk|generalist|4	Manager	governance manager	title	9	92-160k	2023
+	351	placed	Y	GOVERNANCE OFFICER/ SECRETARIAT			risk|generalist|2	Practitioner	governance officer secretariat	title	9	80-120k	FY24/25
+	1018	placed		GOVERNANCE OFFICER/ SECRETARIAT		POLICY AND STRATEGY	risk|generalist|2	Practitioner	governance officer secretariat	title	9	80-112k	2023
+	481	placed		Mine Accountant		Commerce & Industry	finance|generalist|2	Practitioner	mine accountant	title	9	85-200k	FY22/23
+	997	placed	Y	POLICY OFFICER/ POLICY ADVISOR		POLICY AND STRATEGY	policy|generalist|2	Practitioner	policy officer policy advisor	title	9	66-100k	2023
+	1002	placed	Y	PROGRAMME OFFICER/ CO-ORDINATOR*		POLICY AND STRATEGY	project|generalist|2	Practitioner	programme officer coordinator	title	9	61-113k	2023
+	347	placed	Y	REGULATORY ADVISOR			risk|compliance|2	Practitioner	regulatory advisor	title	9	82-150k	FY24/25
+	1014	placed		REGULATORY ADVISOR		POLICY AND STRATEGY	risk|compliance|2	Practitioner	regulatory advisor	title	9	82-135k	2023
+	348	placed	Y	REGULATORY MANAGER			risk|compliance|4	Manager	regulatory manager	title	9	87-170k	FY24/25
+	1015	placed		REGULATORY MANAGER		POLICY AND STRATEGY	risk|compliance|4	Manager	regulatory manager	title	9	87-170k	2023
+	355	placed	Y	RISK/COMPLIANCE MANAGER			risk|compliance|4	Manager	risk compliance manager	title	9	80-170k	FY24/25
+	1022	placed		RISK/COMPLIANCE MANAGER		POLICY AND STRATEGY	risk|compliance|4	Manager	risk compliance manager	title	9	80-160k	2023
+	998	placed	Y	SENIOR POLICY OFFICER/POLICY ADVISOR		POLICY AND STRATEGY	policy|generalist|3	Senior / partner	senior policy officer policy advisor	title	9	82-130k	2023
+	533	placed	Y	Assistant Account Executive			sales|generalist|2	Practitioner	assistant account executive	title	8	46-66k	FY22/23
+	299	placed		CAMPAIGN MANAGER		MARKETING	marketing|generalist|4	Manager	campaign manager	title	8	75-145k	FY24/25
+	946	placed		CAMPAIGN MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	campaign manager	title	8	70-145k	2023
+	531	placed	Y	Claims Team Leader			insurance|claims|3	Senior / partner	claims team leader	title	8	80-110k	FY22/23
+	529	placed	Y	Commercial Claims Assessor			insurance|claims|2	Practitioner	commercial claims assessor	title	8	57-85k	FY22/23
+	321	placed		CONTENT MANAGER		DIGITAL	marketing|generalist|4	Manager	content manager	title	8	85-130k	FY24/25
+	968	placed		CONTENT MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	content manager	title	8	85-130k	2023
+	327	placed	Y	CONTENT WRITER		DIGITAL	creative|media|2	Practitioner	content writer	title	8	80-120k	FY24/25
+	974	placed	Y	CONTENT WRITER		MARKETING AND DIGITAL	creative|media|2	Practitioner	content writer	title	8	80-120k	2023
+	269	placed	Y	CONTRACT/ACCOUNT MANAGER		TRANSPORT	sales|account-management|2	Practitioner	contract account manager	title	8	77-135k	FY24/25
+	907	placed	Y	CONTRACT/ACCOUNT MANAGER		LOGISTICS	sales|account-management|2	Practitioner	contract account manager	title	8	66-150k	2023
+	913	placed	Y	CONTRACT/ACCOUNT MANAGER		LOGISTICS	sales|account-management|2	Practitioner	contract account manager	title	8	77-135k	2023
+	318	placed	Y	DIGITAL DESIGNER		DIGITAL	creative|generalist|2	Practitioner	digital designer	title	8	80-140k	FY24/25
+	965	placed	Y	DIGITAL DESIGNER		MARKETING AND DIGITAL	creative|generalist|2	Practitioner	digital designer	title	8	80-130k	2023
+	314	placed	Y	DIGITAL PROJECT MANAGER		DIGITAL	project|generalist|3	Senior / partner	digital project manager	title	8	95-150k	FY24/25
+	961	placed	Y	DIGITAL PROJECT MANAGER		MARKETING AND DIGITAL	project|generalist|3	Senior / partner	digital project manager	title	8	90-150k	2023
+	305	placed		DIRECT MARKETING MANAGER		MARKETING	marketing|generalist|4	Manager	direct marketing manager	title	8	90-135k	FY24/25
+	952	placed		DIRECT MARKETING MANAGER		MARKETING AND DIGITAL	marketing|generalist|4	Manager	direct marketing manager	title	8	85-135k	2023
+	528	placed	Y	Domestic Claims Assessor			insurance|claims|2	Practitioner	domestic claims assessor	title	8	49-70k	FY22/23
+	725	placed	Y	FINANCIAL PLANNING MANAGER		BANKING	finance|generalist|4	Manager	financial planning manager	title	8	112-200k	2023
+	933	placed	Y	FITTER		MANUFACTURING AND OPERATIONS	trades|mechanical|2	Practitioner	fitter	title	8	60-120k	2023
+	274	placed		HC/MC DRIVER		TRANSPORT	logistics|driving|3	Senior / partner	hc mc driver	title	8	60-130k	FY24/25
+	918	placed		HC/MC DRIVER		LOGISTICS	logistics|driving|3	Senior / partner	hc mc driver	title	8	51-180k	2023
+	726	placed	Y	HEAD OF FINANCIAL PLANNING		BANKING	finance|generalist|5	Head / director	head of financial planning	title	8	138-280k	2023
+	174	placed		HEAD OF HR/ HR DIRECTOR < 250 employees			hr|generalist|5	Head / director	head of hr director 250 employees	title	8	140-245k	FY24/25
+	172	placed		HEAD OF HR/ HR DIRECTOR > 1000 employees			hr|generalist|5	Head / director	head of hr director 1000 employees	title	8	180-400k	FY24/25
+	173	placed		HEAD OF HR/ HR DIRECTOR 250 - 1000 employees			hr|generalist|5	Head / director	head of hr director 250	title	8	150-280k	FY24/25
+	210	placed	Y	HEAD OF WHS/ WHS DIRECTOR			hse|generalist|5	Head / director	head of whs whs director	title	8	125-320k	FY24/25
+	832	placed	Y	HEAD OF WHS/ WHS DIRECTOR		HUMAN RESOURCES NOTES All salaries shown	hse|generalist|5	Head / director	head of whs whs director	title	8	122-300k	2023
+	205	placed		HEAD OF/ DIRECTOR REMUNERATION & BENEFITS			hr|reward|5	Head / director	head of director remuneration and benefits	title	8	122-320k	FY24/25
+	827	placed		HEAD OF/ DIRECTOR REMUNERATION & BENEFITS		HUMAN RESOURCES NOTES All salaries shown	hr|reward|5	Head / director	head of director remuneration and benefits	title	8	122-320k	2023
+	188	placed		HR ANALYST			hr|generalist|2	Practitioner	hr analyst	title	8	80-150k	FY24/25
+	808	placed		HR ANALYST		HUMAN RESOURCES NOTES All salaries shown	hr|generalist|2	Practitioner	hr analyst	title	8	77-150k	2023
+	177	placed		HR MANAGER < 250 employees			hr|generalist|4	Manager	hr manager 250 employees	title	8	110-175k	FY24/25
+	175	placed		HR MANAGER > 1000 employees			hr|generalist|4	Manager	hr manager 1000 employees	title	8	140-220k	FY24/25
+	176	placed		HR MANAGER 250 - 1000 employees			hr|generalist|4	Manager	hr manager 250	title	8	120-200k	FY24/25
+	209	placed	Y	HR PROJECT MANAGER			project|generalist|3	Senior / partner	hr project manager	title	8	110-200k	FY24/25
+	831	placed	Y	HR PROJECT MANAGER		HUMAN RESOURCES NOTES All salaries shown	project|generalist|3	Senior / partner	hr project manager	title	8	92-200k	2023
+	208	placed		HRIS ADVISOR			hr|hr-systems|2	Practitioner	hris advisor	title	8	80-140k	FY24/25
+	830	placed		HRIS ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hr|hr-systems|2	Practitioner	hris advisor	title	8	66-133k	2023
+	306	placed		INTERNAL COMMUNICATIONS ADVISOR		MARKETING	marketing|communications|2	Practitioner	internal communications advisor	title	8	80-130k	FY24/25
+	953	placed		INTERNAL COMMUNICATIONS ADVISOR		MARKETING AND DIGITAL	marketing|communications|2	Practitioner	internal communications advisor	title	8	75-130k	2023
+	192	placed		LEARNING & DEVELOPMENT ADVISOR			hr|learning|2	Practitioner	learning and development advisor	title	8	85-130k	FY24/25
+	812	placed		LEARNING & DEVELOPMENT ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hr|learning|2	Practitioner	learning and development advisor	title	8	80-130k	2023
+	277	placed	Y	MACHINIST		MANUFACTURING AND OPERATIONS	trades|mechanical|2	Practitioner	machinist	title	8	55-120k	FY24/25
+	921	placed	Y	MACHINIST		MANUFACTURING AND OPERATIONS	trades|mechanical|2	Practitioner	machinist	title	8	46-95k	2023
+	320	placed	Y	MULTIMEDIA DEVELOPER		DIGITAL	software|generalist|2	Practitioner	multimedia developer	title	8	75-115k	FY24/25
+	967	placed	Y	MULTIMEDIA DEVELOPER		MARKETING AND DIGITAL	software|generalist|2	Practitioner	multimedia developer	title	8	75-115k	2023
+	276	placed		PRODUCTION/PROCESS WORKER		MANUFACTURING AND OPERATIONS	operations|generalist|1	Entry / support	production process worker	title	8	50-80k	FY24/25
+	920	placed		PRODUCTION/PROCESS WORKER		MANUFACTURING AND OPERATIONS	operations|generalist|1	Entry / support	production process worker	title	8	44-80k	2023
+	197	placed		RECRUITMENT MANAGER/ TALENT ACQUISITION MANAGER			hr|talent-acquisition|4	Manager	recruitment manager talent acquisition manager	title	8	100-220k	FY24/25
+	818	placed		RECRUITMENT MANAGER/ TALENT ACQUISITION MANAGER		HUMAN RESOURCES NOTES All salaries shown	hr|talent-acquisition|4	Manager	recruitment manager talent acquisition manager	title	8	90-210k	2023
+	289	placed	Y	RELIABILTY ENGINEER		MAINTENANCE AND ENGINEERING	engineering|generalist|2	Practitioner	reliabilty engineer	title	8	80-150k	FY24/25
+	304	placed		RESEARCH EXECUTIVE/ MARKETING ANALYST		MARKETING	marketing|generalist|2	Practitioner	research executive marketing analyst	title	8	70-135k	FY24/25
+	951	placed		RESEARCH EXECUTIVE/ MARKETING ANALYST		MARKETING AND DIGITAL	marketing|generalist|2	Practitioner	research executive marketing analyst	title	8	70-145k	2023
+	98	placed		SENIOR ADMINISTRATOR		SUPERANNUATION AND FUNDS MANAGEMENT	admin|generalist|1	Entry / support	senior administrator	title	8	57-85k	FY24/25
+	704	placed	Y	SENIOR ADMINISTRATOR		BANKING	admin|generalist|1	Entry / support	senior administrator	title	8	57-85k	2023
+	724	placed		SENIOR FINANCIAL PLANNER		BANKING	banking|advice|2	Practitioner	senior financial planner	title	8	85-200k	2023
+	180	placed		SENIOR HR ADVISOR			hr|generalist|3	Senior / partner	senior hr advisor	title	8	95-160k	FY24/25
+	530	placed	Y	Senior Technical Claims Assessor			insurance|claims|3	Senior / partner	senior technical claims assessor	title	8	80-120k	FY22/23
+	324	placed		SEO SPECIALIST		DIGITAL	marketing|generalist|2	Practitioner	seo specialist	title	8	85-120k	FY24/25
+	971	placed		SEO SPECIALIST		MARKETING AND DIGITAL	marketing|generalist|2	Practitioner	seo specialist	title	8	85-120k	2023
+	331	placed		SOCIAL MEDIA COORDINATOR		DIGITAL	marketing|generalist|1	Entry / support	social media coordinator	title	8	70-90k	FY24/25
+	978	placed		SOCIAL MEDIA COORDINATOR		MARKETING AND DIGITAL	marketing|generalist|1	Entry / support	social media coordinator	title	8	70-90k	2023
+	547	placed	Y	Social Media Executive			marketing|generalist|2	Practitioner	social media executive	title	8	61-110k	FY22/23
+	332	placed		SOCIAL MEDIA EXECUTIVE		DIGITAL	marketing|generalist|2	Practitioner	social media executive	title	8	80-115k	FY24/25
+	979	placed		SOCIAL MEDIA EXECUTIVE		MARKETING AND DIGITAL	marketing|generalist|2	Practitioner	social media executive	title	8	75-115k	2023
+	322	placed	Y	WEB CONTENT EDITOR		DIGITAL	creative|media|2	Practitioner	web content editor	title	8	80-110k	FY24/25
+	969	placed	Y	WEB CONTENT EDITOR		MARKETING AND DIGITAL	creative|media|2	Practitioner	web content editor	title	8	80-110k	2023
+	213	placed	Y	WHS ADVISOR			hse|generalist|2	Practitioner	whs advisor	title	8	80-140k	FY24/25
+	835	placed	Y	WHS ADVISOR		HUMAN RESOURCES NOTES All salaries shown	hse|generalist|2	Practitioner	whs advisor	title	8	75-130k	2023
+	212	placed	Y	WHS MANAGER			hse|generalist|4	Manager	whs manager	title	8	95-200k	FY24/25
+	834	placed	Y	WHS MANAGER		HUMAN RESOURCES NOTES All salaries shown	hse|generalist|4	Manager	whs manager	title	8	92-184k	2023
+	360	placed	Y	CHIEF PROCUREMENT OFFICER			procurement|generalist|6	Executive	chief procurement officer	title	7	135-450k	FY24/25
+	1027	placed		CHIEF PROCUREMENT OFFICER		PROCUREMENT	procurement|generalist|6	Executive	chief procurement officer	title	7	135-450k	2023
+	840	placed		DOMESTIC CLAIMS ASSESSOR		INSURANCE	insurance|claims|2	Practitioner	domestic claims assessor	title	6	55-70k	2023
+	1055	placed		MERCHANDISE PLANNER		RETAIL	procurement|buying|2	Practitioner	merchandise planner	title	6	120-255k	2023
+	1060	placed		PRODUCT DEVELOPER		RETAIL	software|generalist|2	Practitioner	product developer	title	6	70-408k	2023
+	155	placed		TRAFFIC ENGINEER	56 - 92	RAIL INFRASTRUCTURE                     	engineering|civil|2	Practitioner	traffic engineer	title	6	71-200k	FY24/25
+	157	placed		TRAFFIC ENGINEER	65 - 102	RAIL INFRASTRUCTURE                     	engineering|civil|2	Practitioner	traffic engineer	title	6	122-255k	FY24/25
+	843	placed		CLAIMS TEAM LEADER		INSURANCE	insurance|claims|3	Senior / partner	claims team leader	title	5	75-170k	2023
+	841	placed		COMMERCIAL CLAIMS ASSESSOR		INSURANCE	insurance|claims|2	Practitioner	commercial claims assessor	title	5	61-130k	2023
+	256	placed		LEGAL COUNSEL 1-2 YR P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 1 2 yr p a e	title	5	70-110k	FY24/25
+	257	placed		LEGAL COUNSEL 2-3 YEARS P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 2 3 years p a e	title	5	90-130k	FY24/25
+	258	placed		LEGAL COUNSEL 3-4 YEARS P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 3 4 years p a e	title	5	100-150k	FY24/25
+	259	placed		LEGAL COUNSEL 4 - 5 YEARS P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 4	title	5	120-160k	FY24/25
+	260	placed		LEGAL COUNSEL 5 - 6 YEARS P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 5	title	5	130-175k	FY24/25
+	261	placed		LEGAL COUNSEL 6+ YEARS P.A.E		IN-HOUSE	legal|in-house|2	Practitioner	legal counsel 6 years p a e	title	5	145-185k	FY24/25
+	842	placed		SENIOR TECHNICAL CLAIMS ASSESSOR		INSURANCE	insurance|claims|3	Senior / partner	senior technical claims assessor	title	5	80-120k	2023
+	899	placed		ASSISTANT COMPANY SECRETARY Listed company		LEGAL	legal|in-house|4	Manager	assistant company secretary listed company	title	4	100-180k	2023
+	898	placed		ASSISTANT COMPANY SECRETARY Unlisted company		LEGAL	legal|in-house|4	Manager	assistant company secretary unlisted company	title	4	80-160k	2023
+	497	placed	Y	Broker Support Account Manager Broker			sales|account-management|2	Practitioner	broker support account manager broker	title	4	51-90k	FY22/23
+	901	placed		COMPANY SECRETARY Listed company		LEGAL	legal|in-house|4	Manager	company secretary listed company	title	4	150-280k	2023
+	900	placed		COMPANY SECRETARY Unlisted company		LEGAL	legal|in-house|4	Manager	company secretary unlisted company	title	4	115-220k	2023
+	1056	placed		SENIOR MERCHANDISE PLANNER		RETAIL	procurement|buying|2	Practitioner	senior merchandise planner	title	4	140-204k	2023
+	232	placed		CHIEF UNDERWRITER		LIFE INSURANCE	insurance|underwriting|2	Practitioner	chief underwriter	title	3	100-250k	FY24/25
+	863	placed		CHIEF UNDERWRITER		INSURANCE	insurance|underwriting|2	Practitioner	chief underwriter	title	3	100-250k	2023
+	226	placed		CLAIMS TEAM LEADER		LIFE INSURANCE	insurance|claims|3	Senior / partner	claims team leader	title	3	100-150k	FY24/25
+	857	placed		CLAIMS TEAM LEADER		INSURANCE	insurance|claims|3	Senior / partner	claims team leader	title	3	70-150k	2023
+	225	placed		SENIOR CLAIMS ASSESSOR		LIFE INSURANCE	insurance|claims|3	Senior / partner	senior claims assessor	title	3	80-130k	FY24/25
+	856	placed		SENIOR CLAIMS ASSESSOR		INSURANCE	insurance|claims|3	Senior / partner	senior claims assessor	title	3	64-130k	2023
+	154	placed		CIVIL/STRUCTURAL DRAFTER		CIVIL AND STRUCTURAL	architecture|drafting|2	Practitioner	civil structural drafter	title	1	70-100k	FY24/25
+	779	placed		CIVIL/STRUCTURAL DRAFTER		ENGINEERING	architecture|drafting|2	Practitioner	civil structural drafter	title	1	70-100k	2023
+	538	placed		Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel  	1-2 yrs P.A.E	Legal Counsel        Legal Counsel      	legal|in-house|2	Practitioner	legal counsel legal counsel legal counsel legal counsel legal counsel legal counsel	title	1	135-180k	FY22/23
+	539	placed		Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel        Legal Counsel  	2-3 yrs P.A.E	Legal Counsel        Legal Counsel      	legal|in-house|2	Practitioner	legal counsel legal counsel legal counsel legal counsel legal counsel legal counsel	title	1	150-250k	FY22/23
+	61	hinted		EXTERNAL AUDIT	2 - 5 YEARS	PROFESSIONAL PRACTICE	risk|?|?				30	70-175k	FY24/25
+	73	hinted		RISK CONSULTING/	2 - 5 YEARS	PROFESSIONAL PRACTICE	risk|?|?				30	77-160k	FY24/25
+	649	hinted	Y	EXTERNAL AUDIT UNDERGRADUATES	1 - 2 YEARS EXP	ACCOUNTANCY AND FINANCE	risk|?|?				28	43-65k	2023
+	650	hinted	Y	EXTERNAL AUDIT UNDERGRADUATES	3+ YEARS EXP	ACCOUNTANCY AND FINANCE	risk|?|?				28	44-85k	2023
+	673	hinted		ARCHITECTURE	2-7 years exp	ARCHITECTURE	architecture|?|?				14	43-105k	2023
+	674	hinted		ARCHITECTURE	7+ years exp	ARCHITECTURE	architecture|?|?				14	61-133k	2023
+	675	hinted		ARCHITECTURE	2 - 5 years exp	ARCHITECTURE	architecture|?|?				14	59-110k	2023
+	676	hinted		ARCHITECTURE	5+ years exp	ARCHITECTURE	architecture|?|?				14	70-150k	2023
+	1042	hinted	Y	COMMERCIAL/ INDUSTRIAL SALES AND LEASING		PROPERTY	sales|?|?				14	55-204k	2023
+	651	hinted	Y	EXTERNAL AUDIT UNDERGRADUATES	2 - 3 YEARS EXP	ACCOUNTANCY AND FINANCE	risk|?|?				14	46-73k	2023
+	992	hinted		PROJECT SECRETARY/ ADMINISTRATOR		OFFICE SUPPORT	project|?|?				14	51-95k	2023
+	1040	hinted	Y	RETAIL CENTRE MANAGER		PROPERTY	retail|?|?				14	66-153k	2023
+	469	hinted		DATA MODELLER		DATA AND ADVANCED ANALYTICS	data|?|?				13	100-190k	FY24/25
+	1151	hinted	Y	DATA MODELLER		TECHNOLOGY	data|?|?				13	90-190k	2023
+	1142	hinted		ERP/CRM ADMINISTRATION		TECHNOLOGY	technology|?|?				13	70-160k	2023
+	460	hinted		ERP/CRM ADMINISTRATION New		ERP/CRM	technology|?|?				13	80-160k	FY24/25
+	477	hinted		PENETRATION TESTER		CYBER SECURITY	technology|?|?				13	100-200k	FY24/25
+	1159	hinted		PENETRATION TESTER		TECHNOLOGY	technology|?|?				13	100-200k	2023
+	417	hinted		SERVICE DESK - LEVEL 1		INFRASTRUCTURE	technology|?|?				13	45-80k	FY24/25
+	1099	hinted		SERVICE DESK - LEVEL 1		TECHNOLOGY	technology|?|?				13	49-80k	2023
+	424	hinted	Y	NETWORK ADMINISTRATION/ ENGINEER		INFRASTRUCTURE	admin|?|?				12	76-170k	FY24/25
+	1106	hinted	Y	NETWORK ADMINISTRATION/ ENGINEER		TECHNOLOGY	admin|?|?				12	76-170k	2023
+	758	hinted		SALES AND SERVICE CONSULTANT		CONTACT CENTRES	sales|?|?				12	49-70k	2023
+	400	hinted		ARCHITECTURAL AND SPECIFICATION SALES		INDUSTRIAL AND TECHNICAL SALES	sales|?|?				11	75-120k	FY24/25
+	272	hinted		FLEET CONTROLLER		TRANSPORT	logistics|?|?				8	55-100k	FY24/25
+	916	hinted		FLEET CONTROLLER		LOGISTICS	logistics|?|?				8	51-100k	2023
+	189	hinted		HR POLICY WRITERS			hr|?|?				8	80-153k	FY24/25
+	809	hinted		HR POLICY WRITERS		HUMAN RESOURCES NOTES All salaries shown	hr|?|?				8	82-153k	2023
+	909	hinted	Y	STOCK/INVENTORY CONTROLLER		LOGISTICS	procurement|?|?				8	50-110k	2023
+	1062	hinted		IN-STORE SALES PROFESSIONAL		RETAIL	retail|?|?				6	55-122k	2023
+	493	none		Senior Manager for 2-5 yrs							98	82-184k	FY22/23
+	492	none		Manager for 0-2 yrs							84	66-140k	FY22/23
+	159	none		MANAGER							42	75-168k	FY24/25
+	56	none		BUSINESS SERVICES	2 - 5 YEARS	PROFESSIONAL PRACTICE					30	78-175k	FY24/25
+	66	none		EXPERIENCE		PROFESSIONAL PRACTICE					30	61-140k	FY24/25
+	67	none		EXPERIENCE		PROFESSIONAL PRACTICE					30	52-140k	FY24/25
+	68	none		EXPERIENCE		PROFESSIONAL PRACTICE					30	54-170k	FY24/25
+	62	none		INSOLVENCY GRADUATES	3 - 4 YEARS EXP	PROFESSIONAL PRACTICE					30	45-92k	FY24/25
+	63	none		INSOLVENCY GRADUATES	4 - 5 YEARS EXP	PROFESSIONAL PRACTICE					30	48-102k	FY24/25
+	65	none		INSOLVENCY GRADUATES	6+ YEARS EXP	PROFESSIONAL PRACTICE					30	56-140k	FY24/25
+	52	none		NO EXP		PROFESSIONAL PRACTICE					30	47-68k	FY24/25
+	57	none		NO EXP		PROFESSIONAL PRACTICE					30	45-68k	FY24/25
+	50	none		PAYABLE		COMMERCE AND INDUSTRY					30	65-130k	FY24/25
+	69	none		PRINCIPALS/DIRECTORS	UP TO 4 YRS EXPERIENCE	PROFESSIONAL PRACTICE					30	51-140k	FY24/25
+	70	none		PRINCIPALS/DIRECTORS	5 - 6 YEARS EXP	PROFESSIONAL PRACTICE					30	71-160k	FY24/25
+	53	none		UNDERGRADUATES	1 - 2 YEARS EXP	PROFESSIONAL PRACTICE					30	48-78k	FY24/25
+	54	none		UNDERGRADUATES	3+ YEARS EXP	PROFESSIONAL PRACTICE					30	48-100k	FY24/25
+	58	none		UNDERGRADUATES	1 - 2 YEARS EXP	PROFESSIONAL PRACTICE					30	48-78k	FY24/25
+	59	none		UNDERGRADUATES	3+ YEARS EXP	PROFESSIONAL PRACTICE					30	48-90k	FY24/25
+	64	none		INSOLVENCY GRADUATES	5 - 6 YEARS EXP	PROFESSIONAL PRACTICE					29	50-110k	FY24/25
+	74	none		2 - 5 years exp							28	59-110k	FY24/25
+	75	none		5 - 10 years exp							28	70-140k	FY24/25
+	644	none		BUSINESS SERVICES UNDERGRADUATES	1 - 2 YEARS EXP	ACCOUNTANCY AND FINANCE					28	43-71k	2023
+	645	none		BUSINESS SERVICES UNDERGRADUATES	3+ YEARS EXP	ACCOUNTANCY AND FINANCE					28	44-97k	2023
+	623	none		GRADUATE (No experience)		ACCOUNTANCY AND FINANCE					28	43-85k	2023
+	619	none		GRADUATE No experience		ACCOUNTANCY AND FINANCE					28	43-85k	2023
+	657	none		MANAGEMENT CONSULTING MANAGERS, SENIOR MANAGERS, PRINCIPALS/DIRECTORS	UP TO 4 YRS EXPERIENCE	ACCOUNTANCY AND FINANCE					28	51-130k	2023
+	658	none		MANAGEMENT CONSULTING MANAGERS, SENIOR MANAGERS, PRINCIPALS/DIRECTORS	4 - 5 YEARS EXP	ACCOUNTANCY AND FINANCE					28	66-158k	2023
+	643	none		NO EXP		ACCOUNTANCY AND FINANCE					28	43-60k	2023
+	648	none		NO EXP		ACCOUNTANCY AND FINANCE					28	43-57k	2023
+	637	none		OFFICER		ACCOUNTANCY AND FINANCE					28	46-90k	2023
+	638	none		OFFICER - SENIOR		ACCOUNTANCY AND FINANCE					28	51-95k	2023
+	337	none		Residential		PROPERTY AND CONSTRUCTION SUPPORT					28	48-110k	FY24/25
+	647	none		Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	61-140k	2023
+	652	none		Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	61-140k	2023
+	653	none		Typical Range Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	43-87k	2023
+	654	none		Typical Range Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	61-140k	2023
+	655	none		Typical Range Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	52-140k	2023
+	656	none		Typical Range Typical Range Typical Range Typical Range		ACCOUNTANCY AND FINANCE					28	54-140k	2023
+	491	none		No exp 1-2 yrs exp 2-3 yrs exp 3+ yrs exp							26	41-55k	FY22/23
+	91	none		MANAGER		CORPORATE AND INSTITUTIONAL LENDING					24	65-220k	FY24/25
+	148	none		TRAINER							20	51-140k	FY24/25
+	156	none		—		RAIL INFRASTRUCTURE                     					18	82-300k	FY24/25
+	781	none		NA		ENGINEERING					18	82-300k	2023
+	90	none		MANAGER		BUSINESS AND COMMERCIAL LENDING					16	65-190k	FY24/25
+	263	none		MANAGER		WAREHOUSE/DISTRIBUTION					16	70-190k	FY24/25
+	932	none		R&D MANAGER		MANUFACTURING AND OPERATIONS					16	77-150k	2023
+	49	none		> 5 staff		COMMERCE AND INDUSTRY					15	80-150k	FY24/25
+	48	none		CREDIT CONTROL/	1 - 5 staff	COMMERCE AND INDUSTRY					15	70-120k	FY24/25
+	660	none		MANAGEMENT CONSULTING MANAGERS, SENIOR MANAGERS, PRINCIPALS/DIRECTORS	6+ YEARS EXP	ACCOUNTANCY AND FINANCE					15	70-145k	2023
+	35	none		MANAGER		COMMERCE AND INDUSTRY					15	100-200k	FY24/25
+	71	none		PRINCIPALS/DIRECTORS	4 - 5 YEARS EXP	PROFESSIONAL PRACTICE					15	66-102k	FY24/25
+	72	none		PRINCIPALS/DIRECTORS	6+ YEARS EXP	PROFESSIONAL PRACTICE					15	74-120k	FY24/25
+	45	none		SUPERVISOR/MANAGER < 1000 employees		COMMERCE AND INDUSTRY					15	80-150k	FY24/25
+	55	none		UNDERGRADUATES	2 - 3 YEARS EXP	PROFESSIONAL PRACTICE					15	48-85k	FY24/25
+	60	none		UNDERGRADUATES	2 - 3 YEARS EXP	PROFESSIONAL PRACTICE					15	48-80k	FY24/25
+	367	none		0-3 years exp							14	52-92k	FY24/25
+	76	none		10+ years exp							14	82-160k	FY24/25
+	78	none		2-7 years exp							14	48-105k	FY24/25
+	487	none		3-5 yrs exp							14	56-85k	FY22/23
+	368	none		3+ years exp							14	60-133k	FY24/25
+	488	none		5-10 yrs exp							14	70-97k	FY22/23
+	80	none		5+ years exp							14	70-150k	FY24/25
+	79	none		7+ years exp							14	61-133k	FY24/25
+	642	none		ACCOUNTS OFFICER		ACCOUNTANCY AND FINANCE					14	46-85k	2023
+	374	none		ACQUISITIONS 0-4 years exp							14	51-122k	FY24/25
+	1048	none		ACQUISITIONS 0-4 years exp		PROPERTY					14	45-122k	2023
+	375	none		ACQUISITIONS 4+ years exp							14	71-388k	FY24/25
+	1049	none		ACQUISITIONS 4+ years exp		PROPERTY					14	71-388k	2023
+	554	none		Advisor Support							14	44-83k	FY22/23
+	1038	none		ASSET MANAGER 0-3 years exp		PROPERTY					14	60-112k	2023
+	1039	none		ASSET MANAGER 3+ years exp		PROPERTY					14	70-200k	2023
+	376	none		ASSISTANT DEVELOPMENT MANAGER							14	60-150k	FY24/25
+	1050	none		ASSISTANT DEVELOPMENT MANAGER		PROPERTY					14	61-133k	2023
+	509	none		Associate							14	87-204k	FY22/23
+	790	none		BID MANAGER		FACILITIES MANAGEMENT					14	75-163k	2023
+	672	none		BIM/CAD MANAGER		ARCHITECTURE					14	67-200k	2023
+	783	none		BUILDING MANAGER		FACILITIES MANAGEMENT					14	60-112k	2023
+	646	none		BUSINESS SERVICES UNDERGRADUATES	2 - 3 YEARS EXP	ACCOUNTANCY AND FINANCE					14	43-82k	2023
+	996	none		CLIENT LIAISON Residential		OFFICE SUPPORT					14	48-90k	2023
+	158	none		COORDINATOR							14	51-90k	FY24/25
+	633	none		CREDIT CONTROLLER		ACCOUNTANCY AND FINANCE					14	51-85k	2023
+	378	none		DEVELOPMENT DIRECTOR							14	143-408k	FY24/25
+	1052	none		DEVELOPMENT DIRECTOR		PROPERTY					14	143-408k	2023
+	377	none		DEVELOPMENT MANAGER							14	95-265k	FY24/25
+	1051	none		DEVELOPMENT MANAGER		PROPERTY					14	95-265k	2023
+	789	none		ENGINEERING MANAGER		FACILITIES MANAGEMENT					14	77-163k	2023
+	641	none		ENTRY LEVEL ACCOUNTS OFFICER		ACCOUNTANCY AND FINANCE					14	46-70k	2023
+	134	none		ENTRY-LEVEL/INTERMEDIATE		CONSTRUCTION BUILDING					14	50-150k	FY24/25
+	791	none		GENERAL MANAGER		FACILITIES MANAGEMENT					14	112-255k	2023
+	523	none		Guest Services Agent							14	46-66k	FY22/23
+	167	none		GUEST SERVICES AGENT		SOFT SERVICES					14	50-75k	FY24/25
+	799	none		GUEST SERVICES AGENT		FACILITIES MANAGEMENT					14	49-75k	2023
+	120	none		LEADING HAND		CONSTRUCTION CIVIL					14	65-120k	FY24/25
+	128	none		LEADING HAND		CONSTRUCTION BUILDING					14	65-120k	FY24/25
+	728	none		LEADING HAND		CONSTRUCTION					14	51-120k	2023
+	739	none		LEADING HAND		CONSTRUCTION					14	56-120k	2023
+	659	none		MANAGEMENT CONSULTING MANAGERS, SENIOR MANAGERS, PRINCIPALS/DIRECTORS	5 - 6 YEARS EXP	ACCOUNTANCY AND FINANCE					14	65-102k	2023
+	495	none		Manager for 0-2yrs							14	71-130k	FY22/23
+	788	none		OPERATIONS MANAGER		FACILITIES MANAGEMENT					14	75-153k	2023
+	489	none		Over 10 yrs exp							14	71-120k	FY22/23
+	634	none		SENIOR CREDIT CONTROLLER		ACCOUNTANCY AND FINANCE					14	56-100k	2023
+	786	none		SERVICE MANAGER		FACILITIES MANAGEMENT					14	80-153k	2023
+	629	none		SUPERVISOR/MANAGER < 1000 employees		ACCOUNTANCY AND FINANCE					14	66-130k	2023
+	47	none		SUPERVISOR/MANAGER > 3000 employees		COMMERCE AND INDUSTRY					14	95-200k	FY24/25
+	636	none		SUPERVISOR/MANAGER > 5 staff		ACCOUNTANCY AND FINANCE					14	71-130k	2023
+	635	none		SUPERVISOR/MANAGER 1 - 5 staff		ACCOUNTANCY AND FINANCE					14	61-110k	2023
+	664	none		TEAM ASSISTANT		ACCOUNTANCY AND FINANCE					14	43-80k	2023
+	574	none		Turnover > $300m		ACCOUNTANCY AND FINANCE COMMERCE AND IND					14	102-180k	2023
+	597	none		Turnover > $300m		ACCOUNTANCY AND FINANCE					14	112-205k	2023
+	573	none		Turnover $100m - $300m		ACCOUNTANCY AND FINANCE COMMERCE AND IND					14	92-150k	2023
+	596	none		Turnover $100m - $300m		ACCOUNTANCY AND FINANCE					14	92-190k	2023
+	572	none		Turnover up to $100m		ACCOUNTANCY AND FINANCE COMMERCE AND IND					14	82-135k	2023
+	595	none		Turnover up to $100m		ACCOUNTANCY AND FINANCE					14	82-150k	2023
+	514	none		Asset Manager							13	56-145k	FY22/23
+	135	none		BUILDING SURVEYOR		LOCAL GOVERNMENT					13	50-180k	FY24/25
+	752	none		BUILDING SURVEYOR		CONSTRUCTION					13	50-180k	2023
+	438	none		CHANGE ANALYST		PROJECTS AND CHANGE MANAGEMENT					13	85-160k	FY24/25
+	1120	none		CHANGE ANALYST		TECHNOLOGY					13	80-160k	2023
+	439	none		CHANGE MANAGER		PROJECTS AND CHANGE MANAGEMENT					13	92-200k	FY24/25
+	1121	none		CHANGE MANAGER		TECHNOLOGY					13	92-200k	2023
+	6	none		COMMERCIAL ANALAYST		COMMERCE AND INDUSTRY					13	100-180k	FY24/25
+	567	none		COMMERCIAL ANALAYST		ACCOUNTANCY AND FINANCE					13	100-160k	2023
+	480	none		GRC CONSULTANT		CYBER SECURITY					13	100-200k	FY24/25
+	1162	none		GRC CONSULTANT		TECHNOLOGY					13	100-200k	2023
+	599	none		PRODUCT CONTROL		ACCOUNTANCY AND FINANCE					13	66-135k	2023
+	600	none		PRODUCT CONTROL MANAGER		ACCOUNTANCY AND FINANCE					13	77-200k	2023
+	441	none		SCRUM MASTER		PROJECTS AND CHANGE MANAGEMENT					13	100-200k	FY24/25
+	1123	none		SCRUM MASTER		TECHNOLOGY					13	100-200k	2023
+	440	none		SENIOR CHANGE MANAGER		PROJECTS AND CHANGE MANAGEMENT					13	120-230k	FY24/25
+	1122	none		SENIOR CHANGE MANAGER		TECHNOLOGY					13	120-275k	2023
+	631	none		SUPERVISOR/MANAGER > 3000 employees		ACCOUNTANCY AND FINANCE					13	77-180k	2023
+	46	none		SUPERVISOR/MANAGER 1000-3000 employees		COMMERCE AND INDUSTRY					13	85-180k	FY24/25
+	630	none		SUPERVISOR/MANAGER 1000-3000 employees		ACCOUNTANCY AND FINANCE					13	71-180k	2023
+	751	none		Typical Range Typical Range Typical Range Typical Range Typical Range Typical Range Typical Range Typical Range Typical 		CONSTRUCTION					13	60-110k	2023
+	419	none		APPLICATIONS SUPPORT		INFRASTRUCTURE					12	66-115k	FY24/25
+	1101	none		APPLICATIONS SUPPORT		TECHNOLOGY					12	66-115k	2023
+	761	none		APPOINTMENT SETTER		CONTACT CENTRES					12	49-75k	2023
+	141	none		CALL COACH/QA							12	49-90k	FY24/25
+	766	none		CALL COACH/QA		CONTACT CENTRES					12	49-80k	2023
+	146	none		COLLECTIONS MANAGER							12	65-160k	FY24/25
+	771	none		COLLECTIONS MANAGER		CONTACT CENTRES					12	61-160k	2023
+	144	none		COLLECTIONS OFFICER							12	48-80k	FY24/25
+	769	none		COLLECTIONS OFFICER		CONTACT CENTRES					12	48-75k	2023
+	145	none		COLLECTIONS TEAM LEADER							12	61-100k	FY24/25
+	770	none		COLLECTIONS TEAM LEADER		CONTACT CENTRES					12	51-90k	2023
+	140	none		CONSULTANT							12	60-90k	FY24/25
+	151	none		CONTACT CENTRE MANAGER							12	80-160k	FY24/25
+	776	none		CONTACT CENTRE MANAGER		CONTACT CENTRES					12	71-160k	2023
+	150	none		CUSTOMER SERVICE MANAGER							12	75-143k	FY24/25
+	775	none		CUSTOMER SERVICE MANAGER		CONTACT CENTRES					12	70-143k	2023
+	757	none		CUSTOMER SERVICE OFFICER		CONTACT CENTRES					12	49-75k	2023
+	560	none		Development Manager							12	112-250k	FY22/23
+	454	none		DEVELOPMENT MANAGER		SOFTWARE DEVELOPMENT					12	120-250k	FY24/25
+	153	none		HEAD OF CUSTOMER SERVICE/ CONTACT CENTRES							12	112-240k	FY24/25
+	778	none		HEAD OF CUSTOMER SERVICE/ CONTACT CENTRES		CONTACT CENTRES					12	95-240k	2023
+	152	none		OPERATIONS MANAGER							12	90-200k	FY24/25
+	777	none		OPERATIONS MANAGER		CONTACT CENTRES					12	82-200k	2023
+	28	none		PRODUCT CONTROL		COMMERCE AND INDUSTRY FINANCIAL SERVICES					12	70-135k	FY24/25
+	29	none		PRODUCT CONTROL MANAGER		COMMERCE AND INDUSTRY FINANCIAL SERVICES					12	80-200k	FY24/25
+	608	none		REPORTING MANAGER		ACCOUNTANCY AND FINANCE					12	92-165k	2023
+	428	none		SERVICE DELIVERY MANAGER		INFRASTRUCTURE					12	100-200k	FY24/25
+	1110	none		SERVICE DELIVERY MANAGER		TECHNOLOGY					12	90-190k	2023
+	147	none		SUPERVISOR							12	55-110k	FY24/25
+	772	none		SUPERVISOR		CONTACT CENTRES					12	51-110k	2023
+	149	none		TEAM LEADER							12	55-100k	FY24/25
+	774	none		TEAM LEADER		CONTACT CENTRES					12	51-95k	2023
+	448	none		TECHNICAL LEAD		SOFTWARE DEVELOPMENT					12	125-210k	FY24/25
+	762	none		TELESALES CONSULTANT		CONTACT CENTRES					12	49-75k	2023
+	773	none		TRAINER		CONTACT CENTRES					12	51-95k	2023
+	1071	none		BUSINESS MANAGER		SALES NOTES All salaries shown are exclu					11	80-185k	2023
+	391	none		CHANNEL DIRECTOR		IT AND TELECOMMUNICATIONS SALES					11	160-220k	FY24/25
+	1069	none		CHANNEL MANAGER		SALES NOTES All salaries shown are exclu					11	70-140k	2023
+	1136	none		DEVELOPMENT MANAGER		TECHNOLOGY					11	117-250k	2023
+	396	none		EXECUTIVE		FMCG AND CONSUMER GOODS SALES					11	80-120k	FY24/25
+	510	none		Group Manager/ Principal							11	120-250k	FY22/23
+	397	none		MANAGER		FMCG AND CONSUMER GOODS SALES					11	120-180k	FY24/25
+	407	none		MANAGER		INDUSTRIAL AND TECHNICAL SALES					11	100-160k	FY24/25
+	494	none		Principals/Directors							11	120-210k	FY22/23
+	403	none		SALES ENGINEER		INDUSTRIAL AND TECHNICAL SALES					11	75-140k	FY24/25
+	1068	none		SALES ENGINEER		SALES NOTES All salaries shown are exclu					11	70-125k	2023
+	404	none		SPECIFICATIONS MANAGER		INDUSTRIAL AND TECHNICAL SALES					11	85-140k	FY24/25
+	1077	none		STATE/ REGIONAL MANAGER		SALES NOTES All salaries shown are exclu					11	85-150k	2023
+	1130	none		TECHNICAL LEAD		TECHNOLOGY					11	125-210k	2023
+	412	none		ADVISOR/CONSULTANT		ENVIRONMENTAL					10	80-210k	FY24/25
+	987	none		CORPORATE RELATIONS ADVISOR		MARKETING AND DIGITAL					10	75-150k	2023
+	988	none		CORPORATE RELATIONS MANAGER		MARKETING AND DIGITAL					10	90-200k	2023
+	526	none		Environmental Health Officer							10	66-100k	FY22/23
+	170	none		ENVIRONMENTAL HEALTH OFFICER		LOCAL GOVERNMENT REGULATIONS					10	66-110k	FY24/25
+	802	none		ENVIRONMENTAL HEALTH OFFICER		FACILITIES MANAGEMENT					10	66-110k	2023
+	234	none		GRADUATE		PRIVATE PRACTICE - TOP TIER					10	65-195k	FY24/25
+	241	none		GRADUATE		PRIVATE PRACTICE - MID TIER					10	65-175k	FY24/25
+	248	none		GRADUATE		PRIVATE PRACTICE - SMALL PRACTICES					10	60-170k	FY24/25
+	1097	none		GRID CONNECTION MANAGER		SUSTAINABILITY AND ENVIRONMENTAL					10	173-280k	2023
+	416	none		MANAGER		RENEWABLE ENERGY					10	173-280k	FY24/25
+	985	none		PR DIRECTOR		MARKETING AND DIGITAL					10	80-200k	2023
+	242	none		PRIVATE PRACTICE - MID TIER	0-1 YEARS P.A.E	PRIVATE PRACTICE - MID TIER					10	65-230k	FY24/25
+	243	none		PRIVATE PRACTICE - MID TIER	1-2 YEARS P.A.E	PRIVATE PRACTICE - MID TIER					10	70-250k	FY24/25
+	249	none		PRIVATE PRACTICE - SMALL PRACTICES	0-1 YEARS P.A.E	PRIVATE PRACTICE - SMALL PRACTICES					10	63-210k	FY24/25
+	250	none		PRIVATE PRACTICE - SMALL PRACTICES	1-2 YEARS P.A.E	PRIVATE PRACTICE - SMALL PRACTICES					10	65-230k	FY24/25
+	235	none		PRIVATE PRACTICE - TOP TIER	0-1 YEARS P.A.E	PRIVATE PRACTICE - TOP TIER					10	70-250k	FY24/25
+	236	none		PRIVATE PRACTICE - TOP TIER	1-2 YEARS P.A.E	PRIVATE PRACTICE - TOP TIER					10	75-300k	FY24/25
+	525	none		Ranger							10	60-95k	FY22/23
+	169	none		RANGER		LOCAL GOVERNMENT REGULATIONS					10	60-95k	FY24/25
+	801	none		RANGER		FACILITIES MANAGEMENT					10	60-95k	2023
+	555	none		State/Regional Manager							10	82-169k	FY22/23
+	36	none		Typical Range		COMMERCE AND INDUSTRY					10	80-133k	FY24/25
+	338	none		ADVISOR							9	82-130k	FY24/25
+	349	none		ECONOMIST							9	85-140k	FY24/25
+	1016	none		ECONOMIST		POLICY AND STRATEGY					9	85-137k	2023
+	344	none		EXECUTIVE OFFICER							9	77-150k	FY24/25
+	1011	none		EXECUTIVE OFFICER		POLICY AND STRATEGY					9	77-140k	2023
+	339	none		GRANTS OFFICER							9	65-110k	FY24/25
+	1006	none		GRANTS OFFICER		POLICY AND STRATEGY					9	65-100k	2023
+	255	none		IN-HOUSE	0-1 YEARS P.A.E	IN-HOUSE					9	65-190k	FY24/25
+	524	none		Parking Officer							9	55-90k	FY22/23
+	168	none		PARKING OFFICER		LOCAL GOVERNMENT REGULATIONS					9	55-90k	FY24/25
+	800	none		PARKING OFFICER		FACILITIES MANAGEMENT					9	55-90k	2023
+	340	none		RESEARCH ANALYST							9	66-112k	FY24/25
+	1007	none		RESEARCH ANALYST		POLICY AND STRATEGY					9	66-110k	2023
+	350	none		SENIOR ECONOMIST							9	102-185k	FY24/25
+	1017	none		SENIOR ECONOMIST		POLICY AND STRATEGY					9	102-184k	2023
+	527	none		Senior Environmental Health Officer							9	75-140k	FY22/23
+	171	none		SENIOR ENVIRONMENTAL HEALTH OFFICER		LOCAL GOVERNMENT REGULATIONS					9	75-140k	FY24/25
+	803	none		SENIOR ENVIRONMENTAL HEALTH OFFICER		FACILITIES MANAGEMENT					9	75-140k	2023
+	1001	none		STRATEGIC MANAGER		POLICY AND STRATEGY					9	97-175k	2023
+	598	none		Typical Range		ACCOUNTANCY AND FINANCE					9	90-210k	2023
+	722	none		ASSOCIATE ADVISOR		BANKING					8	61-100k	2023
+	301	none		BID COORDINATOR		MARKETING					8	70-100k	FY24/25
+	948	none		BID COORDINATOR		MARKETING AND DIGITAL					8	70-100k	2023
+	303	none		BID MANAGER		MARKETING					8	95-210k	FY24/25
+	950	none		BID MANAGER		MARKETING AND DIGITAL					8	95-220k	2023
+	201	none		CHANGE ANALYST							8	82-204k	FY24/25
+	823	none		CHANGE ANALYST		HUMAN RESOURCES NOTES All salaries shown					8	82-204k	2023
+	200	none		CHANGE MANAGER							8	105-250k	FY24/25
+	822	none		CHANGE MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	102-250k	2023
+	92	none		CLIENT SERVICES		ASSET FINANCE					8	55-80k	FY24/25
+	698	none		CLIENT SERVICES		BANKING					8	55-80k	2023
+	719	none		CLIENT SERVICES		BANKING					8	55-85k	2023
+	109	none		CLIENT SERVICES MANAGER		SUPERANNUATION AND FUNDS MANAGEMENT					8	60-130k	FY24/25
+	715	none		CLIENT SERVICES MANAGER		BANKING					8	56-115k	2023
+	107	none		CLIENT SERVICES OFFICER		SUPERANNUATION AND FUNDS MANAGEMENT					8	55-75k	FY24/25
+	713	none		CLIENT SERVICES OFFICER		BANKING					8	55-75k	2023
+	108	none		CLIENT SERVICES SUPERVISOR		SUPERANNUATION AND FUNDS MANAGEMENT					8	57-90k	FY24/25
+	714	none		CLIENT SERVICES SUPERVISOR		BANKING					8	57-90k	2023
+	83	none		COLLECTIONS OFFICER		LENDING OPERATIONS					8	55-100k	FY24/25
+	679	none		COLLECTIONS OFFICER		BANKING					8	55-90k	2023
+	335	none		COMMUNICATIONS		PR AND COMMUNICATIONS					8	200-350k	FY24/25
+	266	none		CONTROLLER		WAREHOUSE/DISTRIBUTION					8	50-110k	FY24/25
+	265	none		COORDINATOR		WAREHOUSE/DISTRIBUTION					8	48-120k	FY24/25
+	549	none		CRM Manager							8	71-145k	FY22/23
+	334	none		CRM MANAGER		DIGITAL					8	80-145k	FY24/25
+	981	none		CRM MANAGER		MARKETING AND DIGITAL					8	80-145k	2023
+	328	none		DIGITAL ANALYST		DIGITAL					8	75-145k	FY24/25
+	975	none		DIGITAL ANALYST		MARKETING AND DIGITAL					8	75-145k	2023
+	330	none		DIGITAL CHANNEL MANAGER		DIGITAL					8	90-170k	FY24/25
+	977	none		DIGITAL CHANNEL MANAGER		MARKETING AND DIGITAL					8	90-170k	2023
+	317	none		DIGITAL PRODUCER		DIGITAL					8	80-133k	FY24/25
+	964	none		DIGITAL PRODUCER		MARKETING AND DIGITAL					8	80-133k	2023
+	989	none		DIRECTOR OF COMMUNICATIONS		MARKETING AND DIGITAL					8	140-275k	2023
+	196	none		DIVERSITY ADVISOR							8	85-150k	FY24/25
+	817	none		DIVERSITY ADVISOR		HUMAN RESOURCES NOTES All salaries shown					8	77-163k	2023
+	195	none		DIVERSITY MANAGER							8	100-220k	FY24/25
+	816	none		DIVERSITY MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	92-215k	2023
+	313	none		ECOMMERCE MANAGER		DIGITAL					8	90-165k	FY24/25
+	960	none		ECOMMERCE MANAGER		MARKETING AND DIGITAL					8	90-165k	2023
+	312	none		ECOMMERCE SPECIALIST		DIGITAL					8	80-125k	FY24/25
+	959	none		ECOMMERCE SPECIALIST		MARKETING AND DIGITAL					8	80-125k	2023
+	283	none		ENGINEERING MANAGER		MANUFACTURING AND OPERATIONS					8	82-200k	FY24/25
+	927	none		ENGINEERING MANAGER		MANUFACTURING AND OPERATIONS					8	80-180k	2023
+	187	none		ER ADVISOR							8	80-160k	FY24/25
+	807	none		ER ADVISOR		HUMAN RESOURCES NOTES All salaries shown					8	77-140k	2023
+	185	none		ER MANAGER							8	120-220k	FY24/25
+	805	none		ER MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	102-220k	2023
+	341	none		EVALUATION ADVISOR							8	65-120k	FY24/25
+	1008	none		EVALUATION ADVISOR		POLICY AND STRATEGY					8	65-115k	2023
+	295	none		EVENT COORDINATOR		MARKETING					8	60-90k	FY24/25
+	942	none		EVENT COORDINATOR		MARKETING AND DIGITAL					8	60-85k	2023
+	296	none		EVENT MANAGER		MARKETING					8	75-130k	FY24/25
+	943	none		EVENT MANAGER		MARKETING AND DIGITAL					8	70-115k	2023
+	990	none		EXECUTIVE DIRECTOR OF COMMUNICATIONS		MARKETING AND DIGITAL					8	200-350k	2023
+	689	none		EXECUTIVE MANAGER		BANKING					8	115-260k	2023
+	89	none		GENERAL MANAGER		LENDING OPERATIONS					8	120-300k	FY24/25
+	101	none		GENERAL MANAGER		SUPERANNUATION AND FUNDS MANAGEMENT					8	105-180k	FY24/25
+	685	none		GENERAL MANAGER		BANKING					8	105-280k	2023
+	707	none		GENERAL MANAGER		BANKING					8	105-180k	2023
+	190	none		HEAD OF L&D/ L&D DIRECTOR							8	125-255k	FY24/25
+	810	none		HEAD OF L&D/ L&D DIRECTOR		HUMAN RESOURCES NOTES All salaries shown					8	120-255k	2023
+	211	none		HEALTH & WELLBEING MANAGER/ OFFICER							8	90-170k	FY24/25
+	833	none		HEALTH & WELLBEING MANAGER/ OFFICER		HUMAN RESOURCES NOTES All salaries shown					8	90-170k	2023
+	216	none		INJURY/RTW ADVISOR							8	77-130k	FY24/25
+	838	none		INJURY/RTW ADVISOR		HUMAN RESOURCES NOTES All salaries shown					8	70-130k	2023
+	215	none		INJURY/RTW MANAGER							8	80-160k	FY24/25
+	837	none		INJURY/RTW MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	80-160k	2023
+	202	none		INSTRUCTIONAL DESIGNER							8	100-200k	FY24/25
+	824	none		INSTRUCTIONAL DESIGNER		HUMAN RESOURCES NOTES All salaries shown					8	92-204k	2023
+	186	none		IR ADVISOR							8	92-160k	FY24/25
+	806	none		IR ADVISOR		HUMAN RESOURCES NOTES All salaries shown					8	90-145k	2023
+	184	none		IR MANAGER							8	120-245k	FY24/25
+	804	none		IR MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	112-245k	2023
+	282	none		MAINTENANCE MANAGER		MANUFACTURING AND OPERATIONS					8	85-180k	FY24/25
+	926	none		MAINTENANCE MANAGER		MANUFACTURING AND OPERATIONS					8	71-150k	2023
+	309	none		MAJOR GIFTS MANAGER		MARKETING					8	80-150k	FY24/25
+	956	none		MAJOR GIFTS MANAGER		MARKETING AND DIGITAL					8	80-145k	2023
+	507	none		Manager							8	65-130k	FY22/23
+	87	none		MANAGER		LENDING OPERATIONS					8	80-160k	FY24/25
+	99	none		MANAGER		SUPERANNUATION AND FUNDS MANAGEMENT					8	70-125k	FY24/25
+	113	none		MANAGER		TRADE FINANCE					8	80-130k	FY24/25
+	114	none		MANAGER		FINANCIAL PLANNING					8	102-170k	FY24/25
+	683	none		MANAGER		BANKING					8	70-160k	2023
+	705	none		MANAGER		BANKING					8	62-112k	2023
+	718	none		MANAGER		BANKING					8	54-110k	2023
+	267	none		OPERATIONS MANAGER		TRANSPORT					8	87-165k	FY24/25
+	281	none		OPERATIONS MANAGER		MANUFACTURING AND OPERATIONS					8	85-200k	FY24/25
+	902	none		OPERATIONS MANAGER		LOGISTICS					8	82-160k	2023
+	911	none		OPERATIONS MANAGER		LOGISTICS					8	77-153k	2023
+	925	none		OPERATIONS MANAGER		MANUFACTURING AND OPERATIONS					8	82-180k	2023
+	81	none		OPERATIONS OFFICER		LENDING OPERATIONS					8	55-75k	FY24/25
+	677	none		OPERATIONS OFFICER		BANKING					8	55-75k	2023
+	326	none		OPTIMISATION/ CONVERSION SPECIALIST		DIGITAL					8	85-150k	FY24/25
+	973	none		OPTIMISATION/ CONVERSION SPECIALIST		MARKETING AND DIGITAL					8	85-150k	2023
+	935	none		PLANNER		MANUFACTURING AND OPERATIONS					8	71-120k	2023
+	727	none		PRACTICE DEVELOPMENT MANAGER		BANKING					8	102-170k	2023
+	504	none		Processing Officer							8	46-75k	FY22/23
+	110	none		PROCESSING OFFICER		TRADE FINANCE					8	55-85k	FY24/25
+	716	none		PROCESSING OFFICER		BANKING					8	52-75k	2023
+	688	none		RELATIONSHIP DIRECTOR		BANKING					8	97-200k	2023
+	217	none		RTW COORDINATOR							8	70-105k	FY24/25
+	839	none		RTW COORDINATOR		HUMAN RESOURCES NOTES All salaries shown					8	60-100k	2023
+	325	none		SEM SPECIALIST		DIGITAL					8	85-120k	FY24/25
+	972	none		SEM SPECIALIST		MARKETING AND DIGITAL					8	85-120k	2023
+	342	none		SENIOR EVALUATION ADVISOR							8	82-130k	FY24/25
+	1009	none		SENIOR EVALUATION ADVISOR		POLICY AND STRATEGY					8	82-130k	2023
+	88	none		SENIOR MANAGER		LENDING OPERATIONS					8	90-220k	FY24/25
+	684	none		SENIOR MANAGER		BANKING					8	77-200k	2023
+	505	none		Senior Processing Officer							8	49-85k	FY22/23
+	111	none		SENIOR PROCESSING OFFICER		TRADE FINANCE					8	60-90k	FY24/25
+	103	none		SENIOR SETTLEMENTS OFFICER		SUPERANNUATION AND FUNDS MANAGEMENT					8	65-90k	FY24/25
+	709	none		SENIOR SETTLEMENTS OFFICER		BANKING					8	57-85k	2023
+	82	none		SETTLEMENTS OFFICER		LENDING OPERATIONS					8	55-90k	FY24/25
+	93	none		SETTLEMENTS OFFICER		ASSET FINANCE					8	55-90k	FY24/25
+	102	none		SETTLEMENTS OFFICER		SUPERANNUATION AND FUNDS MANAGEMENT					8	55-85k	FY24/25
+	678	none		SETTLEMENTS OFFICER		BANKING					8	55-90k	2023
+	699	none		SETTLEMENTS OFFICER		BANKING					8	55-90k	2023
+	708	none		SETTLEMENTS OFFICER		BANKING					8	55-80k	2023
+	311	none		SPONSORSHIP/ FUNDRAISING DIRECTOR		MARKETING					8	100-210k	FY24/25
+	958	none		SPONSORSHIP/ FUNDRAISING DIRECTOR		MARKETING AND DIGITAL					8	100-210k	2023
+	310	none		SPONSORSHIP/ FUNDRAISING MANAGER		MARKETING					8	85-155k	FY24/25
+	957	none		SPONSORSHIP/ FUNDRAISING MANAGER		MARKETING AND DIGITAL					8	85-155k	2023
+	545	none		Sponsorship/Fundraising Manager							8	80-155k	FY22/23
+	690	none		STATE MANAGER		BANKING					8	145-300k	2023
+	104	none		SUPERVISOR		SUPERANNUATION AND FUNDS MANAGEMENT					8	65-105k	FY24/25
+	264	none		SUPERVISOR		WAREHOUSE/DISTRIBUTION					8	60-120k	FY24/25
+	710	none		SUPERVISOR		BANKING					8	57-100k	2023
+	506	none		Team Leader							8	54-110k	FY22/23
+	112	none		TEAM LEADER		TRADE FINANCE					8	70-120k	FY24/25
+	717	none		TEAM LEADER		BANKING					8	50-85k	2023
+	86	none		TEAM LEADER/ SUPERVISOR		LENDING OPERATIONS					8	65-140k	FY24/25
+	682	none		TEAM LEADER/ SUPERVISOR		BANKING					8	61-140k	2023
+	815	none		TRAINER		HUMAN RESOURCES NOTES All salaries shown					8	71-135k	2023
+	194	none		TRAINING MANAGER							8	85-170k	FY24/25
+	814	none		TRAINING MANAGER		HUMAN RESOURCES NOTES All salaries shown					8	82-165k	2023
+	270	none		TRANSPORT ANALYST		TRANSPORT					8	55-125k	FY24/25
+	914	none		TRANSPORT ANALYST		LOGISTICS					8	49-95k	2023
+	106	none		UNIT PRICING		SUPERANNUATION AND FUNDS MANAGEMENT					8	57-75k	FY24/25
+	712	none		UNIT PRICING		BANKING					8	57-75k	2023
+	105	none		UNIT REGISTRY		SUPERANNUATION AND FUNDS MANAGEMENT					8	57-75k	FY24/25
+	711	none		UNIT REGISTRY		BANKING					8	57-75k	2023
+	323	none		WEBSITE MANAGER		DIGITAL					8	90-150k	FY24/25
+	970	none		WEBSITE MANAGER		MARKETING AND DIGITAL					8	85-150k	2023
+	865	none		GRADUATE		LEGAL					7	48-90k	2023
+	876	none		GRADUATE		LEGAL					7	48-80k	2023
+	887	none		GRADUATE		LEGAL					7	48-70k	2023
+	877	none		PRIVATE PRACTICE - MID TIER	0-1 YEARS P.A.E	LEGAL					7	55-85k	2023
+	878	none		PRIVATE PRACTICE - MID TIER	1-2 YEARS P.A.E	LEGAL					7	60-95k	2023
+	879	none		PRIVATE PRACTICE - MID TIER	2-3 YEARS P.A.E	LEGAL					7	70-110k	2023
+	880	none		PRIVATE PRACTICE - MID TIER	3-4 YEARS P.A.E	LEGAL					7	80-130k	2023
+	881	none		PRIVATE PRACTICE - MID TIER	4 - 5 YEARS P.A.E	LEGAL					7	90-140k	2023
+	882	none		PRIVATE PRACTICE - MID TIER	5 - 6 YEARS P.A.E	LEGAL					7	100-155k	2023
+	883	none		PRIVATE PRACTICE - MID TIER	6 YEARS + P.A.E	LEGAL					7	120-175k	2023
+	888	none		PRIVATE PRACTICE - SMALL PRACTICES	0-1 YEARS P.A.E	LEGAL					7	50-80k	2023
+	889	none		PRIVATE PRACTICE - SMALL PRACTICES	1-2 YEARS P.A.E	LEGAL					7	55-90k	2023
+	890	none		PRIVATE PRACTICE - SMALL PRACTICES	2-3 YEARS P.A.E	LEGAL					7	62-105k	2023
+	891	none		PRIVATE PRACTICE - SMALL PRACTICES	3-4 YEARS P.A.E	LEGAL					7	75-120k	2023
+	892	none		PRIVATE PRACTICE - SMALL PRACTICES	4 - 5 YEARS P.A.E	LEGAL					7	80-135k	2023
+	893	none		PRIVATE PRACTICE - SMALL PRACTICES	5 - 6 YEARS P.A.E	LEGAL					7	85-150k	2023
+	894	none		PRIVATE PRACTICE - SMALL PRACTICES	6 YEARS + P.A.E	LEGAL					7	95-165k	2023
+	866	none		PRIVATE PRACTICE - TOP TIER	0-1 YEARS P.A.E	LEGAL					7	55-95k	2023
+	867	none		PRIVATE PRACTICE - TOP TIER	1-2 YEARS P.A.E	LEGAL					7	60-110k	2023
+	868	none		PRIVATE PRACTICE - TOP TIER	2-3 YEARS P.A.E	LEGAL					7	72-125k	2023
+	869	none		PRIVATE PRACTICE - TOP TIER	3-4 YEARS P.A.E	LEGAL					7	80-145k	2023
+	870	none		PRIVATE PRACTICE - TOP TIER	4 - 5 YEARS P.A.E	LEGAL					7	95-155k	2023
+	871	none		PRIVATE PRACTICE - TOP TIER	5 - 6 YEARS P.A.E	LEGAL					7	100-170k	2023
+	872	none		PRIVATE PRACTICE - TOP TIER	6 YEARS + P.A.E	LEGAL					7	120-190k	2023
+	873	none		SENIOR ASSOCIATE		LEGAL					7	140-250k	2023
+	884	none		SENIOR ASSOCIATE		LEGAL					7	135-220k	2023
+	895	none		SENIOR ASSOCIATE		LEGAL					7	110-200k	2023
+	1054	none		ASSISTANT PLANNER		RETAIL					6	75-153k	2023
+	1066	none		ASSISTANT SM/2IC Turnover > $20m		RETAIL					6	77-204k	2023
+	1064	none		ASSISTANT SM/2IC Turnover $2-$5m		RETAIL					6	60-153k	2023
+	1065	none		ASSISTANT SM/2IC Turnover $5-$10m		RETAIL					6	70-184k	2023
+	1063	none		ASSISTANT SM/2IC Turnover up to $2m		RETAIL					6	55-153k	2023
+	503	none		Corporate Actions							6	50-95k	FY22/23
+	695	none		EXECUTIVE MANAGER		BANKING					6	140-300k	2023
+	1059	none		GARMENT TECHNICIAN/QA		RETAIL					6	65-306k	2023
+	1053	none		MERCHANDISE ASSISTANT		RETAIL					6	60-80k	2023
+	1058	none		PATTERN CUTTER		RETAIL					6	60-122k	2023
+	500	none		Performance & Attribution							6	82-133k	FY22/23
+	499	none		Portfolio Analyst							6	77-120k	FY22/23
+	1061	none		PRODUCT DEVELOPMENT MANAGER		RETAIL					6	95-510k	2023
+	780	none		RAIL INFRASTRUCTURE NOTES All salaries shown are exclusive of superannuation (AU) or KiwiSaver (NZ). New Zealand salarie	56 - 92	ENGINEERING					6	71-200k	2023
+	782	none		RAIL INFRASTRUCTURE NOTES All salaries shown are exclusive of superannuation (AU) or KiwiSaver (NZ). New Zealand salarie	65 - 102	ENGINEERING					6	122-255k	2023
+	501	none		Research Analyst							6	77-120k	FY22/23
+	546	none		Sponsorship/Fundraising Director							6	100-210k	FY22/23
+	696	none		STATE MANAGER		BANKING					6	145-350k	2023
+	502	none		Trade Support							6	66-95k	FY22/23
+	1091	none		ENVIRONMENTAL PLANNER		SUSTAINABILITY AND ENVIRONMENTAL					5	105-165k	2023
+	844	none		HEAD OF CLAIMS		INSURANCE					5	100-220k	2023
+	411	none		HEAD OF SUSTAINABILITY/ESG		SUSTAINABILITY					5	160-330k	FY24/25
+	1083	none		HEAD OF SUSTAINABILITY/ESG		SUSTAINABILITY AND ENVIRONMENTAL					5	200-330k	2023
+	222	none		MANAGER		WORKERS COMPENSATION					5	84-150k	FY24/25
+	853	none		MANAGER		INSURANCE					5	70-150k	2023
+	244	none		PRIVATE PRACTICE - MID TIER	2-3 YEARS P.A.E	PRIVATE PRACTICE - MID TIER					5	80-115k	FY24/25
+	245	none		PRIVATE PRACTICE - MID TIER	3-4 YEARS P.A.E	PRIVATE PRACTICE - MID TIER					5	95-130k	FY24/25
+	246	none		PRIVATE PRACTICE - MID TIER	4 - 5 YEARS P.A.E	PRIVATE PRACTICE - MID TIER					5	110-150k	FY24/25
+	251	none		PRIVATE PRACTICE - SMALL PRACTICES	2-3 YEARS P.A.E	PRIVATE PRACTICE - SMALL PRACTICES					5	75-110k	FY24/25
+	252	none		PRIVATE PRACTICE - SMALL PRACTICES	3-4 YEARS P.A.E	PRIVATE PRACTICE - SMALL PRACTICES					5	90-120k	FY24/25
+	253	none		PRIVATE PRACTICE - SMALL PRACTICES	4 - 5 YEARS P.A.E	PRIVATE PRACTICE - SMALL PRACTICES					5	100-140k	FY24/25
+	237	none		PRIVATE PRACTICE - TOP TIER	2-3 YEARS P.A.E	PRIVATE PRACTICE - TOP TIER					5	90-125k	FY24/25
+	238	none		PRIVATE PRACTICE - TOP TIER	3-4 YEARS P.A.E	PRIVATE PRACTICE - TOP TIER					5	100-145k	FY24/25
+	239	none		PRIVATE PRACTICE - TOP TIER	4 - 5 YEARS P.A.E	PRIVATE PRACTICE - TOP TIER					5	115-155k	FY24/25
+	409	none		SENIOR SUSTAINABILITY ADVISOR/CONSULTANT		SUSTAINABILITY					5	100-180k	FY24/25
+	1081	none		SENIOR SUSTAINABILITY ADVISOR/CONSULTANT		SUSTAINABILITY AND ENVIRONMENTAL					5	100-160k	2023
+	408	none		SUSTAINABILITY ADVISOR/CONSULTANT		SUSTAINABILITY					5	75-150k	FY24/25
+	1080	none		SUSTAINABILITY ADVISOR/CONSULTANT		SUSTAINABILITY AND ENVIRONMENTAL					5	75-130k	2023
+	410	none		SUSTAINABILITY MANAGER		SUSTAINABILITY					5	140-250k	FY24/25
+	1082	none		SUSTAINABILITY MANAGER		SUSTAINABILITY AND ENVIRONMENTAL					5	140-250k	2023
+	221	none		TEAM LEADER		WORKERS COMPENSATION					5	75-125k	FY24/25
+	852	none		TEAM LEADER		INSURANCE					5	62-120k	2023
+	1057	none		GROUP PLANNING MANAGER/DIRECTOR		RETAIL					4	160-408k	2023
+	532	none		Head of Claims							4	120-250k	FY22/23
+	498	none		Settlements Senior Reconciliations Supervisor/ Officer Settlements Officer Payments Officer Senior Manager Officer							4	46-70k	FY22/23
+	227	none		HEAD OF CLAIMS		LIFE INSURANCE					3	150-250k	FY24/25
+	858	none		HEAD OF CLAIMS		INSURANCE					3	150-250k	2023
+	845	none		LOSS ASSESSOR/ ADJUSTOR		INSURANCE					2	52-60k	2023
+	848	none		ASSESSING MANAGER		INSURANCE					1	120-170k	2023
+	846	none		SENIOR LOSS ASSESSOR/ ADJUSTOR		INSURANCE					1	55-71k	2023
+	847	none		TECHNICAL/ SPECIALIST LOSS ASSESSOR/ ADJUSTOR		INSURANCE					1	80-100k	2023

@@ -1090,12 +1090,47 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           }}
         >
           {[
-            ["MEDIAN PAY", n.payLabel],
-            ["EMPLOYERS", num(n.employers)],
-            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—"],
-          ].map(([label, value]) => (
+            // MEDIAN PAY, or a published market band where no ad stated a
+            // figure.
+            //
+            // The ads answer when they can and the label says "MEDIAN PAY".
+            // When they cannot — 294 of 528 rungs show "—", and 55% have no
+            // disclosing ad at all — the band takes the tile under a label
+            // that says it is a different quantity.
+            //
+            // "MARKET RANGE", NOT "SALARY RANGE", AND THE DISTINCTION IS THE
+            // WHOLE POINT OF THE WORDING. The publisher is not named in the
+            // product, so the label is the only thing left to tell a reader
+            // that this is not our measurement — and "salary range" would
+            // read as a range WE found in the ads, which is exactly the
+            // confusion to avoid, since nobody advertised it. "Market" says
+            // benchmark. The hint then says it plainly.
+            //
+            // The period stays on screen (in the hint) because bands come
+            // from several years and a 2023 figure shown in 2026 without a
+            // date is a stale number presented as current.
+            //
+            // One or the other, never both: different instruments, and the
+            // band excludes superannuation where an advertised package
+            // usually includes it.
+            n.payGuide
+              ? [
+                  "MARKET RANGE",
+                  n.payGuide.label,
+                  `Published market range for this role, ${n.payGuide.edition} — a benchmark, ` +
+                    `not pay from our ads, and it excludes superannuation. Spans ` +
+                    `${n.payGuide.roles} role${n.payGuide.roles === 1 ? "" : "s"} over ` +
+                    `${n.payGuide.figures} published figure${n.payGuide.figures === 1 ? "" : "s"}.`,
+                ]
+              : ["MEDIAN PAY", n.payLabel, ""],
+            ["EMPLOYERS", num(n.employers), ""],
+            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—", ""],
+          ].map(([label, value, hint]) => (
             <div
               key={label}
+              // The provenance a three-across tile has no room to print. Only
+              // the guide tile sets it; the others pass "".
+              title={hint || undefined}
               style={{
                 background: "var(--surface-page,#fff)",
                 padding: 12,

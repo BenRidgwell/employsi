@@ -8,7 +8,7 @@ import { NZ_GOV_IDS } from "../data/nzGov";
 import { MERGED_COMPANY_ID } from "../data/mergedCompanies";
 import type { AdvertisedJob } from "./skillsFn";
 import { archiveJobs, LIVE_NOW_ON_DAY_SQL, type ArchiveRow, type D1Like } from "./jobArchive";
-import { asRecord, asRecords, str, type JsonRecord, type JsonValue } from "./json";
+import { asRecord, asRecords, num, str, type JsonRecord, type JsonValue } from "./json";
 import { kvBinding, type KVLike } from "./kv";
 
 // Live "open roles" for any company in the app, fetched on the Worker, scoped
@@ -543,7 +543,7 @@ async function currentFromArchive(
         // yesterday, so holding its rows to yesterday reports its employers as
         // advertising nothing six days in seven. Unchanged for every nightly
         // feed, which is all of them but LinkedIn.
-        `SELECT title, source, location, salary, url, posted, skills
+        `SELECT title, source, location, salary, url, posted, skills, pay_estimate
            FROM jobs
           WHERE company_id = ?1
             ${includeLiveBoards ? "" : "AND source NOT IN ('adzuna', 'muse')"}
@@ -577,11 +577,45 @@ async function currentFromArchive(
         city: null,
         skills,
         salN: undefined,
+        payEst: parsePayEstimate(r.pay_estimate),
       });
     }
     return { added: jobs.length, jobs, sources: [...sources] };
   } catch {
     return { added: 0, jobs: [], sources: [] };
+  }
+}
+
+/**
+ * The stored `pay_estimate` JSON, or undefined.
+ *
+ * STRICT, AND FAILS CLOSED. A row is only an estimate if it names its source
+ * and carries both ends of the range: a figure that cannot say whose model it
+ * is must not reach a card, because nothing downstream could then label it, and
+ * one end of a percentile spread is half a statistic rather than a floor.
+ *
+ * The column is new and all but empty — the feed that writes it is refused at
+ * the moment (see the Glassdoor note in workers/jobs-cron/ARCHIVE.md) — so
+ * undefined is the ORDINARY case here, not the error case.
+ */
+function parsePayEstimate(v: unknown): AdvertisedJob["payEst"] {
+  if (typeof v !== "string" || !v) return undefined;
+  try {
+    const o = asRecord(JSON.parse(v));
+    const src = str(o.src);
+    const lo = num(o.lo);
+    const hi = num(o.hi);
+    if (!src || !lo || !hi || lo <= 0 || hi <= 0) return undefined;
+    return {
+      src,
+      lo,
+      hi,
+      cur: str(o.cur) || undefined,
+      per: str(o.per) || undefined,
+      on: str(o.on) || undefined,
+    };
+  } catch {
+    return undefined;
   }
 }
 

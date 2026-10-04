@@ -34,6 +34,9 @@ import { SkillDemand } from "./SkillDemand";
 import { TalentFlow } from "./TalentFlow";
 import { useTalentFlows } from "../../hooks/useTalentFlows";
 
+/** How an estimate's stored `src` key is written on the card. */
+const PAY_EST_SOURCE: Record<string, string> = { glassdoor: "Glassdoor" };
+
 type CardTab = "Overview" | "Skills" | "Hiring";
 
 /** Hiring bars shown before the list names what it left out. */
@@ -656,6 +659,44 @@ export function CompanyPanel() {
       };
     });
   }, [jobSample]);
+  /**
+   * A MODELLED pay range across the live roles, for the employers where not one
+   * ad states a figure.
+   *
+   * SEPARATE FROM medianPay AND NEVER MERGED INTO IT — see the note on
+   * payEstimate in companyCard.ts. The card shows one or the other.
+   *
+   * THE RANGE IS THE SAMPLE'S WIDEST, not an average of the estimates.
+   * Averaging percentile bounds across different roles yields a number that is
+   * nobody's estimate of anything; the span answers "what do roles here look
+   * like", which is the question a reader with no disclosed figure is asking.
+   *
+   * NULL IS THE ORDINARY CASE TODAY. The only feed writing pay_estimate is
+   * refused (the Glassdoor note in workers/jobs-cron/ARCHIVE.md), so this is
+   * null on every card until that changes — which is why the fact row is added
+   * rather than a tile being changed: a row that is simply absent costs
+   * nothing, where an empty tile would need a placeholder.
+   */
+  const payEstimate = useMemo(() => {
+    if (!jobSample?.length) return null;
+    const ests = jobSample.map((j) => j.payEst).filter((e): e is NonNullable<typeof e> => !!e);
+    if (!ests.length) return null;
+    const lo = Math.min(...ests.map((e) => e.lo));
+    const hi = Math.max(...ests.map((e) => e.hi));
+    if (!(lo > 0) || !(hi > 0)) return null;
+    const k = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${Math.round(n)}`);
+    // Sources are listed, not assumed: a second estimate provider added later
+    // must not be able to arrive silently under the first one's name. Named for
+    // a reader rather than echoing the stored key — the label is where the
+    // attribution lives on this row, so "glassdoor" is not good enough; an
+    // unknown key still shows, capitalised, rather than being hidden.
+    const src = [...new Set(ests.map((e) => e.src))]
+      .sort()
+      .map((x) => PAY_EST_SOURCE[x] ?? x.charAt(0).toUpperCase() + x.slice(1))
+      .join(", ");
+    return { text: `${k(lo)}–${k(hi)}`, n: ests.length, src };
+  }, [jobSample]);
+
   // Company-wide median advertised salary across the live roles that state one.
   const medianPay = useMemo(() => {
     if (!jobSample?.length) return null;
@@ -926,6 +967,7 @@ export function CompanyPanel() {
       share: liveShare ?? null,
       revPerEmp,
       medianPay,
+      payEstimate,
       topSkill,
       topArea,
       skillCounts,
@@ -938,6 +980,7 @@ export function CompanyPanel() {
     liveShare,
     revPerEmp,
     medianPay,
+    payEstimate,
     topSkill,
     topArea,
     skillCounts,
