@@ -99,7 +99,7 @@ export const HAYS_ROLE_NODE: Record<number, string> = {
   164: "operations|generalist|2",
   165: "emergency|security|4",
   166: "facilities|facilities|2",
-  172: "hr|generalist|5",
+  172: "hr|generalist|6",
   173: "hr|generalist|5",
   174: "hr|generalist|5",
   175: "hr|generalist|4",
