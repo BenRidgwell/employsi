@@ -31,10 +31,21 @@ WHAT IT DOES
 DRY RUN IS THE DEFAULT. Nothing touches D1 without --write. The preview
 Worker shares production D1, so a write is live on both at once.
 
+RE-RESOLVING ONE ALREADY LOADED
+A ref is resolved at LOAD time, so a company added to the roster afterwards is
+invisible to every delivery already in D1: its rows keep a NULL id and the card
+folds them into `other`, which is indistinguishable from a company too small to
+itemise. Re-loading cannot fix it — the delivery has not changed, so neither has
+its digest, and the loader refuses it as already loaded. `--reresolve` runs
+today's resolver over it and writes ONLY the ids it can now fill in. See
+reresolve().
+
 Run:
   python scripts/flows-to-d1.py path/to/delivery/            # dry run
   python scripts/flows-to-d1.py path/to/delivery/ --write    # needs D1 edit
   python scripts/flows-to-d1.py path/to/delivery/ --offline  # no D1 reads either
+  python scripts/flows-to-d1.py path/to/delivery/ --reresolve          # preview
+  python scripts/flows-to-d1.py path/to/delivery/ --reresolve --write  # apply
 
 Env: CLOUDFLARE_API_TOKEN (not needed with --offline)
 """
@@ -62,6 +73,10 @@ API = f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/d1/database/{DB}
 args = sys.argv[1:]
 WRITE = '--write' in args
 OFFLINE = '--offline' in args
+# Re-run the RESOLVER over a delivery that is already loaded, and write only
+# the company ids. See reresolve() for why this exists and what it refuses to
+# touch. Dry by default like everything else here: it needs --write too.
+RERESOLVE = '--reresolve' in args
 POSITIONAL = [a for a in args if not a.startswith('--')]
 
 COLUMNS = ['from_ref', 'from_name', 'to_ref', 'to_name', 'period_start',
@@ -299,6 +314,99 @@ def resolve(refs: dict[str, str], header: dict) -> tuple[dict[str, str | None], 
     return out, how
 
 
+# ── re-resolving a delivery that is already loaded ──────────────────────────
+
+# The four tables that carry a resolved company id, and the columns holding it.
+# flow_sample keys on one ref; the other three have a from_ and a to_ end.
+ID_TABLES = (('flows', 'from'), ('flows', 'to'),
+             ('flow_months', 'from'), ('flow_months', 'to'),
+             ('flow_skills', 'from'), ('flow_skills', 'to'))
+
+
+def reresolve(import_id: str, ids: dict[str, str | None], how: dict[str, str],
+              refs: dict[str, str], volume: Counter) -> int:
+    """Apply today's resolver to an import loaded earlier.
+
+    WHY THIS IS NOT JUST "LOAD IT AGAIN". Refs are resolved at LOAD time, so a
+    company added to the roster afterwards is invisible to every delivery
+    already in D1 — the rows sit there with a NULL id and the card groups them
+    into `other`, which looks exactly like a company too small to itemise. The
+    delivery has not changed, so its digest has not changed, so the loader
+    refuses it as already loaded. Measured 2026-10-04 on the live import: 11
+    companies had just gone on the roster and 426 moves' worth of refs were
+    still NULL.
+
+    Deleting the import and re-inserting would work and is worse. flowsFn
+    reads whatever flow_import holds, so between the delete and the re-insert
+    the card has no data at all, and a load that dies in that window leaves it
+    that way. An UPDATE is idempotent, keeps the delivery's own identity, and
+    cannot empty the card.
+
+    IT ONLY EVER FILLS IN A MISSING ID. A ref that already resolved is left
+    alone and reported, even when today's resolver would send it somewhere
+    else: that disagreement is a decision for a person, not something to apply
+    to live rows on the way past. Nothing else about the delivery is touched —
+    not the moves, not the periods, not the sample sizes.
+    """
+    stored: dict[str, str | None] = {}
+    for col in ('from', 'to'):
+        for r in d1(f'SELECT {col}_ref AS ref, {col}_id AS cid FROM flows '
+                    f'WHERE import_id = ? GROUP BY 1, 2', [import_id]):
+            stored.setdefault(r['ref'], r['cid'])
+    for r in d1('SELECT ref, company_id AS cid FROM flow_sample WHERE import_id = ?',
+                [import_id]):
+        stored.setdefault(r['ref'], r['cid'])
+    if not stored:
+        sys.exit(f'{import_id} is not loaded. --reresolve needs an import already in D1.')
+
+    fill = {r: ids[r] for r in stored if ids.get(r) and not stored[r]}
+    conflict = {r: (stored[r], ids[r]) for r in stored
+                if stored[r] and ids.get(r) and ids[r] != stored[r]}
+    print(f'\nre-resolve {import_id}')
+    print(f'  refs in D1        {len(stored)}')
+    print(f'  already resolved  {sum(1 for v in stored.values() if v)}')
+    print(f'  NEWLY resolvable  {len(fill)}  ({sum(volume[r] for r in fill):g} moves)')
+    if fill:
+        for r in sorted(fill, key=lambda r: -volume[r])[:30]:
+            print(f'      {volume[r]:>7g}  {r}  {refs.get(r, "")!r} -> {fill[r]}  [{how.get(r)}]')
+        if len(fill) > 30:
+            print(f'      ... and {len(fill) - 30} more')
+    if conflict:
+        print(f'  DISAGREEMENTS     {len(conflict)} — left as they are, decide by hand:')
+        for r, (was, now) in sorted(conflict.items(), key=lambda kv: -volume[kv[0]])[:15]:
+            print(f'      {volume[r]:>7g}  {r}  stored {was} vs resolver {now}')
+    if not fill:
+        print('\nNothing to fill in.')
+        return 0
+    if not WRITE:
+        print('\nDRY RUN — nothing written. Re-run with --write to apply.')
+        return 0
+
+    for table, end in ID_TABLES:
+        for ref, cid in fill.items():
+            d1(f'UPDATE {table} SET {end}_id = ? WHERE import_id = ? AND {end}_ref = ?',
+               [cid, import_id, ref])
+    for ref, cid in fill.items():
+        d1('UPDATE flow_sample SET company_id = ? WHERE import_id = ? AND ref = ?',
+           [cid, import_id, ref])
+    # Record the decisions so the NEXT delivery resolves them without this
+    # step. `exact-name` and `linkedin-slug` are recorded under their own
+    # method, the way a --write load does, so the map says how each was
+    # decided rather than flattening everything to "manual".
+    now = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for ref, cid in fill.items():
+        d1('INSERT OR IGNORE INTO flow_company_map (ref, company_id, method, checked_at) '
+           'VALUES (?,?,?,?)', [ref, cid, how.get(ref, 'exact-name'), now])
+    left = d1('SELECT COUNT(*) AS n FROM flows WHERE import_id = ? AND '
+              '(from_id IS NULL OR to_id IS NULL)', [import_id])
+    both = d1('SELECT SUM(moves) AS m FROM flows WHERE import_id = ? AND '
+              'from_id IS NOT NULL AND to_id IS NOT NULL', [import_id])
+    print(f'\napplied  {len(fill)} refs across flows, flow_months, flow_skills, flow_sample')
+    print(f'         {both[0]["m"]:g} moves now have both ends on the roster')
+    print(f'         {left[0]["n"]} pair rows still have an unresolved end')
+    return 0
+
+
 # ── main ────────────────────────────────────────────────────────────────────
 
 def main() -> int:
@@ -351,6 +459,9 @@ def main() -> int:
             print(f'  {volume[ref]:>8g}  {ref}  {refs[ref]!r}  [{how[ref]}]')
         if len(unmatched) > 25:
             print(f'  ... and {len(unmatched) - 25} more')
+
+    if RERESOLVE:
+        return reresolve(import_id, ids, how, refs, volume)
 
     if not WRITE:
         print('\nDRY RUN — nothing written. Re-run with --write to load.')

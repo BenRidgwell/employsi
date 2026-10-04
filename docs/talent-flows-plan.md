@@ -461,6 +461,87 @@ Changes from the first draft, found while building:
   "Rio Tinto" is both `rio` and `london-rio`, so it goes to the unmatched
   report instead of being picked.
 
+### 2026-10-04 — eleven employers off the `other` bucket, and a re-resolve mode
+
+The question that started it: of the companies inside `other` on the BHP, Rio
+Tinto and Fortescue cards, which are large contributors hidden there for having
+no roster id rather than for being small? Measured on the live import
+(`brightdata|2026-09-25|e8f92eeb728a`): the bucket holds 86–89% of inflow, but
+only 95 / 229 / 205 moves of it belong to off-roster companies clearing
+`FLOW_MIN_MOVES`. The rest is a tail of ~1,200 employers with a handful each.
+**`other` is honest, not broken** — adding every eligible company recovers
+4–11% of it, and that is the ceiling.
+
+Eleven went on the roster anyway, because each is a real employer the map was
+missing. Two corrections came out of it, both worth keeping:
+
+- **Calibre is WSP.** `calibregroup.com` 301s to `wsp.com`; WSP completed the
+  acquisition 5 June 2023. Calibre's 68 moves, Golder's 33 (WSP, 2021) and
+  "WSP in Australia"'s 33 are one employer's 134, so `montreal-wsp` went on
+  instead of Calibre and the four refs map into it.
+- **Wood went on as LSE-listed and came straight back off.**
+  `scripts/check-listings.py` reported it delisted and was right: Sidara's
+  takeover completed 10 March 2026 and the shares left the LSE the next day.
+  It is a live employer, so it moved to `topPrivateCompanies.ts` as
+  `priv-wood-group`, plotted on Perth with Thiess and Programmed. Worth
+  knowing because BAE Systems' `"BA."` trips the same check as a FALSE
+  positive, and the first reading was that `"WG."` had done the same.
+
+Roy Hill is the largest single off-roster source at 144 moves and is **not** a
+new entry: `royhill.com.au` 301s to `hancockironore.com.au`, whose own page
+says Atlas Iron and Roy Hill have merged into Hancock Iron Ore, and
+`mycareer.royhill.com.au` redirects to that board's ATS. The roster already
+held the parent, so the five names alias to `priv-hancock-prospecting`.
+
+**Sixteen `flow_company_map` rows, `method=manual`**: four Hancock
+(`li:hancockironore` — whose display name is still "Roy Hill" — `li:roy-hill`,
+`name:roy hill`, `name:hancock prospecting pty ltd`), two WesTrac
+(`li:westrac`, whose name is the trading name "WesTrac Cat", and
+`name:westrac pty ltd`), five WSP (`li:calibre-global`, `li:golder`,
+`li:wspaustralia-newzealand`, `li:wsp`, `name:wsp golder`), three Wood
+(`li:woodplc`, `name:wood`, `name:wood group psn`), `li:ugl-ltd` and
+`name:sodexo bm division inland`.
+
+Checked and REFUSED, so they are not quietly added later: `li:wood-mackenzie`
+(Verisk's research firm), `name:ugland engineering pty ltd` (Norwegian
+shipping, not UGL), `name:calibre one` (executive search),
+`li:sodexo-benefits-and-rewards-services` (spun off as Pluxee in Feb 2024),
+`name:srg group` (ambiguous — `li:spotlight` is "Spotlight Retail Group
+(SRG)"), and the joint client-contractor labels (`name:rio tinto calibre`,
+`name:blue tongue westrac`, `name:2xm ugl`). Bare `calibre` is refused in the
+job-board aliases for the same reason: it is an ordinary English word.
+
+**A ref is resolved at LOAD time, which is why `--reresolve` now exists.** A
+company added to the roster afterwards is invisible to every delivery already
+in D1: the rows keep a NULL id and the card folds them into `other`, which is
+indistinguishable from a company too small to itemise. Re-loading cannot fix
+it — the delivery has not changed, so neither has its digest, and the loader
+refuses it as already loaded. `--reresolve` runs today's resolver over a loaded
+import and writes ONLY the ids it can newly fill in, across `flows`,
+`flow_months`, `flow_skills` and `flow_sample`, then records each decision in
+`flow_company_map` so the next delivery needs no second pass. It never
+overwrites an id that already resolved — a disagreement is reported for a
+person to settle, not applied to live rows on the way past — and it is an
+UPDATE rather than a delete-and-reload because `flowsFn` reads whatever
+`flow_import` holds: between a delete and a re-insert the card has no data at
+all, and a load that dies in that window leaves it that way.
+
+Applied to the live import: 28 refs filled in, 2,899 → 3,180 moves with both
+ends on the roster, named sources up from 296/333/206 to 365/487/343 for
+BHP/Rio/Fortescue. `flow_months` still sums to the whole-window rows (13,224),
+and `check-flows.ts` passes unchanged. The card labels these groups with the
+ROSTER name, not the delivery's, because `flowRows` already prefers
+`COMPANY_BY_ID[id].name` — so the row reads "Hancock Prospecting" and "WSP
+Global" rather than "Roy Hill" and "Calibre".
+
+Still unresolved and deliberately left: **MACA Ltd (104 moves)**, which Thiess
+acquired in October 2022 and which still trades under its own name, and the
+**Newmont family (157 across `name:newcrest mining`, `li:newmont-australia`,
+`li:newmont` and `li:newcrest-mining-limited`)**, Newmont having completed its
+Newcrest acquisition on 6 November 2023. Both are sound and both attribute one
+company's history to another, which is a different class of decision from
+mapping a rename — they need saying out loud before they are applied.
+
 The rest of this document is the original plan. The open questions at the end
 are still open.
 
