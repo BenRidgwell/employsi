@@ -11,6 +11,7 @@ import {
 } from "../lib/feedbackFn";
 import { useAppStore } from "../state/store";
 import { IconClose } from "./ActionIcons";
+import { Avatar } from "./Avatar";
 
 // The feedback board: real requests from real people, stored in D1 and shared
 // across everyone who opens the app. It starts EMPTY — there are no seeded
@@ -26,6 +27,12 @@ import { IconClose } from "./ActionIcons";
 // and styling are.
 
 const STATUS_LABEL: Record<FbStatus, string> = {
+  /* Reads "Submitted" rather than "Pending" or "Awaiting approval". Only the
+     author and an administrator ever see a pending item (getFeedback filters
+     it in SQL), and to the author the true and sufficient fact is that their
+     request is in — not that a person has to let it through. The admin reads
+     the same chip as "not public yet", which it also is. */
+  pending: "Submitted",
   open: "Open",
   "under-review": "Under review",
   planned: "Planned",
@@ -99,7 +106,7 @@ function Row({
           aria-label="Upvote"
           aria-pressed={mine === 1}
           disabled={!canVote}
-          title={canVote ? "Upvote" : "Sign in to vote"}
+          title="Upvote"
           onClick={() => onVote(item.id, 1)}
         >
           <Chevron up />
@@ -111,7 +118,7 @@ function Row({
           aria-label="Downvote"
           aria-pressed={mine === -1}
           disabled={!canVote}
-          title={canVote ? "Downvote" : "Sign in to vote"}
+          title="Downvote"
           onClick={() => onVote(item.id, -1)}
         >
           <Chevron />
@@ -176,7 +183,6 @@ function Row({
 export function FeedbackBoard({ onClose }: { onClose: () => void }) {
   const account = useAppStore((s) => s.account);
   const isAdmin = useAppStore((s) => s.role) === "admin";
-  const openAuth = useAppStore((s) => s.openAuth);
   const [draft, setDraft] = useState("");
   const [detail, setDetail] = useState("");
   const [tab, setTab] = useState<Tab>("top");
@@ -249,8 +255,10 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
     return all.filter((i) => i.status === "planned" || i.status === "shipped");
   }, [items, tab]);
 
-  const canPost = !!draft.trim() && !post.isPending;
-  const initial = (account?.name || account?.email || "?").trim().charAt(0).toUpperCase();
+  // `account` gates posting only for the moment before the session query lands:
+  // the app is signed-in-only, so it arrives. Posting without it would write a
+  // row against nobody, and the board is shared.
+  const canPost = !!draft.trim() && !post.isPending && !!account;
 
   return (
     <div className="fbboard" role="dialog" aria-label="Feedback board">
@@ -318,72 +326,65 @@ export function FeedbackBoard({ onClose }: { onClose: () => void }) {
             <span className="fbemptysub">
               {tab === "planned"
                 ? "Requests move here once they are picked up."
-                : account
-                  ? "Post the first one — every request here is read."
-                  : "Sign in to post the first one."}
+                : "Post the first one — every request here is read."}
             </span>
           </div>
         )}
       </div>
 
-      {account ? (
-        <div className="fbcompose">
-          <div className="fbcomposetop">
-            <span className="fbavatar" aria-hidden>
-              {initial}
-            </span>
-            <input
-              className="fbtitleinput"
-              placeholder="Idea title"
-              value={draft}
-              maxLength={140}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (error) setError("");
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && canPost) post.mutate();
-              }}
-            />
-          </div>
-          <textarea
-            className="fbdetail"
-            rows={2}
-            maxLength={400}
-            placeholder="Describe the problem it solves — one or two lines is plenty."
-            value={detail}
-            onChange={(e) => setDetail(e.target.value)}
+      {/* The compose box is always here: the app is signed-in-only, so there is
+          no signed-out panel to swap in ("Have a say in what gets built" / Sign
+          in, which is retired). Post stays disabled until the session query
+          lands — see canPost — because the row is written against the account. */}
+      <div className="fbcompose">
+        <div className="fbcomposetop">
+          {/* The person's real profile picture, the same Avatar the account
+              panels use — Google and LinkedIn both hand one back at sign-in and
+              Better Auth stores it. This was a plain initial on a dark disc,
+              which is what Avatar falls back to when there is no photo or the
+              provider's URL has expired. */}
+          <Avatar
+            name={account?.name || account?.email || ""}
+            image={account?.image}
+            className="fbavatar"
+            decorative
           />
-          <div className="fbcomposerow">
-            {error ? (
-              <span className="fbsent show fberr">{error}</span>
-            ) : (
-              <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Posted — thanks!</span>
-            )}
-            <button className="fbsend" disabled={!canPost} onClick={() => post.mutate()}>
-              {post.isPending ? "Posting…" : "Post idea"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        // Posting AND voting need an account, because both write to a shared
-        // board — an anonymous vote on a durable score is just a click counter.
-        <div className="fbsignedout">
-          <div className="fbsignedouttext">
-            <span className="fbsignedouttitle">Have a say in what gets built</span>
-            <span className="fbsignedoutsub">Sign in to vote and post ideas.</span>
-          </div>
-          <button
-            className="fbsend"
-            onClick={() => {
-              onClose();
-              openAuth();
+          <input
+            className="fbtitleinput"
+            placeholder="Idea title"
+            value={draft}
+            maxLength={140}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (error) setError("");
             }}
-          >
-            Sign in
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canPost) post.mutate();
+            }}
+          />
+        </div>
+        <textarea
+          className="fbdetail"
+          rows={2}
+          maxLength={400}
+          placeholder="Describe the problem it solves — one or two lines is plenty."
+          value={detail}
+          onChange={(e) => setDetail(e.target.value)}
+        />
+        {/* "Submitted", not "Posted": a new request is not on the board until it
+            is approved, and telling someone it is posted when it is not would be
+            the one claim here that is actually false. */}
+        <div className="fbcomposerow">
+          {error ? (
+            <span className="fbsent show fberr">{error}</span>
+          ) : (
+            <span className={`fbsent ${justSent ? "show" : ""}`}>✓ Submitted — thanks!</span>
+          )}
+          <button className="fbsend" disabled={!canPost} onClick={() => post.mutate()}>
+            {post.isPending ? "Posting…" : "Post idea"}
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

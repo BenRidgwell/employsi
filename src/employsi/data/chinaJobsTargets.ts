@@ -92,7 +92,10 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
   { id: "beijing-09888", name: "Baidu", kw: "百度", cityId: 530, hub: "beijing" },
   { id: "beijing-bytedance", name: "ByteDance", kw: "字节跳动", cityId: 530, hub: "beijing" },
   { id: "beijing-01024", name: "Kuaishou", kw: "快手", cityId: 530, hub: "beijing" },
-  { id: "beijing-00992", name: "Lenovo", kw: "联想", cityId: 530, hub: "beijing" },
+  // Lenovo's Beijing search, kept when the beijing-00992 roster line was
+  // retired on 2026-09-30 (data/mergedCompanies.ts): the ads are Lenovo's
+  // mainland hiring, so they file on the one Lenovo card, hub still Beijing.
+  { id: "hongkong-00992", name: "Lenovo", kw: "联想", cityId: 530, hub: "beijing" },
   { id: "beijing-didi", name: "DiDi", kw: "滴滴", cityId: 530, hub: "beijing" },
   { id: "shanghai-600519", name: "Kweichow Moutai", kw: "贵州茅台", cityId: 538, hub: "shanghai" },
   {
@@ -199,13 +202,6 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     hub: "hongkong",
   },
   { id: "hongkong-01299", name: "AIA Group", kw: "AIA Group", cityId: 702, hub: "hongkong" },
-  {
-    id: "hongkong-01810",
-    name: "Xiaomi Corporation",
-    kw: "Xiaomi Corporation",
-    cityId: 702,
-    hub: "hongkong",
-  },
   { id: "hongkong-01928", name: "Sands China", kw: "金沙中国", cityId: 702, hub: "hongkong" },
   {
     id: "hongkong-01929",
@@ -221,7 +217,6 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     cityId: 702,
     hub: "hongkong",
   },
-  { id: "hongkong-03690", name: "Meituan", kw: "美团", cityId: 702, hub: "hongkong" },
   {
     id: "hongkong-09988",
     name: "Alibaba Group Holding",
@@ -301,13 +296,6 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     hub: "hongkong",
   },
   {
-    id: "hongkong-00700",
-    name: "Tencent Holdings",
-    kw: "Tencent Holdings",
-    cityId: 702,
-    hub: "hongkong",
-  },
-  {
     id: "hongkong-00001",
     name: "CK Hutchison Holdings",
     kw: "CK Hutchison Holdings",
@@ -322,8 +310,15 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
     cityId: 702,
     hub: "hongkong",
   },
+  // The HKEX roster line was retired into `london-hsba` on 2026-10-02
+  // (data/mergedCompanies.ts), so this target FILES under the one HSBC card.
+  // The hub stays hongkong, which is where these ads are: the id decides whose
+  // card they land on, the hub decides which city counts them. The comment is
+  // ABOVE the object on purpose — zhaopin-to-d1.py's TARGET_RE wants `id:`
+  // straight after the brace, and a comment inside dropped this target from
+  // the 89 the scraper reads. test_rosters.py caught it.
   {
-    id: "hongkong-00005",
+    id: "london-hsba",
     name: "HSBC Holdings",
     kw: "HSBC Holdings",
     cityId: 702,
@@ -352,13 +347,6 @@ export const CHINA_JOBS_TARGETS: ChinaJobTarget[] = [
   },
   { id: "hongkong-00883", name: "CNOOC", kw: "CNOOC", cityId: 702, hub: "hongkong" },
   { id: "hongkong-03988", name: "Bank of China", kw: "中国银行", cityId: 702, hub: "hongkong" },
-  {
-    id: "hongkong-02628",
-    name: "China Life Insurance",
-    kw: "China Life Insurance",
-    cityId: 702,
-    hub: "hongkong",
-  },
   {
     id: "hongkong-06862",
     name: "Haidilao International",

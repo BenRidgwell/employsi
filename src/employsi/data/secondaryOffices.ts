@@ -57,6 +57,10 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   "sydney-org": ["brisbane", "melbourne", "adelaide"],
   "sydney-agl": ["melbourne", "adelaide"],
   "sydney-apa": ["brisbane", "perth"],
+  // The cities whose roster lines were retired into these ids on 2026-10-02,
+  // kept as pins so one card still shows every office (mergedCompanies.ts).
+  rio: ["london"],
+  chevron: ["houston"],
   "sydney-ald": ["brisbane"],
   "sydney-whc": ["brisbane"], // Whitehaven — QLD coal operations run from Brisbane
   "melbourne-ori": ["perth", "brisbane"],
@@ -75,6 +79,45 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // ── International ─────────────────────────────────────────────────────────
   // Both supermajors run their American businesses from Houston.
   "london-bp": ["houston"],
+  // Accenture — from its OWN board, not from memory. Every city here has at
+  // least three of its roles tied to an office in that city by the Workday
+  // apply link, which names the building ("Melbourne-161-Collins-Street",
+  // "Canberra-Brindabella-Business-Park", "Chicago-Accenture-Tower",
+  // "Arlington-1201-Wilson", "Midrand"). Measured 2026-10-03 across 2,384
+  // roles. Left out for one or two roles each: Adelaide, Dubai, Minneapolis,
+  // Cincinnati, Bentonville, Beijing, Shanghai.
+  "newyork-acn": [
+    "sydney",
+    "melbourne",
+    "canberra",
+    "brisbane",
+    "perth",
+    "singapore",
+    "hongkong",
+    "tokyo",
+    "london",
+    "paris",
+    "zurich",
+    "johannesburg",
+    "toronto",
+    "montreal",
+    "ottawa",
+    "calgary",
+    "vancouver",
+    "chicago",
+    "atlanta",
+    "houston",
+    "boston",
+    "charlotte",
+    "washington",
+    "dallas",
+    "seattle",
+    "sanfrancisco",
+    "losangeles",
+    "philadelphia",
+    "austin",
+    "denver",
+  ],
   "london-shel": ["houston"],
 
   // ── Kuala Lumpur and Manila ───────────────────────────────────────────────
@@ -99,7 +142,10 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
   // company does not have a presence in, which is the exact thing this file
   // exists to prevent.
   bhp: ["kualalumpur", "manila"],
-  "london-hsba": ["kualalumpur", "manila"],
+  // Hong Kong is here because the HKEX roster line was retired into this one
+  // on 2026-10-02 (data/mergedCompanies.ts): one HSBC card, every office
+  // still on the map.
+  "london-hsba": ["kualalumpur", "manila", "hongkong"],
   // QBE and ANZ are here on the strength of their service centres being
   // publicly known, NOT on archive evidence: QBE's Workday site currently
   // returns no postings at all, and ANZ's Manila roles are not in what we
@@ -113,13 +159,27 @@ export const SECONDARY_OFFICES: Record<string, string[]> = {
  *
  * Everything else falls back to the first city in CITY_COMPANIES holding the
  * company, which for single-city companies is the only answer there is. These
- * four are plotted in Perth first because the app grew out of a Perth map, but
+ * three are plotted in Perth first because the app grew out of a Perth map, but
  * their registered head offices are elsewhere — and global search is supposed to
  * take you to the head office, so it has to say so.
+ *
+ * A head office in a region that is still admin-only does NOT belong here — see
+ * the Chevron note at the bottom.
  */
 export const HQ_OVERRIDE: Record<string, string> = {
   bhp: "melbourne", // 171 Collins St — BHP Group's global head office
   sto: "adelaide", // 60 Flinders St — Santos is an Adelaide company
-  rio: "melbourne", // 360 Collins St — the principal Australian office (the
-  // London line is carried separately as `london-rio`)
+  rio: "melbourne", // 360 Collins St — the principal Australian office. Rio is
+  // dual-HQ (plc in London, Ltd in Melbourne); the London roster line was
+  // retired into `rio` on 2026-10-02 and London is a secondary-office pin, so
+  // Melbourne stays the head office the card names.
+  // DELIBERATELY NOT HERE: Chevron. Chevron Corporation's registered head
+  // office is in Houston, and the Houston roster line was retired into
+  // `chevron` on 2026-10-02 — so by the rule above this entry should say
+  // "houston", and it did for one commit. It is out again on purpose: the US
+  // is an admin-only region while it is built out, and naming a head office
+  // in a region end users cannot reach would point global search at a city
+  // with nothing behind it. `chevron` keeps Perth, its only geocoded
+  // building (Elizabeth Quay). Restore `chevron: "houston"` in the change
+  // that makes the US hub visible to end users.
 };

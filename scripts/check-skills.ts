@@ -676,6 +676,155 @@ if (ACCOUNT && DB && TOKEN) {
   }
 }
 
+// ── A broad term must not reach another trade, and an inflection must not be
+// missed ────────────────────────────────────────────────────────────────────
+// Terms match at the START of a word, which cuts both ways and both cuts were
+// live at once in Cleaning & Facilities. "commercial" on Commercial & Legal
+// reached "Commercial Cleaner" and filed a cleaning job among the lawyers; and
+// "cleaner", "housekeeper" could not reach "Cleaning Manager" or "Housekeeping
+// Attendant", so 661 archived rows of hotel and hospital room work carried no
+// skill at all. One is a false positive, the other a silent miss, and neither
+// shows up as anything on a card — the skill simply reads as a market nobody
+// hires in, or one where lawyers mop floors.
+//
+// Titles are verbatim from the archive, with the counts measured 2026-09-28.
+{
+  const MUST: [string, string][] = [
+    // ...and the HR roles that gate must leave alone.
+    ["HR Driver", "Truck Driving"],
+    ["HR Manager", "Human Resources"],
+    ["Plant HR Executive", "Human Resources"],
+    ["HR Operations Analyst", "Human Resources"],
+    ["District 3 HR Specialist", "Human Resources"],
+    ["Summer Intern 2027 - HR", "Human Resources"],
+    ["HR HC Master Data Management Specialist", "Human Resources"],
+    // [title, skill it must carry]
+    ["Commercial Cleaner", "Cleaning & Facilities"],
+    ["Commercial Cleaner (FT) – Shopping Centre", "Cleaning & Facilities"],
+    ["Cleaning Manager | Fortescue | 5:2", "Cleaning & Facilities"],
+    ["Assistant Cleaning Operations Manager", "Cleaning & Facilities"],
+    ["2nd Shift Cleaning Technician", "Cleaning & Facilities"],
+    ["Hotel Cleanliness Expert", "Cleaning & Facilities"],
+    ["Hotel Cleanliness Expert (Housekeeping Attendant)", "Cleaning & Facilities"],
+    ["Assistant Director of Housekeeping", "Cleaning & Facilities"],
+
+    // Found 2026-09-29 by running the 562 occupations of Singapore's
+    // Occupational Wage Survey through the matcher as a vocabulary probe, then
+    // ranking the misses by how many archived rows they left unmapped. Together
+    // these five reached 2,464 titles / 4,518 rows that matched NOTHING.
+    ["Physical Therapist", "Allied Health"],
+    ["Physical Therapist", "Physiotherapy"],
+    ["Physical Therapy Assistant", "Physiotherapy"],
+    // RETAIL, not business development — asserted after checking the employers
+    // (Telstra Retail 362, Eagers Automotive 130, Spotlight, Flight Centre) and
+    // after this table first claimed the opposite and was wrong.
+    ["Sales Consultant", "Retail & Customer Service"],
+    ["Sales Consultant", "Retail Sales"],
+    ["New Vehicle Sales Consultant", "Retail Sales"],
+    ["Relationship Manager", "Banking & Lending"],
+    ["Premier Relationship Manager", "Banking & Lending"],
+    ["Guest Experience Expert", "Hospitality & Food Service"],
+    ["Network Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "Electrical Engineering"],
+
+    // Found 2026-09-29 while checking whether a %commercial% remap was safe: the
+    // archive held skills the taxonomy could no longer produce, because these
+    // two had gone missing. "site manager" mapped and "site engineer" did not;
+    // the hospitality terms had every word for the trade except its own.
+    ["Site Engineer", "Construction Management"],
+    ["Site Engineer - Commercial Construction", "Construction Management"],
+    ["Food and Beverage Attendant", "Hospitality & Food Service"],
+    // BOTH SPELLINGS THROUGH ONE TERM. norm() rewrites "&" to " and " in the
+    // title, but termMatches uses the term verbatim — so the term must be
+    // "f and b", and a term written "f&b" can never match anything at all.
+    ["F&B Supervisor", "Hospitality & Food Service"],
+    ["F and B Attendant", "Hospitality & Food Service"],
+    ["F&B Service Expert", "Hospitality & Food Service"],
+
+    // "reliability engineer" is a MINING term and it claimed all 208 archived
+    // rows of "Site Reliability Engineer". The two senses split on one word:
+    // without "site" the employers are BHP, Alcoa, Fortescue and BlueScope;
+    // with it they are Google, TCS, Macquarie and CBA.
+    ["Site Reliability Engineer", "Cloud & DevOps"],
+    ["Site Reliability Engineer", "Site Reliability & Platform"],
+    ["SRE Manager", "Cloud & DevOps"],
+    // The industrial sense must survive the fix — it is the term's real job.
+    ["Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Maintenance Engineer", "Fixed Plant Maintenance"],
+  ];
+  const MUST_NOT: [string, string][] = [
+    // The false positive itself, in the three shapes the archive holds: the
+    // contiguous phrase, the shift wedged between the two words (which a phrase
+    // except would have missed), and the reversed form.
+    ["Commercial Cleaner", "Commercial & Legal"],
+    ["Commercial Full-Time Day Cleaner (Brisbane, QLD)", "Commercial & Legal"],
+    ["Cleaner - Commercial", "Commercial & Legal"],
+    ["Residential and Commercial cleaning", "Commercial & Legal"],
+    // Semiconductor process work names a cleaning step and is not this trade.
+    ["Process Engineer (Wafer Cleaning and Lamination)", "Cleaning & Facilities"],
+    // And the term must still do its real job: these ARE commercial roles.
+    ["Commercial Manager", "Cleaning & Facilities"],
+    ["Commercial Finance Analyst", "Cleaning & Facilities"],
+
+    // "systems engineer" is REFUSED as a bare term on both sides. 453 of its 554
+    // unmapped rows are the bare title with nothing to disambiguate it, and the
+    // employers are BAE Systems, Worley, BHP and AECOM as much as Cloudflare. A
+    // bare term would hand all of them to IT and would also steal the control
+    // systems engineers that Instrumentation & Control maps correctly today.
+    ["Systems Engineer", "IT & Systems"],
+    ["Senior Systems Engineer", "IT & Systems"],
+    ["Control Systems Engineer", "IT & Systems"],
+    ["Power Systems Engineer", "IT & Systems"],
+    // "site engineer" must not reach the SRE / web senses of the word.
+    ["Facebook Engineer", "Hospitality & Food Service"],
+    ["Website Engineer", "Construction Management"],
+    // Mining must not take the SRE sense back.
+    ["Site Reliability Engineer", "Fixed Plant Maintenance"],
+    ["Senior Site Reliability Engineer", "Fixed Plant Maintenance"],
+    // ...and "sre" must carry its trailing space, or it claims every name
+    // starting with those three letters.
+    ["Sreekanth Consulting", "Cloud & DevOps"],
+    ["Sreekanth Consulting", "Site Reliability & Platform"],
+    // "HR" as Heavy Rigid (the truck licence) and as an hour — 2026-10-02.
+    ["HR Driver", "Human Resources"],
+    ["HR Truck Driver", "Human Resources"],
+    ["HR Multi System Operator", "Human Resources"],
+    ["Store Person / Delivery Driver - Rural Products (min HR licence)", "Human Resources"],
+    ["FIFO Logistics Officers (HR LF required)", "Human Resources"],
+    ["Amazon Package Delivery Driver - Earn $15.00 - $25.50/hr", "Human Resources"],
+    ["Production Operator- $31.65/hr", "Human Resources"],
+    ["Equipment Technician (12-hr Shift, Manufacturing)", "Human Resources"],
+    ["Licensed Practical Nurse (LPN) - up to $41/hr", "Human Resources"],
+  ];
+  const bad: string[] = [];
+  for (const [title, skill] of MUST) {
+    const got = skillsForText(title);
+    if (!got.includes(skill)) bad.push(`"${title}" should carry ${skill}, got [${got.join(", ")}]`);
+  }
+  for (const [title, skill] of MUST_NOT) {
+    const got = skillsForText(title);
+    if (got.includes(skill))
+      bad.push(`"${title}" must NOT carry ${skill}, got [${got.join(", ")}]`);
+  }
+  // "Commercial Manager" and "Commercial Finance Analyst" are the reason the
+  // except is on the cleaning word rather than on "commercial": the term has to
+  // keep working for the 1,800-odd commercial titles that are this skill.
+  const keeps = ["Commercial Manager", "Commercial Finance Analyst", "Commercial Analyst"].filter(
+    (t) => !skillsForText(t).includes("Commercial & Legal"),
+  );
+  for (const t of keeps) bad.push(`"${t}" lost Commercial & Legal — the except is too broad`);
+  if (bad.length) {
+    failed = true;
+    console.error("✗ Term reach / inflection:");
+    for (const b of bad) console.error(`   ${b}`);
+  } else {
+    console.log(
+      `✓ ${MUST.length + MUST_NOT.length + 3} measured titles keep their trade ` +
+        "(cleaning vs commercial, and both inflections of each term).",
+    );
+  }
+}
+
 if (failed) {
   console.error(
     "\nFix: add new match terms to the EXISTING def for that skill, " +

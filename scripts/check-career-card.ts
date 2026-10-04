@@ -326,10 +326,11 @@ for (const f of P.families)
         lane,
       );
       check(
-        `${f.id} + ${s}: a specialism opens only for a skill the core does not list`,
-        !P.nodes.some(
-          (n) => n.family === f.id && n.track === core && n.skills.some(([x]) => x === s),
-        ),
+        `${f.id} + ${s}: a specialism opens only for a skill the core does not ask for here`,
+        live(core) === 0 ||
+          !P.nodes.some(
+            (n) => n.family === f.id && n.track === core && n.skills.some(([x]) => x === s),
+          ),
         s,
       );
     }
@@ -396,6 +397,41 @@ check(
     "a goal that is not published summarises as null",
     careerGoalSummary(P, "hr|nope|3", "au") === null,
   );
+}
+
+// The map's role highlight reads each market's roster companies. A list that
+// names more employers than the rung counted, or more live roles than it
+// advertised, would light pins on a figure the card itself contradicts.
+{
+  let bad = 0;
+  let listed = 0;
+  for (const n of P.nodes) {
+    for (const [cc, m] of Object.entries(n.markets)) {
+      const cs = m.companies ?? [];
+      listed += cs.length;
+      const sorted = cs.every((c, i) => i === 0 || cs[i - 1][1] >= c[1]);
+      const sane = cs.every(([id, ads, live]) => !!id && ads >= 1 && live >= 0 && live <= ads);
+      const sum = cs.reduce((a, c) => a + c[1], 0);
+      if (
+        !sorted ||
+        !sane ||
+        cs.length > m.employers ||
+        sum > m.roles ||
+        new Set(cs.map((c) => c[0])).size !== cs.length
+      ) {
+        bad++;
+        if (bad <= 3)
+          console.error(
+            `  ${n.family}|${n.track}|${n.rung} ${cc}:`,
+            cs.slice(0, 5),
+            m.employers,
+            m.roles,
+          );
+      }
+    }
+  }
+  check("every market's roster companies agree with its employer and role counts", bad === 0, bad);
+  check("the bundled pathways carry roster companies at all", listed > 0, listed);
 }
 
 if (failed) {

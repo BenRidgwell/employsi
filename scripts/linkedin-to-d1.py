@@ -88,7 +88,16 @@ if not SOLVE and not TOKEN:
 
 
 # ── dedup key, identical to src/employsi/lib/jobArchive.ts ────────────────────
+# Han, kana, Hangul. Mirrors jobArchive.ts: a string containing any of them
+# keeps every letter and digit (the ASCII rule below erased CJK titles to "",
+# collapsing a Chinese board to one row per city); every other string keys
+# exactly as before, so no existing Latin key moves.
+_CJK = re.compile(r'[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]')
+
+
 def norm(s: str) -> str:
+    if _CJK.search(s or ''):
+        return re.sub(r'[\W_]+', ' ', (s or '').lower()).strip()[:120]
     return re.sub(r'[^a-z0-9]+', ' ', (s or '').lower()).strip()[:120]
 
 
@@ -97,11 +106,42 @@ def job_key(source: str, title: str, company: str, location: str) -> str:
 
 
 def match_city(text: str):
+    """Fallback only — see map_hubs. Capital-city names, nothing else."""
     t = (text or '').lower()
     for c in CITIES:
         if c in t:
             return c
     return None
+
+
+def map_hubs(locations: list) -> list:
+    """Each location's map hub, through the Worker's own hubFor (map-hubs.ts).
+
+    This used to be match_city alone: a capital's name or nothing. LinkedIn
+    states the suburb — "Joondalup, Western Australia, Australia" — so Edith
+    Cowan's Chief People Officer, and 710 LinkedIn rows in the month to
+    2026-10-02 (Parramatta, North Ryde, St Lucia, Hawthorn…), were archived with
+    no city and lit no pin anywhere. hubFor knows the suburbs and places a
+    regional town by its state, exactly as every portal scraper's rows are
+    placed, so LinkedIn's rows land where the rest of the archive's do.
+
+    home = None: a role LinkedIn lists as just "Australia" has no city, rather
+    than inheriting one. If the bridge fails, match_city keeps the old floor.
+    """
+    if not locations:
+        return []
+    try:
+        p = subprocess.run(['bun', 'run', os.path.join(HERE, 'map-hubs.ts')],
+                           input=json.dumps({'locations': locations, 'home': None}).encode(),
+                           capture_output=True, timeout=120, cwd=ROOT)
+        if p.returncode == 0:
+            out = json.loads(p.stdout.decode())
+            if isinstance(out, list) and len(out) == len(locations):
+                return out
+        sys.stderr.write(f'  map-hubs failed: {p.stderr.decode()[:160]}\n')
+    except Exception as e:  # noqa: BLE001
+        sys.stderr.write(f'  map-hubs error: {e}\n')
+    return [match_city(l) for l in locations]
 
 
 # ── company roster (id + name) via scripts/roster.py ──────────────────────────
@@ -492,8 +532,9 @@ def upsert(company_id: str, jobs: list) -> int:
     # The employer's industry rides along so seniority words in a title
     # are read correctly (see INDUSTRY_GATED in skillsTaxonomy.ts).
     skills = map_skills(titles, SECTOR_BY_ID.get(company_id))
+    hubs = map_hubs([j.get('location') or '' for j in jobs])
     rows, seen = [], set()
-    for j, sk in zip(jobs, skills):
+    for j, sk, hub in zip(jobs, skills, hubs):
         company = j.get('company') or company_id
         location = j.get('location') or ''
         key = job_key('linkedin', j['title'], company or company_id, location)
@@ -501,7 +542,7 @@ def upsert(company_id: str, jobs: list) -> int:
             continue
         seen.add(key)
         rows.append((key, 'linkedin', j['title'], company or None, company_id,
-                     match_city(location), location, 'LinkedIn',
+                     hub, location, 'LinkedIn',
                      j.get('salary') or None, j.get('url') or '', j.get('date') or '',
                      json.dumps(sk) if sk else None))
     written = 0
@@ -516,6 +557,10 @@ def upsert(company_id: str, jobs: list) -> int:
                "salary = COALESCE(jobs.salary, excluded.salary), "
                "url = COALESCE(NULLIF(jobs.url, ''), excluded.url), "
                "posted = COALESCE(NULLIF(jobs.posted, ''), excluded.posted), "
+               # Fill a missing city from a re-sighting, never replace one: rows
+               # archived before map_hubs keep NULL otherwise for as long as the
+               # ad is re-seen (see scripts/backfill-hub.ts).
+               'hub = COALESCE(jobs.hub, excluded.hub), '
                'skills = COALESCE(jobs.skills, excluded.skills)')
         params = []
         for r in chunk:

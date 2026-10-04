@@ -2,7 +2,17 @@ import { useAppStore } from "../state/store";
 import { startSignIn } from "../lib/authClient";
 
 /**
- * The sign-in choices, shared by the search-pill panel and the account button.
+ * The sign-in choices, for the search-pill panel and the account button.
+ *
+ * NOTHING IMPORTS THIS TODAY, ON PURPOSE — it is not dead code that was missed.
+ * Both call sites were the in-app sign-in prompts, retired on 2026-09-30 when
+ * the app became signed-in-only (see getAppAccess in lib/billingFn.ts): a
+ * visitor who is not signed in never reaches /app, so a panel offering to sign
+ * them in has nobody to serve. The file is kept because that gate is "for now"
+ * and because /login's own sign-in UI is a separate implementation — if an
+ * in-app sign-in surface is ever wanted again, this is it, already wired to the
+ * provider-availability rule below. Delete it only as a deliberate decision that
+ * the app will never offer sign-in in-place again.
  *
  * Two providers, no form. The email/password form these panels used to show was
  * theatre — it accepted any password, verified nothing and created no user — so

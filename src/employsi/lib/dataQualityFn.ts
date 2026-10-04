@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
-import { HISTORICAL_SOURCES, type D1Like } from "./jobArchive";
+import { HISTORICAL_SOURCES, LIVE_NOW_SQL, type D1Like } from "./jobArchive";
 import { COMPANIES } from "../data/companies";
 import { normName, sameCompanyName, substringOnlyMatch } from "./advertiserMatch";
 
@@ -206,6 +206,35 @@ export interface MatchRate {
   prevPct: number | null;
 }
 
+/**
+ * How much of a source's live output another board already holds.
+ *
+ * WHY THIS IS HERE AT ALL. `jobKey` in jobArchive.ts puts the SOURCE first, so
+ * the same role on SEEK and on Adzuna is two keys and two rows. That is
+ * deliberate and every count over the table is a COUNT(*) over rows — so the
+ * archive's vacancy figures are ad counts, not job counts, and this panel is
+ * where the size of that gap should be visible rather than inferred.
+ *
+ * `onlyHere` is roles NO other source holds. `pct` is the share of this
+ * source's live rows that are unique to it, so a LOW number means the archive
+ * already covers this feed elsewhere.
+ *
+ * IT IS AN UPPER BOUND ON UNIQUENESS, which is to say a LOWER bound on
+ * duplication. Two boards wording one vacancy differently still count as two
+ * roles, so a high figure may be wording rather than coverage. A low figure is
+ * the trustworthy direction — the same caveat scripts/source-overlap.py prints,
+ * and for the same reason.
+ */
+export interface OverlapRow {
+  source: string;
+  /** Live rows this source holds in the window below. */
+  total: number;
+  /** Of those, the ones no other source holds. */
+  onlyHere: number;
+  /** onlyHere / total, as a percentage. Low = heavily duplicated. */
+  pct: number;
+}
+
 export interface DataQuality {
   ok: boolean;
   /** Set when the caller may not see this, or the archive is unreachable. */
@@ -219,6 +248,14 @@ export interface DataQuality {
   match: MatchRate;
   /** The window the figures below were actually computed over, in days. */
   windowDays: number;
+  /** Per-source cross-board overlap, worst-duplicated first. */
+  overlap: OverlapRow[];
+  /**
+   * Live rows, and how many of them are a role some OTHER source also holds.
+   * `pct` is that share — the amount by which a COUNT(*) over the live archive
+   * overstates distinct roles.
+   */
+  overlapTotals: { rows: number; duplicated: number; pct: number };
   /**
    * Oldest month the ingest chart can honestly start at: a month is only
    * comparable once the feeds carrying it had arrived. See the note in the
@@ -237,6 +274,8 @@ const EMPTY: DataQuality = {
   attribution: [],
   ingest: [],
   match: { mapped: 0, unmapped: 0, pct: 0, prevPct: null },
+  overlap: [],
+  overlapTotals: { rows: 0, duplicated: 0, pct: 0 },
   windowDays: 30,
   ingestFrom: "",
 };
@@ -262,9 +301,12 @@ export const getDataQuality = createServerFn({ method: "GET" })
     const DAYS = [1, 7, 30].includes(Number(data?.days)) ? Number(data.days) : 30;
 
     try {
-      // 1. Feed freshness. `live` uses the same "currently advertised" rule the
-      //    app itself uses (last_seen within a day), so this panel and a
-      //    company card cannot disagree about what is open.
+      // 1. Feed freshness. `live` uses the same "currently advertised" rule
+      //    the app itself uses — LIVE_NOW_SQL, which is last_seen within a day
+      //    for a nightly feed and within its own cadence for a weekly one — so
+      //    this panel and a company card cannot disagree about what is open.
+      //    Reading it from jobArchive rather than spelling it out here is what
+      //    makes that true; check-overlap-key.py asserts the panel still does.
       const feedRes = await db
         .prepare(
           `SELECT source,
@@ -273,7 +315,7 @@ export const getDataQuality = createServerFn({ method: "GET" })
                   COUNT(*) AS total,
                   COUNT(DISTINCT company_id) AS companies,
                   MAX(company_id) AS a_company,
-                  SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
+                  SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END) AS live
              FROM jobs
             GROUP BY source
             ORDER BY source`,
@@ -434,7 +476,7 @@ export const getDataQuality = createServerFn({ method: "GET" })
         .prepare(
           `SELECT substr(first_seen,1,7) AS ym,
                   COUNT(*) AS total,
-                  SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END) AS live
+                  SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END) AS live
              FROM jobs
             WHERE first_seen <> '' AND source NOT IN (${histList})
             GROUP BY ym
@@ -469,6 +511,98 @@ export const getDataQuality = createServerFn({ method: "GET" })
           partial: !!coverFrom && month < coverFrom.slice(0, 7),
         };
       });
+
+      // 4b. CROSS-BOARD OVERLAP — how much of each source another board holds.
+      //
+      // MEASURED ON THE LIVE WINDOW, NOT THE PANEL'S RANGE, and deliberately.
+      // The question this answers is "is the number on the card inflated right
+      // now", and the card's own figure is LIVE_NOW_SQL — the same shared cut
+      // currentFromArchive uses in openRolesFn.ts, per source. Computing overlap over 30
+      // days would describe a set nothing on screen is counting. It is also
+      // three times cheaper — measured 2026-09-29 against the live archive:
+      // 856ms at 1 day against 2.56s at 30, reading 766k rows against 1.2M.
+      //
+      // THE KEY IS THE LOOSE ONE FROM scripts/source-overlap.py, byte for byte,
+      // because the obvious key is wrong and was already proven wrong there.
+      // Matching on the job_key suffix — title|company|location — reports every
+      // source ~100% unique, because the strings are not the same strings:
+      //
+      //     adzuna  | managing partner bhp        | bhp | perth cbd perth
+      //     indeed  | managing partner            | bhp | Perth WA
+      //
+      // Titles carry whatever the advertiser wrote (recruiters bolt the
+      // employer name on) and locations carry whatever granularity the board
+      // uses. So identity here is company_id + title with the LOCATION DROPPED
+      // and the employer's own name removed from the title. That is looser than
+      // the archive's own key on purpose: it can merge two genuinely different
+      // vacancies with the same title at one employer, and that error runs
+      // TOWARDS finding overlap — which is the honest direction for a figure
+      // whose job is to stop the panel understating duplication.
+      //
+      // A DEAD FEED LOOKS EXACTLY LIKE A REDUNDANT ONE here: it contributes
+      // nothing to a live window, so it reports 0 rows rather than 0% unique.
+      // The freshness table above is what separates those, which is why this
+      // sits beside it rather than anywhere else.
+      const SPLIT = `
+        SELECT source, company_id,
+               substr(rest, 1, instr(rest, '|') - 1) AS title,
+               substr(substr(rest, instr(rest, '|') + 1), 1,
+                      instr(substr(rest, instr(rest, '|') + 1), '|') - 1) AS comp
+        FROM (SELECT source, company_id,
+                     substr(job_key, instr(job_key, '|') + 1) AS rest
+              FROM jobs WHERE ${LIVE_NOW_SQL})`;
+      const LOOSE = `
+        SELECT source, company_id,
+               company_id || '|' ||
+               trim(replace(' ' || title || ' ', ' ' || comp || ' ', ' ')) AS role_key
+        FROM (${SPLIT})`;
+      const overlapRes = await db
+        .prepare(
+          `WITH live AS (${LOOSE}),
+                shared AS (SELECT role_key, COUNT(DISTINCT source) n FROM live GROUP BY role_key)
+           SELECT l.source AS source,
+                  COUNT(*) AS total,
+                  SUM(CASE WHEN s.n = 1 THEN 1 ELSE 0 END) AS only_here
+             FROM live l JOIN shared s ON s.role_key = l.role_key
+            GROUP BY l.source`,
+        )
+        .all();
+      const overlapAll: OverlapRow[] = (overlapRes?.results ?? [])
+        .map((r) => {
+          const total = Number(r.total) || 0;
+          const onlyHere = Number(r.only_here) || 0;
+          // Computed inline rather than via pctOf, which is a `const` declared
+          // further down this handler — calling it here is a temporal-dead-zone
+          // ReferenceError at runtime, and one the typechecker does not catch.
+          return {
+            source: String(r.source || ""),
+            total,
+            onlyHere,
+            pct: total ? (100 * onlyHere) / total : 0,
+          };
+        })
+        .filter((r) => r.total > 0);
+      // RANKED BY DUPLICATED ROWS, NOT BY UNIQUENESS PERCENTAGE. Sorting on
+      // pct ascending reads like the right answer and is not: the archive has
+      // portals holding eight rows, and a feed with 8 rows and 0 unique tops
+      // that list ahead of LinkedIn's 5,917 duplicated rows at 11.5% unique.
+      // The panel would then lead with trivia while the actual finding sat
+      // below the fold. Measured against the live archive 2026-09-29 — the
+      // first four entries under pct-ascending were portals with 2 to 8 rows.
+      //
+      // Duplicated-row count answers the question the panel is for: how much of
+      // what we hold is a second copy. It also cannot be distorted by a tiny
+      // sample, which a percentage over eight rows is.
+      const overlap = [...overlapAll]
+        .sort((a, b) => b.total - b.onlyHere - (a.total - a.onlyHere) || b.total - a.total)
+        .slice(0, 40);
+      const overlapRows = overlapAll.reduce((a, r) => a + r.total, 0);
+      const overlapDup = overlapAll.reduce((a, r) => a + (r.total - r.onlyHere), 0);
+      const overlapTotals = {
+        rows: overlapRows,
+        duplicated: overlapDup,
+        pct: overlapRows ? (100 * overlapDup) / overlapRows : 0,
+      };
 
       // 5. Skill match rate over the same 30-day window the unmapped list uses,
       //    and the same measurement again over the 30 days before it. Both
@@ -514,6 +648,8 @@ export const getDataQuality = createServerFn({ method: "GET" })
         attribution: attribution.slice(0, 40),
         ingest,
         match,
+        overlap,
+        overlapTotals,
         ingestFrom: coverFrom,
         // Echoed back rather than assumed by the caller: the handler clamps
         // what it was given, so the card must label its figures with the

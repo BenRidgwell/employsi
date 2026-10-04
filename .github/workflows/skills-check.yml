@@ -25,6 +25,8 @@ on:
       - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-analyst-llm.ts'
+      - 'src/employsi/lib/analystLlmFn.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
       - 'scripts/check-crawl-schedule.ts'
@@ -49,6 +51,12 @@ on:
       - 'src/employsi/lib/careerPathwaysBuild.ts'
       - 'src/employsi/lib/feedCoverage.ts'
       - 'src/employsi/data/careerPathways.ts'
+      - 'src/employsi/data/onetRoles.ts'
+      - 'scripts/check-onet-roles.ts'
+      - 'scripts/gen-onet-roles.py'
+      - 'src/employsi/lib/persona.ts'
+      - 'src/employsi/lib/sessionRole.ts'
+      - 'scripts/check-persona.ts'
       - '.github/workflows/skills-check.yml'
   pull_request:
     paths:
@@ -63,6 +71,8 @@ on:
       - 'src/employsi/data/salaryBaseline.ts'
       - 'scripts/check-analyst-followups.ts'
       - 'scripts/check-analyst-scope.ts'
+      - 'scripts/check-analyst-llm.ts'
+      - 'src/employsi/lib/analystLlmFn.ts'
       - 'scripts/check-skill-trends.ts'
       - 'scripts/check-news-skills.ts'
       - 'scripts/check-crawl-schedule.ts'
@@ -87,6 +97,12 @@ on:
       - 'src/employsi/lib/careerPathwaysBuild.ts'
       - 'src/employsi/lib/feedCoverage.ts'
       - 'src/employsi/data/careerPathways.ts'
+      - 'src/employsi/data/onetRoles.ts'
+      - 'scripts/check-onet-roles.ts'
+      - 'scripts/gen-onet-roles.py'
+      - 'src/employsi/lib/persona.ts'
+      - 'src/employsi/lib/sessionRole.ts'
+      - 'scripts/check-persona.ts'
   workflow_dispatch: {}
 
 jobs:
@@ -155,6 +171,19 @@ jobs:
       - name: Assert every analyst scope excludes the closed corpora
         run: bun run scripts/check-analyst-scope.ts
 
+      # The conversational analyst may only say figures a tool returned; this
+      # asserts the check that enforces it (see analystLlmFn.ts, untraced).
+      - name: Assert the conversational analyst's figure check
+        run: bun run scripts/check-analyst-llm.ts
+
+      # The admin "view as user" switch rides on an UNSIGNED cookie, which is
+      # safe only because it can exclusively DOWNGRADE a role. That property is
+      # one edited line from being false and an escalation is invisible until
+      # somebody uses it, so it is asserted rather than trusted. Also pins the
+      # host allow-list, so the switch can never appear on production.
+      - name: Assert the persona switch cannot escalate
+        run: bun run scripts/check-persona.ts
+
       # News skill tags are an INFERENCE shown next to measured things, so the
       # only way a wrong one surfaces is by being read. A labelled corpus of 256
       # real headlines scores precision and recall on every change; the floors
@@ -196,6 +225,13 @@ jobs:
       # synthetic rows whose answer is known, plus the adapter's invariants.
       - name: Assert the career card's series and model
         run: bun run scripts/check-career-card.ts
+
+      # Each career rung names an O*NET occupation whose tasks the card shows,
+      # and a wrong one renders as fluently as a right one. Every rung must be
+      # decided by the reviewed table, and the matcher's known mistakes stay
+      # fixed.
+      - name: Assert the career card's O*NET mapping
+        run: bun run scripts/check-onet-roles.ts
 
       - name: Assert the salary baseline's invariants
         run: bun run scripts/check-salary-baseline.ts

@@ -18,8 +18,11 @@ import { chatReply, detectChat } from "../../lib/analystChat";
 import { INTENT_LABEL, type DataIntent } from "../../lib/analystIntent";
 import { describeQuery, followUpsFor, resolveTurn, type AnalystQuery } from "../../lib/analystTurn";
 import { ALL_SECTORS, companyIdsForSector, sectorsInScope } from "../../lib/analystSector";
+import { runLlmTurn, type LlmMessage } from "../../lib/analystLlmClient";
 import { IconClose } from "../ActionIcons";
 import { AnalystChartView } from "./AnalystChart";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 /**
  * "Ask an analyst", built from `ask an analyst.dc.html`.
@@ -71,7 +74,7 @@ interface Msg {
 }
 
 const OPENER =
-  "Ask me about job openings — how many are live, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Every answer is a query over employsi's vacancy data, and I'll show you the source.";
+  'Ask me about job openings — how many are live, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Every answer is a query over employsi\'s vacancy data, and asking "why?" will tell you how it was measured.';
 
 // Scope icons, from the design's SCOPES table.
 const SCOPE_PATHS: Record<string, string[]> = {
@@ -112,6 +115,9 @@ const sameScope = (a: AnalystScope, b: AnalystScope) => a.kind === b.kind && a.i
 export function AnalystPane() {
   const open = useAppStore((s) => s.analystOpen);
   const closeAnalyst = useAppStore((s) => s.closeAnalyst);
+  const dragRef = useDraggablePane<HTMLDivElement>(open);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, closeAnalyst, ".analystpane");
   const selectedId = useAppStore((s) => s.selectedId);
   const localCity = useAppStore((s) => s.localCity);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
@@ -198,6 +204,8 @@ export function AnalystPane() {
   const [draft, setDraft] = useState("");
   const [thinking, setThinking] = useState(false);
   const nextId = useRef(1);
+  /** The conversational analyst's own transcript (tool calls included). */
+  const llmHistory = useRef<LlmMessage[]>([]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
   /** Which prompt topic's menu is open, if any. */
   const [openTopic, setOpenTopic] = useState<string | null>(null);
@@ -255,6 +263,7 @@ export function AnalystPane() {
     setAlsoAsked(null);
     setActiveScope(null);
     setOpenTopic(null);
+    llmHistory.current = [];
   };
 
   const ask = async (raw: string) => {
@@ -262,6 +271,36 @@ export function AnalystPane() {
     if (!question || thinking) return;
     setThread((t) => [...t, { id: nextId.current++, role: "user", text: question }]);
     setDraft("");
+
+    /**
+     * The conversational analyst first (lib/analystLlmClient.ts). It reads the
+     * question in any wording, runs the same queries this pane runs below, and
+     * explains the result — with every figure checked back against them. When
+     * it steps aside (no key on this deployment, a failed call, today's limit)
+     * everything below answers exactly as it always has.
+     */
+    setThinking(true);
+    const llm = await runLlmTurn(llmHistory.current, question, {
+      scope,
+      localCity,
+      sector: activeSector === ALL_SECTORS ? undefined : activeSector,
+      companyIds: sectorIds,
+    }).catch(() => ({ fallback: null }));
+    setThinking(false);
+    if ("result" in llm) {
+      llmHistory.current = llm.history;
+      const { text, answer, query, note } = llm.result;
+      if (query) {
+        if (!sameScope(query.scope, scope)) setActiveScope(query.scope);
+        setCarried(query);
+        setAlsoAsked(null);
+      }
+      setThread((t) => [...t, { id: nextId.current++, role: "analyst", text, answer, note }]);
+      return;
+    }
+    if (llm.fallback) {
+      setThread((t) => [...t, { id: nextId.current++, role: "analyst", text: llm.fallback! }]);
+    }
 
     /**
      * Conversation before questions.
@@ -375,13 +414,11 @@ export function AnalystPane() {
 
   return (
     <>
-      <div className="panescrim" onClick={closeAnalyst} />
-      <div className="analystpane">
+      <div className="analystpane" ref={dragRef}>
         <div className="anhd">
           {/* Title and actions only, set like the filter card's header. The
               avatar and the one-line description that used to sit here were
-              saying what the opening message and every answer's source line
-              already say. */}
+              saying what the opening message already says. */}
           <span className="antitle">Ask an analyst</span>
           {/* Clearing the thread is the only way to drop a carried analysis on
               purpose. Without it the conversation can only be escaped by asking
@@ -469,7 +506,7 @@ export function AnalystPane() {
                   {m.answer?.chart && (
                     <AnalystChartView
                       chart={m.answer.chart}
-                      title={m.text}
+                      title={m.answer.text}
                       source={m.answer.source}
                     />
                   )}
@@ -504,22 +541,21 @@ export function AnalystPane() {
                     </div>
                   )}
 
-                  {m.answer?.source && (
-                    <div className="ansource">
-                      <svg
-                        viewBox="0 0 24 24"
-                        width={13}
-                        height={13}
-                        fill="none"
-                        stroke="currentColor"
-                        aria-hidden
-                      >
-                        <path d="M6 4h9l4 4v12H6z" />
-                        <path d="M15 4v4h4" />
-                      </svg>
-                      <span>{m.answer.source}</span>
-                    </div>
-                  )}
+                  {/* NO SOURCE LINE. Every answer used to end with a grey
+                      caption naming where the figures came from — "employsi
+                      vacancy archive · Perth · to 2 Oct 2026", the statistical
+                      agencies on a long-run answer. It is gone from the reply
+                      by request.
+
+                      WHAT IT WAS CARRYING IS NOT GONE. The caption was mostly a
+                      restatement: the answers' own prose already names the day
+                      a figure is as at, how many ads disclosed pay, and that a
+                      duration is how long an ad ran rather than time to fill.
+                      `answer.source` is still computed, and still travels on an
+                      exported chart, where a chart that leaves the app without
+                      its scope is a worse fault than a caption nobody wanted.
+                      So this is a rendering change, not a measurement one — and
+                      "why?" still explains the method on request. */}
                 </div>
 
                 {/* Offered on the NEWEST answer only. A follow-up applies to

@@ -1,7 +1,9 @@
 import { ALL_SKILLS, SKILL_CATEGORY, SKILL_CHILDREN, SKILL_PARENT } from "../data/skillsTaxonomy";
 import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { LABOUR_EVENTS, type LabourEvent } from "../data/labourEvents";
-import { demandLevel, demandPercentile, type DemandTone } from "./skillHeat";
+import { demandLevel, demandPercentile, type DemandMode, type DemandTone } from "./skillHeat";
+import { employmentFor } from "./vacancyRate";
+import { ABS_QUARTERS } from "../data/absOccupationSupply";
 import type { SkillIndex } from "./skillsFn";
 import type { SkillArchiveTrend } from "./jobHistoryFn";
 import { demandAt, skillHistory, vacanciesAt } from "./marketHistory";
@@ -36,6 +38,15 @@ export interface SkillCard {
   tone: DemandTone;
   /** 0–100 position on the Low → High scale, at the scrubbed month. */
   percentile: number;
+  /**
+   * Employed persons at the scrubbed month on the SUPPLY side, or null.
+   *
+   * Non-null only in employment mode. It is not a second reading of
+   * `openRoles`: one counts job ads, the other counts people, and the card
+   * shows exactly one of them so the two can never sit side by side wearing
+   * the same units.
+   */
+  employed: number | null;
   /** Published vacancies at the scrubbed month, or null with no coverage. */
   openRoles: number | null;
   /** YYYY-MM the card is currently resolved to. */
@@ -52,7 +63,6 @@ export interface SkillCard {
   summaryTail: string;
   /** Whether the card is resolved to the newest month in the series. */
   atPresent: boolean;
-  sources: string[];
   related: string[];
   /**
    * What the chip row is offering, because the chips cannot say it themselves.
@@ -103,10 +113,72 @@ const MONTH_SHORT = [
   "Dec",
 ];
 
-export const TIMELINE_SPAN = IVI_MONTHS.length - 1;
-export const TIMELINE_LABEL = `Timeline · ${monthLabel(IVI_MONTHS[0])} – ${monthLabel(
-  IVI_MONTHS[TIMELINE_SPAN],
+/**
+ * The timeline's axis, and why it is NOT IVI_MONTHS.
+ *
+ * IVI_MONTHS is the Jobs and Skills Australia Internet Vacancy Index's own
+ * month list, and it is the shared INDEX AXIS for eight generated datasets —
+ * sg/uk/ca/nz/hk/ph/eu vacancy demand all store one array per skill per hub
+ * whose nth element is IVI_MONTHS[n]. Appending to it would silently shift
+ * every one of those lookups, so it is left exactly as generated.
+ *
+ * But the IVI is a monthly RELEASE and the archive is scraped nightly, so the
+ * two ends do not meet: the index was published to July 2026 while our own ads
+ * were current to October. With the slider stopping at the IVI's last month,
+ * the right-hand end of the timeline — the position that reads as "now" —
+ * showed JULY's ads, because July is a month the archive covers and
+ * demandByCompanyAt therefore answers from `byMonthCity` rather than from the
+ * live rows. Expired ads, presented as current.
+ *
+ * So the axis is the IVI's months carried forward to the present month. The
+ * extension carries no IVI data and is not supposed to: everything that reads
+ * a national series by month gets no answer there and says so, while
+ * everything that reads the ARCHIVE by month — the company pins, the local
+ * banner, the roles call-out — gets the month the person actually asked for.
+ *
+ * Computed at load rather than generated, so the axis stays correct as months
+ * pass without anyone remembering to regenerate a file.
+ */
+export const IVI_LAST_INDEX = IVI_MONTHS.length - 1;
+export const IVI_LAST_MONTH = IVI_MONTHS[IVI_LAST_INDEX];
+
+export const TIMELINE_MONTHS: string[] = (() => {
+  const out = [...IVI_MONTHS];
+  const now = new Date();
+  const present = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  // A guard, not a limit: if the IVI ever publishes AHEAD of the clock, or the
+  // clock is wrong, this stops the loop rather than running forever.
+  for (let i = 0; i < 240 && out[out.length - 1] < present; i++) {
+    const [y, m] = out[out.length - 1].split("-").map(Number);
+    const ny = m === 12 ? y + 1 : y;
+    const nm = m === 12 ? 1 : m + 1;
+    out.push(`${ny}-${String(nm).padStart(2, "0")}`);
+  }
+  return out;
+})();
+
+export const TIMELINE_SPAN = TIMELINE_MONTHS.length - 1;
+export const TIMELINE_LABEL = `Timeline · ${monthLabel(TIMELINE_MONTHS[0])} – ${monthLabel(
+  TIMELINE_MONTHS[TIMELINE_SPAN],
 )}`;
+
+/** The month a slider position means, or "" if it is off the axis. */
+export function monthAt(i: number): string {
+  return TIMELINE_MONTHS[i] ?? "";
+}
+
+/**
+ * Is this position past the last month the Internet Vacancy Index covers?
+ *
+ * The national and global views are IVI-backed and have nothing to show here.
+ * They hold the last published month rather than going dark — an unlit globe
+ * reads as a world where nobody is hiring, not as one nobody has measured yet
+ * (the same reasoning iviCityDemandAt's own comment gives) — so the caller's
+ * job is to SAY which month those figures are, and this is what it asks.
+ */
+export function beyondIvi(i: number): boolean {
+  return i > IVI_LAST_INDEX;
+}
 
 export function monthLabel(iso: string): string {
   const [y, m] = iso.split("-");
@@ -207,6 +279,14 @@ export const SKILL_ICON: Record<string, string> = {
   Strategy: "target",
   "Procurement & Supply": "cart",
   "Human Resources": "badge",
+  // HR's specialities used to inherit the badge, so a card offering several HR
+  // directions (payroll manager -> HR manager, L&D, employee relations…) drew
+  // one glyph five times. Each now names its own.
+  "Talent Acquisition": "target",
+  "Employee Relations": "chat",
+  "Learning & Development": "book",
+  "Workforce Planning": "bars",
+  "HR Systems": "chip",
   "Commercial & Legal": "scales",
   "Marketing & Comms": "megaphone",
   "Sales & Business Dev": "trend",
@@ -812,8 +892,9 @@ function buildSpecialityCard(
     tone: badge.tone,
     percentile: demandPercentile(skill, true, idx, "volume"),
     openRoles: now,
-    month: IVI_MONTHS[mi],
-    monthLabel: monthLabel(IVI_MONTHS[mi]),
+    employed: null,
+    month: monthAt(mi),
+    monthLabel: monthLabel(monthAt(mi)),
     change,
     spark: spark?.line ?? null,
     sparkArea: spark?.area ?? null,
@@ -821,7 +902,6 @@ function buildSpecialityCard(
     summaryPct,
     summaryTail,
     atPresent: true,
-    sources: now === null ? [] : ["employsi collected listings"],
     related: parent ? [parent] : [],
     // The one chip here is the way back UP, not a sideways suggestion.
     relatedLabel: "Part of",
@@ -830,12 +910,137 @@ function buildSpecialityCard(
   };
 }
 
+/**
+ * The card on the SUPPLY side: employed persons, and nothing measured in ads.
+ *
+ * WHY THIS IS A SEPARATE BUILDER rather than a few swapped labels. Every figure
+ * on the demand card is a vacancy — the band, the percentile marker, the
+ * headline count, the sparkline and the sentence under it. Relabelling that as
+ * employment would leave five vacancy measurements under an employment
+ * heading, which is worse than the wrong word: the word is visible and the
+ * measurement is not.
+ *
+ * So each one is rebuilt from ABS EQ08:
+ *
+ *  · the band and the marker rank this skill's WORKFORCE among workforces
+ *  · the count is employed persons nationally at the scrubbed month
+ *  · the line is the national employment series, quarterly as ABS publishes it
+ *  · the sentence names the quarter, because a quarterly figure dated to a
+ *    month would imply a monthly measurement nobody made
+ *
+ * The median salary cell is left where it is, still advertised pay from the ad
+ * archive, and still labelled as advertised — it is the only pay figure here
+ * and the label is what keeps it from reading as a wage the ABS measured.
+ *
+ * Australia only, like everything else on this side. A skill ABS does not carry
+ * says so rather than borrowing the demand card's numbers.
+ */
+/**
+ * The ABS quarter a scrubbed month falls in, as words.
+ *
+ * Employment is quarterly. Labelling a quarterly figure with the month the
+ * reader happens to be scrubbing would claim a monthly measurement — so the
+ * card names the quarter the number actually belongs to.
+ */
+export function quarterLabelFor(month: string): string {
+  let best = ABS_QUARTERS[0];
+  for (const q of ABS_QUARTERS) if (q <= month) best = q;
+  return `${monthLabel(best)} quarter`;
+}
+
+function buildEmploymentCard(skill: string, mi: number, idx: SkillIndex | null): SkillCard {
+  const parent = SKILL_PARENT[skill];
+  const atPresent = mi === TIMELINE_SPAN;
+  const month = monthAt(mi);
+  const badge = demandLevel(skill, true, idx, "employment");
+  const employed = employmentFor(skill, "national", month);
+
+  // The national series, sampled at the same months the timeline scrubs. ABS is
+  // quarterly, so consecutive months repeat — that is the measurement, and
+  // smoothing it would draw a line through numbers nobody published.
+  const series: number[] = [];
+  let from = -1;
+  for (let i = 0; i <= mi; i++) {
+    const v = employmentFor(skill, "national", monthAt(i));
+    series.push(v ?? 0);
+    if (from < 0 && v !== null) from = i;
+  }
+  const spark = from >= 0 && mi > from ? sparkPaths(series, from, mi) : null;
+
+  // Four quarters back, so the move is year-on-year rather than a quarter's
+  // seasonality. CHANGE_MONTHS is the vacancy card's window and is not reused:
+  // twelve weeks of a quarterly series is one step or none.
+  const YOY_MONTHS = 12;
+  const before =
+    mi >= YOY_MONTHS ? employmentFor(skill, "national", monthAt(mi - YOY_MONTHS)) : null;
+  const change =
+    employed !== null && before !== null && before > 0
+      ? ((employed - before) / before) * 100
+      : null;
+  const up = change !== null && change >= 0.35;
+  const down = change !== null && change <= -0.35;
+
+  const people = employed === null ? "" : `${Math.round(employed).toLocaleString("en-US")} people`;
+  const qtr = employed === null ? "" : quarterLabelFor(month);
+
+  let summaryLead = "";
+  let summaryPct = "";
+  let summaryTail = "";
+  if (employed === null) {
+    summaryLead = `Employment isn't published for the occupations carrying ${skill}, so there is no workforce figure to show. Switch to demand for its vacancy series.`;
+  } else if (change === null) {
+    summaryLead = `${people} work in occupations carrying ${skill} across Australia, ${qtr}.`;
+    summaryTail = ` Too little history before it to measure a move.`;
+  } else {
+    summaryLead = up
+      ? "The workforce is up "
+      : down
+        ? "The workforce is down "
+        : "The workforce is flat, ";
+    summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
+    summaryTail = ` over the year to the ${qtr} — ${people} in occupations carrying ${skill} across Australia. Published workforce statistics, not an ad count.`;
+  }
+
+  return {
+    skill,
+    icon: skillIcon(skill, parent),
+    levelLabel: badge.label,
+    tone: badge.tone,
+    percentile: demandPercentile(skill, true, idx, "employment"),
+    openRoles: null,
+    employed,
+    month,
+    monthLabel: monthLabel(month),
+    change,
+    spark: spark?.line ?? null,
+    sparkArea: spark?.area ?? null,
+    summaryLead,
+    summaryPct,
+    summaryTail,
+    atPresent,
+    // A speciality has no ABS series of its own — EQ08 stops at ANZSCO4 and the
+    // taxonomy's children sit below it — so from here the useful chip is the
+    // parent whose workforce this one is part of, and siblings otherwise.
+    related: parent ? [parent] : categorySiblings(skill),
+    relatedLabel: parent ? "Part of" : "Related",
+    spanLabel: null,
+    basis: "agency",
+  };
+}
+
 export function buildSkillCard(
   skill: string,
   monthIndex: number,
   idx: SkillIndex | null = null,
   trend: SkillArchiveTrend | null = null,
+  mode: DemandMode = "volume",
 ): SkillCard {
+  if (mode === "employment")
+    return buildEmploymentCard(
+      skill,
+      Math.max(0, Math.min(TIMELINE_SPAN, Math.round(monthIndex))),
+      idx,
+    );
   if (SKILL_PARENT[skill])
     return buildSpecialityCard(
       skill,
@@ -867,7 +1072,7 @@ export function buildSkillCard(
     summaryLead =
       now === null
         ? `No statistical agency in employsi publishes a vacancy series for ${skill}, so there is no history to trend.`
-        : `${roles} in ${monthLabel(IVI_MONTHS[mi])}, with too little history before it to measure a move.`;
+        : `${roles} in ${monthLabel(monthAt(mi))}, with too little history before it to measure a move.`;
   } else {
     summaryLead = up ? "Openings are up " : down ? "Openings are down " : "Openings are flat, ";
     summaryPct = `${up ? "+" : down ? "−" : "±"}${Math.abs(change).toFixed(1)}%`;
@@ -888,8 +1093,9 @@ export function buildSkillCard(
     tone: at?.level ?? "lo",
     percentile: at?.percentile ?? 0,
     openRoles: now,
-    month: IVI_MONTHS[mi],
-    monthLabel: monthLabel(IVI_MONTHS[mi]),
+    employed: null,
+    month: monthAt(mi),
+    monthLabel: monthLabel(monthAt(mi)),
     change,
     spark: spark?.line ?? null,
     sparkArea: spark?.area ?? null,
@@ -897,7 +1103,6 @@ export function buildSkillCard(
     summaryPct,
     summaryTail,
     atPresent,
-    sources: history?.sources ?? [],
     // A skill's OWN specialities lead, where it has any the archive has seen:
     // from a parent card the useful next click is almost always down into the
     // work rather than sideways to a neighbour. Category siblings remain the

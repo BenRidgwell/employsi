@@ -36,6 +36,15 @@ export const EXTRA_QUERIES: Record<string, string[]> = {
   // as Elevra above: the feeds search the roster name, so the old name has to
   // be asked for explicitly, and ACCEPT_ALIAS lets the answers through.
   hgo: ["Hillgrove Resources"],
+  // PDI Gold was Predictive Discovery until 2026 (ticker unchanged, ASX:PDI;
+  // pdigold.com, read 2026-09-30). Same half-and-half as Elevra above.
+  "perth-pdi": ["Predictive Discovery"],
+  // J.J. Richards & Sons rebranded as "JJ's Waste & Recycling" — the banner on
+  // jjswaste.com.au says so in those words, read 2026-09-30 — and its ads are
+  // posted under the new name (51 live on SEEK that day). The SEEK board itself
+  // is pulled by advertiser id via seekTradingNames.ts; this is the half for
+  // the keyword feeds, and ACCEPT_ALIAS lets the answers through.
+  "priv-j-j-richards-sons": ["JJ's Waste & Recycling"],
   // Valterra Platinum was Anglo American Platinum until the 2025 demerger, and
   // its ads still are: all 21 archive rows carry "anglo american platinum" in
   // their job_key, because a key is built from the name the BOARD printed, not

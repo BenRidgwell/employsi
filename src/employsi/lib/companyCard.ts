@@ -372,6 +372,20 @@ export interface CardInputs {
    *  none do — the seed `Company.salary` is illustrative, so a card with no
    *  live salary shows a gap rather than that number. */
   medianPay?: { text: string; n: number } | null;
+  /** A MODELLED pay range across the live roles, for the case where not one ad
+   *  states a figure. Shown INSTEAD OF medianPay and never alongside or mixed
+   *  into it: that one is the middle of what employers advertised, this is an
+   *  estimate of what roles like these pay, and a figure built from both would
+   *  be part measurement and part guess with nothing on screen able to say
+   *  which part.
+   *
+   *  NO PROVIDER NAME, BY CONSTRUCTION — the same rule the career card's
+   *  payGuide follows. There is no field here to carry one, so no component
+   *  can render one. Which model produced a figure is still recorded per row
+   *  in the archive, where maintainers need it; it is simply not a thing the
+   *  product says. The word "Estimated" is what tells a reader this was not
+   *  measured from these ads. */
+  payEstimate?: { text: string; n: number } | null;
   /** The busiest hiring area right now, for the "Biggest hiring area" fact.
    *  Passed in for the same reason as `topSkill`: the Hiring bars are drawn
    *  from the archive where it has areas, and a fact naming a different area
@@ -616,6 +630,26 @@ export function buildCompanyCard(input: CardInputs): CompanyCard {
     // Displaced from the headline tiles by the top skill, but still a real
     // measurement off live ads — it keeps a row rather than leaving the card.
     facts.push({ k: "Median advertised salary", v: `${pay.text} · ${pay.n} live ads` });
+  } else if (input.payEstimate) {
+    // NOTHING DISCLOSED. Until now this row simply vanished, which is honest
+    // and not very useful: most Australian ads state no figure at all, so the
+    // card went quiet on pay for the employers a reader most wants it for.
+    //
+    // "ESTIMATED", NOT "MEDIAN", AND THAT WORD NOW CARRIES THE WHOLE WARNING.
+    // The provider used to be named here; it is not any more, so "Estimated"
+    // is the only thing left telling a reader this was not measured from these
+    // ads. An unqualified range sitting where a measured median sits would
+    // read as this employer's band, and nobody advertised it.
+    //
+    // It stays a distinct word from "Median" for the same reason: a reader
+    // comparing two cards must not be comparing a measurement against an
+    // estimate without being told.
+    facts.push({
+      k: "Estimated salary",
+      v: `${input.payEstimate.text} · ${input.payEstimate.n} live ${
+        input.payEstimate.n === 1 ? "role" : "roles"
+      }`,
+    });
   }
   if (!isPrivate && c.exchange) {
     facts.push({ k: "Listed on", v: c.exchange });

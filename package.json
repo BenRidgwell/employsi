@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "deploy:preview": "npm run build && npx wrangler deploy --name employsi-preview",
+    "deploy:site-preview": "npm run build && npx wrangler deploy --name employsi-site-preview",
     "lint": "eslint .",
     "typecheck": "npm run typecheck:app && npm run typecheck:workers",
     "typecheck:app": "tsc --noEmit -p tsconfig.json",
@@ -16,6 +17,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",

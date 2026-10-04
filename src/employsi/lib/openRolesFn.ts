@@ -1,11 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
+import { normRoleTitle } from "./roleKey";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import { skillsForText, parseStoredSkills } from "../data/skillsTaxonomy";
 import { NZ_GOV_IDS } from "../data/nzGov";
+import { MERGED_COMPANY_ID } from "../data/mergedCompanies";
 import type { AdvertisedJob } from "./skillsFn";
-import { archiveJobs, type ArchiveRow, type D1Like } from "./jobArchive";
-import { asRecord, asRecords, str, type JsonRecord, type JsonValue } from "./json";
+import { archiveJobs, LIVE_NOW_ON_DAY_SQL, type ArchiveRow, type D1Like } from "./jobArchive";
+import { asRecord, asRecords, num, str, type JsonRecord, type JsonValue } from "./json";
 import { kvBinding, type KVLike } from "./kv";
 
 // Live "open roles" for any company in the app, fetched on the Worker, scoped
@@ -233,14 +236,18 @@ async function fromAts(entry: AtsEntry): Promise<OpenRoles | null> {
   }
 }
 
-// Normalise a title for cross-board dedupe: lowercase, collapse anything
-// non-alphanumeric to single spaces. Same-ad titles line up across providers.
-function normTitle(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
+/**
+ * Normalise a title for cross-board dedupe: lowercase, collapse anything
+ * non-alphanumeric to single spaces. Same-ad titles line up across providers.
+ *
+ * IT IS NOW THE SAME FUNCTION the vacancy chart folds by, not a copy of it.
+ * There were two hand-identical implementations — this one and normRoleTitle
+ * in jobHistoryFn — kept in step by a CI assertion, because jobHistoryFn
+ * imports THIS file and importing back would have been a cycle. lib/roleKey
+ * imports nothing, so both can take it from there and there is no longer
+ * anything to drift.
+ */
+export const normTitle = normRoleTitle;
 
 function toJob(
   t: string,
@@ -464,14 +471,20 @@ const ARCHIVE_SOURCE_LABEL: Record<string, string> = {
   "nz-gov": "NZ Government",
 };
 
-// One issuer, two roster lines. HSBC Holdings plc is listed on both the LSE and
-// the HKEX, so the roster carries it twice, but it runs a single global careers
-// portal. The portal is archived once, against the primary (LSE) line; the Hong
-// Kong line reads those same rows rather than the scrape running twice and the
-// roles being counted twice in market-wide totals.
-export const COMPANY_ID_ALIAS: Record<string, string> = {
-  "hongkong-00005": "london-hsba",
-};
+// Every id that USED to be on the roster and now resolves to another one —
+// data/mergedCompanies.ts is the single list, spread in here so the archive
+// readers honour it. A straggler row, an old follow or a stale link resolves
+// to the card that is actually drawn.
+//
+// IT USED TO CARRY LITERAL PAIRS TOO, and does not any more. HSBC, Rio Tinto
+// and Chevron were each carried as two roster lines with one reading the
+// other's rows, which drew two cards for one employer and showed the whole
+// company on neither. On 2026-10-02 they were folded into one card each and
+// the second line's city kept as a pin (data/secondaryOffices.ts), so there is
+// no longer a kind of alias where both lines stay. If one is ever needed
+// again, add it as a literal pair above the spread — scripts/scraper-gap.ts
+// reads the literal pairs AND the merge map, and needs at least one of them.
+export const COMPANY_ID_ALIAS: Record<string, string> = { ...MERGED_COMPANY_ID };
 
 // NZ public-sector agency ids. These need an explicit set rather than an
 // `nz-` prefix test, because the NZ *private* roster (data/nzCompanies.ts) uses
@@ -490,25 +503,51 @@ const NZ_GOV_ID_SET = new Set(NZ_GOV_IDS);
 async function currentFromArchive(
   id: string,
   liveJobs: AdvertisedJob[],
+  /**
+   * Also count the archive's own Adzuna/Muse rows.
+   *
+   * Normally false: those two boards are fetched LIVE a few lines above, and
+   * counting the archive's copy as well would double them. Passed true when
+   * the live fetch produced no answer at all — a failed page-1 request reads
+   * as `az === null`, "couldn't check" — because then the archive's rows are
+   * the only record of those vacancies and excluding them turns an outage
+   * into a reported zero. Overlap is impossible in that case, and the title
+   * dedup below would absorb it anyway.
+   */
+  includeLiveBoards = false,
 ): Promise<{ added: number; jobs: AdvertisedJob[]; sources: string[] }> {
   const db = await getArchiveDb();
   if (!db) return { added: 0, jobs: [], sources: [] };
   try {
     const res = await db
       .prepare(
-        // "Current" = seen on the board no earlier than yesterday. This is the
-        // SAME cut the vacancy chart's last point uses (it plots roles live on
-        // a day, and its last day is yesterday), so the headline and the chart
-        // read the same rows. The previous three-day grace period was there to
-        // absorb a missed nightly run, but it also meant the headline counted
-        // roles the chart had already dropped — which is most of why the two
-        // numbers disagreed. A feed that genuinely misses a night now shows the
-        // same dip in both places rather than only in one.
-        `SELECT title, source, location, salary, url, posted, skills
+        // OPEN ON YESTERDAY — the literal test getVacancyTrend applies to
+        // every day it plots, so the headline and the chart's last point are
+        // the same count of the same rows rather than two readings a day
+        // apart.
+        //
+        // It was `last_seen >= date('now','-1 day')`, which is not the same
+        // question: an ad FIRST seen today satisfies it, so the headline
+        // counted ads the chart's last point structurally could not contain
+        // (it needs first_seen <= that day). CBH Group showed 12 against the
+        // chart's 11 for exactly this reason. The three-day grace period
+        // before that was a bigger version of the same gap.
+        //
+        // Yesterday rather than today because today is never fully collected:
+        // the scrapers run overnight, so a job whose last_seen is still
+        // yesterday is not closed, it just has not been looked at yet. The
+        // chart ends there for the same reason, and both move together now.
+        //
+        // The grace is PER SOURCE (LIVE_ON_DAY_SQL / SOURCE_LIVE_DAYS in
+        // jobArchive.ts): a feed that runs weekly cannot have seen an ad
+        // yesterday, so holding its rows to yesterday reports its employers as
+        // advertising nothing six days in seven. Unchanged for every nightly
+        // feed, which is all of them but LinkedIn.
+        `SELECT title, source, location, salary, url, posted, skills, pay_estimate
            FROM jobs
           WHERE company_id = ?1
-            AND source NOT IN ('adzuna', 'muse')
-            AND last_seen >= date('now', '-1 day')`,
+            ${includeLiveBoards ? "" : "AND source NOT IN ('adzuna', 'muse')"}
+            AND ${LIVE_NOW_ON_DAY_SQL}`,
       )
       .bind(COMPANY_ID_ALIAS[id] ?? id)
       .all();
@@ -538,11 +577,45 @@ async function currentFromArchive(
         city: null,
         skills,
         salN: undefined,
+        payEst: parsePayEstimate(r.pay_estimate),
       });
     }
     return { added: jobs.length, jobs, sources: [...sources] };
   } catch {
     return { added: 0, jobs: [], sources: [] };
+  }
+}
+
+/**
+ * The stored `pay_estimate` JSON, or undefined.
+ *
+ * STRICT, AND FAILS CLOSED. A row is only an estimate if it names its source
+ * and carries both ends of the range: a figure that cannot say whose model it
+ * is must not reach a card, because nothing downstream could then label it, and
+ * one end of a percentile spread is half a statistic rather than a floor.
+ *
+ * The column is new and all but empty — the feed that writes it is refused at
+ * the moment (see the Glassdoor note in workers/jobs-cron/ARCHIVE.md) — so
+ * undefined is the ORDINARY case here, not the error case.
+ */
+function parsePayEstimate(v: unknown): AdvertisedJob["payEst"] {
+  if (typeof v !== "string" || !v) return undefined;
+  try {
+    const o = asRecord(JSON.parse(v));
+    const src = str(o.src);
+    const lo = num(o.lo);
+    const hi = num(o.hi);
+    if (!src || !lo || !hi || lo <= 0 || hi <= 0) return undefined;
+    return {
+      src,
+      lo,
+      hi,
+      cur: str(o.cur) || undefined,
+      per: str(o.per) || undefined,
+      on: str(o.on) || undefined,
+    };
+  } catch {
+    return undefined;
   }
 }
 
@@ -559,6 +632,7 @@ function regionMatcher(src: string | undefined): RegExp {
 }
 
 export const getOpenRoles = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator(
     (data: { company: string; id?: string; country?: string; where?: string; region?: string }) =>
       data,
@@ -683,6 +757,13 @@ export const getOpenRoles = createServerFn({ method: "GET" })
     //    normalised title so the same ad on both boards is only counted once.
     //    For markets Adzuna doesn't cover (country ''), The Muse is the sole
     //    source.
+    // A `liveBoardsAnswered` flag lived here, to tell "Adzuna failed" from
+    // "Adzuna holds nothing" so the archive fallback could decide whether to
+    // count adzuna/muse rows as well. It is gone with the decision: the
+    // archive now counts every source unconditionally, so whether the live
+    // fetch answered no longer changes the number — only whether there is a
+    // sample to fall back ON when the archive is empty, which `out` already
+    // says.
     if (!out) {
       const az = country ? await fromAdzuna(company, country, where) : null;
       const museJobs = await fromMuse(company, region);
@@ -721,44 +802,56 @@ export const getOpenRoles = createServerFn({ method: "GET" })
       }
     }
 
-    // Fold in every OTHER source's current listings from the D1 archive (chiefly
-    // SEEK, scraped daily off-Worker) so the open-roles figure is a deduped union
-    // of all current vacancies for this company as at today — not just the live
-    // Adzuna/Muse fetch. Deduped by normalised title against the live sample.
-    // (Gov agencies returned earlier — their board is their single source.)
-    // Runs even when Adzuna/Muse returned nothing (out === null), so a company
-    // covered ONLY by an archive source — e.g. the Chinese roster companies whose
-    // vacancies come from Zhaopin, or any employer Adzuna/Muse don't index —
-    // still surfaces its listings instead of showing a false zero.
+    /**
+     * THE ARCHIVE IS THE ANSWER WHEREVER IT HAS ONE, AS AT YESTERDAY.
+     *
+     * The headline and the card's vacancy chart are meant to be one figure.
+     * They were built from different places — the headline summed a LIVE
+     * Adzuna/Muse fetch plus the archive's other sources, the chart read the
+     * archive alone — so even with the same dedupe they could not agree: the
+     * live fetch sees ads posted this morning, and the chart's last point is
+     * yesterday, which structurally cannot contain them. CBH Group read 12
+     * against a chart of 11 for precisely that.
+     *
+     * So when the archive holds rows for this company, its own as-at-yesterday
+     * count IS the headline: same rows, same day, same dedupe as the chart's
+     * last point, by construction rather than by two code paths being kept in
+     * step. The live fetch still runs — it is what WRITES those rows (see
+     * archiveJobs above) and it supplies the sample when the archive is empty
+     * — but it no longer adds to the count.
+     *
+     * `includeLiveBoards` is true here for the same reason: Adzuna and Muse
+     * rows are in the archive like any other source, and the exclusion that
+     * once kept them out existed only to avoid double-counting them against
+     * the live fetch, which no longer contributes.
+     *
+     * WHEN THE ARCHIVE HAS NOTHING the live answer stands. That is not an
+     * inconsistency: a company with no archived rows has no vacancy chart
+     * either (buildCompanyCard needs two points and says so), so there is no
+     * second number for it to disagree with — and reporting zero because our
+     * own history has not reached an employer yet would be the false zero this
+     * whole path was fixed to avoid.
+     */
     if (data.id) {
-      const extra = await currentFromArchive(data.id, out ? out.jobs : []);
-      if (extra.added > 0) {
+      const archived = await currentFromArchive(data.id, [], true);
+      if (archived.added > 0) {
         // Every `portal-<platform>` source is the employer's own careers site;
         // the platform suffix is an implementation detail of how we read it,
         // not something a reader of the card should be shown. Collapsing them
         // also stops a company on two portals (Brambles, Transurban) reading
         // as two sources.
-        const extraLabels = [
+        const labels = [
           ...new Set(
-            extra.sources.map((s) =>
+            archived.sources.map((s) =>
               s.startsWith("portal-") ? "Careers site" : ARCHIVE_SOURCE_LABEL[s] || s,
             ),
           ),
         ];
-        if (out) {
-          const label = [out.source, ...extraLabels].filter(Boolean).join(" + ");
-          out = {
-            count: out.count + extra.added,
-            source: label,
-            jobs: [...out.jobs, ...extra.jobs].slice(0, 60),
-          };
-        } else {
-          out = {
-            count: extra.added,
-            source: extraLabels.filter(Boolean).join(" + ") || "Archive",
-            jobs: extra.jobs.slice(0, 60),
-          };
-        }
+        out = {
+          count: archived.added,
+          source: labels.filter(Boolean).join(" + ") || "Archive",
+          jobs: archived.jobs.slice(0, 60),
+        };
       }
     }
 
@@ -774,6 +867,7 @@ export const getOpenRoles = createServerFn({ method: "GET" })
 // Stored open-roles history for a company, oldest → newest. Empty until the
 // company has been queried at least once (history builds forward from now).
 export const getRolesHistory = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
     const kv = await getKV();

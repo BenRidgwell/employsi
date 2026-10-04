@@ -39,7 +39,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // Perenti, its closest listed peer (mining equipment maintenance).
       ["MAD", "Mader Group", ENR],
       ["OBM", "Ora Banda Mining", ENR],
-      ["PDI", "Predictive Discovery", ENR],
+      // Renamed 2026: Predictive Discovery is PDI Gold Limited, ticker unchanged
+      // ("PDI Gold (ASX: PDI, TSX: PDI)", pdigold.com, read 2026-09-30; the old
+      // predictivediscovery.com redirects there). Still 4 Charles Street, South
+      // Perth. The id is rosterId(city, ticker), so it does not move.
+      ["PDI", "PDI Gold", ENR],
       ["PRN", "Perenti", ENR],
       ["RSG", "Resolute Mining", ENR],
       // Added 2026-10-04 for talent flows: 16 moves, 11 of them into
@@ -161,8 +165,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["CGF", "Challenger", FIN],
       ["CHC", "Charter Hall", FIN],
       ["CIP", "Centuria Industrial REIT", FIN],
-      ["CLW", "Charter Hall Long WALE REIT", FIN],
-      ["CQR", "Charter Hall Retail REIT", FIN],
+      // Charter Hall Long WALE REIT (CLW) and Charter Hall Retail REIT (CQR)
+      // were removed on 2026-09-30. Both are listed trusts externally managed
+      // by Charter Hall Group (CHC, above), with no staff of their own — so a
+      // card for either could only ever show the manager's hiring. It did: all
+      // four ads the archive held under them (LinkedIn, Jul-Aug 2026) name
+      // "Charter Hall" as the advertiser. sydney-clw and sydney-cqr resolve to
+      // sydney-chc through data/mergedCompanies.ts.
       ["DOW", "Downer Group", IND],
       ["DRO", "Droneshield", IND],
       ["EDV", "Endeavour Group", CON],
@@ -217,7 +226,13 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["SUL", "Super Retail Group", CON],
       ["DMP", "Domino's Pizza Enterprises", CON],
       ["ALQ", "ALS Limited", IND],
-      ["SMR", "Stanmore Resources", ENR],
+      // Stanmore Resources (SMR) was removed from this list on 2026-09-30: it
+      // was on the map twice, here as brisbane-smr and as the hand-placed `smr`
+      // (companies.ts), which is the one its career-portal feed writes to and
+      // which is already plotted at its Brisbane office, 12 Creek Street. Both
+      // carried the same WGEA register entry and SEEK advertiser, so every
+      // board ad could land on either card. brisbane-smr resolves to smr
+      // through data/mergedCompanies.ts.
       ["CRN", "Coronado Global Resources", ENR],
       // Renamed 2026: Sayona Mining merged with Piedmont Lithium and became
       // Elevra Lithium Limited, ASX:SYA -> ASX:ELV. Confirmed from the
@@ -323,13 +338,17 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["00823", "Link REIT", FIN],
       ["00941", "China Mobile", TMT],
       ["00992", "Lenovo Group", TMT],
+      // Xiaomi (01810), Tencent (00700) and China Life (02628) are on the
+      // Beijing and Shenzhen rosters, where they are headquartered, and were
+      // removed from this one on 2026-09-30 — a second pin for one employer,
+      // each with its own slice of the same company's ads. Meituan (03690) was
+      // the same case and was missed; it went on 2026-10-02. The retired
+      // hongkong-* ids resolve through data/mergedCompanies.ts.
       ["01038", "CK Infrastructure Holdings", INF],
       ["01299", "AIA Group", FIN],
-      ["01810", "Xiaomi Corporation", TMT],
       ["01928", "Sands China", CON],
       ["01929", "Chow Tai Fook Jewellery", CON],
       ["02388", "BOC Hong Kong (Holdings)", FIN],
-      ["03690", "Meituan", TMT],
       ["09988", "Alibaba Group Holding", TMT],
       ["00012", "Henderson Land Development", INF],
       ["00016", "Sun Hung Kai Properties", INF],
@@ -342,17 +361,18 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["00288", "WH Group", CON],
       ["00388", "Hong Kong Exchanges and Clearing", FIN],
       ["00669", "Techtronic Industries", IND],
-      ["00700", "Tencent Holdings", TMT],
       ["00001", "CK Hutchison Holdings", INF],
       ["00002", "CLP Holdings", INF],
       ["00003", "Hong Kong and China Gas", INF],
-      ["00005", "HSBC Holdings", FIN],
+      // HSBC Holdings is on the London roster as `london-hsba`, which carries
+      // the Eightfold feed; this HKEX line was a second card for one employer
+      // and was retired on 2026-10-02, its 49 JobStreet rows moving with it.
+      // Hong Kong stays a pin through data/secondaryOffices.ts.
       ["00006", "Power Assets Holdings", INF],
       ["00011", "Hang Seng Bank", FIN],
       ["02318", "Ping An Insurance", FIN],
       ["00883", "CNOOC", ENR],
       ["03988", "Bank of China", FIN],
-      ["02628", "China Life Insurance", FIN],
       ["06862", "Haidilao International", CON],
       ["02020", "Anta Sports Products", CON],
       ["00688", "China Overseas Land & Investment", INF],
@@ -423,7 +443,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["GSK", "GSK", HLT],
       ["DGE", "Diageo", CON],
       ["BATS", "British American Tobacco", CON],
-      ["RIO", "Rio Tinto", ENR],
+      // Rio Tinto is on the Australian roster as `rio`, which carries its
+      // career-portal feed and every aggregator row; this London line was a
+      // second card for one employer and was retired on 2026-10-02. London
+      // stays a pin through data/secondaryOffices.ts.
       ["RR", "Rolls-Royce Holdings", IND],
       ["BA.", "BAE Systems", IND],
       ["HLN", "Haleon", HLT],
@@ -480,7 +503,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["DASH", "DoorDash", TMT],
       ["NET", "Cloudflare", TMT, "NYSE"],
       ["META", "Meta Platforms", TMT],
-      ["EQIX", "Equinix", FIN],
+      // A data-centre REIT: the REIT is its tax structure, the business is
+      // digital infrastructure. Grouped with NextDC (Brisbane), its closest
+      // peer on the roster, rather than with the banks. Was FIN to 2026-09-30.
+      ["EQIX", "Equinix", TMT],
       ["GILD", "Gilead Sciences", HLT],
       ["LRCX", "Lam Research", TMT],
       ["PLD", "Prologis", FIN, "NYSE"],
@@ -527,6 +553,12 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       ["JNJ", "Johnson & Johnson", HLT],
       ["VZ", "Verizon Communications", TMT],
       ["IBM", "IBM", TMT],
+      // Accenture plc is Dublin-headquartered (not a hub) and NYSE-listed, so it
+      // sits here beside IBM; its offices elsewhere — Sydney, Melbourne,
+      // Canberra, London, Tokyo, Chicago … — are secondary-office pins
+      // (secondaryOffices.ts), and its twelve country boards are scraped
+      // daily as `newyork-acn-*` in careerSites.ts.
+      ["ACN", "Accenture", TMT],
       ["PEP", "PepsiCo", CON, "NASDAQ"],
       ["JPM", "JPMorgan Chase", FIN],
       ["PFE", "Pfizer", HLT],
@@ -836,7 +868,10 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
   houston: {
     exchange: "NYSE",
     companies: [
-      ["CVX", "Chevron", ENR],
+      // Chevron is on the Australian roster as `chevron`, which carries the
+      // careers.chevron.com feed; this Houston line was a second card for one
+      // employer and was retired on 2026-10-02. Houston stays a pin through
+      // data/secondaryOffices.ts, and HQ_OVERRIDE names it the head office.
       ["HPE", "Hewlett Packard Enterprise", TMT],
       ["LYB", "LyondellBasell", IND],
       ["PWR", "Quanta Services", INF],
@@ -1159,7 +1194,11 @@ export const CITY_ROSTERS: Record<string, CityRoster> = {
       // Major Beijing private / tech employers (prime Zhaopin hirers).
       ["BYTEDANCE", "ByteDance", TMT, "Private", "ByteDance"],
       ["01024", "Kuaishou", TMT, "HKEX", "Kuaishou"],
-      ["00992", "Lenovo", TMT, "HKEX", "Lenovo"],
+      // Lenovo (00992) was removed from this list on 2026-09-30. It is on the
+      // Hong Kong roster, the listing its career-portal feeds are wired to, and
+      // a second pin here split one employer's ads across two cards — seven
+      // SimplyHired ads were archived under BOTH ids. beijing-00992 resolves to
+      // hongkong-00992 through data/mergedCompanies.ts.
       ["DIDI", "DiDi", TMT, "Private", "DiDi"],
     ],
   },

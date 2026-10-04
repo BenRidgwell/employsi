@@ -112,6 +112,17 @@ const RAW_SKILLS: SkillDef[] = [
       "fixed plant",
       "processing maintenance",
     ],
+    except: [
+      // "SITE Reliability Engineer" IS NOT A MINING JOB, and "reliability
+      // engineer" above claimed all 208 archived rows of it. The two senses
+      // separate cleanly on the word "site": without it the employers are BHP,
+      // Alcoa, Evolution Mining, Fortescue and BlueScope; with it they are
+      // Google, TCS, Macquarie and CBA. Measured 2026-09-29 over 219 rows.
+      //
+      // Excepted here rather than narrowing the term, because "reliability
+      // engineer" is the right term for the 468 industrial rows that keep it.
+      "site reliability",
+    ],
   },
 
   // ── Oil, gas & energy ──────────────────────────────────────────────────
@@ -148,7 +159,17 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Electrical Engineering",
     cat: "Engineering",
-    terms: ["electrical engineer", "electrical engineering", "high voltage", "hv "],
+    // "power systems engineer" is 57 of the unmapped "systems engineer" rows and
+    // is unambiguously this discipline — grid and generation work at Worley,
+    // AECOM and the utilities, not IT infrastructure. See the note in IT &
+    // Systems for why the bare term is refused on both sides.
+    terms: [
+      "electrical engineer",
+      "electrical engineering",
+      "power systems engineer",
+      "high voltage",
+      "hv ",
+    ],
   },
   {
     skill: "Mechanical Engineering",
@@ -721,7 +742,12 @@ const RAW_SKILLS: SkillDef[] = [
   {
     skill: "Cloud & DevOps",
     cat: "Digital",
-    terms: ["cloud", "aws", "azure", "devops", "kubernetes"],
+    // "site reliability" and "sre" are here as well as on the speciality below,
+    // because a speciality only matches inside a parent the title already
+    // claimed — and none of cloud/aws/azure/devops/kubernetes appears in "Site
+    // Reliability Engineer". The child could never fire, so the 219 rows went to
+    // mining by default rather than being contested.
+    terms: ["cloud", "aws", "azure", "devops", "kubernetes", "site reliability", "sre "],
   },
 
   // ── Cloud & DevOps · specialities ────────────────────────────────────────────────────
@@ -749,7 +775,10 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Cloud & DevOps",
     // 49 titles. The gate holds back 204, nearly all of them "platform" used of
     // a business platform rather than an engineering one.
-    terms: ["site reliability", "sre", "platform engineer"],
+    // "sre " with the trailing space, not a bare "sre": the term anchors the START
+    // of a word, so the bare form claims "Sreekanth Consulting" and every other
+    // name beginning those three letters. Same idiom as "physio " and "hv ".
+    terms: ["site reliability", "sre ", "platform engineer"],
   },
   {
     skill: "Cybersecurity",
@@ -817,6 +846,20 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Digital",
     terms: [
       "it support",
+      // "SYSTEMS ENGINEER" IS NOT HERE, DELIBERATELY. 554 archived rows carry it
+      // unmapped and only ~71 are IT: the employers are BAE Systems (172),
+      // Worley, BHP and AECOM alongside Cloudflare, and the titles are power,
+      // control and defence systems engineering as often as infrastructure.
+      // 453 of the 554 are the bare title with nothing to disambiguate it, and a
+      // bare term would hand every one of them to IT while also claiming
+      // "Control Systems Engineer", which Instrumentation & Control already maps
+      // correctly. So only the forms that say which kind they are:
+      "network systems engineer",
+      "linux systems engineer",
+      "windows systems engineer",
+      "infrastructure systems engineer",
+      "security systems engineer",
+      "systems engineer - network",
       // 133 archived titles say "service desk" or "help desk" and 107 of them
       // mapped to NO SKILL AT ALL — "it support" above never reached the words
       // the function is actually advertised under. Found by a gate case for the
@@ -1278,6 +1321,17 @@ const RAW_SKILLS: SkillDef[] = [
       "workforce",
       "employee relations",
       "industrial relations",
+      // "People" as HR's own word, without "and culture" (added 2026-10-02).
+      // Edith Cowan's "Chief People Officer" matched no skill at all, so an HR
+      // search could not find it; measured then, these six phrases named 216
+      // archived titles, ~185 matching nothing — every one an HR role ("People
+      // Advisor", "Associate People Partner", "Head of People Partnering").
+      // "people advis" covers adviser and advisor.
+      "chief people officer",
+      "head of people",
+      "director of people",
+      "people partner",
+      "people advis",
     ],
   },
   // ── Human Resources · specialities ─────────────────────────────────────
@@ -1408,6 +1462,30 @@ const RAW_SKILLS: SkillDef[] = [
       "counselling",
       "counselor",
       "counseling",
+
+      // "commercial" is this skill's broadest term and "Commercial Cleaner" is
+      // its worst collision — the bare word reaches a cleaning job and files it
+      // among the lawyers. Measured over the archive 2026-09-28: 12 distinct
+      // titles, 21 rows, every one of them a cleaning role.
+      //
+      // EXCEPTED ON THE CLEANING WORD, NOT ON "commercial clean", because the
+      // phrase is not always contiguous — "Commercial Full-Time Day Cleaner" and
+      // "Commercial Part-Time Evening Cleaner" put the shift between the two
+      // words, and a phrase except would have quietly kept those two while
+      // looking like it had fixed the class.
+      //
+      // Safe as a blanket rule here: every archived title holding "cleaner" or
+      // "cleaning" AND a commercial/legal word is a cleaning-operations role —
+      // "Cleaning Operations Manager", "Cleaning Services Manager" — and not one
+      // is a commercial or legal job. Checked before adding this, because an
+      // except suppresses the WHOLE skill for the title.
+      //
+      // The same collision at ANZSCO4 is corrected separately, in OVERRIDE in
+      // gen-ivi-skill-demand.py, where code 8112 "Cleaner - commercial" was
+      // handing this skill 136,859 employed Australians. Two mechanisms because
+      // there are two inputs: a classification label and a scraped ad title.
+      "cleaner",
+      "cleaning",
     ],
   },
   // ── Commercial & Legal · specialities ──────────────────────────────────
@@ -1849,6 +1927,10 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "banking",
       "bank worker",
+      // 622 rows over 358 titles, unmapped. Checked who advertises it before
+      // placing it here rather than under Sales: HSBC 238, UOB 124, OCBC 115,
+      // HDFC 43, Westpac 34 — retail and wealth banking, not general B2B sales.
+      "relationship manager",
       "lending",
       "credit",
       "mortgage",
@@ -1959,6 +2041,26 @@ const RAW_SKILLS: SkillDef[] = [
       "midwives",
       "nurse manager",
       "nurse educator",
+
+      // THE TWO ASSISTIVE TITLES THAT NEVER SAY "NURSE". An Assistant in
+      // Nursing reaches "nursing" on its own; a Patient Care Technician — the
+      // US wording for the same unlicensed bedside role — says neither word,
+      // and was the third-largest unmapped title in the archive at 658 rows.
+      // It is here and not only on the speciality below because of the gate:
+      // a child cannot fire unless the title independently claims its parent,
+      // so Nursing Assistants is unreachable without these two terms.
+      //
+      // Measured 2026-10-03 over the last 365 days: "patient care tech" is 60
+      // distinct titles / 774 rows and "patient care assistant" 20 / 44. Both
+      // are deliberately qualified rather than a bare "patient care", which
+      // would also claim the 100-odd Patient Care Coordinator and Patient Care
+      // Manager titles — coordination and management roles, not bedside ones.
+      //
+      // The known cost: "Dialysis Patient Care Technician" (9 rows) now passes
+      // the gate and so also reads as Renal Nursing. That speciality is the
+      // renal WARD rather than the registration, and nine rows do not move it.
+      "patient care tech",
+      "patient care assistant",
     ],
   },
   // ── Nursing · specialities ─────────────────────────────────────────────
@@ -2040,6 +2142,34 @@ const RAW_SKILLS: SkillDef[] = [
     // "HR Generalist (nursing home)" and an "Operations Executive (nursing
     // home)" as nursing specialists.
     terms: ["aged care", "residential aged", "geriatric"],
+  },
+  {
+    skill: "Nursing Assistants",
+    cat: "Health",
+    parent: "Nursing",
+    // Added 2026-10-03, not in the 2026-09-10 mining pass: the candidates were
+    // mined over released markets, where this role is advertised as "Assistant
+    // in Nursing", and the US wordings that make it large arrived with the
+    // overseas feeds. Distinct titles over the last 365 days, measured the same
+    // day: assistant in nursing 163, patient care tech 60, nursing assistant 21
+    // (certified nursing assistant among them), patient care assistant 20,
+    // nursing aide 11, nurse assistant 2, nurse aide 1.
+    //
+    // The unlicensed bedside workforce, which is why it is a speciality OF
+    // nursing rather than a sibling of it: these people work to a nurse's
+    // delegation on a ward. The care workers who do similar work in homes and
+    // residential care are Aged & Disability Care, a top-level skill, and the
+    // gate is what keeps the two apart — "Personal Care Assistant" says
+    // nothing about nursing and never reaches here.
+    terms: [
+      "assistant in nursing",
+      "nursing assistant",
+      "nurse assistant",
+      "patient care tech",
+      "patient care assistant",
+      "nursing aide",
+      "nurse aide",
+    ],
   },
   {
     skill: "Nurse Practitioner",
@@ -2130,6 +2260,10 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Health",
     terms: [
       "physiotherap",
+      // The parent needs it too, or the gate holds the child back: a speciality
+      // only matches inside a parent the title already claimed. See the note on
+      // Physiotherapy's own terms for the 1,938 rows this reaches.
+      "physical therap",
       "occupational therap",
       "podiatr",
       "speech pathol",
@@ -2181,7 +2315,14 @@ const RAW_SKILLS: SkillDef[] = [
     parent: "Allied Health",
     // 386 titles, 22.4%. "physio " with the trailing space is the abbreviation
     // as a whole word; without it the stem already covers physiotherapist.
-    terms: ["physiotherap", "physio "],
+    //
+    // "physical therap" is the AMERICAN NAME FOR THE SAME PROFESSION and was the
+    // single largest gap in the taxonomy: 1,938 archived rows over 1,206 titles
+    // matching NOTHING, measured 2026-09-29, while "physiotherapist" a word away
+    // mapped correctly. US-sourced feeds use it exclusively. Found by running the
+    // 562 occupations of Singapore's Occupational Wage Survey through the matcher
+    // as a vocabulary probe, then ranking the misses by archive volume.
+    terms: ["physiotherap", "physio ", "physical therap"],
   },
   {
     skill: "Speech Pathology",
@@ -2631,6 +2772,19 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "chef",
       "cook",
+      // 334 rows over 164 titles mapped to NOTHING: "F&B Service Expert",
+      // "F&B Supervisor", "Food and Beverage Operations Manager". The trade's
+      // own shorthand, and neither spelling was here. Measured 2026-09-29.
+      "food and beverage",
+      // "f and b", NOT "f&b". norm() rewrites "&" to " and " in the TITLE but
+      // termMatches uses the term verbatim, so any term containing an ampersand
+      // can never match anything. Both spellings of the shorthand reach this one
+      // term because the haystack is normalised before it is tested.
+      "f and b",
+      // 539 rows over 262 titles, unmapped. "Guest Experience Expert" is
+      // Marriott's name for front-of-house, and the phrase is hotel-specific
+      // enough to carry on its own.
+      "guest experience",
       "waiter",
       "barista",
       "bar attendant",
@@ -2711,6 +2865,10 @@ const RAW_SKILLS: SkillDef[] = [
     terms: [
       "construction manager",
       "site manager",
+      // 125 rows over 35 titles unmapped while "site manager" a word away
+      // mapped. The employers are Downer, Georgiou, BMD, Ertech and Lendlease
+      // — contractors, not IT field service. Measured 2026-09-29.
+      "site engineer",
       "superintendent",
       "foreman",
       "building and surveying",
@@ -3043,6 +3201,15 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Sales",
     terms: [
       "sales assistant",
+      // 719 rows over 305 titles matched NOTHING, because "sales consultant" was
+      // a Retail Sales term with no way through this gate. It belongs here and
+      // not on Sales & Business Dev, which was the first attempt: the employers
+      // are Telstra Retail (362), Eagers Automotive (130), Spotlight, Flight
+      // Centre and Reece, and the titles are "Telstra Retail: Customer Service &
+      // Sales Consultant" and "New Vehicle Sales Consultant". Showroom floor,
+      // not business development. check-skills.ts caught the first placement as
+      // a broad/speciality term collision, which is what that rule is for.
+      "sales consultant",
       "checkout",
       "service station",
       "customer service",
@@ -3061,6 +3228,19 @@ const RAW_SKILLS: SkillDef[] = [
       "retail team member",
       "nightfill",
       "shop assistant",
+
+      // The two biggest unmapped titles in the archive were shop-floor retail,
+      // and the reason is the gate rather than the vocabulary: "retail sales"
+      // was a term of the Retail Sales SPECIALITY below and of nothing broad,
+      // so a title saying only "Retail Sales" could never claim the parent and
+      // the child could never fire. Measured 2026-10-03 over the last 365 days:
+      // "retail sales" is 1,385 distinct titles / 6,294 rows — "Retail Sales –
+      // Part Time" (1,725 rows), "Retail Sales Associate" (798) and "Mobile
+      // Associate - Retail Sales" (634) alone — and "retail associate" a
+      // further 606 / 1,010. "retail sales consultant" was already here
+      // through "sales consultant"; these are the wordings that were not.
+      "retail sales",
+      "retail associate",
     ],
   },
 
@@ -3087,6 +3267,9 @@ const RAW_SKILLS: SkillDef[] = [
       "sales consultant",
       "store assistant",
       "retail sales",
+      // Added with the parent's, 2026-10-03: "Retail Associate" is the same
+      // shop floor as "Retail Assistant", and the US feeds word it this way.
+      "retail associate",
     ],
   },
   {
@@ -3309,7 +3492,32 @@ const RAW_SKILLS: SkillDef[] = [
     cat: "Cleaning",
     terms: [
       "cleaner",
+      // "cleaning" WAS MISSING, and the speciality note below already asserted
+      // it was here ("'cleaner' and 'cleaning' are this skill's own core
+      // terms"), so the gap was invisible to anyone reading for it. Terms match
+      // at the start of a word, so "cleaner" cannot reach "Cleaning Manager",
+      // "Cleaning Technician" or "Post Renovation Cleaning" — measured
+      // 2026-09-28: of 1,174 archived titles holding "clean", 210 mapped to NO
+      // skill at all, and the cleaning-operations managers among them were the
+      // work this skill is named for.
+      //
+      // It cannot over-reach into the cleanroom titles that share the stem:
+      // "Cleanroom Operator" and "Clean Room Assembler" do not start a word with
+      // "cleaning", and semiconductor work is not this skill.
+      "cleaning",
+      // "cleanliness" is Marriott's word for the job — "Hotel Cleanliness
+      // Expert" is 67 archived rows on its own, and 126 rows over 54 titles
+      // mapped to NO skill because neither "cleaner" nor "cleaning" reaches it.
+      "cleanliness",
       "housekeeper",
+      // AND "housekeeping" WAS MISSING BESIDE "housekeeper", the same inflection
+      // gap as cleaner/cleaning and by far the largest: 535 rows over 215 titles
+      // with no skill at all, measured 2026-09-28. "Housekeeping Attendant" and
+      // "Assistant Housekeeping Manager" are the shapes — hotel and hospital
+      // room work, which is what this skill is for. The ones that did map landed
+      // on Leadership & Coordination alone, so a housekeeping manager counted as
+      // a manager and not as cleaning at all.
+      "housekeeping",
       "laundry",
       "caretaker",
       "handyperson",
@@ -3331,6 +3539,16 @@ const RAW_SKILLS: SkillDef[] = [
       "facilities coordinator",
       "facilities officer",
       "facilities supervisor",
+    ],
+    except: [
+      // Semiconductor process work names cleaning steps that are not cleaning
+      // services: "Process Engineer (Wafer Cleaning and Lamination)" and
+      // "MSAT / CQ Engineer (Cleaning / SIP Validation)" are the two in the
+      // archive, both reached by the "cleaning" term added above. The cleanroom
+      // titles beside them were never claimed and still are not, so this only
+      // makes that boundary hold for the word "cleaning" too.
+      "wafer",
+      "semicon",
     ],
   },
 
@@ -3718,6 +3936,26 @@ export interface SkillContext {
  * principal", "school principal") are separate terms and are never gated.
  */
 const GATED_TERMS: Record<string, RegExp> = {
+  // "HR" is two other things in a job title, and both are common.
+  //
+  //   - HEAVY RIGID, the truck licence class: "HR Driver", "HR Truck Driver",
+  //     "HR Multi System Operator", "min HR licence", "HR LF required". Measured
+  //     2026-10-02: ~150 archived rows, every one tagged Human Resources beside
+  //     the Driving & Transport they already, correctly, carried.
+  //   - AN HOUR: "$15.00/hr", "12 hr DS NS", "up to $41/hr". ~180 rows, the
+  //     largest of them Amazon delivery drivers, production operators and nurses.
+  //
+  // So "hr " counts only in a title with neither: no hourly form ("/hr",
+  // "per hr", or a number JOINED to it — "12 hr", "12hr", "12-hr" — unless an
+  // HR job word follows, so "District 3 HR Specialist", "Intern 2027 - HR" and
+  // "RH / HR Advisor" keep HR), no licence word (licence, ticket, rigid, the LF/MR classes — not
+  // HC, which is also "headcount"), and no vehicle word anywhere (driver,
+  // truck, tipper, tanker, rear or side lift, water cart, forklift) or an
+  // "operator" after it. A real HR role still matches on its other terms —
+  // "human resources", "people and culture", "people partner" — which are not
+  // gated.
+  "hr ":
+    /^(?!.*(?:(?:\/|\bper)\s*hr\b(?!\s*(?:and\s+|\/\s*)?(?:specialist|manager|advis|business|executive|assistant|officer|coordinator|generalist|partner|admin|director|lead|consult|analyst|intern))|(?<![a-z])\d\s?-?hr\b(?!\s*(?:and\s+|\/\s*)?(?:specialist|manager|advis|business|executive|assistant|officer|coordinator|generalist|partner|admin|director|lead|consult|analyst|intern))|\bhr\s+(?:lf|mr|licen[cs]e|ticket)\b|\b(?:licen[cs]e|ticket|rigid)\b|\b(?:drivers?|truck|tipper|tanker|rear lift|side lift|water cart|forklift)\b|\bhr\b.*\boperators?\b))/i,
   principal:
     /educat|school|colleg|campus|academy|kindergarten|preschool|primary|secondary|teach|curriculum|student|pupil|tafe|universit|childcare|early learning/i,
   // "AWS" is Amazon Web Services in a technology title and the ANNUAL WAGE

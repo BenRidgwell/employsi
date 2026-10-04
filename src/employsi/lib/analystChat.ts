@@ -85,7 +85,7 @@ export function detectChat(question: string): ChatIntent | null {
  * and an explanation that drops it is worse than no explanation — the user came
  * here asking how far to trust the number.
  */
-const METHOD: Record<DataIntent, string> = {
+export const METHOD: Record<DataIntent, string> = {
   // THE FIRST VERSION OF THIS SAID A ROLE ON TWO BOARDS COLLAPSES TO ONE ROW.
   // It does not. jobKey in jobArchive.ts puts the SOURCE first, so the same
   // role on SEEK and on Adzuna is two keys and two rows, and the answer is a
@@ -94,16 +94,23 @@ const METHOD: Record<DataIntent, string> = {
   // backwards is worse than no explanation, so what it was hiding is now said
   // outright — here, and in LIMITS below where it belongs.
   volume:
-    'I counted the ads themselves. Every vacancy the nightly crawl sees is a row in the archive, keyed on the board it came from plus the title, employer and location, so re-seeing the same ad tomorrow updates that row rather than adding another. "Open" means an ad the crawl still saw on the last day every feed had reported — not today, because today is still being collected and would read as a fall.',
+    'I counted the ads themselves, out of employsi\'s job vacancy database. Every vacancy the nightly crawl sees is a row in it, keyed on the feed it came from plus the title, employer and location, so re-seeing the same ad tomorrow updates that row rather than adding another. "Open" means an ad the crawl still saw on the last day every feed had reported — not today, because today is still being collected and would read as a fall.',
   skills:
-    "I read the skills out of the ad titles with the same matcher the rest of employsi uses, so a role maps the same way wherever it enters. The ranking is a count of live ads naming each skill, not a weighting or a score — if a skill is second, more employers wrote it down.",
+    "From employsi's job vacancy database. I read the skills out of the ad titles with the same matcher the rest of employsi uses, so a role maps the same way wherever it enters. The ranking is a count of live ads naming each skill, not a weighting or a score — if a skill is second, more employers wrote it down.",
   payBySkill:
     "The same disclosed ads the plain pay median comes from, split by the skills each ad names. A skill is ranked only when at least 12 live ads both state a salary and name it, and the count rides on every bar so you can see which rankings are thin. One currency wins the scope — ranking across currencies would rank exchange rates — and a speciality is folded into the skill it narrows so the same ads are not counted twice. The premium is each skill's median against the median of every disclosed ad in the same scope on the same day, so the two sides are measured identically.",
-  pay: 'Only from ads that actually state a salary. The archive stores whatever each board printed, which is a monthly range on one board and a banded string on another, so each is parsed to an annual figure tagged with its currency and anything unparseable is dropped rather than guessed at. I quote a median only when one currency dominates the sample, and I tell you how many of the live ads disclosed pay — usually a minority, because most boards publish "competitive" instead of a number.',
+  pay: 'From employsi\'s job vacancy database, and only from ads that actually state a salary. It stores whatever each ad printed, which is a monthly range in one and a banded string in another, so each is parsed to an annual figure tagged with its currency and anything unparseable is dropped rather than guessed at. I quote a median only when one currency dominates the sample, and I tell you how many of the live ads disclosed pay — usually a minority, because most ads say "competitive" instead of a number.',
   duration:
-    "From ads that have come DOWN, measured from the ad's own posted date to the day it stopped appearing. It needs at least 40 such ads before I'll quote a figure, and some boards — Indeed and the state government sites — publish no posted date at all, so a scope leaning on those stays thin. Read it as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn and I can't tell those apart.",
+    "From employsi's job vacancy database, over ads that have come DOWN, measured from the ad's own posted date to the day it stopped appearing. It needs at least 40 such ads before I'll quote a figure, and some feeds publish no posted date at all, so a scope leaning on those stays thin. Read it as how long a vacancy stays advertised, not as time to fill: employsi sees ads, not hires, so an ad disappearing might mean filled, expired or withdrawn and I can't tell those apart.",
+  // THIS ONE IS NOT THE AD DATABASE AND MUST NOT SAY IT IS. The attribution is
+  // employsi's, as asked, but the dataset is a published monthly statistical
+  // series rather than the crawled ads — a monthly count for July against what
+  // is open today — and that distinction changes what the number means. It is
+  // the reason this intent is routed separately in analystAnswer.ts, so an
+  // explanation that flattened the two would be describing a measurement the
+  // code does not make.
   history:
-    "That one isn't from the ad archive at all — it's the national vacancy series, published monthly by the statistical agencies (Jobs and Skills Australia, StatCan, MRSD, MBIE, ONS, Eurostat, BLS). The archive only runs back to the day collection started, so asking it how a market has moved since 2019 would produce a confident answer about nothing. Anything long-run comes from the official series and anything about what is open right now comes from the archive, and I route on that rather than stretching either.",
+    "That one isn't from the ad database at all — it's employsi's national vacancy series, a published monthly count of vacancies by occupation and area. The ad database only runs back to the day collection started, so asking it how a market has moved since 2019 would produce a confident answer about nothing. Anything long-run comes from the series and anything about what is open right now comes from the ads, and I route on that rather than stretching either.",
 };
 
 /**
@@ -116,18 +123,24 @@ const METHOD: Record<DataIntent, string> = {
  * question rather than trailing off.
  *
  * THE VOLUME ONE IS THE REASON THIS EXISTS IN THIS FORM. A count of live ads
- * double-counts a role advertised on two boards, because the source is part of
- * the key. That is a real limit of every volume figure this analyst gives, it
- * was written down nowhere the user could see it, and the explanation that
- * should have carried it said the opposite. Stating a limit plainly is the
- * cheapest honesty available; hiding it inside a method paragraph is not.
+ * used to double-count a role advertised on two boards, because the source is
+ * the first field of the archive's key. That was a real limit of every volume
+ * figure this analyst gave, it was written down nowhere the user could see it,
+ * and the explanation that should have carried it said the opposite.
+ *
+ * It is FIXED now, not merely disclosed: every row carries a `role_key` —
+ * employer, city and normalised title — and the volume counts are
+ * COUNT(DISTINCT role_key). The limit this entry states changed with it, and
+ * had to: a card describing a weakness the product no longer has is the same
+ * failure as one hiding a weakness it does, pointed the other way. What
+ * replaced it is the fold's OWN limit, which is real and smaller.
  *
  * Each entry ends with a question the router actually answers, so "tell me
  * more" always leaves somewhere to go.
  */
-const LIMITS: Record<DataIntent, string> = {
+export const LIMITS: Record<DataIntent, string> = {
   volume:
-    "What it can't tell you: how many JOBS there are. One role advertised on two boards is two rows here, because the board is part of what makes an ad distinct, so a market whose employers post everywhere reads higher than one that posts once. It also only covers employers employsi crawls, and an ad staying up is not proof the job is still unfilled. Treat it as advertising activity, which is what it measures, and lean on the direction more than the level. Ask me which skills those ads name, or the same question about another city — the double-counting is roughly consistent between places, so comparisons hold up better than the raw number.",
+    "What it can't tell you: how many JOBS there are. One role is counted once however many boards carry it — employer, city and title together are what make it distinct — but that same fold means an employer advertising two genuinely different jobs under one title in one city reads as one. It also only covers employers employsi crawls, and an ad staying up is not proof the job is still unfilled. Treat it as advertising activity, which is what it measures, and lean on the direction more than the level. Ask me which skills those ads name, or the same question about another city.",
   skills:
     "What it can't tell you: how hard a skill is to hire. The ranking counts ads that NAME the skill in their title, so a skill an employer wants but writes in the body instead is invisible to it, and a common word beats a rare and valuable one every time. A speciality is folded into the skill it narrows, so the rank you see is the family. Ask me how long ads naming those skills stay up — that gets closer to which ones employers struggle to fill.",
   pay: 'What it can\'t tell you: what people are paid. It is advertised pay, from the minority of ads that state any, and that minority is not a random sample — public-sector and award-covered roles publish bands as a matter of course while senior private roles publish "competitive", so a median over what is disclosed sits low against the real market. Whether a figure is base or package depends on who wrote the ad. Ask me how it compares against the wider market, which reads the same skew on both sides and so cancels most of it.',
@@ -136,7 +149,7 @@ const LIMITS: Record<DataIntent, string> = {
   duration:
     "What it can't tell you: time to fill. It measures how long an ad stayed up, and an ad coming down might mean filled, expired, withdrawn or re-posted under a new title — employsi sees ads, not hires, and cannot tell those apart. It only sees runs that have FINISHED, so a long-running vacancy that is still open is not in the figure at all, which biases it short. Boards that publish no posted date drop out entirely. Ask me which skills are most in demand, and read the two together.",
   history:
-    "What it can't tell you: anything about one employer. The national series is published per occupation and per area, so there is no company in it, and the agencies revise recent months as more returns come in. It is also a different dataset from every other answer here — official monthly counts against ads employsi crawled — so the two are not comparable figures and I do not subtract one from the other. Ask me what is open right now for the same place, and read them as two independent readings rather than one series.",
+    "What it can't tell you: anything about one employer. The national series is published per occupation and per area, so there is no company in it, and recent months are revised as more returns come in. It is also a different dataset from every other answer here — published monthly counts against ads employsi crawled — so the two are not comparable figures and I do not subtract one from the other. Ask me what is open right now for the same place, and read them as two independent readings rather than one series.",
 };
 
 /**
@@ -152,7 +165,7 @@ export function chatReply(
 ): string {
   switch (kind) {
     case "greeting":
-      return "Hello. I read employsi's vacancy archive — ask me how many roles are open somewhere, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Name a city, country or company and I'll answer about that one.";
+      return "Hello. I read employsi's job vacancy database — ask me how many roles are open somewhere, which way demand is moving, what the ads disclose about pay, or which skills employers are asking for. Name a city, country or company and I'll answer about that one.";
 
     case "thanks":
       return last?.answer
@@ -160,7 +173,7 @@ export function chatReply(
         : "Any time. Ask away whenever you're ready.";
 
     case "capabilities":
-      return "Five things, all of them queries over real rows. How many vacancies are open in a place or at a company, and which way that is moving. Which skills employers are asking for. What the ads disclose about pay, where enough of them disclose anything. How long ads stay up. And how a market has moved over years, which comes from the national statistical series rather than the ad archive. Ask \"why?\" after any answer and I'll tell you how it was measured. I can't tell you about applicants, fill rates or how contested a market is — employsi sees ads, not hires.";
+      return "Five things, all of them queries over real rows. How many vacancies are open in a place or at a company, and which way that is moving. Which skills employers are asking for. What the ads disclose about pay, where enough of them disclose anything. How long ads stay up. And how a market has moved over years, which comes from employsi's national vacancy series rather than its job vacancy database. Ask \"why?\" after any answer and I'll tell you how it was measured. I can't tell you about applicants, fill rates or how contested a market is — employsi sees ads, not hires.";
 
     case "more": {
       const intent = last?.intent;
@@ -175,11 +188,17 @@ export function chatReply(
       if (!intent || intent === "unknown" || !last?.answer) {
         return "Nothing to explain yet — ask me something first and I'll tell you exactly how the figure was arrived at.";
       }
-      const how = METHOD[intent];
-      // The source line is already computed and already on screen under the
-      // answer; repeating it here puts the window and the row count in the
-      // sentence that explains them rather than a caption away from it.
-      return last.answer.source ? `${how}\n\nFor that answer: ${last.answer.source}.` : how;
+      // THE SOURCE LINE USED TO BE APPENDED HERE — "For that answer:
+      // employsi vacancy archive · Perth · to 2 Oct 2026." It made sense while
+      // that caption sat under every answer; the reply was pulling it into the
+      // sentence that explains it. The caption is gone by request, and
+      // reinstating it inside the one reply that is not a caption would be
+      // putting it back through the side door.
+      //
+      // METHOD is untouched, and still names the boards and the agencies. This
+      // reply only runs when someone has ASKED how a figure was arrived at, and
+      // answering that evasively is the failure these texts exist to prevent.
+      return METHOD[intent];
     }
   }
 }

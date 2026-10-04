@@ -20,6 +20,8 @@ import { getMostViewed, type ViewedRow } from "../../lib/viewsFn";
 import { CardLoader } from "./CardLoader";
 import { CITY_CONTINENT } from "../../data/geo";
 import { CITY_COUNTRY } from "../../data/mapboxWorldGeo";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
 
 function ViewedIcon({ kind }: { kind: ViewedItem["kind"] | "city" }) {
   const c = {
@@ -179,6 +181,9 @@ export function WhatsTrendingPane() {
   // Open whenever toggled, on any layer — the mobile tab bar can trigger it from
   // the local view too, where the old `zoomedOut` gate left it silently closed.
   const open = trendingOpen;
+  const dragRef = useDraggablePane<HTMLElement>(open);
+  // Click-away without a scrim, so the map behind stays zoomable.
+  useClickAway(open, closeTrending, ".trendpane");
 
   // WHICH AREA THE PANE IS ABOUT — the one the map is currently showing.
   //
@@ -319,8 +324,11 @@ export function WhatsTrendingPane() {
 
   return (
     <>
-      {open && <div className="panescrim" onClick={closeTrending} />}
-      <aside className={`briefpane trendpane ${open ? "open" : ""}`} aria-hidden={!open}>
+      <aside
+        className={`briefpane trendpane ${open ? "open" : ""}`}
+        aria-hidden={!open}
+        ref={dragRef}
+      >
         {firstLoad && <CardLoader />}
         <div className="briefhead">
           {/* Title and the close button, set like the filter card's header. The

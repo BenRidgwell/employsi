@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { LIVE_FEEDS_ONLY_SQL, type D1Like } from "./jobArchive";
+import { subscriberOnly } from "./subscriberOnly";
+import { ROLE_COUNT_SQL } from "./roleKey";
+import { LIVE_FEEDS_ONLY_SQL, LIVE_ON_DAY_SQL, liveOnDaySql, type D1Like } from "./jobArchive";
 import {
   SKILL_CATEGORY,
   dropRedundantKin,
@@ -163,6 +165,16 @@ export interface AnalystAnswer {
   bars?: AnalystBar[];
   /** Drawn above the stats when the answer has a series worth seeing. */
   chart?: AnalystChart;
+  /**
+   * Where the figures came from, and over what window.
+   *
+   * NO LONGER SHOWN IN THE REPLY. It used to render as a caption under every
+   * answer and was removed by request, so it is NOT dead code on its way out:
+   * an exported chart still carries it, because a chart that leaves the app
+   * without the scope and window behind it is a worse fault than a caption
+   * nobody wanted. It is also deliberately NOT passed to the LLM path — see
+   * analystLlmClient — so the model cannot reinstate it in prose.
+   */
   source?: string;
 }
 
@@ -434,8 +446,18 @@ const minusDays = (iso: string, n: number) => {
  * It also spans collection gaps: an ad first seen on the 3rd and last seen on
  * the 9th is live on the 6th whether or not any row carries last_seen = the
  * 6th, so a day the crons skipped does not read as an empty market.
+ *
+ * THE TRAILING EDGE IS PER FEED, which is the one thing the paragraph above
+ * does not cover. "Last seen on or after D" is only answerable by a feed that
+ * ran on or after D; a weekly feed's newest sighting is up to a week old at any
+ * moment, so holding its rows to that test reports its employers as advertising
+ * nothing for six days out of seven — measured on ECU's Chief People Officer ad,
+ * 2026-10-03. LIVE_ON_DAY_SQL (jobArchive.ts) gives each source the grace its
+ * cadence earns, and is byte-identical to the old clause for every nightly feed.
+ *
+ * Still two binds, still the same day twice, so every call site is unchanged.
  */
-const LIVE_ON_DAY = "first_seen <= ? AND last_seen >= ?";
+const LIVE_ON_DAY = LIVE_ON_DAY_SQL;
 
 // Re-exported: check-analyst-scope.ts asserts it from here.
 export { coverageDay };
@@ -495,6 +517,7 @@ export interface AnalystRequest {
 // overrun the request-line limit and fail as a 414 rather than an answer. The
 // call is a read either way; only the transport changed.
 export const askAnalyst = createServerFn({ method: "POST" })
+  .middleware([subscriberOnly])
   .validator((data: AnalystRequest) => data)
   .handler(async ({ data }): Promise<AnalystAnswer> => {
     const { question, scope, hubs, country, sector, companyIds } = data;
@@ -541,6 +564,11 @@ export const askAnalyst = createServerFn({ method: "POST" })
           .first(),
         db
           .prepare(
+            // ROWS, deliberately. This is feed health — how much each SOURCE
+            // has lately delivered — so the question is how many rows a board
+            // wrote, not how many distinct roles they describe. Deduping here
+            // would hide a board that has gone quiet behind another that
+            // carries the same jobs.
             `SELECT MAX(last_seen) AS mx, COUNT(*) AS n FROM jobs
                WHERE ${where} AND last_seen >= ? GROUP BY source`,
           )
@@ -559,7 +587,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
         text: sectorOn
           ? `The archive holds no vacancies for ${sector} employers in ${scope.label} yet. A sector filter only sees ads I can attribute to a named employer in that sector — board listings I haven't matched to a company are left out rather than guessed at — so this can read empty even where the wider market is busy. Try another sector, or set it back to all sectors.`
           : `The archive holds no vacancies for ${label} yet, so there's nothing I can tell you about it without making it up. Try a wider scope, or one of the cities with live coverage.`,
-        source: "employsi vacancy archive",
+        source: "employsi job vacancy database",
       };
     }
     /**
@@ -622,7 +650,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // was wording is `canCompare` below, which is code and still runs; the
     // sentence was only ever restating the date it sat next to.
     const archiveNote =
-      `employsi vacancy archive · ${label} · to ${fmtDay(latest)}` +
+      `employsi job vacancy database · ${label} · to ${fmtDay(latest)}` +
       // The archive runs to `latest`, but the figures are measured to the last
       // finished day. BOTH DAYS STAY, because a reader who checks will find
       // rows dated after the day the answer claims and needs to see which day
@@ -636,7 +664,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
     // Live = open on the reference day, by the same reconstruction the
     // comparison below uses. See LIVE_ON_DAY.
     const liveRow = await db
-      .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
+      .prepare(`SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
       .bind(...binds, asOf, asOf)
       .first();
     const live = Number(liveRow?.n) || 0;
@@ -1079,7 +1107,7 @@ export const askAnalyst = createServerFn({ method: "POST" })
       if (all.length < MIN_DURATION_ADS) {
         return {
           intent,
-          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Indeed and the state government boards publish no posted date at all, so a scope leaning on those stays thin.`,
+          text: `I can't give you a duration read for ${label} yet. It needs ads that have come down (so the run is complete) AND that carried their own posted date, and only ${plural(all.length, "ad")} here meet both — under the ${MIN_DURATION_ADS} I'd want before quoting a figure. Some feeds publish no posted date at all, so a scope leaning on those stays thin.`,
           source: archiveNote,
         };
       }
@@ -1142,20 +1170,20 @@ export const askAnalyst = createServerFn({ method: "POST" })
         // The comparison end. `live` above is the same count on `asOf`, so the
         // two sides differ only in which day they ask about.
         db
-          .prepare(`SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
+          .prepare(`SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}`)
           .bind(...binds, then, then)
           .first(),
         // Bounded at the top too: an ad first seen on a day the answer does not
         // yet claim to cover is not "new in the last N days" of that answer.
         db
           .prepare(
-            `SELECT COUNT(*) AS n FROM jobs WHERE ${where} AND first_seen >= ? AND first_seen <= ?`,
+            `SELECT ${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND first_seen >= ? AND first_seen <= ?`,
           )
           .bind(...binds, then, asOf)
           .first(),
         db
           .prepare(
-            `SELECT company, COUNT(*) AS n FROM jobs
+            `SELECT company, ${ROLE_COUNT_SQL} AS n FROM jobs
                WHERE ${where} AND ${LIVE_ON_DAY} AND company IS NOT NULL AND company <> ''
                GROUP BY company ORDER BY n DESC LIMIT 4`,
           )
@@ -1271,6 +1299,7 @@ export interface SkillPay {
 const PAY_MIN_SAMPLE = 20;
 
 export const getSkillPay = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string }) => data)
   .handler(async ({ data }): Promise<SkillPay | null> => {
     const skill = (data.skill || "").trim();
@@ -1296,15 +1325,22 @@ export const getSkillPay = createServerFn({ method: "GET" })
       const rows = await db
         .prepare(
           `SELECT salary, hub FROM jobs
-             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2
+             WHERE ${liveOnDaySql(1)} AND skills LIKE ?2
                AND salary IS NOT NULL AND salary <> ''`,
         )
         .bind(asOf, quoted)
         .all();
+      // ROWS, deliberately, because of what it is divided BY. This is the
+      // denominator of "x% of what's open discloses pay", and the numerator is
+      // the count of salary-bearing ROWS fetched just above. Making this a
+      // role count would put roles under rows and report a share that is
+      // mostly the difference between the two methods — the exact comparison
+      // CLAUDE.md warns never to make. Both sides move together or neither
+      // does.
       const liveRow = await db
         .prepare(
           `SELECT COUNT(*) AS n FROM jobs
-             WHERE first_seen <= ?1 AND last_seen >= ?1 AND skills LIKE ?2`,
+             WHERE ${liveOnDaySql(1)} AND skills LIKE ?2`,
         )
         .bind(asOf, quoted)
         .first();

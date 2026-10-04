@@ -16,11 +16,16 @@ import { CAREER_LAND_PATH, projectHotspot } from "../../data/careerLand";
 import { HEAT_RAMP_FLOOR, heatGradientCss, heatRgb } from "../../lib/heatRamp";
 import { IconClose } from "../ActionIcons";
 import { CardLoader } from "./CardLoader";
+import { ChartTooltip } from "./ChartTooltip";
 import { FollowGlyph } from "../GlobalSearch";
 import { SKILL_PARENT, searchSkillMatches } from "../../data/skillsTaxonomy";
 import { describeSkills } from "../../lib/describeSkills";
 import { demandLevel } from "../../lib/skillHeat";
 import { useOntologyReady } from "../../hooks/useOntologyReady";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
+import { useClickAway } from "../../hooks/useClickAway";
+import { onetForRole } from "../../lib/onet";
+import { SKILL_ICONS, skillIcon } from "../../lib/skillCard";
 
 /**
  * The Career Pathway Card, built from `Career_Pathway_Card.html` (2026-09-25).
@@ -52,7 +57,14 @@ const PX = 240;
 const CW = 168;
 const CH = 96;
 const ROW0 = 34;
-const ROWH = 142;
+/** Space under the last lane for the edge labels that hang below the cards. */
+const LABEL_ROOM = 52;
+/** How far below the cards' bottom edge an edge label starts. */
+const LABEL_DROP = 14;
+// 160, not the design's 142: the skill label on each step now hangs BELOW the
+// cards (see the edge labels), and a two-line one needs the room before the
+// next lane's heading.
+const ROWH = 160;
 const INK = "var(--neutral-900,#1c1c1e)";
 
 const MONA = "'Mona Sans Variable','Mona Sans',system-ui,sans-serif";
@@ -77,6 +89,20 @@ const dayLabel = (iso: string) =>
   new Date(`${iso}T00:00:00Z`)
     .toLocaleDateString("en-AU", { day: "numeric", month: "short", timeZone: "UTC" })
     .toUpperCase();
+/** The scrub flag's date, in the company card's shape: "2 Oct 2026".
+ *
+ *  The YEAR is the whole difference from dayLabel above, which the chart's own
+ *  eyebrow keeps using. A flag is read on its own, often against a series that
+ *  spans a year boundary, so "11 SEPT" alone does not say which September.
+ *  Left in mixed case on purpose — `.ccflag .wttiplabel` uppercases it, the
+ *  same way the company card's does. */
+const flagDay = (iso: string) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
 /** The design's smoothed sparkline: Catmull-Rom through every day's count. */
 function sparkPath(counts: number[]) {
@@ -133,14 +159,19 @@ function glowStyle(ads: number, max: number): CSSProperties & { "--cpglow": stri
 export function CareerPathwaysPane() {
   const open = useAppStore((s) => s.careerOpen);
   const close = useAppStore((s) => s.closeCareer);
+  const dragRef = useDraggablePane<HTMLDivElement>(open);
+
+  // Click-away without a scrim, so the map behind stays zoomable.
+  // The map and the company card do not close it: the card is used WHILE
+  // exploring — pick a role, then find the country, city and company
+  // advertising it. Close is the ✕, the rail button, Esc or another pane.
+  useClickAway(open, close, ".cppane", ".mapframe, .cc");
+
   if (!open) return null;
   return (
-    <>
-      <div className="panescrim" onClick={close} />
-      <div className="cppane" role="dialog" aria-label="Career pathways">
-        <CareerCard onClose={close} />
-      </div>
-    </>
+    <div className="cppane" role="dialog" aria-label="Career pathways" ref={dragRef}>
+      <CareerCard onClose={close} />
+    </div>
   );
 }
 
@@ -157,30 +188,20 @@ export function CareerPathwaysPane() {
 const OPEN_LOADER_MS = 1200;
 
 /**
- * The first open of the session starts on "Start with a skill"
+ * The first open on each PAGE LOAD starts on "Start with a skill"
  * (`Career_Pathway_Placeholder.html`) rather than on a family's map picked for
- * the reader. The first skill searched ends it for the rest of the session;
- * every later open goes straight to the map, as before.
+ * the reader. The first skill searched ends it until the page is reloaded;
+ * later opens go straight to the map.
  *
- * sessionStorage so it survives a reload the way a session should, with the
- * module variable as the fallback where storage is blocked.
+ * In memory, deliberately. It was sessionStorage until 2026-09-28, which
+ * outlived reloads for as long as the tab stayed open — so once anyone had
+ * searched in a tab, the placeholder never came back there, and it read as
+ * gone. A reload is now a fresh start.
  */
-const STARTED_KEY = "employsi.careerStarted";
-let startedFallback = false;
-function careerStarted(): boolean {
-  try {
-    return startedFallback || sessionStorage.getItem(STARTED_KEY) === "1";
-  } catch {
-    return startedFallback;
-  }
-}
+let careerStartedThisLoad = false;
+const careerStarted = () => careerStartedThisLoad;
 function markCareerStarted(): void {
-  startedFallback = true;
-  try {
-    sessionStorage.setItem(STARTED_KEY, "1");
-  } catch {
-    // The module variable covers the rest of this page's life.
-  }
+  careerStartedThisLoad = true;
 }
 
 function CareerCard({ onClose }: { onClose: () => void }) {
@@ -201,6 +222,10 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     const t = setTimeout(() => setHolding(false), OPEN_LOADER_MS);
     return () => clearTimeout(t);
   }, [holding]);
+  // The sparkline's plot box, measured by ChartTooltip so the scrub flag can be
+  // portalled to the body and positioned against it. One chart per card, so one
+  // ref: the rung's series is the selected node's, not a row in a list.
+  const plotRef = useRef<HTMLDivElement | null>(null);
   const [family, setFamily] = useState(() => focus?.split("|")[0] || "hr");
   const [skill, setSkill] = useState<string | null>(null);
   const [lane, setLane] = useState<string | null>(() => focus?.split("|")[1] || null);
@@ -231,6 +256,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   // opens the sign-in sheet and it is saved on return (store.requestCareerGoal).
   const goalId = useAppStore((s) => s.careerGoal);
   const requestCareerGoal = useAppStore((s) => s.requestCareerGoal);
+  const setRoleFocus = useAppStore((s) => s.setRoleFocus);
   const [pop, setPop] = useState(false);
   const [scrub, setScrub] = useState<number | null>(null);
   const [hub, setHub] = useState<string | null>(null);
@@ -244,6 +270,18 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   );
   const dragged = useRef(false);
 
+  const jumpTo = useRef<string | null>(null);
+  const focusRole = (o: CardNode) =>
+    setRoleFocus({
+      id: o.id,
+      title: o.title,
+      companies: Object.fromEntries(o.companies.map(([id, ads]) => [id, ads])),
+      cities: Object.fromEntries(o.hubs.map((h) => [h.id, h.n])),
+      byCity: Object.fromEntries(
+        Object.entries(o.companiesByCity).map(([hub, cs]) => [hub, Object.fromEntries(cs)]),
+      ),
+    });
+
   const nodes: Placed[] = useMemo(
     () => (model?.nodes ?? []).map((n) => ({ ...n, x: 24 + n.col * PX, y: ROW0 + n.row * ROWH })),
     [model],
@@ -256,7 +294,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
       const el = mapRef.current;
       const nd = nodes[i];
       if (!el || !nd) return;
-      const H = ROW0 + (lanes - 1) * ROWH + CH + 28;
+      const H = ROW0 + (lanes - 1) * ROWH + CH + LABEL_ROOM;
       const h = el.clientHeight;
       const want = h / 2 - (nd.y + CH / 2) * z;
       const y = H * z <= h ? (h - H * z) / 2 : Math.max(h - H * z, Math.min(0, want));
@@ -288,6 +326,12 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     }
     sel ??= core[Math.min(1, core.length - 1)]?.id ?? nodes[0].id;
     setSelId(sel);
+    // Arrived by an "Other directions" pick: that role is the reader's choice,
+    // so the map behind the card follows it as it does a click.
+    if (jumpTo.current && sel === jumpTo.current) {
+      jumpTo.current = null;
+      focusRole(nodes[idx(sel)]);
+    }
     const t = setTimeout(() => center(idx(sel)), 60);
     return () => clearTimeout(t);
     // Deliberately only on a new model: selection changes centre themselves.
@@ -339,6 +383,10 @@ function CareerCard({ onClose }: { onClose: () => void }) {
     setSelId(nodes[i].id);
     setScrub(null);
     center(i);
+    // Picking a role heats the map behind the card by that role, as a skill
+    // search does, on whichever layer is showing (see store.roleFocus). Only
+    // on a pick: the card's own opening selection is not the reader's choice.
+    focusRole(nodes[i]);
   };
   const nextOf = (i: number) => {
     const kid = nodes.findIndex((o) => o.parent === i);
@@ -357,6 +405,23 @@ function CareerCard({ onClose }: { onClose: () => void }) {
   const clearSkill = () => {
     setSkill(null);
     setPop(false);
+  };
+  /** Open a role on another ladder — an "Other directions" pick. The same
+   *  family and lane already on the map is just a selection; anything else
+   *  loads that ladder (with the role's lane beside the core) and the model
+   *  effect selects it and heats the map for it. */
+  const jump = (id: string) => {
+    const here = idx(id);
+    if (here >= 0) return go(here);
+    const [f, track] = id.split("|");
+    jumpTo.current = id;
+    setPop(false);
+    setScrub(null);
+    setSkill(null);
+    setEntryId(null);
+    setFamily(f);
+    setLane(track);
+    setSelId(id);
   };
 
   if (!model || !n) {
@@ -400,12 +465,15 @@ function CareerCard({ onClose }: { onClose: () => void }) {
       stroke: on ? INK : "var(--neutral-300,#c7c7cc)",
       w: on ? 2 : 1.5,
       labelColor: on ? "var(--text-primary,#1c1c1e)" : "var(--text-tertiary,#8e8e93)",
+      // The segment runs through the cards' vertical middle, so their bottom
+      // edge is CH/2 below it.
+      labelTop: ly + CH / 2 + LABEL_DROP,
     };
   });
 
   const maxCol = Math.max(...nodes.map((o) => o.col));
   const cWn = 48 + maxCol * PX + CW;
-  const cHn = ROW0 + (lanes - 1) * ROWH + CH + 28;
+  const cHn = ROW0 + (lanes - 1) * ROWH + CH + LABEL_ROOM;
 
   const sr = n.series ? sparkPath(n.series.counts) : null;
   const up = n.trend ? n.trend.up : true;
@@ -606,6 +674,18 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
+                  {g.label && (
+                    // The label hangs under the cards; this ties it back up to
+                    // the step it names.
+                    <line
+                      x1={g.lx}
+                      y1={g.ly + 4}
+                      x2={g.lx}
+                      y2={g.labelTop - 4}
+                      style={{ stroke: g.stroke, transition: "stroke 200ms" }}
+                      strokeWidth="1"
+                    />
+                  )}
                   <circle
                     cx={g.lx}
                     cy={g.ly}
@@ -619,18 +699,28 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             {edges.map((g) => (
               <span
                 key={g.key}
+                // BELOW the two cards, centred on the gap, with a line up to
+                // the step's dot. It used to sit in the 72px gap itself, where
+                // the cards (drawn later) covered its ends and a two-word skill
+                // read "Leadership &…". Hanging it under the cards gives it
+                // PX − CW + 32 = 104px — wide enough that the longest labels
+                // take two lines — while keeping clear of the "Set as goal?"
+                // button, which sits under the selected card's middle.
                 style={{
                   position: "absolute",
+                  zIndex: 1,
                   left: g.lx,
-                  top: g.ly + 9,
-                  width: 72,
+                  top: g.labelTop,
+                  width: PX - CW + 32,
                   transform: "translateX(-50%)",
                   textAlign: "center",
                   font: `500 10px/1.2 ${INTER}`,
                   color: g.labelColor,
-                  whiteSpace: "nowrap",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  pointerEvents: "none",
                 }}
               >
                 {g.label}
@@ -717,6 +807,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 </button>
               );
             })}
+            {n.moves.length > 0 && <MoveBranch key={n.id} node={n} onPick={jump} />}
             {pop && (
               <div
                 onClick={(e) => e.stopPropagation()}
@@ -774,6 +865,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             }}
           >
             <span
+              className="cpdraghint"
               style={{
                 padding: "5px 8px",
                 borderRadius: 999,
@@ -782,6 +874,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 letterSpacing: ".1em",
                 color: "var(--text-tertiary,#8e8e93)",
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               DRAG TO EXPLORE
@@ -799,6 +892,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 alignItems: "center",
                 gap: 6,
                 pointerEvents: "none",
+                whiteSpace: "nowrap",
               }}
             >
               <span
@@ -985,9 +1079,9 @@ function CareerCard({ onClose }: { onClose: () => void }) {
         </div>
 
         <div
+          className="cpstats"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3,minmax(0,1fr))",
             gap: 1,
             background: "var(--border-subtle,#e5e5ea)",
             border: "1px solid var(--border-subtle,#e5e5ea)",
@@ -996,12 +1090,47 @@ function CareerCard({ onClose }: { onClose: () => void }) {
           }}
         >
           {[
-            ["MEDIAN PAY", n.payLabel],
-            ["EMPLOYERS", num(n.employers)],
-            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—"],
-          ].map(([label, value]) => (
+            // MEDIAN PAY, or a published market band where no ad stated a
+            // figure.
+            //
+            // The ads answer when they can and the label says "MEDIAN PAY".
+            // When they cannot — 294 of 528 rungs show "—", and 55% have no
+            // disclosing ad at all — the band takes the tile under a label
+            // that says it is a different quantity.
+            //
+            // "MARKET RANGE", NOT "SALARY RANGE", AND THE DISTINCTION IS THE
+            // WHOLE POINT OF THE WORDING. The publisher is not named in the
+            // product, so the label is the only thing left to tell a reader
+            // that this is not our measurement — and "salary range" would
+            // read as a range WE found in the ads, which is exactly the
+            // confusion to avoid, since nobody advertised it. "Market" says
+            // benchmark. The hint then says it plainly.
+            //
+            // The period stays on screen (in the hint) because bands come
+            // from several years and a 2023 figure shown in 2026 without a
+            // date is a stale number presented as current.
+            //
+            // One or the other, never both: different instruments, and the
+            // band excludes superannuation where an advertised package
+            // usually includes it.
+            n.payGuide
+              ? [
+                  "MARKET RANGE",
+                  n.payGuide.label,
+                  `Published market range for this role, ${n.payGuide.edition} — a benchmark, ` +
+                    `not pay from our ads, and it excludes superannuation. Spans ` +
+                    `${n.payGuide.roles} role${n.payGuide.roles === 1 ? "" : "s"} over ` +
+                    `${n.payGuide.figures} published figure${n.payGuide.figures === 1 ? "" : "s"}.`,
+                ]
+              : ["MEDIAN PAY", n.payLabel, ""],
+            ["EMPLOYERS", num(n.employers), ""],
+            ["DAYS ADVERTISED", n.daysAdvertised != null ? `${n.daysAdvertised} days` : "—", ""],
+          ].map(([label, value, hint]) => (
             <div
               key={label}
+              // The provenance a three-across tile has no room to print. Only
+              // the guide tile sets it; the others pass "".
+              title={hint || undefined}
               style={{
                 background: "var(--surface-page,#fff)",
                 padding: 12,
@@ -1070,6 +1199,7 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                 );
               }}
               onMouseLeave={() => setScrub(null)}
+              ref={plotRef}
               style={{ position: "relative", flex: 1, minHeight: 110, cursor: "crosshair" }}
             >
               <svg
@@ -1160,6 +1290,43 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                       top: `${(sr.ys[k] / 72) * 100}%`,
                     }}
                   />
+                  {/* THE COMPANY CARD'S FLAG (.ccflag), not the Trending card's
+                      .tsktip this used to be. Same callout, same date-over-value
+                      shape, same stem onto the marker — asked for so the two
+                      charts a user moves between label a point identically.
+                      Portalled to the body by ChartTooltip for the reason that
+                      component gives: the pane is a clipped, scrollable card,
+                      and an absolutely-positioned tip on a high point was
+                      painted over by the chart's own header row.
+
+                      THE LABEL STILL SAYS ADS. The series is the ROLE's ads per
+                      day, even with a skill searched — the archive has no
+                      per-skill daily series for a rung — so it is never "with
+                      skill", and it is not relabelled "Vacancies" to match the
+                      company card either: a row is an ad from one board, and
+                      the same role on two boards is two of them (see the
+                      dedupe note in CLAUDE.md). The look is what was shared
+                      here, not the unit.
+
+                      The swatch carries the LINE's colour rather than .ccsw's
+                      green/red, for the reason CompanyPanel gives at its own
+                      swatch: a flag that marks one series must be the colour of
+                      the series it marks. Here that is already the trend's
+                      direction, so they agree — but through sparkStroke, so
+                      they cannot drift if either changes. */}
+                  <ChartTooltip
+                    boxRef={plotRef}
+                    className="ccflag"
+                    leftPct={(k / Math.max(1, N - 1)) * 96}
+                    topPct={(sr.ys[k] / 72) * 100}
+                  >
+                    <div className="wttiplabel">{dayAt ? flagDay(dayAt) : ""}</div>
+                    <div className="wttiprow">
+                      <i className="ccsw" style={{ background: sparkStroke }} />
+                      <b>{num(n.series!.counts[k])}</b>
+                      <span>{n.series!.counts[k] === 1 ? "Ad" : "Ads"}</span>
+                    </div>
+                  </ChartTooltip>
                 </>
               )}
             </div>
@@ -1321,7 +1488,12 @@ function CareerCard({ onClose }: { onClose: () => void }) {
                     pointerEvents: "none",
                     left: hv.left,
                     top: hv.top,
-                    transform: "translate(-50%, 10px)",
+                    // Kept inside the map, which clips (overflow hidden): a
+                    // city near the left edge anchors the callout's left side
+                    // to its dot, one near the right its right side, and one
+                    // in the bottom quarter opens upwards. Centred-below cut
+                    // Perth's in half.
+                    transform: `translate(${hv.x < 75 ? "-14px" : hv.x > 225 ? "calc(-100% + 14px)" : "-50%"}, ${hv.y > 150 ? "calc(-100% - 10px)" : "10px"})`,
                     background: "var(--neutral-900,#1c1c1e)",
                     color: "#fff",
                     borderRadius: 8,
@@ -1436,6 +1608,8 @@ function CareerCard({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </div>
+
+        <OnetSection id={n.id} />
       </div>
     </div>
   );
@@ -1474,6 +1648,163 @@ function CareerCard({ onClose }: { onClose: () => void }) {
 // ── The first-open placeholder ───────────────────────────────────────────────
 
 /** A faded role card on the ghost map. */
+/**
+ * "Other directions", drawn on the map: a small pill of icons centred on the
+ * selected card's edge, one per role on ANOTHER ladder it relates to
+ * (careerCard.careerMoves). It sits on the edge the "Set as goal?" button does
+ * not use — the top on the core lane, the bottom below it.
+ *
+ * The figures live in the hover card, not on the map. The link is O*NET's and
+ * the overlap and shared-employer counts are ours; nothing on it says people
+ * make the move — the archive holds ads, not careers. The visible caveat line
+ * was removed at the user's request 2026-09-30; each icon's accessible label
+ * still carries it.
+ */
+function MoveBranch({ node, onPick }: { node: Placed; onPick: (id: string) => void }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const top = node.row === 0;
+  const m = hover != null ? node.moves[hover] : null;
+  return (
+    <div
+      className={`cpbranch${top ? "" : " below"}${m ? " tipping" : ""}`}
+      style={{ left: node.x + CW / 2, top: top ? node.y : node.y + CH }}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseLeave={() => setHover(null)}
+    >
+      <span className="cpbranchlbl" title="Other paths: related roles on other ladders">
+        <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="currentColor">
+          <path d="M6 20V9a5 5 0 0 1 5-5h7" />
+          <path d="M15 1l3 3-3 3" />
+          <path d="M6 13a5 5 0 0 1 5-5h2" />
+        </svg>
+      </span>
+      {node.moves.map((mv, i) => (
+        <button
+          key={mv.id}
+          type="button"
+          className={`cpbranchbtn${hover === i ? " on" : ""}`}
+          aria-label={`${mv.title}, ${mv.where}. ${Math.round(mv.overlap * 100)}% skills shared. A related occupation, not a tracked career move.`}
+          onMouseEnter={() => setHover(i)}
+          onFocus={() => setHover(i)}
+          onBlur={() => setHover(null)}
+          onClick={() => onPick(mv.id)}
+        >
+          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor">
+            {(
+              SKILL_ICONS[skillIcon(mv.skill ?? "", mv.skill ? SKILL_PARENT[mv.skill] : null)] ?? []
+            ).map((d) => (
+              <path key={d} d={d} />
+            ))}
+          </svg>
+        </button>
+      ))}
+      {m && (
+        <div className={`cpbranchtip${top ? "" : " up"}`} role="tooltip">
+          <span className="cpbranchtitle">{m.title}</span>
+          <span className="cpbranchwhere">{`${m.where} · ${m.stage}`}</span>
+          <span className="cpbranchfigs">
+            {`${Math.round(m.overlap * 100)}% skills shared · `}
+            {m.sharedEmployers
+              ? `${m.sharedEmployers} employer${m.sharedEmployers === 1 ? "" : "s"} hire both`
+              : "no shared employers on the map"}
+            {m.payLabel === "—" ? "" : ` · ${m.payLabel} median`}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What the role typically involves, from the O*NET occupation it was mapped
+ * to. Kept visibly apart from everything above it: those figures are counts
+ * over our ads, and this is O*NET's description of a US occupation — so it
+ * names the occupation, links to it, and carries the CC BY credit.
+ */
+function OnetSection({ id }: { id: string }) {
+  const { data, isPending } = useQuery({
+    queryKey: ["onet", id],
+    queryFn: () => onetForRole(id),
+    staleTime: Infinity,
+  });
+  const [allTasks, setAllTasks] = useState(false);
+  useEffect(() => setAllTasks(false), [id]);
+  if (isPending) return null;
+
+  // NO CREDIT LINE ON THIS CARD, at the owner's explicit direction
+  // (2026-09-30), after the trade-off below was put to them twice.
+  //
+  // O*NET is CC BY 4.0, and naming the creator and the licence is a condition
+  // of using the data — lib/onet.ts said the credit "must travel with the
+  // content", which is why it survived the first pass of trimming. It no
+  // longer does, and there is no other surface in the app carrying it, so the
+  // attribution obligation is currently UNMET rather than satisfied elsewhere.
+  //
+  // The cheap way to close that without putting anything back on the card is a
+  // single credits location — an About/Sources panel or a site-footer line —
+  // since CC BY allows attribution "in any manner reasonable to the medium".
+  // Anyone reinstating it should build that rather than re-adding this block.
+  if (!data) {
+    return (
+      <section className="cponet" aria-label="Tasks and tools">
+        <div className="cponethead">
+          <span style={EYEBROW}>TASKS &amp; TOOLS</span>
+        </div>
+        <p className="cponetnone">
+          No single occupation profile matches this role closely enough to describe it — the titles
+          it covers span several occupations, or none has a counterpart.
+        </p>
+      </section>
+    );
+  }
+  const o = data.occupation;
+  const tasks = allTasks ? o.tasks : o.tasks.slice(0, 3);
+  return (
+    <section className="cponet" aria-label="Tasks and tools">
+      {/* The occupation's name used to sit here as "O*NET: Human Resources
+          Specialists", and the credit line below carried its link. Both are
+          gone (2026-09-30), so the section now names no source at all — see
+          lib/onet.ts for what that costs and how it would be put right. */}
+      <div className="cponethead">
+        <span style={EYEBROW}>TASKS &amp; TOOLS</span>
+      </div>
+      <ul className="cponettasks">
+        {tasks.map(([t]) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+      {o.tasks.length > 3 && (
+        <button type="button" className="cponetmore" onClick={() => setAllTasks((v) => !v)}>
+          {allTasks ? "Fewer tasks" : `All ${o.tasks.length} core tasks`}
+        </button>
+      )}
+      {o.software.length > 0 && (
+        <div className="cponetsw">
+          {/* Was "SOFTWARE IN DEMAND IN US JOB POSTINGS"; the US reference is
+              gone at the owner's request.
+
+              NOT shortened to "…IN JOB POSTINGS", which is the literal edit.
+              With the O*NET provenance line also removed, a card of employsi's
+              own measured counts saying "in demand in job postings" reads as
+              OUR postings — a claim about method that is not true, and the
+              exact shape of bug this codebase treats as most costly. Dropping
+              the corpus clause claims nothing about whose ads these came from,
+              and "In Demand" is O*NET's own category name for the field. */}
+          <span style={TILE_LABEL}>SOFTWARE IN DEMAND</span>
+          <div className="cponetchips">
+            {o.software.map((w) => (
+              <span key={w} className="cponetchip">
+                {w}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function GhostNode({ left, top, a, b }: { left: number; top: number; a: string; b: string }) {
   return (
     <div

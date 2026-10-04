@@ -6,6 +6,7 @@ import { callerRole } from "./sessionRole";
 import { isReleasedCompany, seesAllMarkets } from "./markets";
 import { COMPANIES } from "../data/companies";
 import { parseStoredSkills } from "../data/skillsTaxonomy";
+import { canonicalCompanyId } from "../data/mergedCompanies";
 
 /**
  * The notification bell's alerts, from `Notification_Bell`.
@@ -59,12 +60,27 @@ export interface AlertsResult {
   ok: boolean;
   /** Set when there is nothing to compute yet, for the panel to show verbatim. */
   notice?: string;
-  /** True when the caller is signed out — the bell sends them to sign in. */
+  /**
+   * True when the caller has no session.
+   *
+   * The bell used to render this as "sign in for alerts"; the app is
+   * signed-in-only now (getAppAccess) and the query is not even issued without
+   * an account, so nothing reads it. Kept because it is the honest answer for a
+   * direct call to this handler, which stays callable — the gate is on the page.
+   */
   signedOut?: boolean;
   rows: AlertRow[];
   /** How many followed companies were examined. */
   companies: number;
-  /** Distinct collection days the archive holds. */
+  /**
+   * Distinct collection days the archive holds.
+   *
+   * No longer rendered as a caption — the panel's "Archive holds N days of
+   * collection" footer was removed on 2026-09-30. It is still computed and
+   * returned because this handler gates on it (`days < MIN_DAYS`) and names it
+   * in the notice that explains an empty panel, which is where the number
+   * actually answers a question the reader is asking.
+   */
   days: number;
 }
 
@@ -150,7 +166,11 @@ export const getAlerts = createServerFn({ method: "GET" }).handler(
         .prepare(`SELECT ref FROM user_follow WHERE user_id = ?1 AND kind = 'company'`)
         .bind(userId)
         .all();
-      let ids = [...new Set((fol?.results ?? []).map((r) => String(r.ref || "")))].filter(Boolean);
+      // Through canonicalCompanyId, so a follow still stored under a retired id
+      // (data/mergedCompanies.ts) alerts on the company it was folded into.
+      let ids = [
+        ...new Set((fol?.results ?? []).map((r) => canonicalCompanyId(String(r.ref || "")))),
+      ].filter(Boolean);
       // Same market gate as everywhere else: an end user is not told about a
       // company the rest of the product will not show them.
       if (!seesAllMarkets(role)) ids = ids.filter((id) => isReleasedCompany(id));

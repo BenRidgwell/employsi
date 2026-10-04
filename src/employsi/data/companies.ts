@@ -1172,7 +1172,9 @@ export const COMPANIES: Company[] = [
     id: "sgq",
     ticker: "SGQ",
     name: "St George Mining",
-    domain: "stgeorgemining.com.au",
+    // stgeorgemining.com.au serves a certificate for another host; the
+    // company is stgm.com.au ("St George Mining Limited"), 2026-09-30.
+    domain: "stgm.com.au",
     sector: "Battery Metals",
     headcount: 60,
     growth: 10.0,
@@ -1446,7 +1448,9 @@ export const COMPANIES: Company[] = [
     id: "sw1",
     ticker: "SW1",
     name: "Swift Networks Group",
-    domain: "swiftnetworks.com.au",
+    // swiftnetworks.com.au redirects to swift.tv — the company now trades as
+    // Swift TV Ltd ("© 2026 Swift TV Ltd - ASX: SW1"), 2026-09-30.
+    domain: "swift.tv",
     sector: "Telecommunications",
     group: "Technology, Media and Telecommunications",
     headcount: 220,

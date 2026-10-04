@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { marketVisible, isReleasedRow } from "./markets";
-import { LIVE_FEEDS_ONLY_SQL, type D1Like, type SqlValue } from "./jobArchive";
+import {
+  isLiveOn,
+  LIVE_FEEDS_ONLY_SQL,
+  liveSinceDaySql,
+  type D1Like,
+  type SqlValue,
+} from "./jobArchive";
+import { normRoleTitle } from "./roleKey";
 import { COMPANY_ID_ALIAS, type RolePoint } from "./openRolesFn";
 import {
   ALL_SKILLS,
@@ -15,6 +23,18 @@ import {
 import { AREA_SOURCES, canonicalArea } from "../data/hiringAreas";
 import { coverageDay, coveredFrom } from "./feedCoverage";
 import { annualAud, medianAnnual } from "./salaryParse";
+import { kvBinding, type KVLike } from "./kv";
+import {
+  TREND_WINDOWS,
+  buildLiveSkillTrends,
+  priceOf,
+  trendsEntryFresh,
+  trendsKvKey,
+  type LiveSkillTrends,
+  TRENDS_FRESH_MS,
+  type TrendsCacheEntry,
+  type TrendsRow,
+} from "./skillTrendsBuild";
 import { FX_AS_AT } from "../data/fxRates";
 import { CITY_COUNTRY, REGION_HUBS } from "../data/mapboxWorldGeo";
 
@@ -61,6 +81,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 export const getRoleHistory = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RoleHistory | null> => {
     const id = (data.id || "").trim();
@@ -152,6 +173,7 @@ const TREND_WEEKS = 13; // ~3 months of weekly buckets for the per-skill sparkli
 // Sparse until the archive has more than one window of history — it fills in as
 // the daily pulls accumulate.
 export const getSkillTrends = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<SkillMover[]> => {
     const id = (data.id || "").trim();
@@ -237,79 +259,16 @@ export const getSkillTrends = createServerFn({ method: "GET" })
     }
   });
 
-// One "Live trends" ticker row: a canonical skill and how its vacancy demand has
-// moved, market-wide, over the most recent window versus the one before it.
-export interface LiveSkillTrend {
-  name: string; // canonical skill
-  tag: string; // 'Demand'
-  v: number; // % change (positive = rising demand); newly-surging capped at +24
-  // Daily count of live vacancies demanding this skill, oldest → newest, for
-  // the ticker's sparkline. Omitted when the archive is too young to draw an
-  // honest line (see SPARK_MIN_POINTS below) — the ticker then shows the row
-  // without one rather than inventing a shape.
-  spark?: number[];
-  /**
-   * Median annual salary, in AUD, advertised across the currently-live
-   * Australian vacancies that demand this skill.
-   *
-   * Omitted when too few of them state one. Australian only, and never
-   * converted from another currency — see lib/salaryParse for why the currency
-   * of an archived salary string is knowable only from its hub, and why
-   * averaging a San Jose figure with a Brisbane one produces a number that is
-   * not a salary anywhere.
-   */
-  pay?: number;
-}
-
-// The three windows the ticker's window control cycles through, matching the
-// design. Each is computed independently from the archive against its OWN prior
-// window (24h vs the day before, 7d vs the week before, 30d vs the month
-// before), so switching window changes what is being measured rather than
-// rescaling one number — the design's mock multiplied a single delta by 2.1 and
-// 3.4, which would have been a fabricated figure here.
-export type TrendWindow = "24h" | "7d" | "30d";
-export const TREND_WINDOWS: { key: TrendWindow; days: number; label: string; short: string }[] = [
-  { key: "24h", days: 1, label: "· Last 24 hours", short: "24h" },
-  { key: "7d", days: 7, label: "· Last 7 days", short: "7d" },
-  { key: "30d", days: 30, label: "· Last 30 days", short: "30d" },
-];
-export type LiveSkillTrends = Record<TrendWindow, LiveSkillTrend[]>;
-
-/**
- * Re-order a ranked list so risers and fallers alternate.
- *
- * WHY THE TICKER NEEDED THIS. The movers are ranked by how big the change is,
- * and a day's biggest changes are not evenly signed — when a batch of feeds
- * lands or a hiring season turns, the whole top of the list leans one way. The
- * marquee then shows a run of red followed by a run of green, which reads as
- * "everything is falling" for several seconds at a time even though the mix is
- * balanced. The comment at the sort had claimed this interleaving existed since
- * the ticker was written; it did not.
- *
- * SELECTION IS NOT TOUCHED, ONLY ORDER. This runs after the cut, so which
- * skills appear is still purely the biggest movers — alternating before the cut
- * would let a small riser displace a larger faller just to balance the signs,
- * which would be choosing what to report by how it looks.
- *
- * It leads with whichever side holds the single biggest mover, so the strongest
- * signal is still first, and when one side runs out the remainder tails on
- * rather than being dropped. A list that is all one sign comes back unchanged.
- */
-export function alternateBySign<T>(items: T[], valueOf: (t: T) => number): T[] {
-  const up = items.filter((t) => valueOf(t) > 0);
-  const down = items.filter((t) => valueOf(t) <= 0);
-  if (!up.length || !down.length) return items;
-  // Whichever side the overall list already leads with keeps the first slot.
-  const leadUp = items.length > 0 && valueOf(items[0]) > 0;
-  const a = leadUp ? up : down;
-  const b = leadUp ? down : up;
-  const out: T[] = [];
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    if (i < a.length) out.push(a[i]);
-    if (i < b.length) out.push(b[i]);
-  }
-  return out;
-}
+// The ticker's row type, its windows and the computation itself live in
+// skillTrendsBuild.ts, so the scraper Worker can run the same code. Re-exported
+// here because every existing caller imports them from this module.
+export {
+  TREND_WINDOWS,
+  alternateBySign,
+  type LiveSkillTrend,
+  type LiveSkillTrends,
+  type TrendWindow,
+} from "./skillTrendsBuild";
 
 // Market-wide daily skill-demand trends for the app's "Live trends" ticker.
 // Reads every recently-active listing in the D1 archive (all sources — Adzuna,
@@ -320,6 +279,41 @@ export function alternateBySign<T>(items: T[], valueOf: (t: T) => number): T[] {
 // that shifts a little each day as the archive accumulates. Returns [] until the
 // archive holds enough history to compute movers; the client falls back to a
 // static seed in that case so the ticker is never empty.
+/**
+ * The last answer per (role, region), kept in the isolate.
+ *
+ * The query behind the ticker reads 60 days of the archive — every row with
+ * skills whose last_seen falls inside it — and used to run in full for every
+ * visitor to every page carrying a ticker, including the public landing page,
+ * whose hero callouts could not appear until it returned. Measured 2026-09-29
+ * on employsi-site-preview: 5–10 s of query, callouts 8–13 s after the banner.
+ *
+ * Three layers now, fastest first:
+ *  1. this module memo — free in a warm isolate;
+ *  2. KV (skillTrendsBuild.ts: trendsKvKey), shared by every isolate and by
+ *     every deployment — tens of milliseconds;
+ *  3. computing it here, which also writes (1) and (2).
+ * The scraper Worker fills (2) for the worldwide visitor answer every night
+ * (TRENDS_CACHE_CRON in workers/jobs-cron/index.ts), so (3) is the fallback
+ * for a missed night, an admin, or a regional ticker in the app.
+ *
+ * Keyed by role as well as region because what a caller may see differs (see
+ * `seesAll` below) — an admin's roll-up must never be served to a visitor. An
+ * all-empty answer is never stored: that is far likelier a transient D1
+ * failure than a market with no movers, and caching it would hold an empty
+ * strip until it expired.
+ */
+const trendsMemo = new Map<string, TrendsCacheEntry>();
+
+async function trendsKv(): Promise<KVLike | null> {
+  try {
+    const m = await import("cloudflare:workers");
+    return kvBinding(m?.env, "OPEN_ROLES_HISTORY");
+  } catch {
+    return null;
+  }
+}
+
 export const getLiveSkillTrends = createServerFn({ method: "GET" })
   /**
    * The place being described, as one of the map's domestic regions — or
@@ -349,304 +343,52 @@ export const getLiveSkillTrends = createServerFn({ method: "GET" })
     // name are wrong in a way nothing on screen would show. A region with no
     // hubs returns nothing, and the strip says it has no history for it.
     const region = (data?.region || "").trim();
-    const scopeHubs = region ? (REGION_HUBS[region] ?? []) : [];
-    if (region && !scopeHubs.length) return empty;
-    const hubSet = new Set(scopeHubs.map((h) => h.toLowerCase()));
+    if (region && !(REGION_HUBS[region] ?? []).length) return empty;
     // The ticker is a market-wide roll-up, so it has to be rolled up over the
     // markets the reader can actually see — otherwise an end user reads a
     // headline demand figure carrying vacancies from countries the product has
     // not released to them.
     const seesAll = (await callerRole()) === "admin";
-    // Sparkline length. The archive stores first_seen/last_seen per listing, so
-    // "how many live vacancies demanded skill X on day D" is recoverable for any
-    // day the archive was actually running — no new storage needed, and the line
-    // gets richer on its own as the archive accumulates. 30 days is the longest
-    // any window needs; the shorter windows draw the tail of the same series.
-    const SPARK_DAYS = 30;
-    const SPARK_MIN_POINTS = 5; // below this the line says more about the
-    // archive's age than about demand, so it is dropped entirely
-    // How far back the coverage guard below may step. The same 3 analystFn
-    // uses: far enough to clear a feed that has not cycled, near enough that a
-    // permanently dead feed cannot park the ticker a week in the past.
-    const MAX_STEP_BACK_DAYS = 3;
-    const day = (offset: number) => {
-      const d = new Date();
-      d.setUTCDate(d.getUTCDate() - offset);
-      return d.toISOString().slice(0, 10);
-    };
-    // The widest window pair (30 + 30) bounds the scan; the narrower windows are
-    // computed from the same rows, so all three cost one query.
-    const widest = Math.max(...TREND_WINDOWS.map((w) => w.days));
-    const scanFrom = day(widest * 2);
-    // ONE SERIES, AND BOTH HALVES OF EVERY WINDOW ARE READ FROM IT.
-    //
-    // This used to measure the two halves DIFFERENTLY, which is the thing
-    // CLAUDE.md warns about in as many words: `now` counted listings whose
-    // last_seen fell inside the recent window, while `prev` counted listings
-    // LIVE AT ANY POINT in the prior window (first_seen <= end AND last_seen >=
-    // start). The span reconstruction always sweeps up more rows than a
-    // last_seen count, so prev exceeded now structurally — not because demand
-    // fell. Measured on production 2026-09-18, every skill in the 24h window and
-    // every skill in the 7d window came back negative, 16 of 16 in both, most of
-    // them pinned to the -16% clamp; the 30d window flipped the other way, 16 of
-    // 16 positive at +24%, because there the archive's own growth dominated.
-    // Sixteen unrelated skills never move in lockstep: that is the method
-    // showing through, not the market.
-    //
-    // So the day-by-day live count below is now the ONLY measure, and the delta
-    // is two points on it. The sparkline is drawn from the same array, so the
-    // line and the number finally describe the same thing.
-    const seriesDays: string[] = [];
-    for (let i = widest * 2; i >= 0; i--) seriesDays.push(day(i));
-    const seriesStartMs = Date.parse(seriesDays[0] + "T00:00:00Z");
-    const dayIdx = (d: string) =>
-      Math.round((Date.parse(d + "T00:00:00Z") - seriesStartMs) / 86400000);
-    const bounds = TREND_WINDOWS.map((w) => ({ key: w.key, days: w.days }));
+    const cacheKey = trendsKvKey(seesAll, region);
+    const hit = trendsMemo.get(cacheKey);
+    if (trendsEntryFresh(hit)) return hit!.value;
+    const kv = await trendsKv();
+    if (kv) {
+      try {
+        const raw = await kv.get(cacheKey);
+        const cached = raw ? (JSON.parse(raw) as Partial<TrendsCacheEntry>) : null;
+        if (trendsEntryFresh(cached)) {
+          trendsMemo.set(cacheKey, cached as TrendsCacheEntry);
+          return cached!.value!;
+        }
+      } catch {
+        // An unreadable cache is a miss, never a failure: fall through and compute.
+      }
+    }
     try {
-      const res = await db
-        .prepare(
-          `SELECT skills, first_seen, last_seen, hub, company_id, salary, source FROM jobs
-             WHERE skills IS NOT NULL AND last_seen >= ?1`,
-        )
-        .bind(scanFrom)
-        .all();
-      const rows = res?.results ?? [];
-      if (!rows.length) return empty;
-      // skill -> per-day live-vacancy count, indexed against sparkDays.
-      const daily: Record<string, number[]> = {};
-      // The earliest day the archive holds anything at all. Days before it are
-      // not "zero demand", they are "we weren't collecting" — drawing them would
-      // render every skill as a hockey stick.
-      let archiveStart = "9999-99-99";
-      // New listings per day, used below to find the day collection actually
-      // began rather than the day the first stray row landed.
-      const newPerDay: Record<string, number> = {};
-      // Per-feed row count and most recent write, for coverageDay below — the
-      // other end of the same problem: not when collection STARTED, but which
-      // day it has finished.
-      const feedMax: Record<string, { mx: string; n: number }> = {};
-      let latestSeen = "";
-      // skill -> the annual AUD figures advertised for it RIGHT NOW, kept BOTH
-      // pooled and split by market. `payFrom` is the same boundary the app uses
-      // for "currently advertised", so the median describes ads a reader could
-      // go and apply to today — not the 60-day scan window the deltas need.
-      //
-      // Split by market because this ticker is worldwide and a pooled median
-      // over every market answers the wrong question — see priceOf. Measured on
-      // production 2026-08-12, pooled put Banking & Lending at $8k, because 151
-      // of its 296 priced ads were Philippine at about A$7k a year. The figure
-      // was arithmetically correct and completely misleading.
-      const payAds: Record<string, number[]> = {};
-      const payByMarket: Record<string, Map<string, number[]>> = {};
-      const payFrom = day(1);
-      for (const r of rows) {
-        // parseStoredSkills, not a bare JSON.parse: archived rows keep the
-        // skill names they were written with, so a renamed skill needs its old
-        // name mapped forward or that row's demand vanishes (see SKILL_ALIAS).
-        const skills = parseStoredSkills(r.skills);
-        if (!skills.length) continue;
-        const fs = String(r.first_seen || "");
-        const ls = String(r.last_seen || "");
-        if (!fs || !ls) continue;
-        if (!seesAll && !isReleasedRow(r.hub as string | null, r.company_id as string | null))
-          continue;
-        // THE REGION FILTER, AND WHAT IT NECESSARILY DROPS. A region is a set of
-        // hub cities, so a row with no hub cannot be in one — and 31,334 of the
-        // rows in a 60-day scan have no hub at all (measured 2026-09-25, 17% of
-        // them). They count worldwide, where "somewhere" is enough, and they
-        // cannot count here. That is the same collected-vs-placeable line the
-        // hotspot map draws, applied to the strip.
-        if (hubSet.size && !hubSet.has(String(r.hub || "").toLowerCase())) continue;
-        if (fs < archiveStart) archiveStart = fs;
-        newPerDay[fs] = (newPerDay[fs] || 0) + 1;
-        if (ls >= payFrom) {
-          const aud = annualAud({
-            salary: r.salary as string | null,
-            hub: r.hub as string | null,
-            source: r.source as string | null,
-          });
-          if (aud !== null) {
-            const hub = String(r.hub || "").toLowerCase();
-            // Hubless ads can be valued but not placed, so they price the
-            // pooled bag and cannot cast a market vote.
-            const country = CITY_COUNTRY[hub] ?? (hub === "australia" ? "au" : "");
-            for (const s of skills) {
-              (payAds[s] ||= []).push(aud);
-              if (!country) continue;
-              const m = (payByMarket[s] ||= new Map());
-              const bag = m.get(country);
-              if (bag) bag.push(aud);
-              else m.set(country, [aud]);
-            }
-          }
-        }
-        // WHICH FEEDS HAVE REPORTED, AND HOW RECENTLY. Counted after the
-        // visibility filter above, so coverage describes the rows that actually
-        // reach the figures rather than the whole table.
-        const srcName = String(r.source || "");
-        const f = (feedMax[srcName] ||= { mx: "", n: 0 });
-        f.n += 1;
-        if (ls > f.mx) f.mx = ls;
-        if (ls > latestSeen) latestSeen = ls;
-        // A listing is live on day D when it was first seen on or before D and
-        // last seen on or after it. Walked by index rather than by testing every
-        // day against every row: the series is twice as long as it used to be,
-        // and this makes it cheaper than the 30-day version it replaces.
-        const lo = Math.max(0, dayIdx(fs));
-        const hi = Math.min(seriesDays.length - 1, dayIdx(ls));
-        for (let i = lo; i <= hi; i++) {
-          for (const sk of skills) {
-            const arr = (daily[sk] ||= new Array(seriesDays.length).fill(0));
-            arr[i] += 1;
-          }
-        }
-      }
-      // WHEN DID COLLECTION ACTUALLY START?
-      //
-      // Not the same question as "what is the oldest row", and getting them
-      // confused is what broke this. The archive's first rows trickle in while
-      // a feed is being set up — measured here: 4 rows on the first day, 4 on
-      // the second, 1 on the third, then 1,994 on the fourth. Treating the
-      // first of those as the start makes the three days before the real ramp
-      // look like days of near-zero demand, and every skill then reads as
-      // exploding growth against them.
-      //
-      // So the start is the first day carrying at least a tenth of the median
-      // day's new listings. That cleanly separates a 1-row setup day from a
-      // 2,000-row collecting day without needing a hand-picked date.
-      const dayCounts = Object.values(newPerDay).sort((a, c) => a - c);
-      const medianNew = dayCounts.length ? dayCounts[Math.floor(dayCounts.length / 2)] : 0;
-      const collectingDays = Object.keys(newPerDay)
-        .filter((d) => newPerDay[d] >= medianNew * 0.1)
-        .sort();
-      const coverageStart = collectingDays[0] ?? archiveStart;
-
-      // WHICH DAY IS THE LAST ONE WORTH MEASURING?
-      //
-      // The other end of the coverage problem, and the one that made every short
-      // window negative. TODAY IS ALWAYS PARTIAL — measured on production
-      // 2026-09-18, today held 20,176 ads from 35 sources against yesterday's
-      // 36,584 from 74, because most feeds had not run yet. Comparing that
-      // half-collected day against fully collected ones reports the missing
-      // feeds as falling demand, for every skill at once.
-      //
-      // Two guards, the same pair analystFn uses: step off today, which is never
-      // finished; then step back to coverageDay, the most recent day by which
-      // 95% of the rows' feeds have reported, because yesterday is often short
-      // too. Both are anchored to the data rather than the clock, so a stalled
-      // scraper degrades the figure instead of silently skewing it — and the
-      // step back is floored so one dead feed cannot drag the ticker into the
-      // distant past.
-      const yesterday = day(1);
-      let asOf = latestSeen && latestSeen < yesterday ? latestSeen : yesterday;
-      const cov = coverageDay(Object.values(feedMax));
-      if (cov && cov < asOf) {
-        const floor = day(1 + MAX_STEP_BACK_DAYS);
-        asOf = cov > floor ? cov : floor;
-      }
-      const iNow = dayIdx(asOf);
-
-      // The sparkline ends on the same day the delta does, so a partial today
-      // can no longer put a phantom cliff on the end of every line.
-      const firstCovered = seriesDays.findIndex((d) => d >= archiveStart);
-      const sparkFrom = Math.max(
-        Math.max(0, iNow - (SPARK_DAYS - 1)),
-        firstCovered < 0 ? seriesDays.length : firstCovered,
+      const out = await buildLiveSkillTrends(
+        async (sql, params) =>
+          ((
+            await db
+              .prepare(sql)
+              .bind(...params)
+              .all()
+          )?.results ?? []) as TrendsRow[],
+        { region, seesAll },
       );
-      const sparkFor = (name: string): number[] | undefined => {
-        const arr = daily[name];
-        if (!arr) return undefined;
-        const cut = arr.slice(sparkFrom, iNow + 1);
-        if (cut.length < SPARK_MIN_POINTS) return undefined;
-        // A dead-flat line is noise, not signal — leave it off.
-        return cut.some((v) => v !== cut[0]) ? cut : undefined;
-      };
-
-      const out = { ...empty };
-      for (const b of bounds) {
-        // A CHANGE IS ONLY REPORTABLE WHEN BOTH HALVES WERE COLLECTED.
-        //
-        // Each window compares the last N days against the N before them. If
-        // the archive was not running for that earlier half, `prev` is 0 for
-        // every skill — not because demand was zero, but because nobody was
-        // looking. The old code turned that into `pct = 100`, clamped to the
-        // ticker's +24% band, so a 30-day window over a 12-day-old archive
-        // reported every single skill as up 24%. That is an invented number
-        // presented as measurement, and the 7-day window was distorted the
-        // same way by a prior half that was only partly collected.
-        //
-        // A window whose prior half predates collection is left EMPTY. The
-        // ticker says so rather than showing a figure nobody measured, and the
-        // window starts reporting on its own once the archive is old enough.
-        const iPrev = iNow - b.days;
-        if (iPrev < 0 || seriesDays[iPrev] < coverageStart) {
-          out[b.key] = [];
-          continue;
+      if (TREND_WINDOWS.some((w) => out[w.key].length)) {
+        const entry: TrendsCacheEntry = { at: Date.now(), src: "app", value: out };
+        trendsMemo.set(cacheKey, entry);
+        if (kv) {
+          try {
+            // expirationTtl only garbage-collects; `at` + src decide freshness.
+            await kv.put(cacheKey, JSON.stringify(entry), {
+              expirationTtl: TRENDS_FRESH_MS.app / 1000,
+            });
+          } catch {
+            // A failed write only costs the next cold isolate a recompute.
+          }
         }
-        type Row = { name: string; v: number; sig: number };
-        const movers: Row[] = [];
-        for (const s of Object.keys(daily)) {
-          if (!(s in SKILL_CATEGORY)) continue; // only canonical skills on the ticker
-          // BOTH SIDES OFF THE SAME SERIES: live vacancies demanding this skill
-          // on the reference day, against the same count `days` earlier.
-          const now = daily[s][iNow] || 0;
-          const prev = daily[s][iPrev] || 0;
-          // Require a little volume so single-listing noise doesn't dominate.
-          if (now + prev < 3) continue;
-          const delta = now - prev;
-          if (delta === 0) continue;
-          // prev === 0 here means genuinely new demand within a collected
-          // window, not a gap in the archive — that case is excluded above.
-          let pct = prev > 0 ? (delta / prev) * 100 : 100;
-          pct = Math.max(-16, Math.min(24, pct)); // match the ticker's visual band
-          movers.push({ name: s, v: Math.round(pct * 10) / 10, sig: Math.abs(delta) });
-        }
-        // Biggest absolute movers first — this decides WHICH skills are
-        // reported, and nothing about how they look may influence it.
-        movers.sort((a, b2) => b2.sig - a.sig || Math.abs(b2.v) - Math.abs(a.v));
-        // Before the slice, not after, so suppressing a speciality frees its
-        // slot for a different skill instead of shortening the ticker.
-        const ranked = dropRedundantKin(movers, (m) => m.name).slice(0, 16);
-        // Then, and only then, alternate the signs so the marquee does not run
-        // a block of red followed by a block of green. Order only; the sixteen
-        // are already chosen. See alternateBySign.
-        const picked = alternateBySign(ranked, (m) => m.v);
-        // THE PADDING FALLBACK IS GONE, and it has to be.
-        //
-        // When a window produced fewer than six movers this topped the ticker up
-        // with the highest-demand skills at an INVENTED percentage —
-        // `Math.min(18, 2 + Math.round(cnt / 3))`, a number derived from a
-        // headcount and displayed as a change over time. That is precisely what
-        // the seed list was deleted for (see the note in components/Ticker.tsx:
-        // "Every percentage in it was invented"), and it survived in the one
-        // place nobody looked because it only fires when the real data is thin.
-        //
-        // It also had to go for this fix to be checkable: padding fires exactly
-        // when the measurement is weakest, so it would mask the very windows the
-        // coverage guards above now decline to report.
-        //
-        // A window with too little to say renders the ticker's own empty state,
-        // which says so in words.
-        out[b.key] = picked.map((p) => ({
-          // A speciality only reaches here when its parent did not, so the
-          // label says which skill it narrows — "Midwifery" alone reads like a
-          // peer of Nursing rather than a slice of it.
-          name: withParent(p.name),
-          tag: "Demand",
-          v: p.v,
-          spark: sparkFor(p.name),
-          // Undefined when too few ads state a salary — the row then renders
-          // without a figure rather than with a thin one. It is the same figure
-          // in every window on purpose: the median is a LEVEL ("what these
-          // roles pay now") while the percentage is a MOVEMENT over the
-          // selected window, so rescaling it per window would be asserting a
-          // trend nothing measured.
-          //
-          // Equal-weighted across markets, not pooled across ads: one vote per
-          // market that clears the floor on its own. See priceOf.
-          pay:
-            priceOf(payByMarket[p.name] ?? new Map(), payAds[p.name] ?? [], true).pay ?? undefined,
-        }));
       }
       return out;
     } catch {
@@ -751,6 +493,7 @@ export interface MoverScope {
 }
 
 export const getMarketSkillMovers = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: MoverScope) => data)
   .handler(async ({ data }): Promise<MarketSkillMovers> => {
     const db = await getArchiveDb();
@@ -903,6 +646,7 @@ export const getMarketSkillMovers = createServerFn({ method: "GET" })
 // private companies get. Builds forward as the archive accumulates, so a
 // freshly-seeded company shows a short series that lengthens over the days.
 export const getVacancyTrend = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<RolePoint[]> => {
     const id = (data.id || "").trim();
@@ -1269,6 +1013,7 @@ async function archiveCoverageStart(db: D1Like): Promise<string | null> {
 }
 
 export const getCompanySkillTrends = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string; days?: number }) => data)
   .handler(async ({ data }): Promise<CompanySkillTrends> => {
     const id = (data.id || "").trim();
@@ -1294,10 +1039,11 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
       const window: string[] = [];
       for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
-      // The same one-day boundary the rest of the app calls "currently
-      // advertised", and the last day of the window above, so the card's counts
-      // and its line end at the same place.
-      const liveFrom = isoDaysAgo(1);
+      // The same boundary the rest of the app calls "currently advertised",
+      // and the last day of the window above, so the card's counts and its line
+      // end at the same place. One day for a nightly feed; the fold widens it
+      // per source (isLiveOn), since a weekly feed cannot meet a one-day test.
+      const liveDay = isoDaysAgo(1);
 
       const res = await db
         .prepare(
@@ -1322,7 +1068,7 @@ export const getCompanySkillTrends = createServerFn({ method: "GET" })
       const firstCovered = coverage ? window.findIndex((d) => d >= coverage) : 0;
       const from = firstCovered < 0 ? window.length : firstCovered;
 
-      return foldSkillRows(rows, window, liveFrom, from);
+      return foldSkillRows(rows, window, liveDay, from);
     } catch {
       return NO_SKILL_TRENDS;
     }
@@ -1401,6 +1147,7 @@ function archivedNamesFor(skill: string): string[] {
  * roleKeyByCompanyTitle.
  */
 export const getSkillTrend = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string; days?: number }) => data)
   .handler(async ({ data }): Promise<SkillArchiveTrend> => {
     const skill = (data.skill || "").trim();
@@ -1418,7 +1165,8 @@ export const getSkillTrend = createServerFn({ method: "GET" })
       const window: string[] = [];
       for (let i = spanDays; i >= 1; i--) window.push(isoDaysAgo(i));
       const scanFrom = window[0];
-      const liveFrom = isoDaysAgo(1);
+      // As above: the reference day, widened per source inside the fold.
+      const liveDay = isoDaysAgo(1);
 
       const names = archivedNamesFor(skill);
       // The quotes on BOTH sides are what makes this exact rather than a
@@ -1455,7 +1203,7 @@ export const getSkillTrend = createServerFn({ method: "GET" })
       const from = firstCovered < 0 ? window.length : firstCovered;
 
       // roleKeyByCompanyTitle, NOT the default: this fold spans employers.
-      const folded = foldSkillRows(rows, window, liveFrom, from, roleKeyByCompanyTitle);
+      const folded = foldSkillRows(rows, window, liveDay, from, roleKeyByCompanyTitle);
       const row = folded.skills.find((s) => s.skill === skill);
       if (!row) return NO_ARCHIVE_TREND;
       return {
@@ -1547,11 +1295,7 @@ export const roleKeyByCompanyTitle: RoleKeyFn = (r) => {
  * chart was written, and the two disagreeing is exactly the bug this fixes —
  * the line and the count beside it were measuring different things.
  */
-export const normRoleTitle = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+export { normRoleTitle };
 
 /** The most-named entry in a tally, ties broken alphabetically so the same rows
  *  always fold to the same answer. Null when nothing was named. */
@@ -1595,7 +1339,7 @@ function midAnnual(values: number[]): number | null {
 export function foldSkillRows(
   rows: SkillRow[],
   window: string[],
-  liveFrom: string,
+  liveDay: string,
   from: number,
   roleKey: RoleKeyFn = roleKeyByTitle,
 ): CompanySkillTrends {
@@ -1708,7 +1452,10 @@ export function foldSkillRows(
       g.spans.push([fs, ls]);
       if (fs < g.opened) g.opened = fs;
       if (area) g.areas.set(area, (g.areas.get(area) || 0) + 1);
-      if (ls >= liveFrom) {
+      // PER FEED, not a flat comparison against liveDay: `src` is already in
+      // hand two lines up, and a weekly feed cannot have seen this ad
+      // yesterday however plainly it is still advertised. See isLiveOn.
+      if (isLiveOn(ls, src, liveDay)) {
         g.live = true;
         // Hub and salary are read off the LIVE rows only, for the same reason
         // the tallies below are: the map answers "where are they hiring this
@@ -1966,6 +1713,7 @@ export interface SkillRank {
 export type SkillRanks = Record<string, SkillRank>;
 
 export const getSkillMarketRanks = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { hubs?: string[] }) => data)
   .handler(async ({ data }): Promise<SkillRanks> => {
     const db = await getArchiveDb();
@@ -2231,50 +1979,6 @@ export type MarketRow = Partial<
   Record<"skills" | "first_seen" | "last_seen" | "salary" | "hub" | "source", SqlValue>
 >;
 
-/**
- * Median advertised salary for one bag of ads.
- *
- * `byCountry` is the whole point. Pooling every ad worldwide answers "what does
- * the median ADVERTISEMENT pay", which is a question about where the ads happen
- * to be, not about the skill: measured on production, Financial pooled to $8k
- * because 151 of its 296 priced ads were Philippine at ~A$7k, and 199 of them
- * carried no hub at all. Taking the median OF THE MARKET MEDIANS instead gives
- * every market one vote — an equal-weighted index rather than a volume-weighted
- * one — and the same category comes out at $113k from 2 markets.
- *
- * Within a single market the two are the same thing, so a scoped read just
- * pools.
- */
-function priceOf(
-  byCountry: Map<string, number[]>,
-  pooled: number[],
-  worldwide: boolean,
-): { pay: number | null; n: number; markets: number } {
-  const n = pooled.length;
-  if (!worldwide) return { pay: medianAnnual(pooled), n, markets: byCountry.size ? 1 : 0 };
-  const perMarket: number[] = [];
-  for (const v of byCountry.values()) {
-    const m = medianAnnual(v);
-    if (m !== null) perMarket.push(m);
-  }
-  if (!perMarket.length) return { pay: null, n, markets: 0 };
-  perMarket.sort((a, b) => a - b);
-  const mid = Math.floor(perMarket.length / 2);
-  const pay =
-    perMarket.length % 2 ? perMarket[mid] : Math.round((perMarket[mid - 1] + perMarket[mid]) / 2);
-  return { pay, n, markets: perMarket.length };
-}
-
-/**
- * The pure half of getSkillMarket: archive rows in, a priced market out.
- *
- * Split out for the same reason foldSkillRows is — the day arithmetic and the
- * price construction are both easy to get subtly wrong and impossible to eyeball
- * on a rendered ticker. See scripts/check-skill-trends.ts.
- *
- * `window` is oldest → newest and already trimmed to days the scope's feeds
- * cover; `asOf` is its last day, the reference day every level is measured at.
- */
 export function foldSkillMarket(
   rows: MarketRow[],
   window: string[],
@@ -2467,6 +2171,7 @@ export function marketWindowDays(days: unknown): number {
 }
 
 export const getSkillMarket = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { hubs?: string[]; label?: string; days?: number }) => data)
   .handler(async ({ data }): Promise<SkillMarket> => {
     const db = await getArchiveDb();
@@ -2564,9 +2269,25 @@ export interface SkillCompanyMonths {
   months: string[];
   /** month → company id → ads naming the skill that were live in that month. */
   byMonth: Record<string, Record<string, number>>;
+  /**
+   * The same, split by the city (hub) each ad was advertised in: month → hub
+   * → company id → ads. What the LOCAL layer shows, because a company's pin
+   * in one city must count that city's ads — BHP's Brisbane pin is not BHP's
+   * Perth, Santiago and Brisbane roles together. An ad with no hub is in
+   * `byMonth` and in no city here.
+   */
+  byMonthCity: Record<string, Record<string, Record<string, number>>>;
+  /** hub → company id → ads naming the skill still live at the archive's
+   *  newest day (last_seen within a day of it) — the local layer's "now". */
+  liveByCity: Record<string, Record<string, number>>;
 }
 
-const NO_SKILL_MONTHS: SkillCompanyMonths = { months: [], byMonth: {} };
+const NO_SKILL_MONTHS: SkillCompanyMonths = {
+  months: [],
+  byMonth: {},
+  byMonthCity: {},
+  liveByCity: {},
+};
 
 /** "2026-07-16" → "2026-07". */
 const monthOf = (iso: string) => iso.slice(0, 7);
@@ -2592,6 +2313,7 @@ export function monthsBetween(a: string, b: string): string[] {
 }
 
 export const getSkillCompanyMonths = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { skill: string }) => data)
   .handler(async ({ data }): Promise<SkillCompanyMonths> => {
     const skill = (data.skill || "").trim();
@@ -2623,7 +2345,7 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       const likes = names.map((_, i) => `skills LIKE ?${i + 2}`).join(" OR ");
       const res = await db
         .prepare(
-          `SELECT company_id, hub, first_seen, last_seen FROM jobs
+          `SELECT company_id, hub, title, source, first_seen, last_seen FROM jobs
             WHERE (${likes})
               AND company_id IS NOT NULL
               AND last_seen >= ?1
@@ -2634,10 +2356,12 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       let rows = (res?.results ?? []) as {
         company_id: string | null;
         hub: string | null;
+        title: string | null;
+        source: string | null;
         first_seen: string | null;
         last_seen: string | null;
       }[];
-      if (!rows.length) return { months, byMonth: {} };
+      if (!rows.length) return { months, byMonth: {}, byMonthCity: {}, liveByCity: {} };
 
       // The same release gate every other per-company reader here applies.
       if ((await callerRole()) !== "admin") {
@@ -2645,22 +2369,264 @@ export const getSkillCompanyMonths = createServerFn({ method: "GET" })
       }
 
       const byMonth: Record<string, Record<string, number>> = {};
+      const byMonthCity: Record<string, Record<string, Record<string, number>>> = {};
+      const liveByCity: Record<string, Record<string, number>> = {};
+      // "Live" as the app defines it everywhere: seen within a day of the
+      // archive's newest day (to), not of today — the span actually read. The
+      // "within a day" is per SOURCE from here (isLiveOn / SOURCE_LIVE_DAYS in
+      // jobArchive.ts): a weekly feed's newest sighting is up to a week old at
+      // any moment, so one day is not a window it can ever satisfy.
+      const liveDay = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
       const known = new Set(months);
+
+      /**
+       * DISTINCT ROLES, NOT ARCHIVE ROWS, and this used to count rows.
+       *
+       * The archive's key is `source|title|company|location` and source is the
+       * FIRST field, so one job carried by an employer's own careers site and
+       * by a job board is two rows by construction. Counting rows therefore
+       * reported one role as two — Rio Tinto's "Adviser Global Payroll Systems
+       * ESPS" was 2 ads on the pin and appeared twice in the roles list, the
+       * two copies differing only in how they spelled Perth.
+       *
+       * Folding by (company, hub, normalised title) is the unit "Open roles"
+       * and the vacancy chart already use, so the map, the card and the list
+       * now say the same number for the same thing.
+       *
+       * The fold keeps each copy's SPAN rather than merging them into one.
+       * Merging min(first_seen) to max(last_seen) would claim the role was
+       * open through any gap between the two boards carrying it; a union says
+       * it was open on the days at least one board had it up, which is what
+       * was actually observed. Same construction getVacancyTrend uses.
+       */
+      type Group = { id: string; hub: string; spans: [string, string][]; live: boolean };
+      const groups = new Map<string, Group>();
       for (const r of rows) {
         const id = (r.company_id || "").trim();
         const fs = String(r.first_seen || "");
         const ls = String(r.last_seen || "");
         if (!id || !fs || !ls) continue;
+        const hub = (r.hub || "").trim();
+        const t = normRoleTitle(String(r.title || ""));
+        // DECIDED HERE, NOT OFF THE MERGED SPAN, because the grace a sighting
+        // earns belongs to the FEED that made it and a group can hold rows from
+        // several. Folding first would leave one `last_seen` to judge against
+        // one rule, and whichever rule that was would be wrong for the other
+        // feed's copy of the ad.
+        const live = isLiveOn(ls, r.source, liveDay);
+        // A row with no usable title cannot be folded against anything, so it
+        // stands alone rather than collapsing every untitled row into one.
+        const key = `${id}|${hub}|${t || `#${groups.size}`}`;
+        const g = groups.get(key);
+        if (g) {
+          g.spans.push([fs, ls]);
+          if (live) g.live = true;
+        } else groups.set(key, { id, hub, spans: [[fs, ls]], live });
+      }
+
+      for (const g of groups.values()) {
         // An ad counts in EVERY month it was up, not only the one it appeared
         // in — the question is who was advertising then, and a role posted in
         // July and still open in September was being advertised in August.
-        for (const m of monthsBetween(monthOf(fs), monthOf(ls))) {
+        const ms = new Set<string>();
+        const live = g.live;
+        for (const [fs, ls] of g.spans) {
+          for (const m of monthsBetween(monthOf(fs), monthOf(ls))) ms.add(m);
+        }
+        for (const m of ms) {
           if (!known.has(m)) continue;
-          (byMonth[m] ||= {})[id] = (byMonth[m][id] || 0) + 1;
+          (byMonth[m] ||= {})[g.id] = (byMonth[m][g.id] || 0) + 1;
+          if (g.hub) {
+            const c = ((byMonthCity[m] ||= {})[g.hub] ||= {});
+            c[g.id] = (c[g.id] || 0) + 1;
+          }
+        }
+        if (g.hub && live) {
+          const c = (liveByCity[g.hub] ||= {});
+          c[g.id] = (c[g.id] || 0) + 1;
         }
       }
-      return { months, byMonth };
+      return { months, byMonth, byMonthCity, liveByCity };
     } catch {
       return NO_SKILL_MONTHS;
+    }
+  });
+
+/**
+ * The ADS behind one company's skill count, in one city.
+ *
+ * WHY IT IS BUILT FROM getSkillCompanyMonths' QUERY, LINE FOR LINE. The number
+ * this list has to explain is `liveByCity[hub][companyId]` from that handler —
+ * what the pin and the company card show when a skill is searched. A list that
+ * answered the same question a slightly different way (today instead of the
+ * archive's newest day, a looser LIKE, a different feed filter) would come back
+ * with a different count, and a card saying "2 ads" above a list of three is
+ * worse than no list at all. So the WHERE clause here is that one plus a
+ * company and a hub, and the two must be changed together.
+ *
+ * In particular:
+ *  - `liveDay` is the archive's newest `last_seen` minus a day, NOT today.
+ *    Today is never fully collected (see the coverage note in CLAUDE.md), so
+ *    "live" means the last day the feeds actually reported — and each feed is
+ *    given the grace its own cadence earns from there (liveSinceDaySql).
+ *  - the LIKE patterns are quoted on both sides, so `%"Audit"%` cannot match
+ *    "Internal Audit".
+ *  - the same release gate: an end user gets nothing for a company outside the
+ *    released markets, so this cannot be used to read around the coverage gate.
+ *
+ * ONE CITY, because the pin is one city. A company id is one employer
+ * everywhere, and without the hub filter Rio Tinto's Perth card would list its
+ * Brisbane and Montreal roles too.
+ */
+export interface SkillRole {
+  title: string;
+  /** The ad's own link, or "" — not every feed gives one. */
+  url: string;
+  location: string;
+  /** As the source quoted it; never converted. "" when the ad gave none. */
+  salary: string;
+  /** Which board or portal carried it, for the "collected from" line. */
+  source: string;
+  /** First and last day the archive saw it, ISO. */
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface SkillRoles {
+  roles: SkillRole[];
+  /** The window the list was read over: the archive's newest DAY when live
+   *  (never today — see the note in the handler), or the "YYYY-MM" asked for. */
+  asOf: string;
+  /** Whether `asOf` is a scrubbed month rather than the live day. */
+  dated: boolean;
+  /** True when the archive could not answer at all, as against answering none. */
+  unavailable: boolean;
+}
+
+const NO_SKILL_ROLES: SkillRoles = { roles: [], asOf: "", dated: false, unavailable: true };
+
+export const getCompanySkillRoles = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
+  .validator((data: { companyId: string; hub: string; skill: string; month?: string }) => data)
+  .handler(async ({ data }): Promise<SkillRoles> => {
+    const skill = (data.skill || "").trim();
+    const companyId = (data.companyId || "").trim();
+    const hub = (data.hub || "").trim();
+    // The same allowlist getSkillCompanyMonths uses: an exact taxonomy name,
+    // because the LIKE patterns are built from this string.
+    if (!skill || !(skill in SKILL_CATEGORY) || !companyId || !hub) return NO_SKILL_ROLES;
+    const db = await getArchiveDb();
+    if (!db) return NO_SKILL_ROLES;
+    try {
+      const span = await db
+        .prepare(
+          `SELECT MAX(last_seen) AS mx FROM jobs
+            WHERE company_id IS NOT NULL AND ${LIVE_FEEDS_ONLY_SQL}`,
+        )
+        .first();
+      const to = String(span?.mx || "");
+      if (!to) return NO_SKILL_ROLES;
+      const liveDay = new Date(Date.parse(`${to}T00:00:00Z`) - 864e5).toISOString().slice(0, 10);
+
+      // WHICH WINDOW, AND WHY IT IS THE CALLER'S TO SAY. The pin's number is
+      // the SCRUBBED month's when the timeline is on a covered month and the
+      // live count otherwise (demandByCompanyAt in skillHeat.ts). Listing live
+      // ads under a pin showing August would be a list that contradicts the
+      // number it is explaining, so the month comes in from the caller and the
+      // two windows are written to match that function's two branches exactly.
+      //
+      // The month test is the SQL form of `monthsBetween(monthOf(first_seen),
+      // monthOf(last_seen))` containing it — an ad counts in every month it was
+      // up, not only the one it appeared in. Not a `first_seen <= D` day
+      // reconstruction compared against an exact-day count, which CLAUDE.md
+      // records as mostly measuring the difference between the two methods;
+      // this is the same method, in the same units, as the count it explains.
+      const month = (data.month || "").trim();
+      const byMonth = /^\d{4}-\d{2}$/.test(month);
+      const names = archivedNamesFor(skill);
+      const base = byMonth ? 5 : 4;
+      const likes = names.map((_, i) => `skills LIKE ?${i + base}`).join(" OR ");
+      const window = byMonth
+        ? "substr(first_seen, 1, 7) <= ?3 AND substr(last_seen, 1, 7) >= ?4"
+        : // Per source, so this list holds the same ads the count above it
+          // claims. A flat `last_seen >= ?3` would drop every weekly feed's row
+          // and leave a pin reading 3 with two ads listed under it.
+          liveSinceDaySql(3);
+      const res = await db
+        .prepare(
+          `SELECT title, url, location, salary, source, hub, company_id, first_seen, last_seen
+             FROM jobs
+            WHERE company_id = ?1
+              AND hub = ?2
+              AND ${window}
+              AND (${likes})
+              AND ${LIVE_FEEDS_ONLY_SQL}
+            ORDER BY first_seen DESC`,
+        )
+        .bind(
+          companyId,
+          hub,
+          ...(byMonth ? [month, month] : [liveDay]),
+          ...names.map((n) => `%"${n}"%`),
+        )
+        .all();
+      let rows = (res?.results ?? []) as Record<string, unknown>[];
+      if ((await callerRole()) !== "admin") {
+        rows = rows.filter((r) =>
+          isReleasedRow(r.hub as string | null, r.company_id as string | null),
+        );
+      }
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      /**
+       * ONE ROW PER ROLE, NOT PER ARCHIVE ROW.
+       *
+       * The archive's key is `source|title|company|location`, and source is
+       * the FIRST field — so one job carried by the employer's own careers
+       * site and by a job board is two rows by construction, whatever the
+       * location says. Rio Tinto's "Adviser Global Payroll Systems ESPS"
+       * appeared twice in this list for that reason, the two differing only in
+       * how they spelled Perth.
+       *
+       * That is not something location normalisation could fix: the rows
+       * differ in `source` before they differ in anything else. Folding by
+       * normalised title is what the rest of the card already does —
+       * normRoleTitle is the same fold behind "Open roles" and the vacancy
+       * chart — so this list now answers in the same unit they do.
+       *
+       * The kept row is the one most useful to click: a link beats no link,
+       * and a salary beats none. The others only contribute their existence.
+       */
+      const byRole = new Map<string, SkillRole>();
+      for (const r of rows) {
+        const role: SkillRole = {
+          title: str(r.title),
+          url: str(r.url),
+          location: str(r.location),
+          salary: str(r.salary),
+          source: str(r.source),
+          firstSeen: str(r.first_seen),
+          lastSeen: str(r.last_seen),
+        };
+        if (!role.title) continue;
+        const key = normRoleTitle(role.title);
+        if (!key) continue;
+        const kept = byRole.get(key);
+        if (!kept) {
+          byRole.set(key, role);
+          continue;
+        }
+        const better =
+          (role.url ? 2 : 0) + (role.salary ? 1 : 0) > (kept.url ? 2 : 0) + (kept.salary ? 1 : 0);
+        if (better) byRole.set(key, role);
+      }
+      return {
+        roles: [...byRole.values()],
+        asOf: byMonth ? month : to,
+        /** True when `asOf` is a month rather than the archive's newest day. */
+        dated: byMonth,
+        unavailable: false,
+      };
+    } catch {
+      return NO_SKILL_ROLES;
     }
   });

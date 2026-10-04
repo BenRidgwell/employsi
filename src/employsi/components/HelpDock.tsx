@@ -222,6 +222,7 @@ export function HelpDock() {
   const open = useAppStore((s) => s.helpTourOpen);
   const toggleHelpTour = useAppStore((s) => s.toggleHelpTour);
   const closeHelpTour = useAppStore((s) => s.closeHelpTour);
+  const tourStart = useAppStore((s) => s.tourStart);
   const fbOpen = useAppStore((s) => s.feedbackOpen);
   const toggleFeedback = useAppStore((s) => s.toggleFeedback);
   const closeFeedback = useAppStore((s) => s.closeFeedback);
@@ -289,7 +290,7 @@ export function HelpDock() {
             render nothing instead of degrading to prose. */}
         {open &&
           (layer === "local" || layer === "global" || layer === "domestic" ? (
-            <GuidedTour layer={layer} onClose={closeHelpTour} />
+            <GuidedTour layer={layer} onClose={closeHelpTour} startAt={tourStart ?? undefined} />
           ) : (
             <div className="dockpanel helppanel">
               <div className="dockhd">

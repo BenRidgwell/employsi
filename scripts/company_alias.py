@@ -108,6 +108,14 @@ ACCEPT_ALIAS: dict[str, set[str]] = {
     # (ASX:HGO -> ASX:KAN). Months of ads sit under the old name and every one
     # is this company hiring, so without this the rename halves its count.
     'kantra copper': {'hillgrove resources', 'hillgrove'},
+    # A RENAME, 2026: Predictive Discovery became PDI Gold Limited, ticker
+    # unchanged (ASX:PDI). SEEK still carries "Predictive Discovery Pty Ltd".
+    'pdi gold': {'predictive discovery', 'predictive discovery limited',
+                 'predictive discovery pty ltd'},
+    # A REBRAND, not a division: "J.J. Richards & Sons Pty Ltd has rebranded to
+    # JJ's Waste & Recycling" (jjswaste.com.au, read 2026-09-30), and that is
+    # the name its ads now carry.
+    'j j richards sons': {'jj s waste recycling', 'jj s waste and recycling'},
     # A RENAME, 2025: Anglo American Platinum demerged and became Valterra
     # Platinum (JSE:AMS -> JSE:VAL). Every archive row for this employer was
     # posted under the old name and every one is this company hiring.

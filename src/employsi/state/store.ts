@@ -8,6 +8,7 @@ import {
   type Company,
   type ListingType,
 } from "../data/companies";
+import { canonicalCompanyId } from "../data/mergedCompanies";
 import { CITY_CONTINENT } from "../data/geo";
 import { CITY_COMPANIES, cityForCompany } from "../data/mapboxGeo";
 import { HUB_LNGLAT } from "../data/mapboxWorldGeo";
@@ -16,7 +17,7 @@ import type { SkillIndex } from "../lib/skillsFn";
 import type { SkillCompanyMonths } from "../lib/jobHistoryFn";
 import type { DemandMode } from "../lib/skillHeat";
 import type { FlowView } from "../lib/flows";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
+import { TIMELINE_MONTHS } from "../lib/skillCard";
 
 export interface Account {
   /** Real user id from the auth provider. Absent only on a pre-auth leftover. */
@@ -28,6 +29,21 @@ export interface Account {
 
 export interface AppState {
   account: Account | null;
+  /**
+   * Whether the server has answered "who is signed in?" yet.
+   *
+   * `account` alone cannot tell you: it is null both before the session query
+   * lands and when nobody is signed in, and those two need opposite UI. The
+   * app is signed-in-only (see getAppAccess), so inside it null-and-known
+   * means the cookie expired mid-visit rather than "a guest is browsing" —
+   * while null-and-unknown is the ordinary first few hundred milliseconds of
+   * every load, including for a signed-in user.
+   *
+   * Conflating them is what made the old signed-out prompts flash on boot.
+   * Anything rendering account-shaped chrome should wait for this rather than
+   * treat a missing account as an invitation to sign in.
+   */
+  sessionKnown: boolean;
   /**
    * What this session may see, as told by the server (lib/roles.ts).
    *
@@ -48,6 +64,25 @@ export interface AppState {
    *  Kept in sessionStorage as well as here, because sign-in is an OAuth
    *  redirect and the in-memory copy does not survive the round trip. */
   pendingCareerGoal: { id: string; title: string } | null;
+  /**
+   * A role picked on the career pathways card. While set, the map is heated
+   * by that role the way a skill search heats it, on every layer:
+   *   - globe and domestic (WorldMapbox): `cities`, the role's live ads by
+   *     city — the card's own hiring hotspots — as the per-city demand;
+   *   - local (PerthMapbox's skillDemandOf): `companies`, the roster companies
+   *     that advertised it in the pathways window, lit with their counts.
+   * It belongs to the card: closing the card clears it, and a skill search
+   * replaces it.
+   */
+  roleFocus: {
+    id: string;
+    title: string;
+    companies: Record<string, number>;
+    cities: Record<string, number>;
+    /** city (hub) → company id → roles advertised there: what the local
+     *  layer shows, so a company's pin counts that city's roles only. */
+    byCity?: Record<string, Record<string, number>>;
+  } | null;
   /** A pathway node the career card should open on (the profile's "View
    *  pathway"); consumed by the card when it mounts. */
   careerFocus: string | null;
@@ -59,7 +94,6 @@ export interface AppState {
       controls for one panel cannot each own its state. */
   alertsOpen: boolean;
   reduceMotion: boolean;
-  placeLabels: boolean;
   /** Geolocation is in flight (the browser is showing its permission prompt). */
   locating: boolean;
   useMyLocation: boolean;
@@ -84,8 +118,11 @@ export interface AppState {
    * employers.
    */
   skillMonths: SkillCompanyMonths | null;
-  // Index into IVI_MONTHS for the AU-domestic time slider (defaults to the
-  // latest month). Lets the user scrub the skill heat map back to 2006.
+  // Index into TIMELINE_MONTHS for the time slider (defaults to the present
+  // month). Lets the user scrub the skill heat map back to 2006 — and, since
+  // the axis is the IVI's months carried forward to today rather than the
+  // IVI's own list, all the way back UP to now. See TIMELINE_MONTHS in
+  // lib/skillCard.ts for why those are not the same thing.
   heatMonth: number;
   // Whether skill demand is read as a VOLUME of vacancies or as a RATE per
   // 1,000 people already employed in the work. Two different questions — "where
@@ -163,6 +200,21 @@ export interface AppState {
   // the mobile "More" sheet can open them alongside the desktop dock buttons.
   feedbackOpen: boolean;
   helpTourOpen: boolean;
+  /**
+   * The first-run welcome card, shown once per ACCOUNT (lib/onboardingFn.ts).
+   *
+   * Set from the server's answer, never from a local default, so it cannot
+   * flash open on a load where the answer has not arrived.
+   */
+  welcomeOpen: boolean;
+  /**
+   * Which walkthrough GuidedTour should open on, instead of its hub.
+   *
+   * Null is the normal path: pressing "Need help?" shows the hub and the
+   * person picks. The welcome card sets "orient", because "Start tour" that
+   * lands you on a menu has not started a tour.
+   */
+  tourStart: string | null;
   // The mobile bottom-bar "More" sheet.
   mobileMenuOpen: boolean;
   /**
@@ -202,15 +254,29 @@ export interface AppState {
   /** Open the career card on one role. */
   openCareerAt: (id: string) => void;
   takeCareerFocus: () => string | null;
+  setRoleFocus: (f: AppState["roleFocus"]) => void;
   dismissToast: () => void;
   openAuth: () => void;
   closeAuth: () => void;
   /** Adopt (or clear) the session the server reported. */
   setSession: (a: Account | null) => void;
+  /** Mark the session question answered without changing the answer. */
+  markSessionKnown: () => void;
   setRole: (r: Role) => void;
   /** Sign-in buttons this deployment can offer; empty = not configured. */
   authProviders: ("google" | "linkedin")[];
   setAuthProviders: (p: ("google" | "linkedin")[]) => void;
+  /**
+   * The admin "view as user" switch, as the server reported it (lib/persona.ts).
+   *
+   * `available` is false on every non-preview deployment and for everyone who
+   * is not really an admin, so the control simply does not exist there. NOTE
+   * that `role` above is the EFFECTIVE role: while `viewingAsUser` is true it
+   * reads "user", which is exactly the point — every consumer of `role` then
+   * behaves as an end user's would, with no second code path.
+   */
+  persona: { available: boolean; viewingAsUser: boolean };
+  setPersona: (p: { available: boolean; viewingAsUser: boolean }) => void;
   /** Replace follows wholesale with the account's server-side set. */
   setFollows: (ids: string[], skills: string[]) => void;
   signOut: () => void;
@@ -220,7 +286,6 @@ export interface AppState {
   closeAlerts: () => void;
   openAlerts: () => void;
   setReduceMotion: (v: boolean) => void;
-  setPlaceLabels: (v: boolean) => void;
   setUseMyLocation: (v: boolean) => void;
   setNightMode: (v: boolean) => void;
   closePanel: () => void;
@@ -290,6 +355,9 @@ export interface AppState {
   closeFeedback: () => void;
   toggleHelpTour: () => void;
   closeHelpTour: () => void;
+  setWelcomeOpen: (v: boolean) => void;
+  /** Open the guided tour directly on a named walkthrough. */
+  startTour: (key: string) => void;
   toggleMobileMenu: () => void;
   closeMobileMenu: () => void;
   toggleNewsCollapsed: () => void;
@@ -312,9 +380,6 @@ interface Persisted {
   followedSkills: string[];
   reduceMotion: boolean;
   nightMode: boolean;
-  /** Show Mapbox's own city/region labels. On by default — the map is harder
-   *  to read without them, so hiding is the deliberate choice, not the default. */
-  placeLabels: boolean;
   /** The company card's news column, tucked or not. See AppState.newsCollapsed. */
   newsCollapsed: boolean;
   /** The skills ticker, collapsed to its pill. See AppState.tickerCollapsed. */
@@ -325,7 +390,6 @@ const PERSIST_DEFAULTS: Persisted = {
   followedSkills: [],
   reduceMotion: false,
   nightMode: false,
-  placeLabels: true,
   newsCollapsed: false,
   tickerCollapsed: false,
 };
@@ -336,11 +400,14 @@ function loadPersisted(): Persisted {
     if (!raw) return PERSIST_DEFAULTS;
     const p = JSON.parse(raw) as Partial<Persisted>;
     return {
-      followedIds: Array.isArray(p.followedIds) ? p.followedIds : [],
+      // A browser may still hold a follow under a retired company id
+      // (data/mergedCompanies.ts); it now follows the company it was folded into.
+      followedIds: Array.isArray(p.followedIds)
+        ? [...new Set(p.followedIds.map((id) => canonicalCompanyId(String(id))))]
+        : [],
       followedSkills: Array.isArray(p.followedSkills) ? p.followedSkills : [],
       reduceMotion: p.reduceMotion ?? false,
       nightMode: p.nightMode ?? false,
-      placeLabels: p.placeLabels ?? true,
       newsCollapsed: p.newsCollapsed ?? false,
       tickerCollapsed: p.tickerCollapsed ?? false,
     };
@@ -500,6 +567,11 @@ const EXCLUSIVE_GROUPS: readonly (readonly PanelFlag[])[] = [
  * mobileMenuOpen is deliberately in BOTH groups: it is a full-screen overlay,
  * so it displaces everything, and everything displaces it.
  */
+/** Desktop layout, where the rail's panes and the company card sit side by
+ *  side (global.css puts both into full-width sheets at 680px and below). */
+const wideScreen = () =>
+  typeof window !== "undefined" && window.matchMedia("(min-width: 681px)").matches;
+
 function solo(flag: PanelFlag, open: boolean): Partial<Record<PanelFlag, boolean>> {
   const next: Partial<Record<PanelFlag, boolean>> = { [flag]: open };
   if (!open) return next;
@@ -512,19 +584,21 @@ function solo(flag: PanelFlag, open: boolean): Partial<Record<PanelFlag, boolean
 
 export const useAppStore = create<AppState>((set, get) => ({
   account: null,
+  sessionKnown: false,
   role: "user" as Role,
   authProviders: [],
+  persona: { available: false, viewingAsUser: false },
   authOpen: false,
   pendingFollowId: null,
   pendingFollowSkill: null,
   careerGoal: null,
   pendingCareerGoal: loadPendingGoal(),
   careerFocus: null,
+  roleFocus: null,
   toast: null,
   settingsOpen: false,
   alertsOpen: false,
   reduceMotion: persisted.reduceMotion,
-  placeLabels: persisted.placeLabels,
   // NOT persisted: a location permission belongs to the browser, and re-asking
   // on every load because a stored boolean said so would be rude.
   locating: false,
@@ -540,7 +614,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: "",
   skillIndex: null,
   skillMonths: null,
-  heatMonth: Math.max(0, IVI_MONTHS.length - 1),
+  heatMonth: Math.max(0, TIMELINE_MONTHS.length - 1),
   demandMode: "volume",
   activeSectors: [],
   listingType: null,
@@ -573,6 +647,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   comingSoon: null,
   feedbackOpen: false,
   helpTourOpen: false,
+  welcomeOpen: false,
+  tourStart: null,
   mobileMenuOpen: false,
   newsCollapsed: persisted.newsCollapsed,
   tickerCollapsed: persisted.tickerCollapsed,
@@ -589,7 +665,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       heatOpen: false,
       trendingOpen: false,
       analystOpen: false,
-      careerOpen: false,
+      // Career pathways stays open beside a company card on desktop: its job
+      // is to take the reader from a role to the companies advertising it, so
+      // opening one of them must not close it. On a phone both are full-width
+      // sheets and the company replaces it, as before.
+      careerOpen: get().careerOpen && id != null && wideScreen(),
       dataQualityOpen: false,
       flowsOpen: false,
       feedbackOpen: false,
@@ -610,29 +690,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         followedIds: on ? [...s.followedIds, id] : s.followedIds.filter((x) => x !== id),
       };
     }),
-  // Following is the account feature: signed-out visitors are prompted to
-  // create an account first, and the company they tapped is saved for them the
-  // moment they do (see signUp/signIn).
-  requestFollow: (id) => {
-    const s = get();
-    if (!s.account) {
-      // Not signed in — notify with a toast and open the account panel (with the
-      // tapped company remembered so it's saved the moment they sign up).
-      set({
-        authOpen: true,
-        pendingFollowId: id,
-        searchOpen: false,
-        filterOpen: false,
-        toast: "Create a free account or sign in to follow companies",
-      });
-      return;
-    }
-    set({
-      followedIds: s.followedIds.includes(id)
-        ? s.followedIds.filter((x) => x !== id)
-        : [...s.followedIds, id],
-    });
-  },
+  // Following, from the UI. The app is signed-in-only (getAppAccess), so there
+  // is no longer a signed-out case to prompt: this used to open the account
+  // panel with a toast and remember the tap, and now it just follows.
+  //
+  // IT ALSO WRITES TO THE SERVER NOW, which it did not before. Every Follow
+  // button in the app goes through here — `toggleFollow` above has no callers —
+  // and this branch set local state ONLY. A follow therefore reached D1 only on
+  // the NEXT load, when claimLocalFollows handed the localStorage mirror over,
+  // so following and then signing in elsewhere lost it. Delegating keeps one
+  // write path rather than two that disagree.
+  requestFollow: (id) => get().toggleFollow(id),
   toggleFollowSkill: (skill) =>
     set((s) => {
       const on = !s.followedSkills.includes(skill);
@@ -643,46 +711,28 @@ export const useAppStore = create<AppState>((set, get) => ({
           : s.followedSkills.filter((x) => x !== skill),
       };
     }),
-  // Following a skill is gated exactly like following a company: signed-out
-  // visitors are prompted to create an account first, and the skill they tapped
-  // is saved for them the moment they do (see signUp/signIn).
-  requestFollowSkill: (skill) => {
+  // Following a skill behaves exactly like following a company, for the same
+  // reasons: no signed-out prompt, and the server write goes through the one
+  // path above rather than being skipped here.
+  requestFollowSkill: (skill) => get().toggleFollowSkill(skill),
+  // A career goal is an account feature, and the app is signed-in-only, so it
+  // just saves. The signed-out branch that opened the sign-in sheet with the
+  // role named is gone.
+  //
+  // `title` is now unused — it existed only to name the role in that prompt's
+  // copy ("Sign in to save Data Analyst as your career goal"). It is kept in the
+  // signature because six call sites pass it and because the prompt is retired
+  // "for now"; dropping the parameter would be the larger edit to undo.
+  requestCareerGoal: (id) => {
     const s = get();
-    if (!s.account) {
-      set({
-        authOpen: true,
-        pendingFollowSkill: skill,
-        searchOpen: false,
-        filterOpen: false,
-        toast: "Create a free account or sign in to follow skills",
-      });
-      return;
-    }
-    set({
-      followedSkills: s.followedSkills.includes(skill)
-        ? s.followedSkills.filter((x) => x !== skill)
-        : [...s.followedSkills, skill],
-    });
-  },
-  // A career goal is an account feature, gated like following: signed out,
-  // the sign-in sheet opens with the role named, and the goal is saved the
-  // moment a session appears (useAuthSession applies it — it needs a server
-  // write, which setSession does not do).
-  requestCareerGoal: (id, title) => {
-    const s = get();
+    // The session query has not landed yet. Hold the goal the way an OAuth
+    // round trip used to, so a fast click on boot is applied rather than
+    // written against nobody — useAuthSession picks it up.
     if (!s.account) {
       if (!id) return;
-      const pending = { id, title: title ?? "this role" };
+      const pending = { id, title: "this role" };
       savePendingGoal(pending);
-      // The card closes: it sits above the header, so the sign-in panel would
-      // open behind it. Nothing is lost — the goal is pending, and once saved
-      // the profile's goal opens the map straight back on it.
-      set({
-        authOpen: true,
-        careerOpen: false,
-        pendingCareerGoal: pending,
-        toast: "Create a free account or sign in to save a career goal",
-      });
+      set({ pendingCareerGoal: pending, careerGoal: id });
       return;
     }
     if (id === s.careerGoal) return;
@@ -700,6 +750,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (id) set({ careerFocus: null });
     return id;
   },
+  setRoleFocus: (f) => set({ roleFocus: f }),
   dismissToast: () => set({ toast: null }),
   openAuth: () =>
     set({ authOpen: true, searchOpen: false, filterOpen: false, mobileMenuOpen: false }),
@@ -716,15 +767,34 @@ export const useAppStore = create<AppState>((set, get) => ({
   // redirect (see lib/authClient.ts), so there is no "submit these credentials"
   // action here any more — the app simply learns who came back.
   //
-  // A pending follow, saved when a signed-out visitor tapped Follow, is applied
-  // the moment a session appears, so the thing they were trying to do actually
-  // happens rather than being forgotten across the redirect.
+  // EITHER WAY IT SETS sessionKnown. This is the only caller, and it runs once
+  // the query has an answer, so "known" means answered — including answered
+  // with nobody. Components tell the boot gap from a real absence by that flag,
+  // never by `account` being null.
+  //
+  // A pending follow carried across an OAuth redirect is still applied here.
+  // The app no longer lets a signed-out visitor tap Follow at all (the route
+  // gate sends them to /login first), so nothing new sets those fields — but a
+  // browser that queued one before this change still holds it, and honouring it
+  // costs two comparisons.
   setRole: (r) => set({ role: r }),
+  // Settle sessionKnown without touching who is signed in. For the one caller
+  // that has an answer but not an account: useAuthSession, when the session
+  // read fails outright.
+  markSessionKnown: () => set({ sessionKnown: true }),
   setSession: (a) =>
     set((s) => {
       // Signing out drops the role with the account: leaving it behind would
       // keep the admin surface visible to the next person at this browser.
-      if (!a) return { account: null, role: "user" as Role, authOpen: false, careerGoal: null };
+      if (!a) {
+        return {
+          account: null,
+          sessionKnown: true,
+          role: "user" as Role,
+          authOpen: false,
+          careerGoal: null,
+        };
+      }
       const followedIds =
         s.pendingFollowId && !s.followedIds.includes(s.pendingFollowId)
           ? [...s.followedIds, s.pendingFollowId]
@@ -735,6 +805,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : s.followedSkills;
       return {
         account: a,
+        sessionKnown: true,
         authOpen: false,
         pendingFollowId: null,
         pendingFollowSkill: null,
@@ -743,6 +814,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
   setAuthProviders: (p) => set({ authProviders: p }),
+  setPersona: (p) => set({ persona: p }),
   setFollows: (ids, skills) => set({ followedIds: ids, followedSkills: skills }),
   /**
    * Clears the local view of the session, then reloads the page.
@@ -779,8 +851,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       careerGoal: null,
     });
     if (typeof window !== "undefined") {
-      // Same URL, so the person lands where they were rather than being sent
-      // to the default view for having signed out.
+      // Reloading the same URL is still right, but what it does has changed:
+      // since the app became signed-in-only, /app's beforeLoad gate answers the
+      // cookieless reload with a redirect to /login. So this no longer "lands
+      // the person where they were" — signing out of the app leaves the app,
+      // which is the correct destination for a product that has no signed-out
+      // view. The reload is what hands that decision to the server rather than
+      // this function guessing a route.
       window.location.reload();
     }
   },
@@ -793,11 +870,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (typeof document !== "undefined")
       document.documentElement.classList.toggle("reduce-motion", v);
     set({ reduceMotion: v });
-  },
-  // The map components watch this and toggle Mapbox's own label layers; there
-  // is no CSS equivalent, because those labels are painted into the canvas.
-  setPlaceLabels: (v) => {
-    set({ placeLabels: v });
   },
   // Asks the browser once, then jumps to the nearest hub we actually track.
   // Turning it OFF does not move the map — undoing a navigation the user asked
@@ -848,7 +920,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setSkillIndex: (idx) => set({ skillIndex: idx }),
   setSkillMonths: (m) => set({ skillMonths: m }),
   setHeatMonth: (i) =>
-    set({ heatMonth: Math.max(0, Math.min(IVI_MONTHS.length - 1, Math.round(i))) }),
+    set({ heatMonth: Math.max(0, Math.min(TIMELINE_MONTHS.length - 1, Math.round(i))) }),
   setDemandMode: (m) => set({ demandMode: m }),
   toggleSector: (cat) =>
     set((s) => {
@@ -889,6 +961,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       maxAttrition: 16,
     }),
   toggleSkillQuery: (skill) => {
+    // A skill search is a new question about the map: the role highlight it
+    // would otherwise sit underneath goes.
+    if (get().roleFocus) set({ roleFocus: null });
     const s = get();
     const on = s.searchQuery.trim().toLowerCase() === skill.toLowerCase();
     if (on) {
@@ -1096,8 +1171,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFlowView: (v) =>
     set(v ? { flowView: v, flowSampled: v.sampledCompanies } : { flowView: null }),
   closeAnalyst: () => set({ analystOpen: false }),
-  toggleCareer: () => set((s) => solo("careerOpen", !s.careerOpen)),
-  closeCareer: () => set({ careerOpen: false }),
+  toggleCareer: () =>
+    set((s) => ({
+      ...solo("careerOpen", !s.careerOpen),
+      ...(s.careerOpen ? { roleFocus: null } : {}),
+    })),
+  closeCareer: () => set({ careerOpen: false, roleFocus: null }),
   toggleDataQuality: () => set((s) => solo("dataQualityOpen", !s.dataQualityOpen)),
   closeDataQuality: () => set({ dataQualityOpen: false }),
 
@@ -1117,8 +1196,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleFeedback: () => set((s) => solo("feedbackOpen", !s.feedbackOpen)),
   closeFeedback: () => set({ feedbackOpen: false }),
-  toggleHelpTour: () => set((s) => solo("helpTourOpen", !s.helpTourOpen)),
-  closeHelpTour: () => set({ helpTourOpen: false }),
+  // Both of these clear `tourStart`. Opening from the dock is a request for
+  // the HUB, and closing ends the one tour the welcome card asked for — a
+  // start key that outlived its own tour would silently replay orient the next
+  // time "Need help?" was pressed.
+  toggleHelpTour: () => set((s) => ({ ...solo("helpTourOpen", !s.helpTourOpen), tourStart: null })),
+  closeHelpTour: () => set({ helpTourOpen: false, tourStart: null }),
+  setWelcomeOpen: (v) => set({ welcomeOpen: v }),
+  // `solo` so the tour opens as the only surface, the same as pressing
+  // "Need help?" — the welcome card is dismissed by its own handler first.
+  startTour: (key) => set({ ...solo("helpTourOpen", true), tourStart: key }),
+
   toggleMobileMenu: () => set((s) => solo("mobileMenuOpen", !s.mobileMenuOpen)),
   closeMobileMenu: () => set({ mobileMenuOpen: false }),
   toggleNewsCollapsed: () => set((s) => ({ newsCollapsed: !s.newsCollapsed })),
@@ -1175,7 +1263,6 @@ useAppStore.subscribe((s, prev) => {
     s.followedSkills !== prev.followedSkills ||
     s.reduceMotion !== prev.reduceMotion ||
     s.nightMode !== prev.nightMode ||
-    s.placeLabels !== prev.placeLabels ||
     s.newsCollapsed !== prev.newsCollapsed ||
     s.tickerCollapsed !== prev.tickerCollapsed
   ) {
@@ -1184,7 +1271,6 @@ useAppStore.subscribe((s, prev) => {
       followedSkills: s.followedSkills,
       reduceMotion: s.reduceMotion,
       nightMode: s.nightMode,
-      placeLabels: s.placeLabels,
       newsCollapsed: s.newsCollapsed,
       tickerCollapsed: s.tickerCollapsed,
     });

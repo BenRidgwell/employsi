@@ -47,7 +47,9 @@ import {
   type Rung,
 } from "./careerLadder";
 import { SKILL_PARENT, skillsForText } from "../data/skillsTaxonomy";
+import { haysBandFor, haysBandLabel } from "./haysPay";
 import { AU_CITY_LNGLAT, HUB_LNGLAT, cityLabel } from "../data/mapboxWorldGeo";
+import { ONET_RELATED, ONET_ROLES } from "../data/onetRoles";
 
 // ── Display ──────────────────────────────────────────────────────────────────
 
@@ -116,6 +118,17 @@ export function payLabel(aud: number | null, country: string): string {
 
 const num = (n: number) => n.toLocaleString("en-US");
 
+/** The published band for a rung, in the shape the card renders. Null when it
+ *  does not cover the rung, which is the ordinary case: it reaches 164 of the
+ *  528 rungs. */
+function guideBand(node: string, country: string): CardNode["payGuide"] {
+  const b = haysBandFor(node, country);
+  // b.source is deliberately NOT copied across — see the note on payGuide.
+  return b
+    ? { label: haysBandLabel(b), edition: b.edition, roles: b.roles, figures: b.figures }
+    : null;
+}
+
 /** "+14%", "−6%", "0%" — the design's typographic minus. */
 export function pctLabel(pct: number): string {
   return `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct)}%`;
@@ -154,6 +167,30 @@ export interface CardNode {
   stageOf: string;
   /** Median advertised pay, AUD, and the ads behind it. Null below 8 ads. */
   pay: number | null;
+  /** A published market band for this rung, where one covers it.
+   *
+   *  SHOWN ONLY WHERE `pay` IS NULL, never beside it and never averaged into
+   *  it. `pay` is the middle of what employers advertised; this is a
+   *  benchmark of what the role commands, and it excludes superannuation
+   *  where an advertised package usually includes it. Two instruments; the
+   *  card shows one or the other and says which.
+   *
+   *  IT CARRIES NO VENDOR NAME, BY CONSTRUCTION. The publisher is not to
+   *  appear in the product, so the field that would carry it does not exist
+   *  on the model that crosses into components — a component cannot render a
+   *  name it was never handed. The provenance is not lost: it lives in
+   *  data/haysSalary.ts and lib/haysPay.ts, where maintainers need it and
+   *  readers never see it. Restoring the credit on screen means adding the
+   *  field back here deliberately, which is the point. */
+  payGuide: {
+    label: string;
+    /** The period the band describes, e.g. "FY24/25". A financial year, not a
+     *  publication — a band from an older edition is still shown, and a
+     *  reader is entitled to know which year they are looking at. */
+    edition: string;
+    roles: number;
+    figures: number;
+  } | null;
   payN: number;
   payLabel: string;
   /** Live roles in this market. */
@@ -169,6 +206,38 @@ export interface CardNode {
   skills: string[];
   /** Live roles carrying each listed skill. */
   skillLive: Record<string, number>;
+  /** Roster companies that advertised this role in the window —
+   *  [company id, roles advertised, still live] — for the map's highlight. */
+  companies: [string, number, number][];
+  /** The same companies by city (hub): city → [company id, roles there]. The
+   *  local layer reads its own city's, so a pin counts that city's roles. */
+  companiesByCity: Record<string, [string, number][]>;
+  /** Roles on OTHER ladders this one could lead to — see careerMoves. */
+  moves: CardMove[];
+}
+
+/**
+ * A role on another ladder that O*NET relates to this one. The link itself is
+ * O*NET's (Related Occupations, between the occupations the two rungs map
+ * to); the two figures beside it are ours, counted from the ads.
+ */
+export interface CardMove {
+  /** "family|track|rung" of the destination. */
+  id: string;
+  title: string;
+  /** "Human resources · Generalist". */
+  where: string;
+  /** RUNG_LABEL of the destination rung. */
+  stage: string;
+  /** Weighted skill overlap 0-1 between the two rungs' listed skills —
+   *  Σ min(share) / Σ max(share), the same measure as a ladder step. */
+  overlap: number;
+  /** Roster companies advertising BOTH roles in this market in the window. */
+  sharedEmployers: number;
+  payLabel: string;
+  /** The destination's most distinct skill against this role (distinctSkill),
+   *  for its icon on the map. */
+  skill: string | null;
 }
 
 export interface CardEdge {
@@ -195,6 +264,129 @@ export interface CareerCardModel {
   skills: string[];
 }
 
+/**
+ * Skills listed on more than this share of all rungs say how SENIOR a role is,
+ * not what field it is in, and are left out of a move's overlap. Measured
+ * 2026-09-30: "Leadership & Coordination" is on 166 of 510 rungs (33%) — every
+ * head-of and director — and it alone gave Director of HR an 11% overlap with
+ * Director of Social Work. The next commonest, Risk & Compliance, is on 24%
+ * and names a real field.
+ */
+const GENERIC_SKILL_SHARE = 0.3;
+const genericCache = new WeakMap<CareerPathways, Set<string>>();
+function genericSkills(p: CareerPathways): Set<string> {
+  let g = genericCache.get(p);
+  if (!g) {
+    const count = new Map<string, number>();
+    for (const n of p.nodes) for (const [k] of n.skills) count.set(k, (count.get(k) ?? 0) + 1);
+    g = new Set(
+      [...count].filter(([, c]) => c / p.nodes.length > GENERIC_SKILL_SHARE).map(([k]) => k),
+    );
+    genericCache.set(p, g);
+  }
+  return g;
+}
+
+/** Moves shown per role. */
+const MAX_MOVES = 5;
+/** Shared employers that vouch for a move whose skills do not overlap. */
+export const MOVE_MIN_SHARED = 2;
+
+/**
+ * Where a role can lead OFF its own ladder — "a head of payroll could become a
+ * chief people officer".
+ *
+ * THE LINK IS O*NET'S, NOT OURS. The archive holds ads, not careers: it never
+ * sees anyone move, so it cannot say a move happens. What it can say is how
+ * alike two roles look in the ads. So a move is a pair of rungs whose O*NET
+ * occupations O*NET lists as related (its two Primary tiers), and it is shown
+ * with two counts that ARE ours — skill overlap and shared employers — which
+ * also order the list. Nothing here claims anyone made the move.
+ *
+ * Kept to destinations another ladder publishes in this market (so the card
+ * can open them), and at most one rung below the role: a step down to reach
+ * a different field is real, a drop of several rungs is not a direction.
+ * A rung with no O*NET occupation has no moves.
+ *
+ * AND OUR ADS MUST SHOW SOMETHING IN COMMON: at least one shared FIELD skill
+ * (genericSkills — seniority markers do not count), or at
+ * least MOVE_MIN_SHARED roster companies advertising both. O*NET relates whole
+ * US occupations, so its links reach further than a card should — Human
+ * Resources Managers relates to Social and Community Service Managers, which
+ * put Director of Social Work under Chief People Officer with no skill in
+ * common and one employer between them. An overlap floor alone would be too
+ * blunt: rungs list few, broad skills, so legal counsel -> employee relations
+ * advisor and resident medical officer -> registered nurse are 0% too, and
+ * their evidence is the employers that hire both (8 and 34). Measured
+ * 2026-09-30, with generic skills excluded: 1,466 AU links remain of 1,575,
+ * and 346 of 354 rungs keep at least one move.
+ */
+export function careerMoves(p: CareerPathways, from: PathwayNode, country: string): CardMove[] {
+  const soc = ONET_ROLES[`${from.family}|${from.track}|${from.rung}`];
+  const related = soc ? ONET_RELATED[soc] : undefined;
+  if (!related?.length) return [];
+  const want = new Set(related);
+  const generic = genericSkills(p);
+  const field = (skills: [string, number][]) => new Map(skills.filter(([k]) => !generic.has(k)));
+  const mine = field(from.skills);
+  const myCos = new Set((from.markets[country]?.companies ?? []).map(([id]) => id));
+  const out: CardMove[] = [];
+  for (const n of p.nodes) {
+    if (n.family === from.family && n.track === from.track) continue;
+    if (n.rung < from.rung - 1) continue;
+    const m = n.markets[country];
+    if (!m) continue;
+    const id = `${n.family}|${n.track}|${n.rung}`;
+    const nsoc = ONET_ROLES[id];
+    if (!nsoc || !want.has(nsoc)) continue;
+    let lo = 0;
+    let hi = 0;
+    const theirs = field(n.skills);
+    for (const k of new Set([...mine.keys(), ...theirs.keys()])) {
+      const a = mine.get(k) ?? 0;
+      const b = theirs.get(k) ?? 0;
+      lo += Math.min(a, b);
+      hi += Math.max(a, b);
+    }
+    const overlap = hi ? Math.round((lo / hi) * 100) / 100 : 0;
+    const sharedEmployers = (m.companies ?? []).filter(([c]) => myCos.has(c)).length;
+    if (overlap === 0 && sharedEmployers < MOVE_MIN_SHARED) continue;
+    const fam = p.families.find((f) => f.id === n.family);
+    out.push({
+      id,
+      title: displayTitle(n.titles[0]?.[0] ?? RUNG_LABEL[n.rung]),
+      where: `${fam?.label ?? n.family} · ${trackLabel(p, n.family, n.track)}`,
+      stage: RUNG_LABEL[n.rung],
+      overlap,
+      sharedEmployers,
+      payLabel: payLabel(n.pay[country]?.median ?? null, country),
+      skill: distinctSkill(n, mine),
+    });
+  }
+  return out
+    .sort((a, b) => b.overlap - a.overlap || b.sharedEmployers - a.sharedEmployers)
+    .slice(0, MAX_MOVES);
+}
+
+/**
+ * The destination's most DISTINCT skill against where the reader stands: the
+ * one whose share rises most from this role to that one. Its commonest skill
+ * will not do for an icon — every HR rung leads with "Human Resources", so
+ * payroll manager's four HR destinations drew four identical glyphs.
+ */
+function distinctSkill(dest: PathwayNode, mine: Map<string, number>): string | null {
+  let best: string | null = null;
+  let gain = -Infinity;
+  for (const [k, v] of dest.skills) {
+    const g = v - (mine.get(k) ?? 0);
+    if (g > gain) {
+      gain = g;
+      best = k;
+    }
+  }
+  return best;
+}
+
 const trackLabel = (p: CareerPathways, family: string, track: string) =>
   p.families.find((f) => f.id === family)?.tracks.find((t) => t.id === track)?.label ?? track;
 
@@ -210,9 +402,17 @@ function describe(m: PathwayMarket, country: string, days: number): string {
 /**
  * The specialist lane a searched skill opens: the family's non-core track with
  * the most live roles asking for it in this market. Null when no specialism
- * asks for it — or when the core path itself lists it: every HR specialism
- * also carries "Human Resources", and opening Talent Acquisition for that
- * search would be picking one of six by volume, not by the skill.
+ * asks for it — or when the core path itself asks for it here: every HR
+ * specialism also carries "Human Resources", and opening Talent Acquisition
+ * for that search would be picking one of six by volume, not by the skill.
+ *
+ * "ASKS FOR IT HERE" = lists it AND has live roles naming it in this market.
+ * Until 2026-09-28 a listing alone was enough. The rebuild that day put Talent
+ * Acquisition on HR Executive's list at a 5% share with no live roles in
+ * Australia, and searching Talent Acquisition stopped opening its own lane —
+ * whose four rungs carried 43 live roles naming it. A listing is a threshold
+ * crossed somewhere in the window, in any market; a core with nothing live
+ * for the skill here is not where the card should send the reader.
  */
 export function laneForSkill(
   p: CareerPathways,
@@ -222,15 +422,17 @@ export function laneForSkill(
   core: string,
 ): string | null {
   const inFamily = p.nodes.filter((n) => n.family === family);
-  if (inFamily.some((n) => n.track === core && n.skills.some(([s]) => s === skill))) return null;
   const by = new Map<string, number>();
   for (const n of inFamily) {
-    if (n.track === core) continue;
     const v = n.markets[country]?.skillLive[skill];
     if (v) by.set(n.track, (by.get(n.track) ?? 0) + v);
   }
+  const coreAsks =
+    (by.get(core) ?? 0) > 0 &&
+    inFamily.some((n) => n.track === core && n.skills.some(([s]) => s === skill));
+  if (coreAsks) return null;
   let best: string | null = null;
-  for (const [t, v] of by) if (!best || v > (by.get(best) ?? 0)) best = t;
+  for (const [t, v] of by) if (t !== core && (!best || v > (by.get(best) ?? 0))) best = t;
   return best;
 }
 
@@ -300,6 +502,9 @@ export function careerCard(
       pay: pay?.median ?? null,
       payN: pay?.n ?? 0,
       payLabel: payLabel(pay?.median ?? null, country),
+      // Looked up only when the ads could not answer. A rung with a median has
+      // a measured figure and does not want a modelled one next to it.
+      payGuide: pay?.median == null ? guideBand(`${family}|${n.track}|${n.rung}`, country) : null,
       ads: m.live,
       employers: m.employers,
       daysAdvertised: m.daysAdvertised.median,
@@ -315,6 +520,9 @@ export function careerCard(
       }),
       skills: n.skills.map(([s]) => s),
       skillLive: m.skillLive,
+      companies: m.companies ?? [],
+      companiesByCity: m.cityCompanies ?? {},
+      moves: careerMoves(p, n, country),
     };
   });
 
@@ -438,6 +646,23 @@ export interface CareerGoalSummary {
   title: string;
   /** "STAGE 3 OF 6 · SENIOR / PARTNER" on the core; "SPECIALIST · …" off it. */
   stageOf: string;
+  /**
+   * Is this rung on the family's CORE track?
+   *
+   * The profile card draws a six-step ladder with the goal marked, which only
+   * means anything on the core track — a specialist track is a sideways move,
+   * not stage N of six. Off it, the card says "SPECIALIST" and draws no ladder.
+   */
+  onCore: boolean;
+  /**
+   * The level, ready to print: "Executive" on the core, the track's own name
+   * ("People Analytics") off it.
+   *
+   * Derived here rather than by splitting `stageOf` on the client. That string
+   * is upper-cased display text with a "·" in it, and parsing it back into
+   * parts is how a label starts depending on the punctuation of another label.
+   */
+  levelLabel: string;
   payLabel: string;
   /** Live roles in this market. */
   ads: number;
@@ -475,6 +700,8 @@ export function careerGoalSummary(
       track === core
         ? `STAGE ${rung} OF 6 · ${RUNG_LABEL[rung].toUpperCase()}`
         : `SPECIALIST · ${trackLabel(p, family, track).toUpperCase()}`,
+    onCore: track === core,
+    levelLabel: track === core ? RUNG_LABEL[rung] : trackLabel(p, family, track),
     payLabel: payLabel(n.pay[country]?.median ?? null, country),
     ads: m.live,
     employers: m.employers,

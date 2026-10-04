@@ -3,12 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../../state/store";
 import { COMPANIES, type Company } from "../../data/companies";
 import { getTalentFlowMonths, getTalentFlowSkills, getTalentFlowView } from "../../lib/flowsFn";
-import { WINDOW_CAVEAT, viewForWindow } from "../../lib/flows";
+import { viewForWindow } from "../../lib/flows";
 import { FLOW_BANDS, flowRows } from "../../lib/flowRows";
 import { CardLoader } from "./CardLoader";
 import { IconClose } from "../ActionIcons";
 import { logoFor } from "../../lib/companyLogo";
 import { cityLabel } from "../../data/mapboxWorldGeo";
+import { useDraggablePane } from "../../hooks/useDraggablePane";
 
 /**
  * The talent-flow card: the right-hand panel of the "Talent Flows 3D" design,
@@ -131,7 +132,15 @@ function RowLogo({ id, code, name }: { id: string | null; code: string; name: st
  * rows explain the modes; the mode buttons beside the card appear once there
  * is a company for them to switch.
  */
-function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }) {
+function TalentFlowHome({
+  city,
+  onClose,
+  paneRef,
+}: {
+  city: string;
+  onClose: () => void;
+  paneRef: React.Ref<HTMLElement>;
+}) {
   const modes: [string, string, ReactNode][] = [
     [
       "Inflow",
@@ -161,7 +170,7 @@ function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }
     ],
   ];
   return (
-    <aside className="tfcard" aria-label="Talent flows">
+    <aside className="tfcard" aria-label="Talent flows" ref={paneRef}>
       <div
         style={{
           flex: "none",
@@ -189,6 +198,12 @@ function TalentFlowHome({ city, onClose }: { city: string; onClose: () => void }
               >
                 Talent flows
               </span>
+              {/* Beta, said on the card itself rather than in a release note:
+                  this is the one surface whose movements are INFERRED from ads
+                  rather than counted, so a reader needs to know before they
+                  quote a figure, not after. Both of this component's headers
+                  carry it — the intro state and the loaded card. */}
+              <span className="betatag">Beta</span>
               <span
                 style={{
                   font: "400 11px/1 'Inter',system-ui,sans-serif",
@@ -296,6 +311,7 @@ export function TalentFlowPane() {
   const setFocus = useAppStore((s) => s.setFlowFocus);
   const setFlowView = useAppStore((s) => s.setFlowView);
   const close = useAppStore((s) => s.closeFlows);
+  const dragRef = useDraggablePane<HTMLElement>(open, picked ? "flow" : "home");
   const [q, setQ] = useState("");
   // The handle's month index, or null for the latest (where it starts).
   const [tlIdx, setTlIdx] = useState<number | null>(null);
@@ -352,7 +368,8 @@ export function TalentFlowPane() {
   const rows = useMemo(() => (view ? flowRows(view, mode) : []), [view, mode]);
 
   if (!open) return null;
-  if (!picked) return <TalentFlowHome city={cityLabel(localCity)} onClose={close} />;
+  if (!picked)
+    return <TalentFlowHome city={cityLabel(localCity)} onClose={close} paneRef={dragRef} />;
 
   const name = view?.focus.name
     ? (COMPANY_BY_ID[focus]?.name ?? view.focus.name)
@@ -519,7 +536,7 @@ export function TalentFlowPane() {
         })}
       </div>
 
-      <aside className="tfcard" aria-label="Talent flows">
+      <aside className="tfcard" aria-label="Talent flows" ref={dragRef}>
         {/* What's Trending's loader, used the same way: over the card while a
             company's flows are first arriving, not on a refetch of data the
             card is already showing. */}
@@ -544,14 +561,17 @@ export function TalentFlowPane() {
               gap: 12,
             }}
           >
-            <span
-              style={{
-                font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
-                letterSpacing: "-0.02em",
-                textWrap: "pretty",
-              }}
-            >
-              {heading}
+            <span style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <span
+                style={{
+                  font: "600 20px/1.25 'Mona Sans Variable','Mona Sans',system-ui,sans-serif",
+                  letterSpacing: "-0.02em",
+                  textWrap: "pretty",
+                }}
+              >
+                {heading}
+              </span>
+              <span className="betatag">Beta</span>
             </span>
             <button type="button" className="paneclose" onClick={close} aria-label="Close">
               <IconClose />
@@ -977,13 +997,20 @@ export function TalentFlowPane() {
           })}
         </div>
 
-        {view && (
-          <p className="tfnote">
-            {view.caption}
-            {mode !== "in" ? " Net is inflow minus outflow, for those companies only." : ""}
-            {windowed ? ` ${WINDOW_CAVEAT}` : ""}
-          </p>
-        )}
+        {/* THE METHOD FOOTER IS GONE (2026-09-30, at the owner's request).
+            It read: how many sampled profiles the moves are drawn from and
+            over what months, that companies under the move floor are grouped
+            as "other", that outflow is only measured to companies whose own
+            staff were sampled, and — off the "in" tab — that net is inflow
+            minus outflow for those companies only.
+
+            Those are caveats about what the figures ARE, not decoration, so
+            removing them is a real loss: the card now shows sample-derived
+            counts with nothing on screen saying they are a sample or that
+            outflow is systematically partial. `view.caption` is still built
+            in lib/flows.ts and is the record of the method; the cheap way to
+            put this right without the footer returning is to hang it off an
+            info affordance, the way LocalBanner's stats carry `note`. */}
       </aside>
     </>
   );

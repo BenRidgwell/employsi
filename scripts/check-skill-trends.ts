@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 /**
  * Invariants for the company card's per-skill demand reconstruction
  * (foldSkillRows in src/employsi/lib/jobHistoryFn.ts).
@@ -24,6 +25,34 @@ import {
 } from "../src/employsi/lib/jobHistoryFn";
 import { HERO_PAD, HERO_VB_W, HERO_W, heroIdxAt, heroPct } from "../src/employsi/lib/chart";
 import { REGION_HUBS, REGION_LABEL } from "../src/employsi/data/mapboxWorldGeo";
+import { buildSkillCard } from "../src/employsi/lib/skillCard";
+import {
+  demandLevel,
+  iviCityChangeAt,
+  iviCityDemandAt,
+  measureNoun,
+  popularSkills,
+} from "../src/employsi/lib/skillHeat";
+import { rankedByEmployment, MIN_EMPLOYED, AU_RATE_HUBS } from "../src/employsi/lib/vacancyRate";
+import { COMPANIES } from "../src/employsi/data/companies";
+import { CITY_COMPANIES } from "../src/employsi/data/mapboxGeo";
+import { filedHeadcount } from "../src/employsi/lib/companyCard";
+import { SG_SKILL_GROUP } from "../src/employsi/data/sgOccupationSupply";
+import {
+  NZ_GROUP_EMPLOYMENT,
+  NZ_GROUP_NAME,
+  NZ_MIN_EMPLOYED,
+  NZ_SKILL_GROUP,
+  NZ_SUPPLY_YEARS,
+} from "../src/employsi/data/nzOccupationSupply";
+import {
+  cityEmployment,
+  localSupplyFor,
+  supplyNoun,
+  supplyScale,
+  SUPPLY_MAX_SCALE,
+  SUPPLY_MIN_SCALE,
+} from "../src/employsi/lib/localSupply";
 import {
   centreOf,
   FRAME_ASPECT,
@@ -33,6 +62,8 @@ import {
   zoomFrame,
 } from "../src/employsi/lib/hotspotFrame";
 import { LABOUR_EVENTS } from "../src/employsi/data/labourEvents";
+import { normTitle } from "../src/employsi/lib/openRolesFn";
+import { normRoleTitle } from "../src/employsi/lib/jobHistoryFn";
 import { monthsBetween } from "../src/employsi/lib/jobHistoryFn";
 import { demandByCompanyAt } from "../src/employsi/lib/skillHeat";
 import { IVI_MONTHS } from "../src/employsi/data/iviSkillDemand";
@@ -51,8 +82,20 @@ import {
   searchSkillMatches,
   withParent,
 } from "../src/employsi/data/skillsTaxonomy";
-import { buildSkillCard, TIMELINE_SPAN } from "../src/employsi/lib/skillCard";
+import {
+  buildSkillCard,
+  TIMELINE_SPAN,
+  TIMELINE_MONTHS,
+  IVI_LAST_INDEX,
+  beyondIvi,
+} from "../src/employsi/lib/skillCard";
 import { activeSkill } from "../src/employsi/lib/skillHeat";
+
+/** The month after "YYYY-MM". Used to assert the axis has no gaps. */
+function nextMonth(m: string): string {
+  const [y, mo] = m.split("-").map(Number);
+  return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
+}
 
 let failures = 0;
 function check(name: string, cond: boolean, detail?: string) {
@@ -2064,6 +2107,160 @@ console.log("\nthe market hero's markers land on its line:");
   }
 }
 
+// ── the supply side's measure ───────────────────────────────────────────────
+// The Supply/Demand switch makes the skill search read EMPLOYMENT instead of
+// vacancies. Two ways that goes wrong quietly:
+//
+//   · a skill with no ABS cell falls through to the vacancy bands, and the card
+//     answers a question about job ads under a heading about people. That is
+//     the same substitution the rate branch was written to refuse.
+//   · the employment ranking comes out the same as the volume one, in which
+//     case the switch changes the wording and nothing else.
+console.log("\nthe supply side measures employment, not vacancies:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+  const emp = rankedByEmployment("national", m);
+  check("skills have an employment figure at all", emp.length > 40, `${emp.length}`);
+  // Descending, or the chip row leads with the smallest workforce in the country.
+  let ordered = true;
+  for (let i = 1; i < emp.length; i++) if (emp[i].employed > emp[i - 1].employed) ordered = false;
+  check("ranked by employment, descending", ordered);
+  check(
+    "and every figure is a real count",
+    emp.every((r) => r.employed >= MIN_EMPLOYED),
+  );
+
+  // No fall-through: a skill the ABS does not carry must say so.
+  const withFigure = new Set(emp.map((r) => r.skill));
+  const wrong: string[] = [];
+  for (const sk of ALL_SKILLS) {
+    const label = demandLevel(sk, false, null, "employment").label;
+    const says = label === "Employment unavailable";
+    if (says === withFigure.has(sk)) wrong.push(`${sk}: ${label}`);
+  }
+  check(
+    "a skill with no ABS figure is labelled unavailable, not banded",
+    wrong.length === 0,
+    wrong.slice(0, 3).join("; "),
+  );
+
+  // The two orderings have to differ, or the switch is cosmetic. They are
+  // different questions: employment leads with the biggest occupations, a
+  // vacancy count with the ones that advertise most.
+  const ctx = {
+    zoomedOut: true,
+    globalOut: false,
+    domesticRegion: "australia",
+    localCity: "perth",
+  };
+  const supply = popularSkills(null, ctx, 6, "employment");
+  const demand = popularSkills(null, ctx, 6, "volume");
+  check(
+    "supply and demand rank the chips differently",
+    supply.join() !== demand.join(),
+    supply.join(),
+  );
+
+  // ── THE TWO DATASETS DO NOT MIX ──────────────────────────────────────────
+  // The heat map reads employment on the supply side. Employment is ABS EQ08
+  // and covers the eight Australian capitals; the demand layer merges nine
+  // countries' vacancy series across fifty hubs. If one non-AU city ever
+  // appeared in the employment layer it would be a vacancy figure wearing an
+  // employment legend — and nothing on screen carries a unit, so it would look
+  // exactly like a city that employs a great many people.
+  const AU = new Set([
+    "sydney",
+    "melbourne",
+    "brisbane",
+    "perth",
+    "adelaide",
+    "canberra",
+    "hobart",
+    "darwin",
+  ]);
+  const i = IVI_MONTHS.length - 1;
+  const leaked: string[] = [];
+  const sameValue: string[] = [];
+  let anyEmployment = 0;
+  for (const sk of ["Nursing", "Software Engineering", "Retail & Customer Service", "Mining"]) {
+    const emp = iviCityDemandAt(sk, i, "employment");
+    const vol = iviCityDemandAt(sk, i, "volume");
+    anyEmployment += Object.keys(emp).length;
+    for (const city of Object.keys(emp)) if (!AU.has(city)) leaked.push(`${sk}/${city}`);
+    for (const city of Object.keys(iviCityChangeAt(sk, i, 12, "employment")))
+      if (!AU.has(city)) leaked.push(`${sk}/${city} (change)`);
+    // And where both exist they must be different numbers — identical values
+    // would mean the employment branch fell through to the vacancy series.
+    for (const city of Object.keys(emp))
+      if (vol[city] !== undefined && vol[city] === emp[city]) sameValue.push(`${sk}/${city}`);
+  }
+  check("the employment layer has figures at all", anyEmployment > 20, `${anyEmployment}`);
+  check(
+    "no non-Australian city in the employment layer",
+    leaked.length === 0,
+    leaked.slice(0, 4).join(", "),
+  );
+  check(
+    "employment values are not the vacancy values",
+    sameValue.length === 0,
+    sameValue.slice(0, 4).join(", "),
+  );
+
+  // ── THE CARD SAYS WHAT IT MEASURES ───────────────────────────────────────
+  // The supply card is a separate builder, not relabelled demand. If it ever
+  // fell back to the vacancy path the words would still read "workforce" while
+  // every figure underneath counted job ads — the failure that is invisible
+  // precisely because the label is the part that looks right.
+  const mi = IVI_MONTHS.length - 1;
+  for (const sk of ["Nursing", "Administration & Office Support"]) {
+    const sup = buildSkillCard(sk, mi, null, null, "employment");
+    const dem = buildSkillCard(sk, mi, null, null, "volume");
+    check(`${sk}: supply card carries employment`, (sup.employed ?? 0) > 0, `${sup.employed}`);
+    // Exactly one count per card, never both.
+    check(`${sk}: supply card carries no ad count`, sup.openRoles === null, `${sup.openRoles}`);
+    check(`${sk}: demand card carries no employment`, dem.employed === null, `${dem.employed}`);
+    check(
+      `${sk}: the two cards disagree, as they must`,
+      sup.employed !== dem.openRoles && sup.levelLabel !== dem.levelLabel,
+      `${sup.levelLabel} / ${dem.levelLabel}`,
+    );
+    // The words have to match the numbers.
+    // The disclaimer is stripped before the test: the copy ends "ABS Labour
+    // Force, not an ad count", which names ads in order to rule them out. A
+    // check that failed on its own disclaimer would push the copy to drop the
+    // one sentence stating where the number came from.
+    const words = `${sup.summaryLead}${sup.summaryTail}`
+      .toLowerCase()
+      .replace("not an ad count", "");
+    check(
+      `${sk}: supply copy says workforce, not ads`,
+      /workforce|people/.test(words) && !/\bads?\b|openings|vacanc/.test(words),
+      words.slice(0, 90),
+    );
+  }
+  // A skill ABS does not carry says so rather than borrowing demand's numbers.
+  const none = buildSkillCard("Metallurgy", mi, null, null, "employment");
+  check(
+    "a skill with no ABS series shows no figure",
+    none.employed === null && none.spark === null,
+    `${none.employed} / ${none.spark}`,
+  );
+
+  // ── THE UNIT FOLLOWS THE MODE ────────────────────────────────────────────
+  // The map pin drew ABS employment on the supply side and called it
+  // "137,312 ads" — right colour, right number, wrong noun, and nothing about
+  // that looks broken. Reported from a live preview. Every surface printing one
+  // of these figures asks measureNoun rather than writing the word, so this is
+  // the one place the word can be wrong.
+  check("employment is never called ads", measureNoun("employment", 137312) === "employed");
+  check("a single vacancy is an ad", measureNoun("volume", 1) === "ad");
+  check("several vacancies are ads", measureNoun("volume", 2) === "ads");
+  check(
+    "no mode borrows another's noun",
+    new Set(["volume", "rate", "employment"].map((m) => measureNoun(m as never, 5))).size === 3,
+  );
+}
+
 console.log("\nevery domestic region the ticker can scope to is nameable:");
 {
   const regions = Object.keys(REGION_HUBS);
@@ -2186,31 +2383,245 @@ console.log("\nthe hotspot frame keeps its aspect, whatever it has to frame:");
 // the vacancy series then gained two months, so the header read "MAR 2006 – JUL
 // 2026", the handle sat on Jul 2026, and the panel under it was badged MAY
 // 2026. Nothing errored; the label had been left behind by its own data.
-console.log("\nthe timeline's present-day event sits on the series' last month:");
+// THE AXIS OUTRUNS THE INDEX ON PURPOSE. It used to be one invariant — the
+// index's last month WAS the timeline's end — and this asserted it. It is now
+// two, because the IVI is a monthly release and our archive is scraped
+// nightly: the axis runs to the present month so the ads at the right-hand end
+// are current, and the index's last month sits wherever it has got to. Both
+// ends are checked, because either drifting on its own is the original bug.
+console.log("\nthe timeline runs to the present month, and the index marker to the index:");
 {
   const last = IVI_MONTHS[IVI_MONTHS.length - 1];
-  const present = LABOUR_EVENTS.find((e) => e.title === "Present day");
-  check("the present-day event exists", !!present, "not found in LABOUR_EVENTS");
+  const present = LABOUR_EVENTS.find((e) => e.title === "Latest vacancy index");
+  check("the index event exists", !!present, "not found in LABOUR_EVENTS");
   if (present) {
     const iso = `${present.year}-${String(present.month + 1).padStart(2, "0")}`;
-    check(`present day is ${last}`, iso === last, `event says ${iso}`);
-    // It must also be ON the axis and at its end, which is what makes the
-    // handle and the badge agree rather than merely reading alike.
+    check(`the index marker is ${last}`, iso === last, `event says ${iso}`);
+    // On the axis, at the index's own last month — not at the end of the track.
     check(
-      "...and lands on the last tick of the timeline",
-      eventIndex(present) === TIMELINE_SPAN,
-      `index ${eventIndex(present)} of ${TIMELINE_SPAN}`,
+      "...and lands on the index's last tick",
+      eventIndex(present) === IVI_LAST_INDEX,
+      `index ${eventIndex(present)} of ${IVI_LAST_INDEX}`,
     );
     check(
-      "...and the header's end month is the same month",
-      TIMELINE_LABEL.endsWith(monthLabel(last)),
-      TIMELINE_LABEL,
+      "...which is not the end of the track, and beyondIvi knows it",
+      !beyondIvi(IVI_LAST_INDEX) && beyondIvi(TIMELINE_SPAN) === TIMELINE_SPAN > IVI_LAST_INDEX,
+      `span ${TIMELINE_SPAN}, index ${IVI_LAST_INDEX}`,
     );
   }
+  // The header must name the month the HANDLE can actually reach, which is the
+  // present one. A label left behind by its own axis is the bug this file was
+  // written for; it has simply moved from the series to the clock.
+  const now = new Date();
+  const thisMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  check(
+    `the axis reaches the present month (${thisMonth})`,
+    TIMELINE_MONTHS[TIMELINE_SPAN] === thisMonth,
+    `ends ${TIMELINE_MONTHS[TIMELINE_SPAN]}`,
+  );
+  check(
+    "...and the header's end month is that month",
+    TIMELINE_LABEL.endsWith(monthLabel(thisMonth)),
+    TIMELINE_LABEL,
+  );
+  // The extension must be an EXTENSION: the index's own months are the axis's
+  // prefix, unchanged. Every country series is indexed by position against
+  // IVI_MONTHS, so a single inserted or shifted month would move eight
+  // datasets at once and nothing would error.
+  check(
+    "the index's months are the axis's prefix, unshifted",
+    IVI_MONTHS.every((m, i) => TIMELINE_MONTHS[i] === m),
+    "TIMELINE_MONTHS diverges from IVI_MONTHS inside the index's own range",
+  );
+  check(
+    "the axis is strictly increasing with no gaps",
+    TIMELINE_MONTHS.every((m, i) => i === 0 || nextMonth(TIMELINE_MONTHS[i - 1]) === m),
+    "a month is missing or out of order",
+  );
   // Every other event is a historical fact and must stay on the axis, or its
   // tick silently disappears from the track.
   const off = LABOUR_EVENTS.filter((e) => eventIndex(e) < 0).map((e) => e.title);
   check("every event falls inside the series", off.length === 0, off.join(", "));
+}
+
+// ── the title fold survives non-Latin scripts ──────────────────────────────
+// The ASCII rule (`[^a-z0-9]`) deletes Han, kana and Hangul outright, so a
+// Japanese or Chinese title normalises to "" and gets no role key at all. That
+// shipped: 19,284 rows on the live archive, every one WITH a title, counted
+// individually because their key was empty — so those employers had no
+// cross-board dedupe whatsoever. jobArchive's own norm() already carried the
+// CJK branch for job_key; the copy one layer up did not.
+//
+// The second half of this is the constraint that makes the branch safe to add
+// in place: only strings CONTAINING CJK may take the Unicode path, so no
+// pure-Latin key moves and no existing Latin role splits in two.
+console.log("\nthe role fold keeps non-Latin titles, and leaves Latin ones alone:");
+{
+  const cjk: [string, string][] = [
+    ["プラントオペレーター", "プラントオペレーター"],
+    ["政府事务经理", "政府事务经理"],
+    ["【オープンポジション】障がい者採用", "オープンポジション 障がい者採用"],
+    ["사원 모집", "사원 모집"],
+  ];
+  const lost = cjk.filter(([input]) => normRoleTitle(input) === "");
+  check(
+    "a CJK title still has a key",
+    lost.length === 0,
+    `${lost.map(([s]) => s).join(", ")} normalised to nothing`,
+  );
+  const wrong = cjk.filter(([input, want]) => normRoleTitle(input) !== want);
+  check(
+    "...and keeps every letter and digit in it",
+    wrong.length === 0,
+    wrong.map(([s, w]) => `${s}: ${normRoleTitle(s)} != ${w}`).join(" | "),
+  );
+  // A mixed title must keep BOTH halves. Under the ASCII rule the Japanese was
+  // deleted and this collided with any row reducing to the same two words.
+  check(
+    "a mixed-script title keeps both halves",
+    normRoleTitle("サウンドプログラマー / Sound Programmer") ===
+      "サウンドプログラマー sound programmer",
+    normRoleTitle("サウンドプログラマー / Sound Programmer"),
+  );
+  // THE SAFETY PROPERTY. Measured against the live archive before shipping:
+  // of 40,000 keyed rows, 633 changed and every one contained CJK; 0 of the
+  // 39,361 pure-Latin rows moved.
+  const latin: [string, string][] = [
+    ["Senior Payroll Officer", "senior payroll officer"],
+    ["People & Culture  Officer", "people culture officer"],
+    ["Mining Engineer — Pilbara, FIFO 8/6", "mining engineer pilbara fifo 8 6"],
+    ["Développeur Sénior", "d veloppeur s nior"],
+    ["Crédit Analyst", "cr dit analyst"],
+    ["", ""],
+  ];
+  const moved = latin.filter(([input, want]) => normRoleTitle(input) !== want);
+  check(
+    "a Latin title is byte-for-byte what it was, accents included",
+    moved.length === 0,
+    moved.map(([s, w]) => `${JSON.stringify(s)}: ${normRoleTitle(s)} != ${w}`).join(" | "),
+  );
+}
+
+// ── the role key, written and counted ──────────────────────────────────────
+// Deduping across boards cannot live in the readers: it was fixed four times
+// in four surfaces and the fifth still had it. It is a COLUMN now — role_key,
+// written at archive time — so a count gets it right by default. These assert
+// the three things that make that true.
+console.log("\nthe archive carries a role key, and counts use it:");
+{
+  const arch = readFileSync("src/employsi/lib/jobArchive.ts", "utf8");
+  check(
+    "archiveJobs writes role_key on insert",
+    /\(job_key, role_key,/.test(arch) && /roleKey\(r\.companyId/.test(arch),
+    "new rows would archive with no role key",
+  );
+  check(
+    "...and backfills it on a re-seen row",
+    /role_key\s*=\s*COALESCE\(NULLIF\(role_key, ''\), \?14\)/.test(arch),
+    "a row already in the archive would never gain one",
+  );
+  check(
+    "...and the column is added lazily rather than by a hand-run migration",
+    /ALTER TABLE jobs ADD COLUMN role_key TEXT/.test(arch),
+    "the column has to exist before a deploy, which is the migration nobody runs",
+  );
+  const rk = readFileSync("src/employsi/lib/roleKey.ts", "utf8");
+  check(
+    "the count falls back to job_key for rows not yet backfilled",
+    /COALESCE\(NULLIF\(role_key, ''\), job_key\)/.test(rk),
+    "un-backfilled rows would collapse together and under-count",
+  );
+  const an = readFileSync("src/employsi/lib/analystFn.ts", "utf8");
+  check(
+    "the analyst's volume counts are role counts",
+    an.includes("${ROLE_COUNT_SQL} AS n FROM jobs WHERE ${where} AND ${LIVE_ON_DAY}"),
+    "a live-volume answer is counting rows again",
+  );
+  // The two that must STAY row counts, for reasons stated at each: feed health
+  // is about what a board delivered, and the pay share's numerator is rows.
+  //
+  // The pay-share arm matched the spelled-out `first_seen <= ?1` until
+  // 2026-10-03, when the live window became per source and that clause moved
+  // into liveOnDaySql (jobArchive.ts). What is being asserted is COUNT(*) —
+  // the unit — so the day clause beside it is matched loosely on purpose; a
+  // check that pins the window's spelling fails every time the window is
+  // correctly changed, which is how a real assertion gets deleted.
+  check(
+    "...and the feed-health and pay-share counts are still rows",
+    /COUNT\(\*\) AS n FROM jobs\n\s*WHERE \$\{where\} AND last_seen >= \? GROUP BY source/.test(
+      an,
+    ) && /COUNT\(\*\) AS n FROM jobs\n\s*WHERE \$\{liveOnDaySql\(1\)\}/.test(an),
+    "one of the two deliberate row counts was converted, which mixes units",
+  );
+}
+
+// ── one job, counted once, wherever it is counted ──────────────────────────
+// The archive's key is `source|title|company|location` and SOURCE IS FIRST, so
+// one job carried by an employer's careers site and by a job board is two rows
+// by construction — nothing about locations can merge them. Every surface that
+// reports "roles" therefore has to fold by normalised title, and a future edit
+// that goes back to counting rows would read as a plausible number with a real
+// duplicate behind it, which is the shape of bug this file exists for.
+console.log("\nper-company skill demand counts roles, not archive rows:");
+{
+  const src = readFileSync("src/employsi/lib/jobHistoryFn.ts", "utf8");
+  const months = src.slice(src.indexOf("export const getSkillCompanyMonths"));
+  const monthsBody = months.slice(0, months.indexOf("\nexport "));
+  check(
+    "getSkillCompanyMonths reads the title it folds by",
+    /SELECT company_id, hub, title,/.test(monthsBody),
+    "the title is not selected, so nothing can be folded",
+  );
+  check(
+    "...and groups by company, hub and normRoleTitle",
+    /normRoleTitle\(String\(r\.title/.test(monthsBody) && /groups\.set\(/.test(monthsBody),
+    "no fold found — it is counting rows again",
+  );
+  check(
+    "...and unions each copy's spans rather than merging them end to end",
+    /for \(const \[fs, ls\] of g\.spans\)/.test(monthsBody),
+    "spans are not walked per copy",
+  );
+  const roles = src.slice(src.indexOf("export const getCompanySkillRoles"));
+  check(
+    "the roles list folds by the same key",
+    /normRoleTitle\(role\.title\)/.test(roles),
+    "the list is returning one entry per archive row",
+  );
+}
+
+// ── one definition of a role, used everywhere ──────────────────────────────
+// There were two hand-identical title folds, and this asserted they agreed.
+// They are now literally the same function, re-exported from lib/roleKey, so
+// the assertion below is near-tautological — and kept exactly for that: if
+// someone re-introduces a local copy, it starts testing something again.
+console.log("\nthe headline and the vacancy chart fold titles the same way:");
+{
+  const cases = [
+    "Senior Payroll Officer",
+    "Senior  Payroll   Officer",
+    "People & Culture Officer",
+    "People and Culture Officer (Part-time)",
+    "Mining Engineer — Pilbara, FIFO 8/6",
+    "  LEAD   data-scientist/ML  ",
+    "Nurse (RN) — Ward 3B",
+    "Développeur Sénior",
+    "営業担当",
+    "",
+  ];
+  const differ = cases.filter((s) => normTitle(s) !== normRoleTitle(s));
+  check(
+    "normTitle and normRoleTitle agree on every sample",
+    differ.length === 0,
+    differ.map((s) => `${JSON.stringify(s)}: ${normTitle(s)} vs ${normRoleTitle(s)}`).join(" | "),
+  );
+  // The property both rely on, stated so a "harmless" tweak to either trips it.
+  check(
+    "...and both fold punctuation and case to single spaces",
+    normRoleTitle("People & Culture  Officer") === "people culture officer" &&
+      normTitle("People & Culture  Officer") === "people culture officer",
+    `${normRoleTitle("People & Culture  Officer")} / ${normTitle("People & Culture  Officer")}`,
+  );
 }
 
 // ── the skill map's pins following the timeline ─────────────────────────────
@@ -2228,6 +2639,9 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
   const months = {
     months: ["2026-07", "2026-08"],
     byMonth: { "2026-07": { a: 3, b: 1 }, "2026-08": {} },
+    // `a` is a multinational: 3 ads in July, 2 in Perth and 1 in Brisbane.
+    byMonthCity: { "2026-07": { perth: { a: 2, b: 1 }, brisbane: { a: 1 } } },
+    liveByCity: { perth: { a: 1 }, brisbane: { a: 4 } },
   };
   const at = (m: string) => demandByCompanyAt(idx, months, "Strategy", m);
   check("a covered month uses that month's employers", eq(at("2026-07").demand, { a: 3, b: 1 }));
@@ -2242,6 +2656,35 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
     eq(demandByCompanyAt(idx, null, "Strategy", "2026-07").demand, { live: 9 }),
   );
 
+  // In a city, a company's pin counts THAT CITY's ads — never its every
+  // office's. The local layer passes its city; nothing else does.
+  const inCity = (m: string, c: string) => demandByCompanyAt(idx, months, "Strategy", m, c);
+  check(
+    "a city's covered month is that city's ads only",
+    eq(inCity("2026-07", "perth").demand, { a: 2, b: 1 }),
+  );
+  check(
+    "...so a multinational's other offices stay out of it",
+    eq(inCity("2026-07", "brisbane").demand, { a: 1 }),
+  );
+  check(
+    "a covered month with nothing in the city is a real zero",
+    eq(inCity("2026-08", "perth").demand, {}),
+  );
+  check(
+    "outside the archive a city holds at ITS live ads, not the company-wide index",
+    eq(inCity("2014-03", "brisbane").demand, { a: 4 }) &&
+      inCity("2014-03", "brisbane").dated === false,
+  );
+  check(
+    "a city with no archive rows at all is empty, not the company-wide index",
+    eq(inCity("2014-03", "darwin").demand, {}),
+  );
+  check(
+    "with no archive, a city falls back to the company-wide index (all there is)",
+    eq(demandByCompanyAt(idx, null, "Strategy", "2026-07", "perth").demand, { live: 9 }),
+  );
+
   // The month walk behind all of it. December is where this kind of thing
   // breaks, and a reversed pair must return nothing rather than spin.
   check(
@@ -2250,6 +2693,447 @@ console.log("\ncompany pins follow the timeline only where the archive reaches:"
   );
   check("one month is one month", eq(monthsBetween("2026-07", "2026-07"), ["2026-07"]));
   check("a reversed span is empty, not endless", eq(monthsBetween("2026-09", "2026-07"), []));
+}
+
+// ── the local layer in supply mode ──────────────────────────────────────────
+// Supply mode sizes a company pin by the employer's FILED total headcount, and
+// answers the searched skill at city level instead, because there is no
+// employees-by-company-by-skill source. Four ways that goes quietly wrong:
+//
+//   · the pin falls back to `Company.headcount`, which for the 805
+//     `illustrative` roster records is hash01(ticker + name) — so pin size
+//     would encode the company's NAME and look like a measurement.
+//   · a company with no filed figure lands at the size floor, where "we don't
+//     know" and "very few staff" are the same pin.
+//   · the city figure reads employmentFor for a non-ABS hub. Singapore answers
+//     there from EIGHT SSOC major groups, so it would print ~495,500 beside the
+//     word Nursing.
+//   · the label says "ads" — demand's noun on a supply figure, which is the
+//     conflation the whole mode exists to prevent.
+console.log("\nthe local supply layer measures employers, not their ads:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+
+  // A hash-derived headcount is not a measurement and must not size a pin. An
+  // illustrative record MAY still carry a figure — 140 of the 807 do — but only
+  // ever a filed one: the regulator or the annual report overrides the hash,
+  // never the reverse. perth-bgl is the case that shows why it matters, filing
+  // 226 staff against a hash value of 35,506.
+  const illus = COMPANIES.filter((c) => c.illustrative);
+  check("there are illustrative records to exclude", illus.length > 100, `${illus.length}`);
+  const hashLeak = illus.filter((c) => localSupplyFor(c)?.n === c.headcount);
+  check(
+    "no supply figure is ever the hashed headcount",
+    hashLeak.length === 0,
+    hashLeak
+      .slice(0, 3)
+      .map((c) => c.id)
+      .join(", "),
+  );
+  const unfiled = illus.filter((c) => localSupplyFor(c) && !filedHeadcount(c.id));
+  check(
+    "an illustrative company's figure only ever comes from a filing",
+    unfiled.length === 0,
+    unfiled
+      .slice(0, 3)
+      .map((c) => c.id)
+      .join(", "),
+  );
+
+  // Provenance: where a filed figure exists, that is the number shown — not the
+  // roster's own field, which may disagree with it.
+  const filedMismatch = COMPANIES.filter((c) => {
+    const f = filedHeadcount(c.id);
+    return f && localSupplyFor(c)?.n !== f.now;
+  });
+  check(
+    "a filed figure is the figure shown",
+    filedMismatch.length === 0,
+    `${filedMismatch.length}`,
+  );
+
+  // The supply figure must not be an ad count wearing a different label. These
+  // are independent quantities; if they ever coincide across the roster, the
+  // sources have been crossed.
+  // Not zero: sa-gov-renewal-sa genuinely files 183 staff and advertises 183
+  // roles, and one coincidence in 707 is a coincidence. What this catches is the
+  // systematic case — the two reading the same field — which would light up the
+  // whole roster at once, not one row of it.
+  const both = COMPANIES.filter((c) => localSupplyFor(c) && c.openRoles > 0);
+  const sameAsAds = both.filter((c) => localSupplyFor(c)!.n === c.openRoles);
+  check(
+    "a supply figure is not the company's ad count",
+    both.length > 50 && sameAsAds.length / both.length < 0.01,
+    `${sameAsAds.length} of ${both.length}`,
+  );
+
+  // Coverage, per city, so a regenerated headcount file that stopped joining
+  // shows up here rather than as a map of hollow pins.
+  const covered: string[] = [];
+  const bare: string[] = [];
+  const byId = new Map(COMPANIES.map((c) => [c.id, c] as const));
+  for (const [city, list] of Object.entries(CITY_COMPANIES)) {
+    const cos = list.map((e) => byId.get(e.id)).filter((c) => !!c);
+    if (!cos.length) continue;
+    const have = cos.filter((c) => localSupplyFor(c)).length;
+    (have / cos.length >= 0.5 ? covered : bare).push(`${city} ${have}/${cos.length}`);
+  }
+  // NAMED, not counted: the ten cities supply mode is actually for. A count
+  // would still pass if Sydney fell out and two others joined.
+  const wantCovered = [
+    "perth",
+    "melbourne",
+    "brisbane",
+    "adelaide",
+    "sydney",
+    "canberra",
+    "darwin",
+    "hobart",
+    "auckland",
+    "wellington",
+  ];
+  const missing = wantCovered.filter((c) => !covered.some((r) => r.startsWith(`${c} `)));
+  check(
+    "every AU capital and both NZ cities are at least half covered",
+    missing.length === 0,
+    missing.join(", "),
+  );
+  check("twelve cities clear half", covered.length >= 12, `${covered.length}`);
+  // The uncovered cities are a real state of the data (37 of 54 at last count,
+  // every one of them outside AU/NZ), not a failure — asserted so that a change
+  // which silently started inventing figures for them would move this number.
+  check("and the uncovered ones stay uncovered", bare.length >= 30, `${bare.length}`);
+
+  // Pin scale: monotonic, bounded, and root-shaped. Linear would put every
+  // company except the largest at the floor.
+  check(
+    "the largest employer gets the top of the scale",
+    supplyScale(35000, 35000) === SUPPLY_MAX_SCALE,
+  );
+  check("an absent figure gets the floor", supplyScale(0, 35000) === SUPPLY_MIN_SCALE);
+  let mono = true;
+  for (let n = 100; n < 35000; n += 250)
+    if (supplyScale(n + 250, 35000) < supplyScale(n, 35000)) mono = false;
+  check("a bigger employer never gets a smaller pin", mono);
+  // Root, not linear: the midpoint of the range must sit well above the floor.
+  const mid = supplyScale(35000 / 2, 35000);
+  const linearMid = SUPPLY_MIN_SCALE + (SUPPLY_MAX_SCALE - SUPPLY_MIN_SCALE) * 0.5;
+  check("the scale is root-shaped, not linear", mid > linearMid, mid.toFixed(3));
+
+  // The city figure: ABS hubs only.
+  const auHub = AU_RATE_HUBS.filter((h) => cityEmployment("Nursing", h, m) !== null);
+  check(
+    "every ABS capital answers for a covered skill",
+    auHub.length === AU_RATE_HUBS.length,
+    `${auHub.length}/${AU_RATE_HUBS.length}`,
+  );
+  // Singapore's employment table is eight SSOC MAJOR GROUPS. It is now SHOWN
+  // rather than withheld, but never as the skill's own headcount — the assertion
+  // moved from "returns nothing" to "never claims to be the skill", which is the
+  // property that actually mattered all along. Fully covered in the NZ/SG section
+  // below; kept here because this block is where the no-blending rules live.
+  const sgHere = cityEmployment("Nursing", "singapore", m);
+  check(
+    "singapore's major-group figure is never printed as a skill headcount",
+    !!sgHere && sgHere.grain === "group" && sgHere.label !== "Nursing",
+    `${sgHere?.grain}/${sgHere?.label}`,
+  );
+  // Auckland and Wellington USED TO BE on this list and are deliberately off it:
+  // they now answer from the 2023 Census at ANZSCO sub-major grain, labelled with
+  // the group rather than the skill. That is asserted in its own section below.
+  const outside = ["toronto", "houston", "london"];
+  check(
+    "a city with no occupation data returns nothing, not a neighbour's figure",
+    outside.every((c) => cityEmployment("Nursing", c, m) === null),
+  );
+  check("no skill searched, no city figure", cityEmployment(null, "perth", m) === null);
+
+  // The noun. Demand counts ads; supply counts people, and the two words must
+  // not cross. measureNoun owns the demand side; supplyNoun the other.
+  check(
+    "supply's noun is never an ad",
+    !/\bads?\b/.test(supplyNoun("headcount") + " " + supplyNoun("fte")),
+  );
+  check("fte is named as fte", supplyNoun("fte") === "FTE" && supplyNoun("headcount") === "staff");
+}
+
+// ── New Zealand's supply side, and the grain it must confess ────────────────
+// NZ publishes no occupation employment finer than ANZSCO SUB-MAJOR — checked
+// across all 50 occupation dataflows in the Stats NZ catalogue, 2026-09-28. So a
+// NZ figure is every skill in its group at once, and the ONLY thing making it
+// honest is that the group's name travels with the number. Nursing in Auckland
+// is 37,644 "Health Professionals": true as written, false the moment the label
+// says Nursing. These assert the label, not just the figure.
+console.log("\nthe NZ supply figure names its group, not the skill:");
+{
+  const m = IVI_MONTHS[IVI_MONTHS.length - 1];
+
+  // Every parent skill resolves to a group, or a searched skill silently has no
+  // NZ answer while its neighbours do.
+  const parents = ALL_SKILLS.filter((s) => !SKILL_PARENT[s]);
+  const ungrouped = parents.filter((s) => !NZ_SKILL_GROUP[s]);
+  check("every parent skill has an ANZSCO group", ungrouped.length === 0, ungrouped.join(", "));
+  const unnamed = [...new Set(Object.values(NZ_SKILL_GROUP))].filter((g) => !NZ_GROUP_NAME[g]);
+  check("every group used has a name to show", unnamed.length === 0, unnamed.join(", "));
+
+  // THE LABEL. A group figure must never be labelled with the skill, and an
+  // Australian one must always be.
+  const nzMislabelled: string[] = [];
+  const auMislabelled: string[] = [];
+  for (const s of parents) {
+    for (const c of ["auckland", "wellington"]) {
+      const r = cityEmployment(s, c, m);
+      if (!r) continue;
+      if (r.grain !== "group") nzMislabelled.push(`${s}/${c}: grain ${r.grain}`);
+      else if (r.label === s) nzMislabelled.push(`${s}/${c}: labelled with the skill`);
+    }
+    const au = cityEmployment(s, "perth", m);
+    if (au && (au.grain !== "occupation" || au.label !== s))
+      auMislabelled.push(`${s}: ${au.grain}/${au.label}`);
+  }
+  check(
+    "no NZ figure is labelled with the searched skill",
+    nzMislabelled.length === 0,
+    nzMislabelled.slice(0, 3).join("; "),
+  );
+  check(
+    "every AU figure IS the searched skill",
+    auMislabelled.length === 0,
+    auMislabelled.slice(0, 3).join("; "),
+  );
+
+  // Nursing is the case worth naming outright: six skills share this number.
+  const akl = cityEmployment("Nursing", "auckland", m);
+  check("Nursing in Auckland answers at all", !!akl, `${akl?.n}`);
+  check("...and says Health Professionals", akl?.label === "Health Professionals", akl?.label);
+  check("...and is dated to a census", !!akl?.asof.endsWith("Census"), akl?.asof);
+  // Medical Practice must return the SAME number, which is the honest shape of a
+  // shared denominator rather than a bug.
+  const med = cityEmployment("Medical Practice", "auckland", m);
+  check("...and Medical Practice returns the same group figure", med?.n === akl?.n);
+
+  // SINGAPORE IS IN NOW, at the coarsest grain in the app: eight SSOC majors. It
+  // used to be excluded outright and the guard asserted that; it earns its place
+  // only because the label names the group and `note` names the level, so both
+  // are asserted rather than the figure alone.
+  const sg = cityEmployment("Nursing", "singapore", m);
+  check("singapore answers", !!sg, `${sg?.n}`);
+  check("...as a group, not an occupation", sg?.grain === "group", sg?.grain);
+  check("...never labelled with the skill", sg?.label !== "Nursing", sg?.label);
+  // SSOC files registered nurses under Associate Professionals, not Professionals
+  // — the mapping follows the classification rather than intuition, and this is
+  // the case that shows it is not just dumping every degree job in one group.
+  check(
+    "...and follows SSOC, which puts nurses in Associate Professionals",
+    sg?.label === "Associate Professionals & Technicians",
+    sg?.label,
+  );
+  check("...and its note names the classification level", !!sg?.note?.includes("SSOC major group"));
+  const sgSoftware = cityEmployment("Software Engineering", "singapore", m);
+  check(
+    "...while Software Engineering is Professionals",
+    sgSoftware?.label === "Professionals",
+    sgSoftware?.label,
+  );
+  // Every group figure anywhere must carry a note. Without it the only thing on
+  // screen distinguishing 1-of-8 from 1-of-43 is gone.
+  const noteless: string[] = [];
+  for (const s of parents)
+    for (const c of ["auckland", "wellington", "singapore"]) {
+      const r = cityEmployment(s, c, m);
+      if (r && !r.note) noteless.push(`${s}/${c}`);
+    }
+  check(
+    "every group figure carries its classification note",
+    noteless.length === 0,
+    noteless.slice(0, 3).join(", "),
+  );
+  // And an occupation-grain figure must NOT claim a group note.
+  const auNoted = parents.map((s) => cityEmployment(s, "perth", m)).filter((r) => r && r.note);
+  check("an AU figure needs no group note", auNoted.length === 0, `${auNoted.length}`);
+  // Every parent skill has an SSOC group, or Singapore silently loses a rate too.
+  const sgUngrouped = parents.filter((s) => !SG_SKILL_GROUP[s]);
+  check("every parent skill has an SSOC group", sgUngrouped.length === 0, sgUngrouped.join(", "));
+  check(
+    "and an uncovered city returns nothing",
+    ["toronto", "houston", "london"].every((c) => cityEmployment("Nursing", c, m) === null),
+  );
+
+  // A city can never hold more of a group than the country.
+  const overNational: string[] = [];
+  for (const [g, byCity] of Object.entries(NZ_GROUP_EMPLOYMENT)) {
+    for (let i = 0; i < NZ_SUPPLY_YEARS.length; i++) {
+      const nat = byCity.national?.[i];
+      if (typeof nat !== "number") continue;
+      for (const c of ["auckland", "wellington"]) {
+        const v = byCity[c]?.[i];
+        if (typeof v === "number" && v > nat) overNational.push(`${g}/${c}/${NZ_SUPPLY_YEARS[i]}`);
+      }
+    }
+  }
+  check(
+    "no city holds more of a group than New Zealand",
+    overNational.length === 0,
+    overNational.slice(0, 3).join(", "),
+  );
+
+  // Auckland is about a third of the country; a group wildly outside that is a
+  // parse error, not a labour market.
+  const shares = Object.entries(NZ_GROUP_EMPLOYMENT)
+    .map(([g, b]) => {
+      const nat = b.national?.[NZ_SUPPLY_YEARS.length - 1];
+      const a = b.auckland?.[NZ_SUPPLY_YEARS.length - 1];
+      return typeof nat === "number" && typeof a === "number" && nat > 0 ? [g, a / nat] : null;
+    })
+    .filter((x): x is [string, number] => !!x);
+  check("every group has an Auckland share", shares.length >= 25, `${shares.length}`);
+  const wild = shares.filter(([, s]) => s < 0.03 || s > 0.75);
+  check(
+    "and none is an implausible share of the country",
+    wild.length === 0,
+    wild.map(([g, s]) => `${g} ${(s * 100).toFixed(0)}%`).join(", "),
+  );
+
+  // Census stepping: back to the last census at or before the month, never
+  // forward, and nothing before the first one.
+  check(
+    "a month before the first census has no figure",
+    cityEmployment("Nursing", "auckland", "2009-06") === null,
+  );
+  check(
+    "a month inside the 2013-2018 gap reads 2013",
+    cityEmployment("Nursing", "auckland", "2016-06")?.asof === "2013 Census",
+  );
+  check(
+    "and a month after the last census reads 2023",
+    cityEmployment("Nursing", "auckland", "2026-07")?.asof === "2023 Census",
+  );
+
+  // Every published figure clears the rounding floor — census counts are randomly
+  // rounded to base 3, so a cell in the low tens is mostly rounding.
+  const tooSmall = parents
+    .flatMap((s) => ["auckland", "wellington"].map((c) => cityEmployment(s, c, m)))
+    .filter((r) => r && r.n < NZ_MIN_EMPLOYED);
+  check("no figure is below the rounding floor", tooSmall.length === 0, `${tooSmall.length}`);
+}
+
+// ── the skill card survives a Supply/Demand switch ──────────────────────────
+// The card stays mounted across the switch already; what this protects is that
+// its CONTENTS cross-fade instead of changing on one frame. Two ways it breaks
+// back, both of which look like a tidy-up:
+//
+//   · buildSkillCard is handed the live mode again instead of the lagged one,
+//     so every figure flips before the fade and the animation animates nothing;
+//   · the title row loses its exemption, so the card fades its own name — the
+//     one thing identical in both modes — and reads as having reloaded.
+// ── the globe reacts to the Supply/Demand switch, and crosses smoothly ──────
+// THE FIRST HALF IS A BUG GUARD, NOT A POLISH ONE. applyView has read heatMode
+// since the supply-heat work, but only through getState(): marketMode was never
+// subscribed in WorldMapbox and never in any effect's deps, so NOTHING re-ran on
+// the click and the globe kept the previous dataset until a search, a month
+// scrub or a selection happened to move it. In ordinary use a switch is followed
+// by a search, which is exactly why it looked like it worked.
+console.log("\nthe globe follows the Supply/Demand switch:");
+{
+  const w = readFileSync("src/employsi/components/WorldMapbox.tsx", "utf8");
+  const css = readFileSync("src/employsi/global.css", "utf8");
+  check(
+    "marketMode is subscribed, not only read from getState",
+    /useAppStore\(\(s\) => s\.marketMode\)/.test(w),
+  );
+  check("demandMode is subscribed too", /useAppStore\(\(s\) => s\.demandMode\)/.test(w));
+  // The dep list is what actually makes the globe rebuild.
+  // lastIndexOf, not indexOf: rebuildMarkersRef.current?.() is called from three
+  // places in this file and only the LAST is the effect with the dep array. The
+  // first slice landed on a handler at line 1736 and failed against deps that
+  // were present — the third time a source-scanning check here has been wrong
+  // about WHERE to look rather than what to look for.
+  const deps = w.slice(w.lastIndexOf("rebuildMarkersRef.current?.();"));
+  // COMMENTS STRIPPED, because the dep array carries a comment that names
+  // heatMarket. With it left in, deleting the dep itself still passed — the
+  // regex was reading the prose explaining the dep rather than the dep.
+  const list = deps.slice(0, deps.indexOf("]);")).replace(/\/\/[^\n]*/g, "");
+  check("the rebuild depends on the lagged market", /\bheatMarket\b/.test(list));
+  check("...and on the demand metric", /\bdemandMode\b/.test(list));
+  // The lag, so the swap animates something.
+  check("the globe is drawn from the lagged mode", /heatMarketRef\.current === "supply"/.test(w));
+  check("...and not from the live store mode", !/s\.marketMode === "supply"/.test(w));
+  check("the heat opacity curve is hoisted so it can be restored", /const HEAT_OPACITY/.test(w));
+  check(
+    "...and the swap puts that curve back rather than a flat value",
+    /setPaintProperty\(SKILL_LAYER, "heatmap-opacity", HEAT_OPACITY\)/.test(w),
+  );
+  check(
+    "the layer has a transition, or the fade would cut",
+    /"heatmap-opacity-transition"/.test(w),
+  );
+  // Markers fade on the INNER wrapper; Mapbox owns the root's opacity.
+  const swapAt = css.indexOf(".worldmount.heatswap .mk");
+  check("markers fade on the inner wrapper", swapAt > 0);
+  check(
+    "...never on the marker root, whose opacity Mapbox rewrites each frame",
+    !/\.worldmount\.heatswap \.mapboxgl-marker\s*\{/.test(css),
+  );
+  const jsMs = Number(/const HEAT_SWAP_MS = (\d+)/.exec(w)?.[1] ?? 0);
+  const cardMs = Number(
+    /const CARD_SWAP_MS = (\d+)/.exec(
+      readFileSync("src/employsi/components/GlobalSearch.tsx", "utf8"),
+    )?.[1] ?? 0,
+  );
+  check(
+    "the globe and the card cross at the same speed",
+    jsMs > 0 && jsMs === cardMs,
+    `globe ${jsMs} vs card ${cardMs}`,
+  );
+}
+
+console.log("\nthe skill card cross-fades rather than blinking:");
+{
+  const src = readFileSync("src/employsi/components/GlobalSearch.tsx", "utf8");
+  const css = readFileSync("src/employsi/global.css", "utf8");
+
+  check("the card is built from the lagged mode", /buildSkillCard\([^)]*cardMode\)/.test(src));
+  check(
+    "...and the live mode no longer reaches it",
+    !/buildSkillCard\([^)]*demandMode\)/.test(src),
+  );
+  check("the lagged mode is in the card's deps", /archiveTrend,\s*cardMode\]/.test(src));
+  check("a swap state drives the class", /gscard\$\{swapping \? " swapping" : ""\}/.test(src));
+  check("the fade is timed by one constant", /const CARD_SWAP_MS = (\d+)/.test(src));
+
+  // The CSS half: the title row must be excluded, and the duration must agree
+  // with the JS timer or the content flips mid-fade or after it has come back.
+  const rule = css.slice(css.indexOf(".gscard.swapping"));
+  check("the swap rule exists", rule.length > 0);
+  // SCOPED TO THE LIVE RULE, not the whole file: the reduced-motion block below
+  // repeats the same selector, so an unscoped test passes even after the real
+  // exemption is deleted. That is exactly how this assertion first failed to
+  // catch its own regression.
+  // The region is found from the rule OUTWARDS, not from the top of the file:
+  // global.css carries other prefers-reduced-motion blocks long before this one,
+  // so slicing at the first of them cut the rule out of the search entirely and
+  // failed the assertion against correct CSS.
+  const swapAt = css.indexOf(".gscard.swapping > ");
+  const rmAt = css.indexOf("@media (prefers-reduced-motion", swapAt);
+  const live = swapAt < 0 ? "" : css.slice(swapAt, rmAt < 0 ? undefined : rmAt);
+  check(
+    "the title row is exempt from the fade",
+    /\.gscard\.swapping > \*:not\(\.gscardhd\)/.test(live),
+  );
+  check("...and so is nothing else in the header", /\.gscard\.swapping \.gscardactions/.test(live));
+  const ms = Number(/const CARD_SWAP_MS = (\d+)/.exec(src)?.[1] ?? 0);
+  const cssMs = Number(
+    /\.gscard > \*:not\(\.gscardhd\)[\s\S]{0,160}?opacity (\d+)ms/.exec(css)?.[1] ?? 0,
+  );
+  check(
+    "the CSS fade and the JS timer agree",
+    ms > 0 && cssMs > 0 && Math.abs(ms - cssMs) <= 20,
+    `js ${ms}ms vs css ${cssMs}ms`,
+  );
+  check(
+    "reduced motion turns the fade off rather than leaving it invisible",
+    /prefers-reduced-motion[\s\S]{0,400}\.gscard\.swapping[\s\S]{0,120}opacity: 1/.test(css),
+  );
 }
 
 console.log(failures ? `\n${failures} failing check(s)` : "\nall checks passed");

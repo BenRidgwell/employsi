@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import type { D1Like } from "./jobArchive";
 import { callerRole } from "./sessionRole";
 import { isReleasedCompany, seesAllMarkets } from "./markets";
@@ -58,6 +59,7 @@ async function db(): Promise<D1Like | null> {
 const MAX_AGE_DAYS = 120;
 
 export const getCompanyPosts = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { companyId: string; limit?: number }) => data)
   .handler(async ({ data }): Promise<{ posts: CompanyPost[] }> => {
     const companyId = (data.companyId || "").trim();

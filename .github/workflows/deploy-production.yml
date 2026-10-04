@@ -1,0 +1,383 @@
+# Deploy PRODUCTION — `benridgwell-globe-gazer-hr`, which carries employsi.com.au.
+#
+# WHY THIS EXISTS. Until 2026-09-29 production was deployed only by hand, from a
+# shell holding CLOUDFLARE_API_TOKEN (Workers Scripts:Edit) and the real
+# VITE_MAPBOX_TOKEN. The sandbox this repo is usually worked in holds neither —
+# its Cloudflare token cannot see Workers at all — while this repo's Actions
+# secrets hold both, which is how deploy-preview.yml already ships the previews.
+# Added at the owner's request, to move the site preview's setup onto the apex.
+#
+# EVERY GUARD HERE IS ABOUT THE DEPLOY HAPPENING ONLY WHEN SOMEONE MEANT IT:
+#
+#   - workflow_dispatch ONLY. No push trigger, ever: a production deploy that
+#     happens because someone merged is a deploy nobody decided to do.
+#   - `confirm` must be typed as exactly `employsi.com.au`. A stray click on
+#     "Run workflow" deploys nothing.
+#   - it refuses any ref but `main`, so a feature branch cannot reach the live
+#     site through here.
+#   - the serving version is recorded BEFORE the deploy and printed with the
+#     rollback command; the listing failing is fatal, because a deploy with no
+#     way back is not one to make.
+#
+# THE APP STAYS GATED ON THE APEX. This deploys whatever `main` says in
+# src/lib/siteGate.ts: while APP_ONLY_PATHS holds "/app", employsi.com.au serves
+# the marketing pages only, /app 302s away, and /login shows the waitlist rather
+# than sign-in. The checks at the end assert exactly that, so releasing the app
+# (emptying APP_ONLY_PATHS) will turn the gate check red on purpose — update it
+# in the same change.
+#
+# Shares its token handling with deploy-preview.yml; the comments there explain
+# why each step is shaped the way it is (the account id, the pk. check,
+# `set -o pipefail`, --compressed on curl).
+
+name: deploy-production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type employsi.com.au to deploy PRODUCTION'
+        type: string
+        required: true
+      reason:
+        description: 'What is being released (goes in the run summary)'
+        type: string
+        required: false
+      release:
+        description: 'significant = next version number (shown in Settings, tagged); maintenance = hotfix/finishing, keeps the current number'
+        type: choice
+        options: [maintenance, significant]
+        default: maintenance
+      from:
+        description: 'Which preview to mirror: production deploys the exact commit that preview is serving'
+        type: choice
+        options: [app-preview, site-preview]
+        default: app-preview
+      version:
+        description: 'Optional: an explicit version for a significant release (e.g. 1.0.0 to drop beta). Blank = next number automatically'
+        type: string
+        required: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Only for the release tag at the end. Nothing else in this job writes
+      # to the repository.
+      contents: write
+    steps:
+      # Inputs go through env, never ${{ }} in a script body — see the note on
+      # `reason` in deploy-preview.yml.
+      - name: Confirm this is meant
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$CONFIRM" != "employsi.com.au" ]; then
+            echo "::error::confirm must be exactly 'employsi.com.au' — nothing deployed"
+            exit 1
+          fi
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::production deploys only from main (got $REF) — nothing deployed"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          # Tags are how a significant release is recorded, and the pre-flight
+          # check below reads them. A shallow clone carries none.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Tokens and account
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MAPBOX_FROM_SECRET: ${{ secrets.VITE_MAPBOX_TOKEN }}
+          MAPBOX_FROM_VAR: ${{ vars.VITE_MAPBOX_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID_SECRET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID_VAR: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          token="${MAPBOX_FROM_SECRET:-$MAPBOX_FROM_VAR}"
+          acct="$(printf '%s' "${CLOUDFLARE_ACCOUNT_ID_SECRET:-$CLOUDFLARE_ACCOUNT_ID_VAR}" | tr -d '[:space:]')"
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || { echo "::error::CLOUDFLARE_API_TOKEN missing"; exit 1; }
+          case "$token" in
+            pk.*) ;;
+            *) echo "::error::VITE_MAPBOX_TOKEN missing or not a Mapbox public token — the map would not render"; exit 1 ;;
+          esac
+          printf '%s' "$acct" | grep -qiE '^[0-9a-f]{32}$' \
+            || { echo "::error::CLOUDFLARE_ACCOUNT_ID missing or not 32 hex characters"; exit 1; }
+          echo "::add-mask::$token"
+          echo "::add-mask::$acct"
+          echo "VITE_MAPBOX_TOKEN=$token" >> "$GITHUB_ENV"
+          echo "CLOUDFLARE_ACCOUNT_ID=$acct" >> "$GITHUB_ENV"
+
+      # PRODUCTION MIRRORS PREVIEW (2026-10-03). The flow is: deploy to a
+      # preview, look at it, then run this — and this deploys the EXACT commit
+      # that preview is serving, not whatever main happens to be by then.
+      #
+      # The commit is read from Cloudflare, not from git: deploy-preview.yml
+      # stamps every preview version with `--message "commit <sha>"`, so the
+      # answer is what the preview Worker is actually running. A preview
+      # version without that stamp (a hand deploy, a secret-only version) is
+      # refused rather than guessed at — redeploy the preview through its
+      # workflow and run this again.
+      #
+      # The commit must already be on main. A preview can be deployed from a
+      # branch for review; it reaches production only once it is merged, so
+      # nothing unreviewed can go live through here.
+      - name: Find the commit the preview is serving
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          FROM: ${{ inputs.from }}
+        run: |
+          set -o pipefail
+          case "${FROM:-app-preview}" in
+            app-preview)  w=employsi-preview ;;
+            site-preview) w=employsi-site-preview ;;
+            *) echo "::error::unknown preview '$FROM'"; exit 1 ;;
+          esac
+          npx wrangler deployments list --name "$w" > preview-deps.txt 2>&1 \
+            || { echo "::error::cannot list $w's deployments"; tail -20 preview-deps.txt; exit 1; }
+          # The listing runs oldest to newest, so the last version id is the one
+          # serving now (the same reading the rollback-point step relies on).
+          pv=$(grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' preview-deps.txt | tail -1)
+          [ -n "$pv" ] || { echo "::error::no version id in $w's listing"; tail -20 preview-deps.txt; exit 1; }
+          npx wrangler versions view "$pv" --name "$w" > preview-ver.txt 2>&1 || true
+          sha=$(grep -oE 'commit [0-9a-f]{40}' preview-ver.txt | head -1 | awk '{print $2}')
+          if [ -z "$sha" ]; then
+            echo "::error::$w is serving version $pv, which carries no commit stamp —"
+            echo "::error::it was not deployed by deploy-preview.yml (or is a secret-only version)."
+            echo "::error::Redeploy the preview through its workflow, check it, then run this again."
+            sed -n '1,30p' preview-ver.txt
+            exit 1
+          fi
+          git fetch --quiet origin main
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::$w is serving $sha, which is not on main. Merge it first —"
+            echo "::error::production only takes commits that have been merged."
+            exit 1
+          fi
+          git checkout --quiet --detach "$sha"
+          echo "PREVIEW_WORKER=$w" >> "$GITHUB_ENV"
+          echo "PREVIEW_VERSION=$pv" >> "$GITHUB_ENV"
+          echo "DEPLOY_SHA=$sha" >> "$GITHUB_ENV"
+          echo "Mirroring $w (version $pv) -> commit $sha"
+          git log -1 --format='  %h %s (%an, %ad)' --date=short
+
+      # THE VERSION SHOWN IN SETTINGS, worked out from the release tags and
+      # built in as VITE_APP_VERSION (src/employsi/version.ts says the rule).
+      #   maintenance  the newest tag's number again
+      #   significant  the next one: -beta.N -> -beta.N+1; after the betas, a
+      #                minor bump (1.0.0 -> 1.1.0)
+      #   version      an explicit number for a significant release — dropping
+      #                "beta" is the case a counter cannot decide. It must be new
+      #                and later than the newest tag.
+      - name: Version and release type
+        env:
+          RELEASE: ${{ inputs.release }}
+          OVERRIDE: ${{ inputs.version }}
+        run: |
+          v=$(python3 - <<'PY'
+          import os, re, subprocess, sys
+          tags = subprocess.run(["git", "tag", "-l", "v*"], capture_output=True, text=True).stdout.split()
+          pat = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$")
+          def key(t):
+              m = pat.match(t)
+              if not m: return None
+              a, b, c, beta = m.groups()
+              # A beta sorts before its release: 1.0.0-beta.9 < 1.0.0.
+              return (int(a), int(b), int(c), 0 if beta else 1, int(beta or 0))
+          known = sorted((key(t), t.lstrip("v")) for t in tags if key(t))
+          if not known:
+              sys.exit("no v* release tags found")
+          latest_key, latest = known[-1]
+          release = os.environ.get("RELEASE") or "maintenance"
+          override = (os.environ.get("OVERRIDE") or "").strip().lstrip("v")
+          if release != "significant":
+              if override:
+                  sys.exit("a version can only be given for a significant release")
+              print(latest); sys.exit(0)
+          if override:
+              k = key(override)
+              if not k: sys.exit(f"'{override}' is not a version like 1.0.0 or 1.0.0-beta.4")
+              if k <= latest_key: sys.exit(f"{override} is not later than the newest release, {latest}")
+              print(override); sys.exit(0)
+          a, b, c, is_release, beta = latest_key
+          print(f"{a}.{b + 1}.0" if is_release else f"{a}.{b}.{c}-beta.{beta + 1}")
+          PY
+          ) || { echo "::error::could not work out the version — see above"; exit 1; }
+          if [ "${RELEASE:-maintenance}" = "significant" ] && git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "::error::v$v is already tagged — that number has shipped before."; exit 1
+          fi
+          echo "APP_VERSION=$v" >> "$GITHUB_ENV"
+          echo "VITE_APP_VERSION=$v" >> "$GITHUB_ENV"
+          echo "Shipping version $v  (${RELEASE:-maintenance} release)"
+
+      - run: npm ci
+
+      - name: What is serving now (the rollback point)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx wrangler deployments list --name benridgwell-globe-gazer-hr > before.txt 2>&1 \
+            || { echo "::error::cannot list production's deployments — refusing to deploy without a rollback point"; tail -20 before.txt; exit 1; }
+          tail -12 before.txt
+          prev=$(grep -oiE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' before.txt | tail -1)
+          [ -n "$prev" ] || { echo "::error::no version id in the listing"; exit 1; }
+          echo "PREV_VERSION=$prev" >> "$GITHUB_ENV"
+          echo "serving now: $prev"
+
+      - name: Build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tail -20
+          grep -rlq "pk\.eyJ" .output/public/ \
+            || { echo "::error::no Mapbox public token in the bundle — not deploying"; exit 1; }
+
+      # The name is spelled out rather than inherited from wrangler.jsonc, so the
+      # target is readable here and does not move if that file's name ever does.
+      - name: Deploy production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -o pipefail
+          npx wrangler deploy --name benridgwell-globe-gazer-hr 2>&1 | tee deploy.txt
+          new=$(grep -oE 'Current Version ID: [0-9a-f-]+' deploy.txt | awk '{print $4}')
+          [ -n "$new" ] || { echo "::error::deploy printed no version id"; exit 1; }
+          [ "$new" != "$PREV_VERSION" ] || { echo "::error::version did not change"; exit 1; }
+          echo "NEW_VERSION=$new" >> "$GITHUB_ENV"
+
+      # What employsi.com.au must look like while the app is unreleased.
+      - name: Check the live site
+        run: |
+          fetch() { curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$1" || echo 000; }
+          title() { grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//'; }
+          fail=0
+          # WAIT FOR THE NEW VERSION TO REACH THE DOMAIN. Measured 2026-09-29 on
+          # the first run: every check here ran within a second of the upload
+          # and saw the OLD version, then the same URLs served the new one
+          # seconds later.
+          #
+          # WAIT ON THIS BUILD'S ASSETS, NOT ON THE TITLE. The first fix waited
+          # for the landing title, which only works when the title changes.
+          # Measured 2026-09-30: old and new versions carried the same title,
+          # the wait passed instantly, and workers.dev /app was checked against
+          # the OLD version (served the app, 200) and failed a good deploy —
+          # a minute later it answered 307 to /login as it should. The entry
+          # chunk's hash changes with any code change, so the page is the new
+          # version once every /assets/ file it references is one this run built.
+          built=$(ls .output/public/assets/ 2>/dev/null)
+          fresh() {
+            refs=$(grep -ao '/assets/[A-Za-z0-9._-]*\.js' page.html | sed 's#/assets/##' | sort -u)
+            [ -n "$refs" ] || return 1
+            for r in $refs; do printf '%s\n' "$built" | grep -qxF "$r" || return 1; done
+          }
+          for wait in 0 5 10 15 20 30 40 60; do
+            sleep "$wait"; code=$(fetch "https://employsi.com.au/?deploy=$NEW_VERSION")
+            fresh && break
+            echo "apex / still serving the previous build — waiting"
+          done
+          fresh || { echo "::error::apex / never served this build's assets"; fail=1; }
+          for wait in 0 5 10 20 30; do
+            sleep "$wait"; fetch "https://benridgwell-globe-gazer-hr.employsi.workers.dev/?deploy=$NEW_VERSION" >/dev/null
+            fresh && break
+            echo "workers.dev still serving the previous build — waiting"
+          done
+          t=$(title); echo "apex /          $code  $t"
+          case "$t" in *"Explore the world of work"*) ;; *) echo "::error::apex / is not the landing page"; fail=1 ;; esac
+          for p in /product /login; do
+            code=$(fetch "https://employsi.com.au$p"); echo "apex $p  $code"
+            [ "$code" = 200 ] || { echo "::error::apex $p answered $code"; fail=1; }
+          done
+          # THE APP IS RELEASED ON THE APEX (2026-10-03): APP_ONLY_PATHS holds only
+          # /mobile-frame. So the apex now behaves like workers.dev for the app —
+          # /app answers an anonymous request with a redirect to /login (the
+          # sign-in gate, getAppAccess), sign-in itself is open, and only the
+          # mobile-frame preview is still bounced off the public domain.
+          # Re-closing the app (putting "/app" back in APP_ONLY_PATHS) turns the
+          # first of these red on purpose: change this block in the same PR.
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au/api/auth/get-session")
+          echo "apex /api/auth/get-session  $code"
+          [ "$code" = 200 ] || { echo "::error::apex sign-in answered $code, expected 200 now the app is released"; fail=1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://employsi.com.au/mobile-frame")
+          echo "apex /mobile-frame  $code"
+          [ "$code" = 302 ] || { echo "::error::apex /mobile-frame answered $code, expected 302 (still closed)"; fail=1; }
+          # /app, on BOTH hosts: A REDIRECT TO /login IS THE PASS, not the app's
+          # title. The app is signed-in-only (getAppAccess), so an
+          # unauthenticated request never reaches it. Only the app route bounces
+          # to /login, so the redirect proves both that the app is deployed and
+          # that its sign-in gate is live. 3xx, not 302 specifically: TanStack
+          # Router's redirect() in a beforeLoad answers 307 (measured on
+          # employsi-preview, 2026-09-30).
+          for u in https://employsi.com.au/app https://benridgwell-globe-gazer-hr.employsi.workers.dev/app; do
+            read -r code location < <(curl -s --compressed -o page.html \
+              -w '%{http_code} %{redirect_url}\n' --max-time 30 "$u" || echo "000 -")
+            t=$(title)
+            echo "$u  $code  ${location:-$t}"
+            case "$code|$location" in
+              3[0-9][0-9]\|*/login*) ;;
+              200\|*)
+                case "$t" in
+                  # The app's <title> is exactly "Employsi" (src/routes/app.tsx).
+                  "Employsi")
+                    echo "::error::$u served the app to an anonymous request —" \
+                         "the sign-in gate is not working on production"; fail=1 ;;
+                  *) echo "::error::$u answered 200 but is not the app: $t"; fail=1 ;;
+                esac ;;
+              *) echo "::error::$u answered $code ${location:-}, expected a redirect to /login"; fail=1 ;;
+            esac
+          done
+          exit $fail
+
+      # TAG THE RELEASE, after the live site has been checked — so a tag can
+      # never name a deploy that did not actually serve. Significant releases
+      # only: a maintenance deploy reuses its version and its tag already
+      # exists.
+      #
+      # continue-on-error, deliberately. The deploy has already succeeded and
+      # been verified by this point; a tag that fails to push is a bookkeeping
+      # problem, and turning a good production release red over it would teach
+      # everyone to ignore the colour. The summary prints the manual command.
+      - name: Tag the release
+        if: success() && inputs.release == 'significant'
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$APP_VERSION" -m "employsi v$APP_VERSION"
+          git push origin "v$APP_VERSION"
+          echo "TAGGED=1" >> "$GITHUB_ENV"
+
+      - name: Summary
+        if: always()
+        env:
+          REASON: ${{ inputs.reason }}
+          RELEASE: ${{ inputs.release }}
+        run: |
+          {
+            echo '## employsi.com.au (benridgwell-globe-gazer-hr)'
+            echo
+            echo "Version: \`${APP_VERSION:-unknown}\`  (${RELEASE:-maintenance} release)"
+            echo
+            echo "Mirrored: \`${PREVIEW_WORKER:-?}\` version \`${PREVIEW_VERSION:-?}\` → commit \`${DEPLOY_SHA:-?}\`"
+            if [ "${RELEASE:-}" = "significant" ] && [ -z "${TAGGED:-}" ]; then
+              echo
+              echo "> Tag did not push. Run: \`git tag -a v${APP_VERSION} -m \"employsi v${APP_VERSION}\" && git push origin v${APP_VERSION}\`"
+            fi
+            echo
+            echo "Reason: ${REASON:-—}"
+            echo
+            echo "Replaced: \`${PREV_VERSION:-unknown}\`  →  now: \`${NEW_VERSION:-not deployed}\`"
+            echo
+            if [ -n "$PREV_VERSION" ]; then
+              echo "Rollback: \`npx wrangler rollback $PREV_VERSION --name benridgwell-globe-gazer-hr --message \"why\"\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

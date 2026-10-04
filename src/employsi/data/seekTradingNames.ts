@@ -94,6 +94,29 @@ export const SEEK_TRADING_NAMES: Record<string, SeekAdvertiser[]> = {
   "perth-cyl": [
     { advertiserId: "36323855", name: "CATALYST (PLUTONIC) PTY LTD" }, // live 9
   ],
+
+  // J.J. Richards & Sons (Top-150 private) rebranded as JJ's Waste & Recycling:
+  // jjswaste.com.au carries the banner "J.J. Richards & Sons Pty Ltd has
+  // rebranded to JJ's Waste & Recycling" and tells the company's history from
+  // Joseph John Richards' 1932 Murwillumbah contract. Read 2026-09-30, when a
+  // keyword search for the brand put 51 of 59 hits on this one advertiser and
+  // pulling the id served truck drivers, yard hands and workshop staff at
+  // Underwood QLD (the head office), Rockhampton, Glendenning, Derrimut and
+  // Artarmon. NOT "JR Richards & Sons" (26058075), which also turns up in that
+  // search — a separate NSW waste company.
+  "priv-j-j-richards-sons": [
+    { advertiserId: "38843082", name: "JJ's Waste & Recycling" }, // live 51
+  ],
+
+  // Swift Networks Group (ASX:SW1) advertises as plain "Swift Networks". That IS
+  // an exact-name match once "Group" is stripped, but the generator's keyword
+  // search for "Swift Networks Group" does not surface the ad, so it never gets
+  // to compare names — measured 2026-09-30, `gen-seek-advertisers.py --only
+  // sw1` -> "no exact match". Searching "Swift Networks" finds it; the one ad
+  // the id served that day was a Perth "Senior Middleware Developer" role
+  // building Swift TV, which is the company's product and now its name
+  // (swift.tv: "Swift TV Ltd - ASX: SW1").
+  sw1: [{ advertiserId: "46067741", name: "Swift Networks" }], // live 1
 };
 
 /**

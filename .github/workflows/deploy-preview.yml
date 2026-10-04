@@ -1,5 +1,13 @@
-# Deploy the APP worker to https://employsi-preview.employsi.workers.dev — the
-# thing you send someone to look at.
+# Deploy a PREVIEW Worker — the thing you send someone to look at. Two targets,
+# chosen at dispatch:
+#
+#   app   -> https://employsi-preview.employsi.workers.dev/app       (the map)
+#   site  -> https://employsi-site-preview.employsi.workers.dev/     (the website)
+#
+# Same codebase, same build — every Worker here serves both the marketing pages
+# and /app. They are separate Workers so the website can be reviewed without
+# redeploying over whatever app change is being looked at on the app preview,
+# and vice versa. Neither is production.
 #
 # WHY THIS EXISTS. Until now there was no automated path to the preview Worker
 # at all. `npm run deploy:preview` is in package.json, but nothing in .github/
@@ -15,17 +23,17 @@
 # target the preview Worker and Workers Builds cannot.
 #
 # **`npx wrangler deploy` WITHOUT `--name` IS PRODUCTION — employsi.com.au.**
-# The `--name employsi-preview` lives in `deploy:preview` in package.json rather
-# than being written here, so the target is reviewable in the repo. If that
-# script is ever edited to drop the flag, THIS WORKFLOW PUBLISHES THE LIVE SITE.
+# The `--name` lives in `deploy:preview` / `deploy:site-preview` in package.json
+# rather than being written here, so the target is reviewable in the repo. If
+# either script is ever edited to drop the flag, THIS WORKFLOW PUBLISHES THE
+# LIVE SITE.
 # The verify step below exists to catch exactly that, after the fact.
 #
 # MANUAL ONLY, deliberately. There is no `on: push`. An app deploy that happens
 # because someone merged a branch is the blast radius this repo keeps closing.
 #
-# THE APP IS AT /app. `/` is the waitlist on every host, so the link to send is
-#   https://employsi-preview.employsi.workers.dev/app
-# and a reviewer sent to `/` sees the waitlist and nothing you built.
+# THE APP IS AT /app. `/` is the marketing landing page on every host, so an
+# app reviewer is sent to /app and a website reviewer to /.
 #
 # It shares the PRODUCTION D1 and KV, on purpose — the point of the preview is
 # real data. Reads are free; anything that writes needs thinking about first.
@@ -35,13 +43,18 @@ name: deploy-preview
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: 'Which preview: app (employsi-preview) or site (employsi-site-preview)'
+        type: choice
+        options: [app, site]
+        default: app
       reason:
         description: 'What is being previewed (goes in the run summary)'
         type: string
         required: false
 
 concurrency:
-  group: deploy-preview
+  group: deploy-preview-${{ inputs.target || 'app' }}
   cancel-in-progress: false
 
 jobs:
@@ -50,9 +63,32 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Tags, for the "(preview)" version label below. Shallow history is
+          # fine; only the release tags are needed.
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      # ONE PLACE maps the choice to a Worker and a package.json script; every
+      # later step reads $WORKER / $DEPLOY_SCRIPT / $CHECK_PATH. A choice input
+      # cannot carry any other value, and the case below refuses one anyway.
+      - name: Resolve the target
+        env:
+          TARGET: ${{ inputs.target || 'app' }}
+        run: |
+          case "$TARGET" in
+            app)  w=employsi-preview;      script=deploy:preview;      path=/app ;;
+            site) w=employsi-site-preview; script=deploy:site-preview; path=/ ;;
+            *)    echo "::error::unknown target '$TARGET'"; exit 1 ;;
+          esac
+          {
+            echo "WORKER=$w"
+            echo "DEPLOY_SCRIPT=$script"
+            echo "CHECK_PATH=$path"
+          } >> "$GITHUB_ENV"
+          echo "target $TARGET -> Worker $w via npm run $script"
 
       # VITE_MAPBOX_TOKEN IS A BUILD-TIME INLINE, not a Worker secret: vite bakes
       # it into the bundle, and a Worker secret is not visible to the build.
@@ -219,10 +255,10 @@ jobs:
             fi
             return 1
           }
-          if via=$(listing employsi-preview before-preview.txt); then
-            echo "employsi-preview, before (via $via list):"; tail -12 before-preview.txt
+          if via=$(listing "$WORKER" before-preview.txt); then
+            echo "$WORKER, before (via $via list):"; tail -12 before-preview.txt
           else
-            echo "::notice::employsi-preview has no listable versions yet — no rollback point for it."
+            echo "::notice::$WORKER has no listable versions yet — no rollback point for it."
             echo "That is expected for a Worker that has never been deployed to."
             tail -6 before-preview.txt
           fi
@@ -235,7 +271,7 @@ jobs:
           echo "production baseline recorded (via $via_prod list)"
           echo "LISTING_CMD=$via_prod" >> "$GITHUB_ENV"
 
-      - name: Build and deploy to employsi-preview
+      - name: Build and deploy the preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         # VITE_MAPBOX_TOKEN and CLOUDFLARE_ACCOUNT_ID come from GITHUB_ENV, set
@@ -248,9 +284,44 @@ jobs:
         # marked green — the run only failed later, by luck, in the verify step.
         # A deploy that fails silently is the exact failure this file's comments
         # spend their length warning about.
+        #
+        # STAMPED WITH ITS COMMIT (2026-10-03). deploy-production.yml deploys
+        # exactly the commit a preview is serving, and reads it from this
+        # message on the preview's Worker version — so every preview deploy
+        # must carry it. The arguments after `--` land on the wrangler command
+        # at the end of the deploy:* script.
+        #
+        # VERSION LABEL: the newest release tag plus "(preview)", built in as
+        # VITE_APP_VERSION (src/employsi/version.ts), so Settings on a preview
+        # names the release it is ahead of. Production builds its own number.
         run: |
           set -o pipefail
-          npm run deploy:preview 2>&1 | tee deploy.txt
+          latest=$(git -c versionsort.suffix=-beta tag -l 'v*' --sort=-v:refname | head -1)
+          export VITE_APP_VERSION="${latest#v} (preview)"
+          # The app's tab reads "employsi - preview" on preview builds only
+          # (src/routes/app.tsx). Production builds the same commit without it.
+          export VITE_PREVIEW=1
+          echo "Version label: $VITE_APP_VERSION"
+          npm run "$DEPLOY_SCRIPT" -- --message "commit $GITHUB_SHA" --tag "${GITHUB_SHA:0:12}" \
+            2>&1 | tee deploy.txt
+
+      # A preview production cannot read the commit of cannot be promoted, so
+      # confirm the stamp actually landed on the version that was just made.
+      - name: The commit stamp is on the new version
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          id=$(grep -oE 'Current Version ID: [0-9a-f-]+' deploy.txt | awk '{print $4}')
+          [ -n "$id" ] || { echo "::error::the deploy printed no version id"; exit 1; }
+          npx wrangler versions view "$id" --name "$WORKER" > stamp.txt 2>&1 || true
+          if grep -q "commit $GITHUB_SHA" stamp.txt; then
+            echo "version $id carries commit $GITHUB_SHA — production can mirror it"
+          else
+            echo "::error::version $id does not carry 'commit $GITHUB_SHA', so deploy-production.yml"
+            echo "::error::could not mirror this preview. Output of versions view:"
+            sed -n '1,30p' stamp.txt
+            exit 1
+          fi
 
       # THE REAL TOKEN HAS TO BE IN THE BUNDLE. A build made with a dummy value
       # deploys happily and breaks the map for everyone, so this asserts the
@@ -272,7 +343,7 @@ jobs:
           set -o pipefail
           # The SAME command that produced the baseline, or the comparison is
           # measuring the difference between two tools rather than a deploy.
-          npx wrangler "$LISTING_CMD" list --name employsi-preview 2>&1 | tee after-preview.txt
+          npx wrangler "$LISTING_CMD" list --name "$WORKER" 2>&1 | tee after-preview.txt
           npx wrangler "$LISTING_CMD" list --name benridgwell-globe-gazer-hr 2>&1 | tee after-prod.txt
 
           # COMPARE VERSION IDS, NOT THE WHOLE OUTPUT. The first cut diffed the
@@ -298,21 +369,18 @@ jobs:
             echo "production UNCHANGED — same version ids before and after"
           else
             echo "::error::PRODUCTION CHANGED. This workflow must never touch it — check that"
-            echo "::error::package.json deploy:preview still carries --name employsi-preview."
+            echo "::error::package.json $DEPLOY_SCRIPT still carries --name $WORKER."
             diff <(ids before-prod.txt) <(ids after-prod.txt) || true
             exit 1
           fi
           if [ "$(ids before-preview.txt)" = "$(ids after-preview.txt)" ]; then
-            echo "::error::employsi-preview gained no new version — the deploy went somewhere else, or did not happen"
+            echo "::error::$WORKER gained no new version — the deploy went somewhere else, or did not happen"
             exit 1
           fi
           if [ -z "$(ids before-preview.txt)" ]; then
-            echo "employsi-preview has its FIRST version — nothing to roll back to before this"
+            echo "$WORKER has its FIRST version — nothing to roll back to before this"
           else
-            if [ -z "$(ids before-preview.txt)" ]; then
-            echo "employsi-preview has its FIRST version — nothing to roll back to before this"
-          else
-            echo "employsi-preview has a new version"
+            echo "$WORKER has a new version"
           fi
 
           # VERSIONS ARE NOT DEPLOYMENTS, and confusing the two is a documented
@@ -323,28 +391,88 @@ jobs:
           # versions, because that is what proves a deploy happened; this
           # records what is SERVING, which is what anyone looking at the Worker
           # is actually asking about.
-          npx wrangler deployments list --name employsi-preview > deployed-preview.txt 2>&1 \
+          npx wrangler deployments list --name "$WORKER" > deployed-preview.txt 2>&1 \
             || echo '(deployments list failed — see the artifact)' >> deployed-preview.txt
-          echo "--- what is SERVING employsi-preview now:"
+          echo "--- what is SERVING $WORKER now:"
           tail -20 deployed-preview.txt
-          fi
 
-      # THE APP IS AT /app; / is the waitlist on every host. Reading the title is
-      # how you tell them apart — see CLAUDE.md.
-      - name: Check the app answers
+      # THE APP IS AT /app; / is the landing page on every host. Reading the
+      # title is how you tell them apart — see CLAUDE.md.
+      #
+      # /app CANNOT BE READ ANONYMOUSLY ANY MORE, and this step used to require
+      # it. The app is signed-in-only as of 2026-09-30 (getAppAccess in
+      # billingFn.ts), so an unauthenticated curl gets a 302 to /login and never
+      # sees the app's <title> at all. This check demanded 200 and would have
+      # failed every app deploy from here on — the same trap CLAUDE.md flags for
+      # deploy-production.yml's gate check, so it is changed in the commit that
+      # closed the gate rather than left to fail and be puzzled over.
+      #
+      # THE REDIRECT IS NOW THE ASSERTION, and it is a stronger one than the
+      # title was: only the app route redirects to /login, so landing there
+      # proves both that this is the app and that its gate is live. A 200 with
+      # the app title is still accepted, because it is the correct answer on a
+      # Worker where Better Auth is not configured — authAvailable() false means
+      # the gate has no door and getAppAccess deliberately stays open. Both are
+      # reported, so which one a run got is on the record.
+      - name: Check the preview answers
         run: |
-          url=https://employsi-preview.employsi.workers.dev/app
+          url="https://$WORKER.employsi.workers.dev$CHECK_PATH"
           # --compressed IS REQUIRED. Without it curl stores the gzip bytes, grep
           # calls page.html a binary file, the title comes back empty and this
           # step warns "/app did not return the app title" on a perfectly good
           # deploy. Measured 2026-09-21 on the first successful run.
-          code=$(curl -s --compressed -o page.html -w '%{http_code}' --max-time 30 "$url" || echo 000)
-          title=$(grep -o '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
-          echo "$code  $title"
-          [ "$code" = "200" ] || { echo "::error::$url answered $code"; exit 1; }
-          case "$title" in
-            *"labour-market globe"*) echo "serving the APP" ;;
-            *) echo "::warning::/app did not return the app title — got: $title" ;;
+          #
+          # RETRIED, because a FIRST deploy is not reachable at once. Measured
+          # 2026-09-28 on employsi-site-preview's first version: this check ran
+          # five seconds after the upload and got 404 "Page not found" from a
+          # workers.dev hostname that did not exist yet; a minute later it
+          # served 200. An existing Worker answers first time, so this only
+          # ever costs time on a new one.
+          # A REDIRECT IS A SUCCESSFUL ANSWER HERE, so the retry stops on either —
+          # it is waiting for a hostname to exist, not for a particular status.
+          #
+          # 307, NOT 302. TanStack Router's redirect() in a beforeLoad answers
+          # 307 (measured on employsi-preview, 2026-09-30). This check was
+          # written against 302 from habit and would have failed the very deploy
+          # it was added for. Matched as 3xx rather than pinned to 307, because
+          # which redirect status the framework picks is its choice, not ours —
+          # what matters is where it sends an unauthenticated visitor.
+          for wait in 0 5 10 20 30; do
+            sleep "$wait"
+            read -r code location < <(curl -s --compressed -o page.html \
+              -w '%{http_code} %{redirect_url}\n' --max-time 30 "$url" || echo "000 -")
+            case "$code" in 200|3[0-9][0-9]) break ;; esac
+            echo "attempt answered $code; retrying"
+          done
+          title=$(grep -ao '<title>[^<]*' page.html | head -1 | sed 's/<title>//')
+          echo "$code  ${location:-$title}"
+
+          case "$CHECK_PATH" in
+            /app)
+              case "$code" in
+                3[0-9][0-9])
+                  case "$location" in
+                    */login*) echo "serving the APP — signed out, $code to /login as expected" ;;
+                    *) echo "::error::/app answered $code to $location, not /login"; exit 1 ;;
+                  esac ;;
+                200)
+                  case "$title" in
+                    # The app's <title>: "employsi - preview" on a preview build,
+                    # "Employsi" otherwise (src/routes/app.tsx).
+                    "employsi - preview"|"Employsi")
+                      echo "::warning::/app served the app to an ANONYMOUS request." \
+                           "Expected on a Worker without Better Auth configured" \
+                           "(authAvailable false); on one with it, the sign-in gate is not working." ;;
+                    *) echo "::error::/app answered 200 but is not the app — got: $title"; exit 1 ;;
+                  esac ;;
+                *) echo "::error::$url answered $code"; exit 1 ;;
+              esac ;;
+            /)
+              [ "$code" = 200 ] || { echo "::error::$url answered $code"; exit 1; }
+              case "$title" in
+                *"Explore the world of work"*) echo "serving the WEBSITE" ;;
+                *) echo "::warning::/ did not return the expected title — got: $title" ;;
+              esac ;;
           esac
 
       # `reason` GOES THROUGH env, NOT THROUGH ${{ }} IN THE SCRIPT BODY.
@@ -360,13 +488,13 @@ jobs:
           REASON: ${{ inputs.reason || '(none given)' }}
         run: |
           {
-            echo '## employsi-preview'
+            echo "## $WORKER"
             echo
             echo "Reason: $REASON"
             echo
-            echo '**https://employsi-preview.employsi.workers.dev/app**'
+            echo "**https://$WORKER.employsi.workers.dev$CHECK_PATH**"
             echo
-            echo 'The app is at `/app`. A link to `/` shows the waitlist.'
+            echo 'The app is at `/app`; `/` is the website landing page.'
             echo
             echo '### Version deployed by this run'
             echo '```'
@@ -374,7 +502,7 @@ jobs:
               || echo 'the deploy did not run'
             echo '```'
             echo
-            echo '### What is SERVING employsi-preview now'
+            echo "### What is SERVING $WORKER now"
             echo
             echo 'A Worker can hold versions NEWER than the one serving traffic —'
             echo '`wrangler secret put` uploads one without deploying it. So a'
@@ -390,7 +518,7 @@ jobs:
             tail -25 deploy.txt 2>/dev/null || echo 'the deploy did not run'
             echo '```'
             echo
-            echo 'Rollback: `npx wrangler rollback <version-id> --name employsi-preview --message "why"`'
+            echo "Rollback: \`npx wrangler rollback <version-id> --name $WORKER --message \"why\"\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4

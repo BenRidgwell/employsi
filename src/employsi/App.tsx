@@ -9,6 +9,7 @@ import { FilterPane } from "./components/FilterPane";
 import { MobileTabBar } from "./components/MobileTabBar";
 import { MobileMenu } from "./components/MobileMenu";
 import { Toast } from "./components/Toast";
+import { SupplyKey } from "./components/SupplyKey";
 import { LocalBanner } from "./components/LocalBanner";
 import { WorldMapbox } from "./components/WorldMapbox";
 import { CompanyPanel } from "./components/panels/CompanyPanel";
@@ -20,10 +21,13 @@ import { CareerPathwaysPane } from "./components/panels/CareerPathwaysPane";
 import { ComingSoonPane } from "./components/panels/ComingSoonPane";
 import { TalentFlowPane } from "./components/panels/TalentFlowPane";
 import { IntroLoader } from "./components/IntroLoader";
+import { WelcomeCard } from "./components/WelcomeCard";
 import { useAppStore } from "./state/store";
 import { useAuthSession } from "./hooks/useAuthSession";
+import { useWelcome } from "./hooks/useWelcome";
 import { useSkillIndex } from "./hooks/useSkillData";
 import { useViewTracking } from "./hooks/useViewTracking";
+import { useFeatureTracking } from "./hooks/useFeatureTracking";
 import { startSession } from "./lib/analytics";
 import { useEffect } from "react";
 
@@ -32,6 +36,10 @@ function App() {
   // httpOnly, so this is the only way the client can know — and the only
   // place that sets `account`.
   useAuthSession();
+
+  // First visit for this ACCOUNT? Asks the server once the session is known,
+  // and opens the welcome card if so — which is what starts the guided tour.
+  useWelcome();
 
   // Escape closes the frontmost open surface, app-wide.
   //
@@ -72,6 +80,8 @@ function App() {
   // the What's Trending pane, and the product events behind the admin console's
   // engagement tab.
   useViewTracking();
+  // Which features get opened, for how long, and the supply/demand time split.
+  useFeatureTracking();
 
   // One session per page load, closed out with its length on unload. This is
   // the only source of "time in app" — see lib/analytics.ts for why the unload
@@ -83,7 +93,16 @@ function App() {
   // colours by comes over the wire — so "the index has landed" is the honest
   // answer to "has this finished loading". IntroLoader caps the wait itself, so
   // a slow or failed fetch delays the handoff rather than blocking it forever.
-  const introReady = !!skillIndex;
+  //
+  // THE SESSION IS THE SECOND THING. The app is signed-in-only (getAppAccess)
+  // and its chrome is written for an account — the avatar, the alert bell, the
+  // feedback composer. Each of those has a correct-but-empty state for the few
+  // hundred milliseconds before the session query answers, and waiting here
+  // means the veil covers that gap instead of the user watching the controls
+  // fill in. `sessionKnown` rather than `account`, so a failed session read
+  // lifts the veil too — see the note on it in state/store.ts.
+  const sessionKnown = useAppStore((s) => s.sessionKnown);
+  const introReady = !!skillIndex && sessionKnown;
 
   return (
     <div className="app">
@@ -131,6 +150,7 @@ function App() {
           old CityBadge pill and Legend stats bar, which said related things in
           two different corners. */}
       <LocalBanner />
+      <SupplyKey />
       <CompanyPanel />
       <ComparePanel />
       <WhatsTrendingPane />
@@ -144,6 +164,7 @@ function App() {
       <ComingSoonPane />
       <MobileTabBar />
       <MobileMenu />
+      <WelcomeCard />
       <Toast />
     </div>
   );

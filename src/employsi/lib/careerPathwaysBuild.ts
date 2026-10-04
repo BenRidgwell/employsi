@@ -25,7 +25,7 @@ import {
   type PayFigure,
   type Rung,
 } from "./careerLadder";
-import { LIVE_FEEDS_ONLY_SQL } from "./jobArchive";
+import { isLiveOn, LIVE_FEEDS_ONLY_SQL } from "./jobArchive";
 import { employerFamilies } from "./ladderEmployers";
 import { annualAud, medianAnnual } from "./salaryParse";
 import { ALL_SKILLS, parseStoredSkills } from "../data/skillsTaxonomy";
@@ -50,6 +50,9 @@ export const SERIES_MIN_DAYS = 14;
 const MIN_DURATION_ROLES = 8;
 /** Cities listed per market — the hotspot map's pins and bars. */
 const MAX_HUBS = 10;
+/** Roster companies listed per rung per market. The map fades every other
+ *  company, so this is the lit set; past a hundred it is most of a city. */
+const MAX_COMPANIES = 100;
 
 /** The default window, in days, ending at the archive's newest live row. */
 export const PATHWAY_DAYS = 90;
@@ -129,6 +132,9 @@ interface Role {
   node: string; // family|track|rung
   canonical: string;
   employer: string;
+  /** True when `employer` is a roster company id (the row carried
+   *  company_id), not a board's free-text employer name. */
+  roster: boolean;
   country: string | null;
   live: boolean;
   hub: string | null;
@@ -228,13 +234,18 @@ export class PathwayBuilder {
   };
 
   /**
-   * @param liveFrom rows seen on or after this day are "currently advertised"
-   *                 (the app's definition: the window's last two days).
+   * @param liveDay the reference day for "currently advertised" — the last day
+   *                the feeds have finished reporting, not today. A row counts
+   *                as live if its own FEED could still have seen it by then,
+   *                which is this day for a nightly feed and up to a week
+   *                earlier for a weekly one (isLiveOn / SOURCE_LIVE_DAYS).
+   *                Judging every feed against this one day read every weekly
+   *                feed's employers as advertising nothing six days in seven.
    * @param keepUnplaced collect unplaced titles for the audit — a map of every
-   *                 distinct unplaced title, so off in the Worker.
+   *                distinct unplaced title, so off in the Worker.
    */
   constructor(
-    private liveFrom: string,
+    private liveDay: string,
     private keepUnplaced = false,
   ) {}
 
@@ -276,7 +287,7 @@ export class PathwayBuilder {
     const key = employer
       ? `${this.id(employer)}|${this.id(p.canonical)}|${this.id(r.hub ?? "")}`
       : `anon|${r.rid}`;
-    const live = r.last_seen >= this.liveFrom;
+    const live = isLiveOn(r.last_seen, r.source, this.liveDay);
     const pay = annualAud({ salary: r.salary, hub: r.hub, source: r.source });
     const skills = parseStoredSkills(r.skills).map(this.intern);
     const node = this.intern(`${p.family}|${p.track}|${p.rung}`);
@@ -315,6 +326,7 @@ export class PathwayBuilder {
         node,
         canonical: this.intern(p.canonical),
         employer: this.intern(employer),
+        roster: !!r.company_id,
         country,
         hub: r.hub === null ? null : this.intern(r.hub),
         live,
@@ -433,9 +445,22 @@ export class PathwayBuilder {
     const hubs = new Map<string, number>();
     const skillLive: Record<string, number> = {};
     const employers = new Set<string>();
+    const roster = new Map<string, [number, number]>();
+    const byCity = new Map<string, Map<string, number>>();
     let live = 0;
     for (const r of roles) {
       if (r.employer) employers.add(r.employer);
+      if (r.roster) {
+        const c = roster.get(r.employer) ?? [0, 0];
+        c[0]++;
+        if (r.live) c[1]++;
+        roster.set(r.employer, c);
+        if (r.hub) {
+          let m = byCity.get(r.hub);
+          if (!m) byCity.set(r.hub, (m = new Map()));
+          bump(m, r.employer);
+        }
+      }
       if (!r.live) continue;
       live++;
       if (r.hub) bump(hubs, r.hub);
@@ -451,6 +476,16 @@ export class PathwayBuilder {
       daysAdvertised: { median, n: durations.length },
       hubs: topN(hubs, MAX_HUBS),
       skillLive,
+      companies: [...roster]
+        .map(([id, [n, l]]): [string, number, number] => [id, n, l])
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, MAX_COMPANIES),
+      cityCompanies: Object.fromEntries(
+        [...byCity].map(([hub, m]) => [
+          hub,
+          [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, MAX_COMPANIES),
+        ]),
+      ),
     };
   }
 

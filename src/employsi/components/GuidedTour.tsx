@@ -410,7 +410,24 @@ function HubIcon({ kind }: { kind: TourDef["icon"] }) {
   );
 }
 
-export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () => void }) {
+export function GuidedTour({
+  layer,
+  onClose,
+  startAt,
+}: {
+  layer: TourLayer;
+  onClose: () => void;
+  /**
+   * Open straight into this walkthrough instead of the hub.
+   *
+   * The welcome card's "Start tour" passes "orient"; pressing "Need help?"
+   * passes nothing and gets the hub, as before. Ignored if the key is not in
+   * THIS layer's set — the two sets do not share every key, and falling back
+   * to the hub is the right failure: a tour that silently runs the wrong
+   * walkthrough would spotlight controls the copy is not describing.
+   */
+  startAt?: string;
+}) {
   const localCity = useAppStore((s) => s.localCity);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
   const toggleAnalyst = useAppStore((s) => s.toggleAnalyst);
@@ -433,7 +450,7 @@ export function GuidedTour({ layer, onClose }: { layer: TourLayer; onClose: () =
         ? `${region.toUpperCase()} VIEW`
         : "WORLD VIEW";
 
-  const [tour, setTour] = useState<string | null>(null);
+  const [tour, setTour] = useState<string | null>(startAt && tours[startAt] ? startAt : null);
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
   const [rect, setRect] = useState<Rect | null>(null);

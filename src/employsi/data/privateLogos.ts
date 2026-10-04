@@ -336,12 +336,11 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "sydney-vnt": "ventia.com",
   "sydney-lnw": "lnw.com",
   "sydney-cip": "centuria.com.au",
-  // The two Charter Hall REITs and the two WAM funds are separately listed
-  // vehicles managed by one house, and each pair shares its manager's site and
-  // so its badge. Correct rather than a collision, the same case as China
-  // Unicom appearing on both the Hong Kong and Shanghai rosters.
-  "sydney-clw": "charterhall.com.au",
-  "sydney-cqr": "charterhall.com.au",
+  // The two WAM funds are separately listed vehicles managed by one house,
+  // and share its site and so its badge. Correct rather than a collision, the
+  // same case as China Unicom appearing on both the Hong Kong and Shanghai
+  // rosters. (The two Charter Hall REITs were the other such pair; they left
+  // the roster on 2026-09-30 — externally managed, no staff of their own.)
   "sydney-wam": "wilsonassetmanagement.com.au",
   "sydney-wle": "wilsonassetmanagement.com.au",
   // CHANGES NO PIXEL TODAY, and is recorded anyway. soulpatts.com does not
@@ -521,7 +520,12 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   // blue roundel at 128px.
   "sydney-aub": "aubgroup.com.au",
   "sydney-zip": "zip.co",
-  "sydney-sgh": "sgh.com.au",
+  // sgh.com.au is SOUTHERN GENERATORS ("Generator Hire & Rentals Australia |
+  // SGH"), a different company that happens to share the initials — so this
+  // line was drawing a generator-hire firm's mark on SGH Ltd's card. SGH Ltd
+  // (formerly Seven Group Holdings) is sghl.com.au: sevengroup.com.au
+  // redirects there and it titles itself "SGH Ltd". Measured 2026-09-30.
+  "sydney-sgh": "sghl.com.au",
   "melbourne-arb": "arb.com.au",
   "melbourne-reg": "regis.com.au",
   "sydney-nhf": "nib.com.au",
@@ -1057,6 +1061,39 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "aps-ip-australia": "ipaustralia.gov.au",
   "aps-safe-work-australia": "safeworkaustralia.gov.au",
   "nsw-gov-hunter-water": "hunterwater.com.au",
+  // ── listed roster, 2026-09-30: domains deriveDomain() guessed wrong ──────
+  // Found by the career-portal research of 2026-09-29/30 and re-checked here.
+  // Each was fetched and its <title> read, unless noted. Several of these
+  // cards draw a LinkedIn or local logo first, so the badge does not move —
+  // but this is also the host check-company-live.ts audits, and a wrong one
+  // there tests somebody else's site.
+  "vancouver-fm": "first-quantum.com", // "First Quantum Minerals"
+  // Behind a Vercel checkpoint (429) here; confirmed by search — the site
+  // carries AGE's ASX announcements. alligatorenergy.com is not theirs.
+  "adelaide-age": "alligatorenergy.com.au",
+  "brisbane-crn": "coronadoglobal.com", // "Coronado Global Resources Inc."
+  // chrysos.com is Chrysos Jewelry, an Italian chain maker.
+  "adelaide-c79": "chrysoscorp.com", // "Home - Chrysos Corporation"
+  "london-sn": "smith-nephew.com", // Smith+Nephew; also Wikidata's
+  "denver-pltr": "palantir.com", // "Home | Palantir"
+  // Cloudflare-challenged here; cadence.com is Wikidata's official site.
+  "sanjose-cdns": "cadence.com",
+  "adelaide-axe": "archerx.com.au", // "Archer Materials (ASX: AXE)"
+  "perth-emr": "emeraldresources.com.au", // "Home - Emerald Resources"
+  // The derived crditagricole.com (the é dropped) redirects to the POLISH
+  // retail bank, credit-agricole.pl. The group is credit-agricole.com per
+  // Wikidata; the host resets connections from this sandbox.
+  "paris-aca": "credit-agricole.com",
+  // chowtaifookjewellery.com is a parked page with an empty title. The listed
+  // group is ctfjewellerygroup.com ("Chow Tai Fook Jewellery Group | SEHK
+  // 1929"); the badge is a local file already, see the Hong Kong note above.
+  "hongkong-01929": "ctfjewellerygroup.com",
+  // prudential.com is PRUDENTIAL FINANCIAL, the unrelated US insurer. The
+  // London-listed Prudential plc is prudentialplc.com.
+  "london-pru": "prudentialplc.com",
+  // hansentechnologies.com does not answer; the company trades as hansencx.com
+  // ("Hansen Technologies | Utility & Telecom Software").
+  "melbourne-hsn": "hansencx.com",
   "perth-gov-main-roads-wa": "mainroads.wa.gov.au",
   "sa-gov-department-for-education": "education.sa.gov.au",
   "sa-gov-education-standards-board": "esb.sa.gov.au",
@@ -1104,9 +1141,15 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-hutchies-builders": "hutchinsonbuilders.com.au",
   "priv-kane-constructions": "kane.com.au",
   "priv-kennards-self-storage": "kss.com.au",
-  "priv-king-wood-mallesons": "kwm.com",
+  // kwm.com now redirects to kingandwood.com ("Mastery of the law from Asia
+  // for the world"), not to the Australian firm. The Australian firm is
+  // mallesons.com, which titles itself "The top-tier independent law
+  // firm from Australia (formerly KWM)". Measured 2026-09-30.
+  "priv-king-wood-mallesons": "mallesons.com",
   "priv-kpmg": "kpmg.com.au",
-  "priv-leader-computers": "leadercomputers.com.au",
+  // leadercomputers.com.au does not answer; the company's site is
+  // leadersystems.com.au ("Leader Proudly Australian Distributor"), 2026-09-30.
+  "priv-leader-computers": "leadersystems.com.au",
   "priv-life-without-barriers": "lwb.org.au",
   "priv-mcnab-constructions": "mcnab.net.au",
   "priv-mecca-brands": "mecca.com.au",
@@ -1114,7 +1157,12 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-midfield": "midfield.com.au",
   "priv-mpc-kinetic": "mpckinetic.com.au",
   "priv-nepean-consolidated": "nepean.com",
-  "priv-newcastle-greater-mutual-group": "ngm.com.au",
+  // ngm.com.au is NYMAN GIBSON MIRALIS, a Sydney criminal-law firm ("Criminal
+  // Lawyers Sydney | Nyman Gibson Miralis"), not the bank. NGM Group — the
+  // 2023 merger of Newcastle Permanent and Greater Bank — is ngmgroup.com.au,
+  // which sits behind a Cloudflare challenge here and is confirmed by search
+  // ("Newcastle Greater Mutual Group Ltd", ngmgroup.com.au). 2026-09-30.
+  "priv-newcastle-greater-mutual-group": "ngmgroup.com.au",
   "priv-nhp-electrical-engineering-products": "nhp.com.au",
   "priv-norco-co-op": "norco.com.au",
   "priv-nrma-motoring-services": "mynrma.com.au",
@@ -1123,7 +1171,8 @@ export const PRIVATE_DOMAIN: Record<string, string> = {
   "priv-people-first-bank": "peoplefirstbank.com.au",
   "priv-pharmacare": "pharmacare.com.au",
   "priv-queensland-sugar": "qsl.com.au",
-  "priv-refuelling-solutions": "refuellingsolutions.com.au",
+  // refuellingsolutions.com.au now redirects to rfs.com.au, 2026-09-30.
+  "priv-refuelling-solutions": "rfs.com.au",
   "priv-richard-crookes-constructions": "richardcrookes.com.au",
   "priv-ritchies-supa-iga": "ritchies.com.au",
   "priv-salvation-army-australia": "salvationarmy.org.au",

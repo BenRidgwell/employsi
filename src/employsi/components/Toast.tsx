@@ -1,12 +1,20 @@
 import { useEffect } from "react";
 import { useAppStore } from "../state/store";
 
-// Transient bottom-centre notification. Currently used to tell a signed-out
-// user they need an account before they can follow a company; auto-dismisses.
+/**
+ * Transient bottom-centre notification; auto-dismisses.
+ *
+ * MESSAGE AND DISMISS ONLY. It used to carry a hardcoded "Sign in" action
+ * button, from when its only messages were the signed-out follow prompts. Those
+ * are retired (the app is signed-in-only — see getAppAccess), and the button was
+ * wrong for the messages that remain anyway: every toast now set is about
+ * geolocation ("This browser can't share a location.", "Location permission was
+ * declined."), and each of those offered a Sign in button that had nothing to do
+ * with what it was telling you.
+ */
 export function Toast() {
   const toast = useAppStore((s) => s.toast);
   const dismiss = useAppStore((s) => s.dismissToast);
-  const openAuth = useAppStore((s) => s.openAuth);
 
   useEffect(() => {
     if (!toast) return;
@@ -18,9 +26,6 @@ export function Toast() {
   return (
     <div className="toast" role="status">
       <span className="toastmsg">{toast}</span>
-      <button className="toastact" onClick={openAuth}>
-        Sign in
-      </button>
       <button className="toastx" aria-label="Dismiss" onClick={dismiss}>
         <svg
           viewBox="0 0 24 24"

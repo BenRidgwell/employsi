@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { subscriberOnly } from "./subscriberOnly";
 import { callerRole } from "./sessionRole";
 import { marketVisible } from "./markets";
 import { kvBinding, type KVLike } from "./kv";
@@ -28,6 +29,18 @@ export interface AdvertisedJob {
   city: string | null;
   skills: string[];
   salN?: number; // advertised salary midpoint (annualised), when the source states one
+  /** A MODELLED pay range for this role — never an advertised one.
+   *
+   *  Carried separately from salN, and read by nothing that computes a median,
+   *  because the two answer different questions: salN is what an employer put
+   *  in an ad, this is a third party's estimate of what the role pays. Blending
+   *  them would make "median advertised salary" a mix of what was said and what
+   *  was guessed, with nothing on the row to say which.
+   *
+   *  `src` names whose model it is and is never dropped; `on` is the day it was
+   *  collected, because a model's reading drifts. See the pay_estimate column
+   *  in scripts/glassdoor-to-d1.py. */
+  payEst?: { src: string; lo: number; hi: number; cur?: string; per?: string; on?: string };
 }
 export interface CompanyJobs {
   updated: string;
@@ -44,8 +57,9 @@ async function getKV(): Promise<KVLike | null> {
   }
 }
 
-export const getSkillIndex = createServerFn({ method: "GET" }).handler(
-  async (): Promise<SkillIndex | null> => {
+export const getSkillIndex = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
+  .handler(async (): Promise<SkillIndex | null> => {
     const kv = await getKV();
     if (!kv) return null;
     try {
@@ -56,10 +70,10 @@ export const getSkillIndex = createServerFn({ method: "GET" }).handler(
     } catch {
       return null;
     }
-  },
-);
+  });
 
 export const getCompanyJobs = createServerFn({ method: "GET" })
+  .middleware([subscriberOnly])
   .validator((data: { id: string }) => data)
   .handler(async ({ data }): Promise<CompanyJobs | null> => {
     const kv = await getKV();

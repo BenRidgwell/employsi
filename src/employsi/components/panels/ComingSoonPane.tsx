@@ -24,16 +24,16 @@ import { etaFor } from "../../lib/markets";
  * nowhere. It is not printed dateless either: "ROADMAP" alone says nothing.
  *
  * "Notify me when it's live" writes a row to D1 against the signed-in account,
- * so the list is real and can actually be mailed when the market opens. Signed
- * out, it opens sign-in instead of pretending to have registered an address it
- * does not have. The design's progress bar and "DATA SOURCES CONNECTED" percent
- * are deliberately NOT carried over: there is no measurement behind either.
+ * so the list is real and can actually be mailed when the market opens. The app
+ * is signed-in-only, so there is always an address; it used to open sign-in
+ * rather than pretend to have registered one it did not have. The design's
+ * progress bar and "DATA SOURCES CONNECTED" percent are deliberately NOT carried
+ * over: there is no measurement behind either.
  */
 export function ComingSoonPane() {
   const comingSoon = useAppStore((s) => s.comingSoon);
   const close = useAppStore((s) => s.closeComingSoon);
   const account = useAppStore((s) => s.account);
-  const openAuth = useAppStore((s) => s.openAuth);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
@@ -131,16 +131,14 @@ export function ComingSoonPane() {
             ) : (
               <button
                 className="csbtn csbtnprimary"
-                disabled={notify.isPending}
+                // The app is signed-in-only, so there is always an address to
+                // notify — this used to close the pane and open sign-in when
+                // there was not. It stays disabled until the session query
+                // lands, because the row is written against the account and
+                // there is no point sending one that names nobody.
+                disabled={notify.isPending || !account}
                 onClick={() => {
                   setError("");
-                  // No account means no address to notify, so this sends them
-                  // to sign in rather than storing a row that can never be used.
-                  if (!account) {
-                    close();
-                    openAuth();
-                    return;
-                  }
                   notify.mutate(comingSoon.id);
                 }}
               >

@@ -20,8 +20,8 @@
 // Source: WGEA 2024-25 public data file, as at Jun 2025, with
 //         2023-24 as the prior year. Both per-employer; the 2022-23
 //         file is excluded because it reports submission GROUPS.
-// Filed: 281 of 859 Australian roster companies
-//        (260 matched on the group name, 21 on the employer name).
+// Filed: 280 of 859 Australian roster companies
+//        (259 matched on the group name, 21 on the employer name).
 //
 // A company the register does not report is ABSENT, never zero — the card
 // shows an em dash and says no figure was collected.
@@ -133,7 +133,6 @@ export const WGEA_HEADCOUNT: Record<string, Headcount> = {
   "brisbane-dtl": { now: 1339, prev: 1339, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Data#3 Limited.
   "brisbane-flt": { now: 5414, prev: 5272, yoy: 2.7, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Flight Centre Travel Group Limited
   "brisbane-nxt": { now: 348, prev: 315, yoy: 10.5, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Nextdc Limited
-  "brisbane-smr": { now: 782, prev: 787, yoy: -0.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: STANMORE RESOURCES LIMITED
   "brisbane-sul": { now: 14955, prev: 14955, yoy: null, asof: "Jun 2025", span: 0, unit: "headcount" },  // group: Super Retail Group Limited
   "brisbane-sun": { now: 10790, prev: 13099, yoy: -17.6, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Suncorp Group Limited
   "brisbane-vgn": { now: 8133, prev: 7658, yoy: 6.2, asof: "Jun 2025", span: 1, unit: "headcount" },  // group: Virgin Australia Holdings Limited

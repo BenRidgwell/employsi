@@ -2618,20 +2618,36 @@ body {
 /* Bars rather than a path: eight weekly values do not make a curve worth
    drawing, and a bar per week reads as "one week, one figure". */
 .dqspark {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
+  position: relative;
+  display: block;
   height: 34px;
 }
-.dqsparkbar {
-  flex: 1 1 0;
-  min-height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: #1c1c1e;
-  opacity: 0.28;
+.dqspark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
 }
-.dqspark .dqsparkbar:last-child {
-  opacity: 1;
+.dqsparkline {
+  fill: none;
+  stroke: #1c1c1e;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.dqsparkarea {
+  fill: #1c1c1e;
+  opacity: 0.06;
+}
+.dqsparkdot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  box-shadow: 0 0 0 2px #fff;
 }
 /* ── Retention cohorts ───────────────────────────────────────────────────── */
 .dqcohort {
@@ -2771,6 +2787,222 @@ body {
   font-family: var(--font-label);
   font-size: 12px;
   color: #8e8e93;
+}
+/* ── Beta tag ──────────────────────────────────────────────────────────────
+   A small outlined pill beside a card's title. Outlined rather than filled,
+   and in the body ink rather than a warning colour: it marks a surface as
+   young, not as broken, and a red badge on a working card reads as an error.
+
+   Shares the shape of the chrome's other pills. `flex: none` because it sits
+   in the title rows' baseline flex, where a long heading wrapping would
+   otherwise squeeze the word onto two lines. */
+.betatag {
+  flex: none;
+  padding: 2px 7px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 999px;
+  background: #fafafa;
+  font-family: var(--font-label), "Inter", system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary, #6c6c72);
+  white-space: nowrap;
+}
+/* ── Feature use, search terms and the two sides ──────────────────────────
+   One bar language for all three: a track at #f4f4f5 with an ink fill, the
+   same as .dqbandbar, because they are all "share of the busiest thing" and a
+   second visual idiom would imply a second kind of measurement.
+
+   The bars are shares of the TOP ROW, not of a total. Every one of these lists
+   is a head of a long tail — four features out of the app's surfaces, eight
+   terms out of hundreds — so a percentage of the total would be a percentage
+   of a number the card does not show. Each card says what its bar is. */
+.dqfeat {
+  padding: 4px 0 0;
+}
+.dqfeatrow,
+.dqfeatkey {
+  display: grid;
+  /* label | bar | opens | total | per-visit. The three numeric columns are
+     fixed so they line up as columns rather than drifting with their content;
+     the label and the bar are minmax(0,…) so THEY absorb a narrow console
+     instead of the row forcing the card wider than its parent. A fixed
+     minimum on either would have made this grid the tab's new width floor. */
+  grid-template-columns: minmax(0, 1.1fr) minmax(24px, 2fr) 54px 56px 78px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+}
+.dqfeatrow {
+  border-top: 1px solid #f4f4f5;
+}
+.dqfeatrow:first-child {
+  border-top: 0;
+}
+.dqfeatlbl {
+  font-size: 13px;
+  color: #1c1c1e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dqfeatbar {
+  height: 10px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+.dqfeatbar > span {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.dqfeatn,
+.dqfeatms,
+.dqfeatavg {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+.dqfeatn {
+  color: #1c1c1e;
+}
+.dqfeatms {
+  color: #6c6c72;
+}
+.dqfeatavg {
+  color: #8e8e93;
+}
+/* The column key sits UNDER the rows, not above them: the figures are the
+   point and a header row would be read as the first feature. */
+.dqfeatkey {
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dqfeatkey > span {
+  color: #a1a1a6;
+}
+.dqtermpair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 6px 18px;
+  padding: 10px 18px 16px;
+}
+.dqtermhd {
+  display: block;
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a1a1a6;
+  padding: 4px 0 6px;
+}
+.dqterms {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dqtermrow {
+  display: grid;
+  /* The NAME is the answer here and the bar only ranks it, so the bar is
+     capped and the name takes what is left — a skill like "Occupational
+     Health & Safety" truncated to fit a wider bar would be the card failing
+     at the one thing it is for. */
+  grid-template-columns: minmax(0, 1fr) minmax(24px, 56px) 38px;
+  align-items: center;
+  gap: 8px;
+}
+.dqterm {
+  font-size: 12.5px;
+  color: #1c1c1e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dqtermbar {
+  height: 8px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  overflow: hidden;
+}
+.dqtermbar > span {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #1c1c1e;
+}
+.dqtermn {
+  font-family: var(--font-label);
+  font-size: 12px;
+  text-align: right;
+  color: #6c6c72;
+}
+/* NAMED .dqsides, NOT .dqsplit: the data tab already owns .dqsplit (a 1fr
+   1fr grid further down this file). Measured 2026-10-02 — the first version of
+   this card used that name, lost to the later rule, and laid its bar out in a
+   168px grid cell while leaking its own padding onto the other tab's card.
+
+   The one place two shares are shown against each OTHER rather than against a
+   leader, so it gets a single split bar instead of two rows: the question is
+   which side wins, and two separate bars make that an arithmetic exercise. */
+.dqsides {
+  padding: 14px 18px 18px;
+}
+.dqsidesbar {
+  display: flex;
+  height: 14px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f4f4f5;
+}
+.dqsidesbar > span {
+  display: block;
+  height: 14px;
+}
+.dqsidesbar > .demand {
+  background: #1c1c1e;
+}
+.dqsidesbar > .supply {
+  background: #c7c7cc;
+}
+.dqsideskey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 0 0;
+}
+.dqsideskey > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: #6c6c72;
+}
+.dqsideskey i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.dqsideskey i.demand {
+  background: #1c1c1e;
+}
+.dqsideskey i.supply {
+  background: #c7c7cc;
+}
+.dqsideskey b {
+  font-family: var(--font-label);
+  font-weight: 500;
+  color: #1c1c1e;
 }
 /* The unmapped-title share bar the design puts at the end of each row. */
 .dqbar {
@@ -4426,6 +4658,10 @@ body {
 }
 .brand {
   pointer-events: auto;
+  /* It is an <a> to the marketing site now, so the anchor defaults have to be
+     undone — the wordmark sets its own colour and must not be underlined. */
+  text-decoration: none;
+  color: inherit;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -6338,6 +6574,15 @@ body {
   flex-direction: column;
   gap: 6px;
 }
+/* The section header: label on the left, the goal's ✕ on the right. The ✕ was
+   a full-height button in the card's own row, which cost a fixed slice of a
+   width that has to work at 288px. */
+.accgoalhd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .accgoallbl {
   font-size: 10.5px;
   font-weight: 600;
@@ -6345,32 +6590,131 @@ body {
   text-transform: uppercase;
   color: #8e8e93;
 }
-.accgoalmain {
-  gap: 3px;
-  padding: 10px 12px;
+.accgoalx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #8e8e93;
+  cursor: pointer;
 }
-.accgoalstage {
-  font-size: 9.5px;
+.accgoalx:hover {
+  background: #f4f4f5;
+  color: #1c1c1e;
+}
+
+/* ── The career-goal card ──────────────────────────────────────────────────
+   Fluid: it renders at 288px in the search rail's account panel and 352px in
+   the phone account card, from these rules alone. Nothing inside it is a
+   fixed width, which is what lets the ladder and the chips reflow instead of
+   forcing the container wider than .accgoal's existing 22px margins allow. */
+.cgcard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 14px;
+  background: var(--surface-card, #fff);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.cgcard:hover {
+  border-color: #d4d4d9;
+}
+
+/* The six-stage ladder. Bars are bottom-aligned and equal width, heights set
+   per-step as a percentage of this strip, so it scales with the card. */
+.cgladder {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  /* 58px. It was 56, then 72 — at the 288px panel the bars are ~50px wide and
+     56 made even the tallest step wider than it was high, so the ladder read
+     as a row of blocks rather than a climb. 72 fixed that and made the profile
+     panel taller than it needed to be, which is what this is trimming: 58 is
+     the shortest that keeps the top step taller than it is wide at the NARROW
+     panel, where the bars are widest relative to the strip. Below that the
+     climb flattens again. */
+  height: 58px;
+  margin-bottom: 8px;
+}
+.cgstep {
+  flex: 1 1 0;
+  min-width: 0;
+  border-radius: 5px;
+  background: #1c1c1e;
+}
+.cgstep.ahead {
+  background: #e5e5ea;
+}
+/* The goal: an outline waiting to be filled, not a bar already earned. */
+.cgstep.goal {
+  background: #fafafa;
+  border: 1.5px dashed #9a9aa0;
+  box-shadow: 0 0 0 3px rgba(28, 28, 30, 0.05);
+}
+.cgstage {
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: #8e8e93;
 }
-.accgoaltitle {
-  font-size: 14px;
+.cgtitle {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: #1c1c1e;
+  text-wrap: pretty;
 }
-.accgoalfigs {
+.cglevel {
+  font-size: 13px;
+  color: #8e8e93;
+}
+.cgchips {
   display: flex;
-  gap: 14px;
-  font-size: 11.5px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.cgchip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f4f4f5;
+  font-size: 12px;
+  line-height: 1.3;
   color: #6c6c72;
 }
-.accgoalfigs b {
+.cgchip b {
   color: #1c1c1e;
   font-weight: 600;
 }
-.accgoalview {
-  margin-top: 3px;
-  font-size: 11.5px;
+/* Live ads are the one figure here that is a count of something happening
+   now, so they carry the same green the rest of the app uses for live. */
+.cgchip.live {
+  background: #e8f5ec;
+  color: #2f7d4f;
+}
+.cgchip.live b {
+  color: #1e6b3d;
+}
+.cgpath {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle, #e5e5ea);
+  font-size: 13px;
   font-weight: 600;
   color: var(--action-primary, #1c1c1e);
 }
@@ -7138,8 +7482,9 @@ body {
 }
 
 /* ── Signed-in avatar ──────────────────────────────────────────────────────
-   The three account avatars (.acctav in the header button, .accav in the
-   account card, .gsauthinitials in the search rail) render initials on a dark disc
+   The four account avatars (.acctav in the header button, .accav in the
+   account card, .gsauthinitials in the search rail, .fbavatar on the feedback
+   board's compose box) render initials on a dark disc
    by default. When the person's provider photo loads, `.hasimg` is added and
    the disc becomes the frame for it: the tinted background would otherwise
    show through a photo with transparency, and the initials' font metrics
@@ -7149,7 +7494,8 @@ body {
    does not always, and `fill` would visibly stretch a face. */
 .acctav.hasimg,
 .accav.hasimg,
-.gsauthinitials.hasimg {
+.gsauthinitials.hasimg,
+.fbavatar.hasimg {
   background: none;
   padding: 0;
   overflow: hidden;
@@ -7164,7 +7510,8 @@ body {
 }
 .acctav.hasimg img,
 .accav.hasimg img,
-.gsauthinitials.hasimg img {
+.gsauthinitials.hasimg img,
+.fbavatar.hasimg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -8124,12 +8471,6 @@ body {
   background: var(--status-success-dot);
   opacity: 0.85;
 }
-.gstimecovnote {
-  margin: 8px 0 0;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: var(--text-tertiary);
-}
 .gstimeknob {
   position: absolute;
   top: 50%;
@@ -8608,6 +8949,25 @@ body {
   gap: 16px;
   padding: 13px 18px;
 }
+/* Title + caption on one baseline, the same shape the tour's hub header uses
+   for "Need help?  WORLD VIEW" (.gthubhdleft / .gteyebrow). */
+.stheadleft {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.stcap {
+  font-family: var(--font-label);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .stbody {
   flex: 1 1 auto;
   min-height: 0;
@@ -8749,17 +9109,6 @@ body {
   color: #1c1c1e;
   box-shadow: 0 1px 2px rgba(28, 28, 30, 0.08);
 }
-.stselect {
-  width: 150px;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid #e5e5ea;
-  border-radius: 9px;
-  background: #fff;
-  font-size: 13.5px;
-  color: #8e8e93;
-  cursor: not-allowed;
-}
 .stfoot {
   display: flex;
   align-items: center;
@@ -8800,6 +9149,17 @@ body {
 }
 .stghost:hover {
   background: #f4f4f5;
+}
+/* "Manage subscription": a ghost button that reads as a button in a row of
+   switches, so it gets the hairline the switches' track implies. */
+.stghost.stoutline {
+  box-shadow: inset 0 0 0 1px #e4e4e7;
+  color: #1c1c1e;
+  white-space: nowrap;
+}
+.stghost:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 .stprimary {
   border: 0;
@@ -9754,18 +10114,294 @@ body {
    Not applied under prefers-reduced-motion via .reduce-motion, which already
    kills every transition app-wide — the end states still hold, so the panel
    still tucks, it just does not slide. */
-.cardstage.newstucked .cc {
+/* THE PAIR MOVES, NOT THE CARD. Tucking translates rather than reflowing —
+   that is what lets the news panel keep its scroll position, feed and
+   in-flight fetches — so anything that must stay beside the card has to take
+   the same transform. It was on .cc alone, and the skill call-out beside it
+   was left behind at the card's old position with a 394px hole between them.
+   Moving the whole .ccwrap makes that true by construction rather than by two
+   rules someone has to remember to keep in step. */
+.cardstage.newstucked .ccwrap {
   transform: translateX(394px);
+}
+/* AND THE PILL CLEARS THE SPINE. Tucked, the news panel ends up 16px to the
+   LEFT of the card and paints under it — that dark sliver down the card's
+   left edge is the whole point of the tuck. The pill is positioned off the
+   card's box, so a 20px gap there is 20px to the SPINE'S far side: 4px of
+   daylight and then the sliver, which reads as the pill resting against it.
+   The extra 16px keeps 20px of clear space before the first thing the eye
+   meets in either state. */
+.cardstage.newstucked .srpop {
+  transform: translateX(-16px);
 }
 .cardstage.newstucked .newspanel {
   transform: translateX(-76px);
   cursor: pointer;
 }
 .cc,
-.newspanel {
+.newspanel,
+.ccwrap,
+.srpop {
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* The card has to paint OVER the news panel for "behind" to read as behind. */
+/* The call-out and the company card, as one object.
+
+   `align-items: flex-start` is the point of it: the call-out lines up with the
+   TOP of the card rather than its middle. `align-self: center` keeps the pair
+   where the card alone used to sit, so nothing else on the stage moves.
+
+   It inherits the stage's pointer-events: none and its children set their own
+   back to auto, exactly as .cc and .newspanel already did — a full-height
+   transparent box over the map would otherwise swallow clicks on it. */
+.ccwrap {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  display: flex;
+  align-items: flex-start;
+  /* A touch wider than the stage's own 14px: this is a small control standing
+     off a large card, and at exactly the card's gap it read as attached to
+     it. 20px was too far the other way. */
+  gap: 16px;
+  min-width: 0;
+  pointer-events: none;
+}
+
+/* ── "Show me the ads" call-out ────────────────────────────────────────────
+   The supplied Role_Card design, to its own numbers: an ink pill with a
+   pulsing ring, over a white card with an ink header. Sizes, radii, paddings
+   and type below are the mock's; the WIDTH is not — it stays at 300px, the
+   size this already was, because the stage's breakpoint is computed from it
+   (see below) and the mock's 420px frame does not fit beside a 440px card.
+
+   It is NOT a sibling of .cc any more. Both now sit in .ccwrap, which is what
+   lets this align to the card's top edge: as a direct child of the stage it
+   could only centre, because the stage centres its row and no selector can
+   reach a centred sibling's top. */
+.srpop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+  pointer-events: auto;
+  z-index: 3;
+}
+.srpopbtn {
+  position: relative;
+  /* `isolation: isolate` is what makes the z-index:-1 layers behind this work:
+     without it they would fall behind the nearest ancestor stacking context —
+     the card stage — and be painted under the map rather than under the pill. */
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+/* The design's two animations, kept to its own curves and timings. */
+@keyframes rolePulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  70% {
+    transform: scale(1.35, 1.7);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes roleGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(28, 28, 30, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 18px 4px rgba(28, 28, 30, 0.22);
+  }
+}
+.srpopring,
+.srpopglow {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  z-index: -1;
+}
+.srpopring {
+  background: var(--neutral-900, #1c1c1e);
+  animation: rolePulse 2s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.srpopglow {
+  animation: roleGlow 2s ease-in-out infinite;
+}
+/* Both stop once the pill has been reached or used: a control that keeps
+   throbbing under the cursor reads as unresponsive rather than inviting. */
+.srpopbtn:hover .srpopring,
+.srpopbtn:hover .srpopglow,
+.srpopbtn.on .srpopring,
+.srpopbtn.on .srpopglow {
+  animation: none;
+}
+.srpopbtn:hover {
+  background: #2c2c2e;
+}
+.srpopbtn:active {
+  transform: scale(0.98);
+}
+/* A pulse is the one thing reduced motion is most often set FOR. The pill
+   keeps its shape and simply does not throb. */
+@media (prefers-reduced-motion: reduce) {
+  .srpopring,
+  .srpopglow {
+    animation: none;
+  }
+  .srpopring {
+    display: none;
+  }
+}
+.srpoplist {
+  width: 300px;
+  max-width: 76vw;
+  max-height: min(460px, calc(100vh - var(--head-height) - 120px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+/* One item now that the count chip is gone, so no gap and nothing to align
+   against — but kept as a flex row so .srpophdmain's `flex: 1; min-width: 0`
+   still bounds the title and lets it ellipsis rather than overflow the card. */
+.srpophd {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 15px 16px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+}
+.srpophdmain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.srpoptitle {
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.srpopsub {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--neutral-400, #a1a1a6);
+}
+.srpoprows {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+}
+.srpoprow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 13px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    border-color 160ms,
+    box-shadow 160ms;
+}
+a.srpoprow:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+.srpoprowtop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.srpoprole {
+  font-family: var(--font-display, "Mona Sans"), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--text-primary);
+  text-wrap: pretty;
+}
+.srpopgo {
+  flex: none;
+  color: var(--text-tertiary);
+}
+.srpopchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.srpopchip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+}
+/* THE BREAKPOINT IS MEASURED, NOT ROUND. The stage is a row that ends at the
+   right edge and holds card (440) + gap (14) + this (300) inside its 22px
+   gutters: 798px. Above that the row fits and the call-out sits beside the
+   card; below it the card would be pushed off screen. It was 900px first,
+   which fired while the row still had 62px to spare.
+
+   BELOW IT THE CALL-OUT IS NOT SHOWN AT ALL, and the two obvious alternatives
+   were both tried and measured first:
+
+   - Keeping it in the row pushes the card off screen, which is the whole
+     reason for a breakpoint here.
+   - Floating it over the card does not work from inside this stage. .cardstage
+     carries a `transform` (translateX, for its open/closed slide), and a
+     transformed ancestor becomes the containing block for `position: fixed`
+     descendants — so fixed coordinates resolve against the STAGE, not the
+     viewport. Measured at 760px: `left: 12px` landed the pill at x=288, and
+     `top` put it 120px ABOVE the card it belongs to, because the stage is
+     shrink-to-fit and the card is centred inside it.
+
+   So on a narrow viewport the card is exactly what it was before this
+   existed, which is the same state it has with no skill searched. The ads are
+   still reachable on any wider window. A proper narrow treatment belongs
+   inside the card rather than beside it, and that is a different change. */
+@media (max-width: 798px) {
+  .srpop {
+    display: none;
+  }
+}
+
 .cc {
   z-index: 2;
 }
@@ -13429,6 +14065,7 @@ body {
 }
 .tsktip {
   position: absolute;
+  z-index: 2;
   transform: translate(-50%, calc(-100% - 12px));
   padding: 5px 9px;
   border-radius: 9px;
@@ -13438,6 +14075,14 @@ body {
   font-size: 10.5px;
   white-space: nowrap;
   pointer-events: none;
+}
+/* Near a chart's ends the tooltip anchors its own edge to the point instead
+   of centring on it, so it is never cut by the card. */
+.tsktip.start {
+  transform: translate(-12px, calc(-100% - 12px));
+}
+.tsktip.end {
+  transform: translate(calc(-100% + 12px), calc(-100% - 12px));
 }
 
 /* hot spots */
@@ -15608,11 +16253,286 @@ body {
   text-align: left;
   font: inherit;
   cursor: pointer;
-  transition: background 140ms ease;
+  /* THE ROW IS A DIV NOW (role="button" — see NotificationBell for why), and a
+     div selects its text under a drag where a <button> never did. Swiping one
+     away would paint the headline blue and leave a selection behind, so the
+     reset a button gave for free is written out. */
+  user-select: none;
+  -webkit-user-select: none;
+  /* `pan-y` is the load-bearing line for swipe-to-dismiss: it hands VERTICAL
+     gestures back to the browser so .nblist still scrolls under a finger,
+     while horizontal ones reach the pointer handlers. Without it the row
+     swallows the drag and the list cannot be scrolled on touch. */
+  touch-action: pan-y;
+  /* The row springs back on release, so transform and opacity are animated —
+     and `background` STAYS in this list. It was briefly in a second .nbrow
+     rule below, which overrode this one wholesale and silently dropped the
+     hover fade: `transition` is one property, not three. */
+  transition:
+    background 140ms ease,
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 180ms ease;
 }
 .nbrow:hover {
   background: var(--surface-subtle);
 }
+/* The list is the panel's last child now that the footer is gone, so the final
+   row's divider would draw a line across the rounded bottom edge with nothing
+   under it. Selected through the wrapper: each row is inside .nbrowwrap, so
+   `.nbrow:last-child` would match EVERY row (each is the last child of its own
+   wrapper) and remove every divider in the list. */
+.nbrowwrap:last-child .nbrow {
+  border-bottom: 0;
+}
+
+/* ── The delete strip revealed by a swipe ──────────────────────────────────
+   The wrapper clips: the row slides right off its own width, and without this
+   .nblist would grow a horizontal scrollbar mid-gesture. */
+.nbrowwrap {
+  position: relative;
+  overflow: hidden;
+  /* `flex: none` IS LOAD-BEARING, and the line above is why.
+     .nblist is a flex column with max-height: 420px. A flex item's
+     `min-height: auto` normally resolves to its CONTENT size, which is what
+     kept .nbrow from being squashed back when it was the flex item itself —
+     it never needed an explicit flex. But that automatic minimum resolves to
+     ZERO as soon as the item's `overflow` is anything but `visible`, and this
+     wrapper has to clip so the swiped row does not spill out of the panel.
+     Adding the clip therefore removed the shrink protection the list had been
+     relying on implicitly: measured 2026-10-01 at 14 alerts, every wrapper
+     collapsed to 30px around a 94px row, so the rows overlapped and the list
+     stopped scrolling (scrollHeight pinned at the 420px cap instead of 1313).
+     Restoring it explicitly: 94px wrappers, 1313px of scroll. */
+  flex: none;
+}
+.nbswipe {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  background: var(--red-500, #c4463b);
+  color: #fff;
+  transition: background 120ms ease;
+}
+/* The space opens on the side the row came FROM, so the strip and the label
+   sit against the travelling edge rather than stranded at the far end. */
+.nbswipe[data-side="right"] {
+  right: 0;
+  justify-content: flex-start;
+  padding-left: 16px;
+}
+.nbswipe[data-side="left"] {
+  left: 0;
+  justify-content: flex-end;
+  padding-right: 16px;
+}
+/* Past the threshold, letting go deletes — so the strip deepens. The commit
+   point is felt before the finger lifts instead of discovered after it. */
+.nbswipe.armed {
+  background: var(--red-700, #97332b);
+}
+.nbswipelbl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 600 12.5px/1 "Inter", system-ui, sans-serif;
+  /* The strip is only as wide as the swipe so far; the label must not wrap or
+     reflow the strip as it grows. It is simply clipped until there is room. */
+  white-space: nowrap;
+}
+
+/* ── Swipe a row away ──────────────────────────────────────────────────────
+   `pan-y` is the load-bearing line: it hands VERTICAL gestures back to the
+   browser so .nblist still scrolls under a finger, while horizontal ones come
+   to the pointer handlers. Without it the row would swallow the drag and the
+   list would be unscrollable on touch.
+
+   The row springs back on release, so the transition lives here — and is
+   removed while a finger is down, or every pointermove would animate toward
+   the last position instead of tracking it. */
+.nbrow.swiping {
+  transition: none;
+  cursor: grabbing;
+  /* Above its neighbours while it travels, so the shadowless row does not slide
+     under the divider of the one below. */
+  position: relative;
+  z-index: 1;
+}
+
+/* ── A read alert is minimised ─────────────────────────────────────────────
+   "Mark all read" collapses the whole list and leaves the panel open; the row
+   keeps who and what, and drops the two comparison meters, which are the bulk
+   of its height. The headline clamps to one line so a long one cannot make a
+   collapsed row taller than an open one next to it.
+
+   Height is not animated. The row's open height depends on how many lines the
+   headline wraps to, so a max-height transition would need a guessed ceiling —
+   too small clips the text, too large makes the collapse drift. The figures
+   simply go, and the padding and colour shift carries the change. */
+.nbrow.shut {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.nbrow.shut .nbbars {
+  display: none;
+}
+.nbrow.shut .nbheadline {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* ── A dismissed alert leaves ──────────────────────────────────────────────
+   Two movements, overlapping: the row slides the rest of the way off its own
+   red strip, then the gap it left closes. Overlapping rather than sequential —
+   the collapse starts at 45%, before the slide has finished — because a strict
+   handover reads as two separate events happening to one row.
+
+   KEYFRAMES, NOT A TRANSITION. A transition needs the from-value rendered in
+   one frame and the to-value in the next, which for a height means measuring,
+   rendering that height, waiting a frame, then changing it. An animation
+   carries its own `from`, so the whole thing is one render. --nbh is the
+   wrapper's real measured height (see NotificationBell): a max-height guess
+   would overshoot every collapsed row and ease wrongly for it.
+
+   `forwards` holds the end state. Without it the row would flash back to full
+   height for the frames between the animation ending and the state update
+   removing it. */
+@keyframes nbexit {
+  0% {
+    transform: translateX(var(--nbdx, 0));
+    opacity: 1;
+  }
+  55%,
+  100% {
+    transform: translateX(var(--nbout, 115%));
+    opacity: 0;
+  }
+}
+@keyframes nbcollapse {
+  0%,
+  45% {
+    height: var(--nbh);
+    opacity: 1;
+  }
+  100% {
+    height: 0;
+    opacity: 0;
+  }
+}
+.nbrowwrap.leaving {
+  height: var(--nbh);
+  animation: nbcollapse 320ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  /* Nothing in a row on its way out is clickable: a tap landing on it would
+     toggle an alert that is already gone by the time the state catches up. */
+  pointer-events: none;
+}
+.nbrowwrap.leaving .nbrow {
+  animation: nbexit 320ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+/* Reduced motion never reaches these — beginDismiss drops straight to the
+   removal — but the rules are guarded anyway, because a stylesheet that only
+   behaves because of what the script does is one refactor from not. */
+@media (prefers-reduced-motion: reduce) {
+  .nbrowwrap.leaving,
+  .nbrowwrap.leaving .nbrow {
+    animation: none;
+    height: 0;
+    overflow: hidden;
+  }
+}
+
+/* ── A read alert is monotone ──────────────────────────────────────────────
+   The point of the list is which alerts are NEW, and when every row carries a
+   company's brand colour that is the loudest thing on screen in both of them.
+   So a read row goes to one tone and the unread ones keep their colour.
+
+   THIS FILE SAID THE OPPOSITE until 2026-10-02 — that the badge and glyph
+   should keep their colour because "dimming a company's logo reads as the logo
+   being broken rather than as the row being finished". That is true of
+   OPACITY, which is what it was weighing; it is not true of grayscale, which
+   is the ordinary idiom for an inactive item and leaves the logo fully drawn
+   and perfectly legible. Hence `filter` rather than a fade, and only a slight
+   opacity trim underneath it.
+
+   Keyed on `.read`, not `.shut`: see the note in NotificationBell. */
+/* The GROUND, not just the contents. Tone alone left a read row the same
+   white card as a new one, so the state had to be read off the text; a filled
+   row is the thing you see without looking. --surface-sunken rather than
+   --surface-subtle: subtle is #fafafa against a #ffffff card, which is a
+   difference you have to go looking for, and the point of this is not having
+   to. */
+.nbrow.read {
+  background: var(--surface-sunken, #f4f4f5);
+}
+.nbrow.read:hover {
+  background: #ececef;
+}
+/* THE DIVIDER WAS --surface-sunken, which is now the read row's own
+   background — so every boundary between two read rows would have vanished
+   and the list would read as one block. It takes the border colour instead,
+   on read rows only, so unread rows keep the lighter rule they were designed
+   with. */
+.nbrow.read {
+  border-bottom-color: var(--border-subtle, #e5e5ea);
+}
+.nbrow.read .nbco,
+.nbrow.read .nbheadline {
+  color: var(--text-secondary, #636366);
+}
+/* The WRAPPER only. .nbinitials holds either the logo <img> or the initials
+   fallback, so one rule covers both — and selecting the img as well would
+   apply the opacity twice (0.72 of 0.72), which is a visibly different grey
+   from the one written here. */
+.nbrow.read .nbinitials {
+  filter: grayscale(1);
+  opacity: 0.72;
+}
+/* The kind pill and the skill glyph are the row's other two colours. The pill
+   keeps its SHAPE so the row still says spike or cooling at a glance — it is
+   the hue that is carrying "new", not the word. */
+/* Same collision as the divider: the grey the pill used to take IS the row's
+   background now, so it would be a word floating with no pill around it. It
+   goes a step darker than the row instead, which keeps it a shape. */
+.nbrow.read .nbpill {
+  background: #e4e4e8;
+  color: var(--text-tertiary, #8e8e93);
+}
+.nbrow.read .nbskillglyph {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.nbrow.read .nbbarfill {
+  background: var(--neutral-400, #a1a1a6);
+}
+/* The unread dot's slot, filled. Same height as the kind pill so the top line
+   does not change height between a read row and a new one — a list that
+   reflows as you read down it is harder to scan, which is the opposite of the
+   point. */
+.nbread {
+  margin-left: auto;
+  flex: 0 0 auto;
+  background: var(--surface-card, #fff);
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 999px;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, #8e8e93);
+}
+/* The alert row's company badge. ROUND, not the 9px-rounded square it was:
+   this is an employer's logo now rather than its initials, and the round crop
+   is the shape the map pin and the follow list already give a company. The
+   initials remain as the fallback inside the same circle, so a logo that stops
+   resolving degrades to the old badge rather than to a hole. */
 .nbinitials {
   display: flex;
   align-items: center;
@@ -15620,12 +16540,27 @@ body {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border-subtle);
-  border-radius: 9px;
+  border-radius: 50%;
   background: var(--surface-sunken);
   color: var(--neutral-700);
   font-family: var(--font-label);
   font-size: 10px;
   font-weight: 600;
+}
+/* overflow-hidden only on the image variant: the text one must not clip a
+   three-letter set of initials against the circle's edge. */
+.nbbadgeimgwrap {
+  overflow: hidden;
+  background: var(--surface-card);
+}
+.nbbadgeimg {
+  width: 100%;
+  height: 100%;
+  /* `contain`, not `cover`: a logo is artwork with its own margins and cropping
+     one to fill a circle cuts the mark. The padding keeps it off the ring. */
+  object-fit: contain;
+  padding: 3px;
+  box-sizing: border-box;
 }
 .nbbody {
   display: flex;
@@ -15670,18 +16605,87 @@ body {
   background: #eceef4;
   color: #42506e;
 }
-.nbwhen {
+/* An unread row's status mark, now a way through to the company.
+   THE STATUS MARK CARRIES THE `margin-left: auto`. It was on .nbwhen, the
+   "5 ads" label that used to sit between the pill and the mark — the row's top
+   line is a flex row, and that one rule is what pushed everything after it to
+   the right edge. Deleting the label without moving it would have left the mark
+   tucked against the kind pill in the middle of the row.
+
+   18px tall and the same label type as .nbread, because they share the slot:
+   a row changes from this to the Read tag when it is read, and any difference
+   in height would make the whole list below it shift as you read down it. */
+.nbexplore {
   margin-left: auto;
-  font-family: var(--font-label);
-  font-size: 10px;
-  color: var(--neutral-400);
-}
-.nbdot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--neutral-900);
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+  font-family: var(--font-label);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+.nbexplore:hover {
+  background: #000;
+}
+.nbexplore:active {
+  transform: scale(0.95);
+}
+/* The row is a div with role="button" now, so it has no focus ring of its own
+   either — and a focusable thing with no visible focus is unreachable by
+   keyboard in practice. `:focus-visible` rather than `:focus`, so a mouse click
+   does not leave a ring behind on either. */
+.nbexplore:focus-visible {
+  outline: 2px solid var(--neutral-900, #1c1c1e);
+  outline-offset: 2px;
+}
+/* INSET on the row. .nbrowwrap clips (it has to — the swiped row slides off its
+   own width), so an outline drawn outside the row's edge is cut off on all four
+   sides and the ring reads as four stubs. */
+.nbrow:focus-visible {
+  outline: 2px solid var(--neutral-900, #1c1c1e);
+  outline-offset: -2px;
+}
+/* The skill glyph sits beside the headline that names the skill, not above it.
+   `align-items: start` so it stays on the headline's FIRST line when the text
+   wraps to two or three — centred, it would drift to the middle of the block
+   and stop reading as a mark on the sentence. */
+.nbheadlinerow {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+.nbskillglyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  /* 1px of optical nudge so the 20px circle centres on a 14px/1.35 first line
+     rather than sitting proud of it. */
+  margin-top: 1px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  color: var(--neutral-700);
+}
+.nbskillglyph svg {
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .nbheadline {
   font-size: 14px;
@@ -15690,6 +16694,7 @@ body {
   letter-spacing: -0.01em;
   color: var(--neutral-900);
   text-wrap: pretty;
+  min-width: 0;
 }
 .nbbars {
   display: flex;
@@ -15748,22 +16753,16 @@ body {
   color: var(--text-secondary);
   text-wrap: pretty;
 }
-.nbfoot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px 18px;
-  background: var(--surface-subtle);
-  border-top: 1px solid var(--border-subtle);
-}
-.nbfootnote {
-  font-family: var(--font-label);
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
+/* .nbfoot / .nbfootnote removed with the "Archive holds N days of collection"
+   caption (2026-09-30). The archive's depth still reaches the reader where it
+   explains something — the notice inside an empty panel says how many days
+   there are and why that is not yet enough to compare against — rather than as
+   a permanent strip under every list.
+
+   The list is now the panel's last child. .nbpanel carries the 18px radius and
+   overflow:hidden, so the corner is fine; what is not is the last row's own
+   divider, which the footer used to sit under and which would otherwise render
+   as a stray rule hugging the rounded bottom edge. See .nbrow:last-child. */
 
 /* Phone: the panel becomes a bottom sheet like the dock's other panels. */
 @media (max-width: 680px) {
@@ -15885,28 +16884,9 @@ body {
    two-layer globe. Its markup references none of them — they are superseded by
    the footage band — so they are not built here.                              */
 /* ── The intro loader ────────────────────────────────────────────────────────
-   From `employsi-loader.html`. See components/IntroLoader.tsx for what this
-   carries that the design file does not.
-
-   The design is one set of inline styles on a 1440-ish canvas; these are the
-   same numbers as classes, with two additions it has no need for — a
-   reduced-motion stop and a phone breakpoint. */
-@keyframes em-sweep {
-  0% {
-    left: -34%;
-  }
-  100% {
-    left: 100%;
-  }
-}
-@keyframes em-pan {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-13%);
-  }
-}
+   A full-screen white veil holding the cards' own loader (.ccload, see
+   panels/CardLoader.tsx); components/IntroLoader.tsx owns the timing. It
+   replaced the skyline intro on 2026-09-28. */
 @keyframes in-veil {
   0% {
     opacity: 1;
@@ -15921,25 +16901,14 @@ body {
   position: fixed;
   inset: 0;
   z-index: 90;
-  display: grid;
-  place-items: center;
-  /* THE BAND'S HEIGHT IS DERIVED FROM THE ARTWORK, NOT CHOSEN.
-     The source is 2868x708, so at any width the drawing wants width x
-     708/2868 of height. Give the band exactly that and object-fit has nothing
-     to crop: the skyline sits flush with the band's top edge and no roofline
-     is sliced. Pick any other number and the difference is thrown away — the
-     old 34vh band around a 38vh image discarded 116px of drawing at 1440x860,
-     82px to the cover crop and another 34px to the band's own overflow, and
-     what showed above the cut was the veil's white. */
-  --introsky-w: max(115vw, 160vh);
-  --introsky-h: calc(var(--introsky-w) * 708 / 2868);
-  /* Lifts the lockup off centre so it sits in the white ABOVE the skyline
-     rather than on it — the same height as the band, so the two never meet. */
-  padding-bottom: var(--introsky-h);
-  box-sizing: border-box;
-  overflow: hidden;
   background: #ffffff;
   color: #1c1c1e;
+}
+/* The card loader's own wash is translucent over a card; over the veil it
+   has nothing to wash, and its blur would only cost a frame. */
+.introveil > .ccload {
+  background: transparent;
+  backdrop-filter: none;
 }
 .introveil.is-out {
   animation: in-veil 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -15948,141 +16917,7 @@ body {
      during the handoff reaches the map, not the veil. */
   pointer-events: none;
 }
-/* stretch, not center: it is what makes the sweep bar span the lockup exactly,
-   so the rule is as wide as the mark and wordmark together and needs no width
-   of its own. */
-.introstage {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 30px;
-}
-.introlockup {
-  display: flex;
-  align-items: center;
-  gap: 27px;
-}
-.intromark {
-  display: block;
-  flex: none;
-}
-.introword {
-  font-size: 64px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1;
-}
-.introbar {
-  position: relative;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(128, 128, 128, 0.24);
-  overflow: hidden;
-}
-.introbarfill {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 34%;
-  border-radius: 2px;
-  background: currentColor;
-  animation: em-sweep 1.9s cubic-bezier(0.65, 0.05, 0.36, 1) infinite;
-}
-.introband {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* Exactly the artwork's own height at this width — see --introsky-h. A band
-     shorter than the image would clip the top off with overflow: hidden, which
-     is half of what the old 34vh did. */
-  height: var(--introsky-h);
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.62;
-}
-/*
- * NOTHING IS CROPPED ANY MORE, which is the point of deriving the band's height
- * from the artwork rather than picking one.
- *
- * The source is 2868x708. This used to be a 38vh image inside a 34vh band, and
- * BOTH numbers threw drawing away: object-fit: cover discarded 82px of 409 at
- * 1440x860 because the element was shorter than the image's aspect, and the
- * band then clipped 34px more off the element with overflow: hidden. 116px of
- * skyline gone, and the veil's white where it used to be — a hard horizontal
- * line straight through the rooflines.
- *
- * Height is now 100% of a band that is itself the artwork's natural height, so
- * the aspect matches exactly and cover has nothing left to trim.
- *
- * object-fit and object-position STAY. They crop nothing while the aspects
- * agree, and they are the thing that keeps the GROUND LINE on screen rather
- * than the sky if the artwork is ever replaced with one of a different shape.
- * `bottom: 0` for the same reason — the design's `-4vh` pushed 34px of the
- * ground line below the fold.
- */
-.introsky {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: var(--introsky-w);
-  /* WITHOUT THIS THE PAN TEARS. The app's reset carries `img { max-width: 100% }`,
-     which the design file has no equivalent of, and it clamps the width above
-     back to the viewport's. The two numbers are a matched pair: the image is
-     115vw wide and em-pan slides it 13% of that, which is 14.95vw — so the
-     right edge finishes at 100.05vw, a rounding error inside the frame. Clamp
-     the width to 100vw and the same 13% drags 13vw of white onto the right of
-     the screen. */
-  max-width: none;
-  height: 100%;
-  object-fit: cover;
-  object-position: center bottom;
-  display: block;
-  filter: grayscale(1) contrast(1.02);
-  /* THE NEGATIVE DELAY IS THE SPEED CONTROL, NOT THE DURATION.
-     The veil only lives 1.9s-6s (DWELL_MS/MAX_HOLD in IntroLoader.tsx), and
-     ease-in-out spends its first few percent almost stationary — measured at
-     1440x860, the design's 52s moved the skyline 0.6px across the whole dwell,
-     so the pan was there in the stylesheet and invisible on screen. Trimming
-     the duration alone does not fix that: 44s on its own is 0.8px.
-     Starting 14s in puts the visible window on the curve's cruising section —
-     measured in the browser at 9.1px/s, 15.8px of drift across the dwell at
-     1440x860 and 5.5px/s at 390x844. Gentle, but actually moving.
-     The travel stays -13% so the right-edge coverage above is untouched, and
-     the eased reversal at each end is kept — it just happens at 44s, long
-     after the veil has gone. */
-  animation: em-pan 44s ease-in-out -14s infinite alternate;
-}
-/* The design is a desktop canvas: 77px of mark, 27px of gap and a 64px wordmark
-   set about 390px wide, which is a whole phone. */
-@media (max-width: 680px) {
-  .introword {
-    font-size: 40px;
-  }
-  .intromark {
-    width: 50px;
-    height: 50px;
-  }
-  .introlockup {
-    gap: 16px;
-  }
-  .introstage {
-    gap: 22px;
-  }
-}
-/* Both loops stopped. The composition still stands; it just holds still, with
-   the sweep parked a third of the way across so the bar does not read as an
-   empty track. The veil's own fade is kept but shortened — it is a state
-   change rather than motion for its own sake, and leaving it out would make
-   the app appear with a hard cut. */
 @media (prefers-reduced-motion: reduce) {
-  .introbarfill,
-  .introsky {
-    animation: none;
-  }
-  .introbarfill {
-    left: 33%;
-  }
   .introveil.is-out {
     animation: in-veil 200ms linear both;
   }
@@ -17324,10 +18159,22 @@ body {
 }
 
 /* --- Completion toast --- */
+/* TOP RIGHT, UNDER THE HEADER — not bottom right, where it sat over the
+   demand ticker. The ticker is a full-width bar at bottom: 32px, so a toast
+   anchored to the bottom-right corner covered the one thing on that edge.
+   Here it hangs below the alert / settings / feedback buttons it is telling
+   you about ("reopen it from the help button"), which is also where the eye
+   already is when a tour ends.
+
+   `right: 28px` is .apphead's own horizontal padding, so the toast lines up
+   with the buttons above it rather than sitting 10px proud of them. The
+   existing emppop animation enters from translateY(-6px), which reads as
+   dropping out of the header — it was always slightly wrong under a
+   bottom-anchored card. */
 .gtdone {
   position: fixed;
-  right: 18px;
-  bottom: 18px;
+  top: calc(var(--head-height) + 12px);
+  right: 28px;
   z-index: 60;
   display: flex;
   align-items: center;
@@ -17598,16 +18445,11 @@ body {
 .tftrack:focus-within .tfknob {
   box-shadow: var(--focus-ring);
 }
-/* What the numbers are: sampled moves, the period, the grouping and the
-   outflow rule. The design has no line for it; a count with no statement of
-   what it counts is the thing this codebase refuses to print. */
-.tfnote {
-  margin: 0;
-  padding: 4px 20px 18px;
-  font: 400 11.5px/1.5 var(--font-label, Inter, system-ui, sans-serif);
-  color: var(--text-tertiary, #8e8e93);
-  text-wrap: pretty;
-}
+/* .tfnote removed with the talent-flow method footer (2026-09-30) — see the
+   note where it was rendered in TalentFlowPane.tsx. Its comment here read "a
+   count with no statement of what it counts is the thing this codebase refuses
+   to print", which is now what the card does; recorded rather than deleted
+   quietly so the next reader knows it was a decision. */
 @media (max-width: 680px) {
   .tfcard {
     left: 12px;
@@ -17869,4 +18711,597 @@ body {
 .cpcard > .ccload {
   bottom: auto;
   height: min(100%, var(--pane-max-h));
+}
+
+/* ── Resizable cards ─────────────────────────────────────────────────────────
+   The analyst, career pathways, talent flows and what's trending cards can be
+   narrowed and shortened by the user (hooks/useDraggablePane.ts — the
+   designed size is the ceiling). Each card is a size container, and what was
+   laid out in fixed columns for the full width steps down as it narrows.
+   Everything else in them already flows: charts are viewBox + width:100%,
+   lists stack, and the career card's chart/hotspot row wraps on its own. */
+.analystpane,
+.cppane,
+.trendpane,
+.tfcard {
+  container-type: inline-size;
+}
+.cpstats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container (max-width: 520px) {
+  .cpstats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cpstats > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container (max-width: 400px) {
+  .cpstats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .anstats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* The map's "drag to explore" hint is a hint, not content; the demand key
+   beside it is, so the hint gives way when the two no longer fit. */
+@container (max-width: 480px) {
+  .cpdraghint {
+    display: none;
+  }
+}
+@container (max-width: 460px) {
+  .anmultiples {
+    grid-template-columns: 1fr;
+  }
+}
+/* The trending board's two columns need about 700px between them; under
+   that the columns stack and the board scrolls as one.
+
+   STACKED, EVERY ROW TAKES ITS CONTENT'S HEIGHT. Side by side, each column
+   is min-height:0 so the board fits one screen and the skills tile absorbs
+   the slack. Stacked, that same min-height:0 let the board's fixed height
+   squeeze the rows below their content — the left column's tiles spilled
+   out of their row and the skills tile painted over them (the risers tile
+   cut to a sliver, its heading clipped). max-content rows cannot be
+   squeezed; the board scrolls instead, and the skills tile keeps its own
+   internal scroll at a fixed height rather than stretching. */
+@container (max-width: 720px) {
+  .trendpane .briefscroll {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: max-content;
+    align-content: start;
+  }
+  .trendpane .smk {
+    flex: 0 0 auto;
+    height: 420px;
+  }
+}
+/* The skill rows (and the risers/fallers rows, same shape): the name column
+   is what gives when the card narrows, so the sparkline goes first and the
+   name and its sub-line wrap rather than ellipsing to a letter. The change and the median stay — they are the
+   figures. */
+@container (max-width: 520px) {
+  .trendpane .smkspark,
+  .trendpane .smksparknone {
+    display: none;
+  }
+  .trendpane .smkname,
+  .trendpane .smksub,
+  .trendpane .mvrname,
+  .trendpane .mvrsub {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+/* The resize grip: fixed to the card's bottom-right corner by the hook,
+   outside the card so a card that scrolls cannot scroll it away. */
+.panegrip {
+  position: fixed;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 55%, var(--neutral-400, #b4b4ba) 55% 62%, transparent 62% 72%, var(--neutral-400, #b4b4ba) 72% 79%, transparent 79%);
+  border-bottom-right-radius: 14px;
+  opacity: 0.8;
+}
+.panegrip:hover {
+  opacity: 1;
+}
+
+/* ── Supply mode: the local pin's size IS the figure ─────────────────────── */
+/* Demand mode encodes the searched skill in the pin's COLOUR. Supply mode has
+   no per-company skill figure at all, so it drops that channel and uses size
+   for the one thing it does know — the employer's filed total headcount. Two
+   questions, two channels, and neither borrows the other's. */
+/* Scale the STAGE, never the whole marker. The caption carries both the company
+   name and the number, and shrinking those to 68% would make the small
+   employers the hardest ones on the map to read. Origin at the foot because the
+   stage sits ABOVE the marker's anchor point — scaling from the centre would
+   lift the pin off its own coordinate. */
+.mk-company .mkstage {
+  transform: scale(var(--mkscale, 1));
+  transform-origin: 50% 100%;
+  transition: transform 0.22s ease;
+}
+/* No filed headcount: hollow, not small. 671 of the 1,629 plotted companies have
+   none, and at the scale floor "we don't know" and "very few staff" are the same
+   pin — so the ones we don't know are drawn as an outline instead, which reads as
+   a gap in the data rather than as a measurement. */
+.mk-company.nofig .mkbody {
+  background: transparent;
+  border: 1.5px dashed #c4c4cc;
+  /* Drops the drop shadow — an outline should not sit on the map like a solid
+     object — but KEEPS the inset ring, which is the selected state. A plain
+     `box-shadow: none` here would make a company with no filed figure the one
+     company on the map that cannot be seen to be selected. */
+  box-shadow: inset 0 0 0 calc(var(--sel, 0) * 2px) #1c1c1e;
+}
+.mk-company.nofig .mklogo {
+  opacity: 0.32;
+  filter: grayscale(1);
+}
+.mk-company.nofig .mkshadow {
+  opacity: 0.25;
+}
+
+/* Supply mode's workforce-size key (SupplyKey.tsx): bottom-right, mirroring
+   the city banner bottom-left, in the demand keys' pill style. */
+.supplykey {
+  position: fixed;
+  right: var(--rail-left);
+  bottom: calc(var(--frame-inset) + 8px);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 18px 40px -18px rgba(28, 28, 30, 0.34);
+  font-family: var(--font-label);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.supplykeylbl {
+  margin-right: 4px;
+  color: var(--text-tertiary);
+}
+.supplykeyend {
+  color: var(--text-secondary);
+}
+.supplykeydot {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px solid var(--neutral-500, #8e8e93);
+  box-sizing: border-box;
+}
+@media (max-width: 680px) {
+  .supplykey {
+    display: none;
+  }
+}
+
+/* ── Career card: tasks & tools (O*NET) ──────────────────────────────────────
+   O*NET's description of the US occupation a role maps to. Set apart by a
+   rule rather than a tile: it is described, not measured, and should not read
+   as one more of the card's counts. */
+.cponet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-subtle, #e5e5ea);
+  min-width: 0;
+}
+.cponethead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.cponetocc {
+  font: 500 12px/1.3 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: none;
+}
+.cponetocc:hover {
+  color: var(--text-primary, #1c1c1e);
+  text-decoration: underline;
+}
+/* The core tasks, as an actual bulleted list.
+
+   IT WAS ALREADY <ul><li> AND STILL HAD NO BULLETS, because `display: flex`
+   was on the list: a flex container makes its children flex items, and a flex
+   item does not generate a list marker. So the markup was right, the markers
+   were silently dropped, and the `padding-left: 18px` was indenting for
+   bullets that never rendered — which is why the section read as ragged
+   paragraphs. Laying it out as a list (block items + list-style) is what puts
+   them back; the row gap moves from `gap` to a margin for the same reason. */
+.cponettasks {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc outside;
+  font: 400 13px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+}
+.cponettasks li {
+  /* `display: list-item` is the default, and is stated because the rule above
+     is exactly what was lost last time. */
+  display: list-item;
+}
+.cponettasks li + li {
+  margin-top: 6px;
+}
+.cponettasks li::marker {
+  color: var(--text-tertiary, #8e8e93);
+}
+.cponetmore {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cponetsw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.cponetchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cponetchip {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface-subtle, #f4f4f5);
+  font: 500 12px/1 "Inter", system-ui, sans-serif;
+  color: var(--text-primary, #1c1c1e);
+  white-space: nowrap;
+}
+/* .cponetnote and .cponetcredit removed with the O*NET credit line
+   (2026-09-30) — see lib/onet.ts. .cponetnone stays: it is the "no single
+   O*NET occupation matches this role" message, which is a different thing. */
+.cponetnone {
+  margin: 0;
+  font: 400 12.5px/1.45 "Inter", system-ui, sans-serif;
+  color: var(--text-secondary, #636366);
+}
+
+/* ── The skill card surviving a Supply/Demand switch ─────────────────────── */
+/* The card stays open across the switch and cross-fades its contents, rather
+   than swapping every figure on one frame — which read as a different card
+   rather than the same one answering a different question.
+
+   THE TITLE ROW IS DELIBERATELY EXEMPT. The skill's name and icon are identical
+   in both modes, so fading them would be animating the one thing that did not
+   change, and the card would look like it had reloaded — the opposite of
+   staying open. Everything that DOES differ fades: the workforce/demand band,
+   the scale keys, the series, the stat rows and the copy. `.gscardactions` is
+   named separately because it lives inside the header with the title. */
+.gscard > *:not(.gscardhd),
+.gscard .gscardactions {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.gscard.swapping > *:not(.gscardhd),
+.gscard.swapping .gscardactions {
+  opacity: 0;
+  /* Settles rather than slides: the card is pinned to a corner and a lateral
+     move would read as it leaving. Same reasoning as .railswapl's scale. */
+  transform: scale(0.985);
+}
+/* The card must not resize under the fade, or the corner it is pinned to would
+   jump while the contents are invisible. Supply and demand bodies differ by a
+   row, so the height is held for the duration of the swap. */
+.gscard.swapping {
+  overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gscard > *:not(.gscardhd),
+  .gscard .gscardactions {
+    transition: none;
+  }
+  .gscard.swapping > *:not(.gscardhd),
+  .gscard.swapping .gscardactions {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── The globe crossing between Supply and Demand ────────────────────────── */
+/* The heat blobs fade through their own Mapbox paint transition (see
+   HEAT_OPACITY and the heatMarket effect). The hub markers cannot: Mapbox
+   rewrites a marker ROOT's style.opacity every frame for the globe's occlusion
+   fade, so anything set there is gone by the next frame. The inner wrapper is
+   the same element every other marker state on this map is applied to. */
+.worldmount .mk {
+  transition:
+    opacity 140ms ease,
+    transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.worldmount.heatswap .mk {
+  opacity: 0;
+  /* Settles in place rather than sliding: a hub marker sits ON its coordinate
+     and a lateral move would read as the city itself shifting. */
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  .worldmount .mk {
+    transition: none;
+  }
+  .worldmount.heatswap .mk {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Career card: other paths on the map ────────────────────────────────────
+   A pill of icons straddling the selected card's edge, one per related role on
+   another ladder (careerCard.careerMoves). Right-aligned to the card, centred
+   on the edge; .below puts it on the bottom edge (the lanes under the core,
+   where "Set as goal?" takes the top). Figures live in the hover card. */
+.cpbranch {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-page, #fff);
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  box-shadow: 0 1px 3px rgba(28, 28, 30, 0.12);
+  cursor: default;
+}
+.cpbranch.tipping {
+  /* Over the "Set as goal?" pop (z-index 5) while a hover card is open. */
+  z-index: 6;
+}
+.cpbranchlbl {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 2px;
+  color: var(--text-tertiary, #8e8e93);
+}
+.cpbranchbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  background: var(--surface-subtle, #f4f4f5);
+  color: var(--text-secondary, #636366);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.cpbranchbtn svg {
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cpbranchbtn:hover,
+.cpbranchbtn.on,
+.cpbranchbtn:focus-visible {
+  background: var(--neutral-900, #1c1c1e);
+  border-color: var(--neutral-900, #1c1c1e);
+  color: #fff;
+  outline: none;
+}
+.cpbranchtip {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(100% + 8px);
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--neutral-900, #1c1c1e);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  text-align: left;
+}
+.cpbranchtitle,
+.cpbranchwhere {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cpbranchtip.up {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+.cpbranchtitle {
+  font: 600 13px/1.25 "Inter", system-ui, sans-serif;
+}
+.cpbranchwhere {
+  font: 500 11px/1.3 "Inter", system-ui, sans-serif;
+  opacity: 0.7;
+}
+.cpbranchfigs {
+  font: 500 11.5px/1.35 "Inter", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── "Viewing as" — the admin persona switch ───────────────────────────────
+   Renders only on a preview host, only for a real admin (components/
+   PersonaSwitch.tsx, lib/persona.ts), inside both account panels. Sized to sit
+   between the follows and Sign out without competing with either: this is a
+   reviewing tool, not a feature of the product being reviewed. */
+.psona {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  background: var(--surface-sunken);
+}
+.psonalbl {
+  font-family: var(--font-label);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.psonaseg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+}
+.psonabtn {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: 600 12px/1 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+.psonabtn:hover {
+  color: var(--text-primary);
+}
+.psonabtn.on {
+  background: #1c1c1e;
+  color: #fff;
+}
+.psonanote {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
+
+/* ── The first-run welcome card ────────────────────────────────────────────
+   Shown once per account, and the front door to the guided tour. z-index 80:
+   above every panel, below .introveil (90), so the boot veil still covers it
+   and it is simply there when the veil lifts rather than animating in over it. */
+.wcwrap {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.wcscrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.42);
+}
+.wccard {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 460px;
+  padding: 30px 32px 28px;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 1px 2px rgba(28, 28, 30, 0.06),
+    0 32px 64px -24px rgba(28, 28, 30, 0.45);
+  animation: wcin 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes wcin {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+.wcmark {
+  display: block;
+  margin-bottom: 24px;
+}
+.wctitle {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: #1c1c1e;
+  text-wrap: pretty;
+}
+.wcbody {
+  margin: 0 0 26px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #6c6c72;
+  text-wrap: pretty;
+}
+/* Equal halves: the design gives the two choices the same width, which is what
+   keeps "Skip for now" a real option rather than a hedge beside the CTA. They
+   stack on a narrow phone, primary first, so the tour stays the obvious one. */
+.wcactions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.wcbtn {
+  padding: 15px 18px;
+  border: 1px solid var(--border-subtle, #e5e5ea);
+  border-radius: 14px;
+  background: #fff;
+  color: #1c1c1e;
+  font: 600 15px/1 "Inter", system-ui, sans-serif;
+  cursor: pointer;
+}
+.wcbtn:hover {
+  background: #f7f7f8;
+}
+.wcbtn.primary {
+  border-color: #1c1c1e;
+  background: #1c1c1e;
+  color: #fff;
+}
+.wcbtn.primary:hover {
+  background: #000;
+}
+@media (max-width: 420px) {
+  .wcactions {
+    grid-template-columns: 1fr;
+  }
+  .wcbtn.primary {
+    order: -1;
+  }
+  .wccard {
+    padding: 24px 22px 22px;
+  }
+  .wctitle {
+    font-size: 23px;
+  }
 }

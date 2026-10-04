@@ -1,9 +1,16 @@
 import mapboxgl from "mapbox-gl";
 import { isReleasedPlace } from "../lib/markets";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore, cityMatchesFilters, type FilterState } from "../state/store";
-import { activeSkill, demandByCity, iviCityDemandAt, iviCityChangeAt } from "../lib/skillHeat";
+import {
+  activeSkill,
+  demandByCity,
+  iviCityDemandAt,
+  iviCityChangeAt,
+  measureNoun,
+  type DemandMode,
+} from "../lib/skillHeat";
 import {
   HUB_LNGLAT,
   AU_CITY_LNGLAT,
@@ -46,6 +53,23 @@ const HALO_LAYER = "hub-halo";
 const CORE_LAYER = "hub-core";
 const SKILL_SOURCE = "skill-heat";
 const SKILL_LAYER = "skill-heat";
+/** Half of the globe's Supply/Demand cross-fade, in ms. Matches CARD_SWAP_MS in
+ *  GlobalSearch so the card and the globe move as one gesture. */
+const HEAT_SWAP_MS = 140;
+/** The heat layer's own opacity curve, hoisted so the swap can drop it to 0 and
+ *  put back EXACTLY this rather than a flat value that would lose the zoom
+ *  fade-out into the local-city hand-off. */
+const HEAT_OPACITY: mapboxgl.ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  1,
+  0.8,
+  5,
+  0.76,
+  6.5,
+  0,
+];
 
 // Neutral dot colour used while a skill search is active — the coloured metric
 // heat is replaced by the skill-demand blobs, so the city dots go dark (as they
@@ -58,6 +82,13 @@ type TravelMode = "plane" | "ship" | "train";
 // Uniform slow-down applied to every traveler's duration (>1 = slower drift).
 const TRAVEL_SLOWDOWN = 1.6;
 
+/**
+ * Trains and their rail lines are OFF for now (2026-09-28, at the product
+ * owner's request). Everything they need stays below — the corridors, the
+ * runs, the layers — so turning this back on is the whole of bringing them
+ * back. Planes and ships are unaffected.
+ */
+const SHOW_TRAINS = false;
 const RAIL_SOURCE = "au-rail";
 const RAIL_BED_LAYER = "au-rail-bed";
 const RAIL_SLEEPER_LAYER = "au-rail-sleepers";
@@ -375,6 +406,18 @@ const PLANE_ROUTES: PlaneRoute[] = [
   { from: "dubai", to: "johannesburg", dur: 27000, offset: 0.6 },
   { from: "sanfrancisco", to: "tokyo", dur: 36000, offset: 0.15 },
 ];
+
+/**
+ * OFF FOR NOW, ON REQUEST — 2026-09-28. The container ships are not drawn; the
+ * aircraft and the trains are unchanged.
+ *
+ * Nothing below is deleted, because what it encodes is the expensive part: the
+ * lanes are hand-steered waypoint paths through real straits, and the note under
+ * this one records the three "ports" that were not ports. Re-deleting that
+ * research to re-derive it later is the trade this flag exists to avoid. Flip it
+ * to true and the ships come back exactly as they were.
+ */
+const SHOW_SHIPS: boolean = false;
 
 /**
  * Container-ship lanes, as waypoint paths through open water.
@@ -1010,7 +1053,6 @@ export function WorldMapbox() {
   const zoomingIn = useAppStore((s) => s.zoomingIn);
   const globalOut = useAppStore((s) => s.globalOut);
   const domesticRegion = useAppStore((s) => s.domesticRegion);
-  const placeLabels = useAppStore((s) => s.placeLabels);
   const localCity = useAppStore((s) => s.localCity);
   const selectedId = useAppStore((s) => s.selectedId);
   const activeSectors = useAppStore((s) => s.activeSectors);
@@ -1021,9 +1063,32 @@ export function WorldMapbox() {
   const minGrowth = useAppStore((s) => s.minGrowth);
   const maxAttrition = useAppStore((s) => s.maxAttrition);
   const searchQuery = useAppStore((s) => s.searchQuery);
+  const roleFocus = useAppStore((s) => s.roleFocus);
   const skillIndex = useAppStore((s) => s.skillIndex);
   const heatMonth = useAppStore((s) => s.heatMonth);
   const role = useAppStore((s) => s.role);
+  /**
+   * THE GLOBE DID NOT REACT TO THE SUPPLY/DEMAND SWITCH AT ALL, and that is the
+   * bug this pair fixes rather than the animation.
+   *
+   * heatMode has been read inside applyView since the supply-heat work, but
+   * only through getState() — marketMode was never subscribed here and never in
+   * any effect's deps, so nothing re-ran on the click. The globe kept the old
+   * dataset until something ELSE moved: a search, a month scrub, a selection.
+   * In ordinary use a switch is followed by a search, which is why it looked
+   * like it worked.
+   */
+  const marketMode = useAppStore((s) => s.marketMode);
+  const demandMode = useAppStore((s) => s.demandMode);
+  /**
+   * The mode the globe is currently DRAWN from, one fade behind the store's.
+   * Same shape as the skill card's cardMarket: fade the heat out, swap the
+   * dataset at the bottom of the fade, fade it back in.
+   */
+  const [heatMarket, setHeatMarket] = useState(marketMode);
+  const [heatSwapping, setHeatSwapping] = useState(false);
+  const heatMarketRef = useRef(heatMarket);
+  heatMarketRef.current = heatMarket;
 
   // Mount once: create the map, add the hub source/layers, and wire clicks +
   // scroll-zoom layer crossing. All reads of live state happen through the
@@ -1093,6 +1158,8 @@ export function WorldMapbox() {
       markers: Marker[],
       selectedId: string | null,
       demand: Record<string, number>,
+      /** What `demand` counts, so the pin can name its own unit. */
+      measure: DemandMode,
     ) => {
       Object.values(labelsRef.current).forEach((m) => m.remove());
       labelsRef.current = {};
@@ -1111,10 +1178,21 @@ export function WorldMapbox() {
           // Set only while a skill is searched: how that skill's demand here has
           // moved over the trailing year at the slider's month.
           delta: typeof m.pct === "number" ? m.pct : null,
-          // The vacancy count behind the colour — real job ads, so it is safe to
-          // show as a figure. Absent when no skill is searched (there is no
-          // single "demand" to count).
-          count: demand[m.id] > 0 ? `${Math.round(demand[m.id]).toLocaleString()} ads` : null,
+          // THE COUNT BEHIND THE COLOUR, NAMED FOR WHAT IT IS. This said
+          // "ads" unconditionally, so the supply side drew ABS employment on
+          // the map and then labelled 137,312 PEOPLE as 137,312 ads. That is
+          // the worst shape this bug takes: the figure is right, the colour is
+          // right, and only the unit is wrong, so nothing looks broken.
+          //
+          // Absent when no skill is searched — there is no single figure to
+          // count then, on either side.
+          count:
+            demand[m.id] > 0
+              ? `${Math.round(demand[m.id]).toLocaleString()} ${measureNoun(
+                  measure,
+                  Math.round(demand[m.id]),
+                )}`
+              : null,
           selected: m.id === selectedId,
           faded: m.faded,
         });
@@ -1150,8 +1228,31 @@ export function WorldMapbox() {
       const s = useAppStore.getState();
       if (!s.zoomedOut || s.zoomingIn) return; // overview not showing
       const mode = viewModeOf(s.globalOut);
-      const skill = activeSkill(s.searchQuery);
-      let cityDemand = demandByCity(s.skillIndex, skill);
+      // A ROLE picked on the career pathways card heats the map the way a
+      // skill search does, from the role's own live ads by city (the card's
+      // hiring hotspots). It stands in for the skill as the thing being heated;
+      // `skill` stays the real skill so the series-backed overlays below, which
+      // only exist per skill, are skipped for a role rather than misapplied.
+      const role = s.roleFocus;
+      const skill = role ? null : activeSkill(s.searchQuery);
+      const heatKey = role ? role.title : skill;
+      // What the globe is coloured BY. The Supply/Demand switch decides the
+      // dataset; the Vacancies/Per-1,000 toggle only ever describes demand, so
+      // on the supply side it is overridden rather than combined — the same
+      // rule the search box follows, so the two surfaces cannot disagree about
+      // what is being shown.
+      // A role's figures are live ads whatever the switch says: the pathways
+      // count ads, not employment or a rate, and the pins must name that unit.
+      // THE LAGGED MODE, not s.marketMode. The globe cross-fades across the
+      // Supply/Demand switch, so the data it is built from has to wait for the
+      // fade-out — otherwise the blobs change colour underneath a fade that is
+      // animating nothing. See the heatMarket effect.
+      const heatMode: DemandMode = role
+        ? "volume"
+        : heatMarketRef.current === "supply"
+          ? "employment"
+          : s.demandMode;
+      let cityDemand = role ? { ...role.cities } : demandByCity(s.skillIndex, skill);
       // Overlay the real Jobs & Skills Australia IVI vacancy demand (whole
       // labour market, with monthly history) on top of the company/Adzuna
       // counts. Applied on the AU domestic view and on the global view (where
@@ -1165,9 +1266,23 @@ export function WorldMapbox() {
           s.domesticRegion === "asia" ||
           s.domesticRegion === "europe")
       ) {
-        const ivi = iviCityDemandAt(skill, s.heatMonth, s.demandMode);
-        cityDemand = { ...cityDemand };
-        for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
+        const ivi = iviCityDemandAt(skill, s.heatMonth, heatMode);
+        if (heatMode === "employment") {
+          // REPLACE, DO NOT ADD. `cityDemand` here is the scraped company ad
+          // count, and the line below used to sum the national series onto it —
+          // correct while both are vacancies, and a category error the moment
+          // one of them is people. Sydney would have been 454,000 employed plus
+          // a few hundred job ads, a number that is neither.
+          //
+          // So on the supply side the employment figures ARE the layer. The
+          // company signal is dropped rather than scaled in: there is no
+          // per-employer headcount behind those pins, so there is nothing
+          // honest to add.
+          cityDemand = ivi;
+        } else {
+          cityDemand = { ...cityDemand };
+          for (const [c, v] of Object.entries(ivi)) cityDemand[c] = (cityDemand[c] || 0) + v;
+        }
       }
       const fs: FilterState = {
         searchQuery: s.searchQuery,
@@ -1187,7 +1302,7 @@ export function WorldMapbox() {
         s.domesticRegion,
         fs,
         demandForView,
-        !!skill,
+        !!heatKey,
         map.getZoom(),
         // Admins see every market live; end users see the covered ones.
         s.role === "admin",
@@ -1203,7 +1318,7 @@ export function WorldMapbox() {
           s.domesticRegion === "asia" ||
           s.domesticRegion === "europe")
       ) {
-        const change = iviCityChangeAt(skill, s.heatMonth);
+        const change = iviCityChangeAt(skill, s.heatMonth, 12, heatMode);
         if (mode === "global") {
           // Country-level momentum: demand-weighted mean of its cities' changes,
           // so a country's ▲/▼ reflects where its volume actually sits.
@@ -1225,7 +1340,7 @@ export function WorldMapbox() {
       markersRef.current = markers;
       const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
       src?.setData(markersGeoJSON(markers, s.selectedId));
-      renderLabels(markers, s.selectedId, demandForView);
+      renderLabels(markers, s.selectedId, demandForView, heatMode);
 
       // The dot halo now only appears WITH a skill search — a pulsing, demand-
       // coloured ring that (alongside the gradient) draws the eye to the standout
@@ -1233,10 +1348,10 @@ export function WorldMapbox() {
       // no pulse). The demand blobs show only while a skill is active.
       const skillSrc = map.getSource(SKILL_SOURCE) as mapboxgl.GeoJSONSource | undefined;
       skillSrc?.setData(
-        buildSkillHeat(mode, s.domesticRegion, skill, demandForView, s.role === "admin"),
+        buildSkillHeat(mode, s.domesticRegion, heatKey, demandForView, s.role === "admin"),
       );
       if (map.getLayer(HALO_LAYER)) {
-        map.setLayoutProperty(HALO_LAYER, "visibility", skill ? "visible" : "none");
+        map.setLayoutProperty(HALO_LAYER, "visibility", heatKey ? "visible" : "none");
       }
     };
     rebuildMarkersRef.current = rebuildMarkers;
@@ -1299,7 +1414,10 @@ export function WorldMapbox() {
           "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 1, 34, 3, 72, 5, 130, 7, 210],
           // Fade out as we approach the local-city hand-off zoom. Eased back off
           // full opacity so the basemap still reads through the blobs.
-          "heatmap-opacity": ["interpolate", ["linear"], ["zoom"], 1, 0.8, 5, 0.76, 6.5, 0],
+          "heatmap-opacity": HEAT_OPACITY,
+          // Lets the Supply/Demand swap fade the blobs rather than cutting
+          // them; Mapbox animates a paint property when it has a transition.
+          "heatmap-opacity-transition": { duration: HEAT_SWAP_MS, delay: 0 },
           // Green (low) -> lime -> amber -> red (high), matching the city-dot
           // ramp so a hub's dot and its blob agree.
           // The ramp lives in lib/heatRamp.ts so the career pathway map's
@@ -1420,12 +1538,15 @@ export function WorldMapbox() {
           if (!a || !b) return [];
           return [{ mode: "plane", path: [a, b], dur: r.dur, offset: r.offset }];
         }),
-        ...SHIP_LANES.map((l): Traveler => ({
-          mode: "ship",
-          path: l.path,
-          dur: l.dur,
-          offset: l.offset,
-        })),
+        // SHIPS ARE OFF — see SHOW_SHIPS. Everything they need is still here.
+        ...(SHOW_SHIPS
+          ? SHIP_LANES.map((l): Traveler => ({
+              mode: "ship",
+              path: l.path,
+              dur: l.dur,
+              offset: l.offset,
+            }))
+          : []),
         // ONE train per run, not a coupled consist.
         //
         // This started as a locomotive plus two wagons, and there is no spacing
@@ -1439,7 +1560,7 @@ export function WorldMapbox() {
         // so there is no room between those two failures. A single locomotive
         // is what a train looks like at this size, and it matches how the plane
         // and the ship are each one sprite.
-        ...TRAIN_RUNS.map(({ region, dur, path }, run): Traveler => ({
+        ...(SHOW_TRAINS ? TRAIN_RUNS : []).map(({ region, dur, path }, run): Traveler => ({
           mode: "train" as const,
           region,
           path,
@@ -1532,7 +1653,7 @@ export function WorldMapbox() {
         // Auckland–Wellington line and Asia's Singapore–KL line each appear on
         // their own view without the other being drawn off-screen.
         const railRegion = show && !s.globalOut ? s.domesticRegion : "";
-        const showTrain = !!railRegion;
+        const showTrain = SHOW_TRAINS && !!railRegion;
         if (map.getLayer(RAIL_BED_LAYER)) {
           const railVis = showTrain ? "visible" : "none";
           map.setLayoutProperty(RAIL_BED_LAYER, "visibility", railVis);
@@ -1573,7 +1694,8 @@ export function WorldMapbox() {
       const animateHalo = () => {
         if (map.getLayer(HALO_LAYER)) {
           const s = useAppStore.getState();
-          const active = !!activeSkill(s.searchQuery) && s.zoomedOut && !s.zoomingIn;
+          const active =
+            (!!s.roleFocus || !!activeSkill(s.searchQuery)) && s.zoomedOut && !s.zoomingIn;
           if (active) {
             const p = 0.5 - 0.5 * Math.cos(performance.now() / 620); // 0..1
             map.setPaintProperty(HALO_LAYER, "circle-radius", 17 + 13 * p);
@@ -1689,11 +1811,41 @@ export function WorldMapbox() {
     applyViewRef.current?.();
   }, [zoomedOut, zoomingIn, globalOut, domesticRegion, localCity]);
 
-  // Place labels (Settings → Appearance). Mapbox paints city and region names
-  // into the canvas, so there is no CSS way to hide them — the style's own
-  // symbol layers have to be toggled. Every label layer in the Mapbox standard
-  // styles ends in "-label", and only label layers do, so that suffix is the
-  // selector rather than a hand-listed set that would rot on a style update.
+  /**
+   * The Supply/Demand cross-fade. Drop the heat layer's opacity to 0, let the
+   * fade run, then swap the mode the globe is drawn from and put the curve
+   * back — Mapbox animates both ends because the property has a transition.
+   *
+   * The markers fade through CSS instead (`.worldmount.heatswap`), because
+   * Mapbox rewrites a marker ROOT's style.opacity every frame for the globe's
+   * occlusion fade; the class targets the inner wrapper the way every other
+   * marker state here does.
+   */
+  useEffect(() => {
+    if (heatMarket === marketMode) return;
+    const map = mapRef.current;
+    setHeatSwapping(true);
+    if (map?.getLayer(SKILL_LAYER)) map.setPaintProperty(SKILL_LAYER, "heatmap-opacity", 0);
+    const t = setTimeout(() => {
+      setHeatMarket(marketMode);
+      setHeatSwapping(false);
+      const m = mapRef.current;
+      if (m?.getLayer(SKILL_LAYER))
+        m.setPaintProperty(SKILL_LAYER, "heatmap-opacity", HEAT_OPACITY);
+    }, HEAT_SWAP_MS);
+    return () => clearTimeout(t);
+  }, [marketMode, heatMarket]);
+
+  // Place labels. ALWAYS ON since the Settings toggle was removed
+  // (2026-09-30) — but this effect is not dead code and must not be deleted
+  // with it: `showPlaceLabels: false` is set on the basemap config at
+  // style.load, so this is what turns the city and region names back ON.
+  //
+  // Mapbox paints those names into the canvas, so there is no CSS way to reach
+  // them — the style's own symbol layers have to be set. Every label layer in
+  // the Mapbox standard styles ends in "-label", and only label layers do, so
+  // that suffix is the selector rather than a hand-listed set that would rot
+  // on a style update.
   //
   // Guarded on isStyleLoaded: setLayoutProperty throws if the style has not
   // arrived, and this effect can run before the first `load`. The same code
@@ -1707,7 +1859,7 @@ export function WorldMapbox() {
       for (const layer of map.getStyle()?.layers ?? []) {
         if (layer.type !== "symbol" || !layer.id.endsWith("-label")) continue;
         try {
-          map.setLayoutProperty(layer.id, "visibility", placeLabels ? "visible" : "none");
+          map.setLayoutProperty(layer.id, "visibility", "visible");
         } catch {
           /* a layer removed between listing and setting — nothing to do */
         }
@@ -1718,7 +1870,7 @@ export function WorldMapbox() {
     return () => {
       map.off("styledata", apply);
     };
-  }, [placeLabels]);
+  }, []);
 
   // Recolour / re-dim markers when the metric, selection or sector filter change
   // — markers only, no camera move (so toggling a metric doesn't snap the view).
@@ -1734,8 +1886,15 @@ export function WorldMapbox() {
     minGrowth,
     maxAttrition,
     searchQuery,
+    roleFocus,
     skillIndex,
     heatMonth,
+    // THE MISSING PAIR. Without these the globe never rebuilt on a
+    // Supply/Demand switch — see the marketMode comment above. heatMarket
+    // rather than marketMode, so the rebuild happens at the BOTTOM of the
+    // cross-fade rather than at the top of it.
+    heatMarket,
+    demandMode,
     // The session resolves after first paint, so the initial markers are always
     // built as an end user. Without this the coverage fade would either stick
     // for an admin or never appear at all, depending on which won the race.
@@ -1745,6 +1904,11 @@ export function WorldMapbox() {
   // Hide the whole overview once fully in a local city (PerthMapbox owns it).
   const hidden = !zoomedOut && !zoomingIn;
   return (
-    <div className={`mount worldmount${hidden ? " worldmount-hidden" : ""}`} ref={containerRef} />
+    <div
+      className={`mount worldmount${hidden ? " worldmount-hidden" : ""}${
+        heatSwapping ? " heatswap" : ""
+      }`}
+      ref={containerRef}
+    />
   );
 }

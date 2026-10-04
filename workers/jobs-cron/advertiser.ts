@@ -42,6 +42,10 @@
  * lists the candidates.
  */
 import type { JobsTarget } from "../../src/employsi/data/auJobsTargets";
+// The full roster, so rule 3 recognises a global employer and not only the
+// companies this pull searches — see rosterIndex below for what that was
+// letting through.
+import { COMPANIES } from "../../src/employsi/data/companies";
 // The token comparison lives in the app so the Adzuna filter and the
 // data-quality audit that reviews its output cannot drift apart.
 import { normName as norm, sameCompanyName } from "../../src/employsi/lib/advertiserMatch";
@@ -83,16 +87,105 @@ const DENY: Record<string, string[]> = {
   "sydney-ald": ["wood group", "wood"],
 };
 
-/** Roster names, normalised, mapped to the company id that owns them. */
-let ROSTER: Map<string, string> | null = null;
-function rosterIndex(targets: JobsTarget[]): Map<string, string> {
+/**
+ * Companies whose OWN name is too generic to search permissively, so the
+ * advertiser must actually be them (the rule a subsidiary search already
+ * applies, below). The value lists the other names they genuinely advertise
+ * under.
+ *
+ * CCI is the case that forced it. The roster holds Catholic Church Insurance
+ * as "CCI", a three-letter string that turns up in other employers' ads, and
+ * the company has been in orderly run-off since May 2023 — it advertises
+ * nothing. Measured 2026-09-30: all 40 archive rows on its card (23 live)
+ * were other employers' — Brickworks 19, Avanade 11, ASC, Westpac and others.
+ * A company in run-off should show a real zero, not someone else's hiring.
+ */
+const STRICT_NAME: Record<string, string[]> = {
+  "priv-cci": ["Catholic Church Insurance"],
+};
+
+/**
+ * Trading names that rule 3 cannot reach lexically, and the roster company
+ * that actually owns them.
+ *
+ * Rule 3 asks "is this advertiser another roster company?" by comparing tokens,
+ * so it only sees a brand that STARTS like the roster name. A company trading
+ * under a different second word is invisible to it, and two were found filed
+ * under a place-name collision (measured 2026-10-02, live rows still arriving):
+ *
+ *   'Opal HealthCare'  under uni-murdoch-university (8) and
+ *                            uni-griffith-university (4) — Opal has care homes
+ *                            in Murdoch WA and Griffith NSW, and the roster
+ *                            holds the company as "Opal Aged Care"
+ *   'Regis Connect'    under rrl (4) — Regis Healthcare's home-care brand, and
+ *                            `rrl` is Regis Resources, a gold miner
+ *
+ * Each is checked, not assumed, and listed by the name the board prints. They
+ * go through the same index as the roster names, so an ad is dropped for every
+ * OTHER company and kept for the one that owns the brand.
+ */
+const TRADING_AS: Record<string, string> = {
+  "Opal HealthCare": "priv-opal-aged-care",
+  "Regis Connect": "melbourne-reg",
+};
+
+/**
+ * Roster names, normalised, mapped to the company id that owns them.
+ *
+ * THE ROSTER HERE IS THE WHOLE ROSTER, not the list of companies the pull
+ * searches. Until 2026-10-02 it was built from the Adzuna targets alone —
+ * Australia's listed, private and university lines — so rule 3 could only
+ * recognise an Australian employer. Every global company was invisible to it,
+ * and an Australian keyword search returns their ads constantly, because the
+ * search matches a PLACE as readily as an employer:
+ *
+ *   'Accor'            under 11 ids — Challenger, Melbourne/Perth/Canberra
+ *                      Airport, the AFL, Zip and others, which are the venues
+ *                      its hotels sit in or beside (90 rows)
+ *   'Costco Wholesale' under priv-perth-airport (20) — the warehouse is in the
+ *                      airport precinct
+ *   'Amazon Web Services', 'Compass Group', 'Honeywell', 'Thiess', 'AECOM',
+ *   'Newmont', 'Programmed', 'Marriott International', 'Hermès', 'BYD
+ *   Australia', 'Nutrien', 'Mader Group', 'Singtel', 'Lenovo' … the same shape
+ *   each time: a contractor, caterer or tenant on the searched company's site.
+ *
+ * lib/dataQualityFn.ts has always audited against the FULL roster, so it had
+ * been reporting these all along while the gate that could have stopped them
+ * ran on a shorter list. Measured 2026-10-02 over every Adzuna row in the
+ * archive: the full roster rejects 556 rows across 157 advertiser/company
+ * pairs, and every one of them is a third party on the searched company's
+ * premises. None is the searched company under another name.
+ *
+ * What it still cannot judge is a LOCAL brand that shares a global company's
+ * name — "Target Australia" is a Wesfarmers brand, not Target Corporation, and
+ * nothing lexical separates them. None is in the archive today; if one arrives
+ * the audit will report it and it belongs in DENY, which is what DENY is for.
+ *
+ * Indexed by first token because `sameCompanyName` requires the shorter name to
+ * be a whole-token prefix of the longer, so the first tokens must be equal: a
+ * lookup is exact and costs one Map hit instead of 1,500 comparisons a row.
+ */
+let ROSTER: Map<string, { name: string; id: string }[]> | null = null;
+function rosterIndex(targets: JobsTarget[]): Map<string, { name: string; id: string }[]> {
   if (ROSTER) return ROSTER;
-  ROSTER = new Map();
-  for (const t of targets) {
-    const n = norm(t.name);
-    // First id wins, matching how the archive resolves a dual-listed issuer.
-    if (n && !ROSTER.has(n)) ROSTER.set(n, t.id);
-  }
+  const index = new Map<string, { name: string; id: string }[]>();
+  // First id wins, matching how the archive resolves a dual-listed issuer: the
+  // search targets are added before the roster so an Australian line keeps a
+  // name its foreign twin shares.
+  const claimed = new Set<string>();
+  const add = (rawName: string, id: string) => {
+    const n = norm(rawName);
+    if (!n || claimed.has(n)) return;
+    claimed.add(n);
+    const head = n.split(" ")[0];
+    const list = index.get(head);
+    if (list) list.push({ name: n, id });
+    else index.set(head, [{ name: n, id }]);
+  };
+  for (const t of targets) add(t.name, t.id);
+  for (const c of COMPANIES) add(c.name, c.id);
+  for (const [name, id] of Object.entries(TRADING_AS)) add(name, id);
+  ROSTER = index;
   return ROSTER;
 }
 
@@ -148,11 +241,25 @@ export function checkAdvertiser(
   // Rule 3. An advertiser that IS another roster company belongs to that
   // company, not this one. Checked last because it is the most expensive.
   if (!sameCompanyName(adv, expected)) {
-    for (const [rosterName, id] of rosterIndex(allTargets)) {
-      if (id === target.id) continue;
-      if (sameCompanyName(adv, rosterName)) {
-        return { keep: false, reason: `${JSON.stringify(adv)} is roster company ${id}` };
+    for (const entry of rosterIndex(allTargets).get(a.split(" ")[0]) ?? []) {
+      if (entry.id === target.id) continue;
+      if (sameCompanyName(adv, entry.name)) {
+        return { keep: false, reason: `${JSON.stringify(adv)} is roster company ${entry.id}` };
       }
+    }
+  }
+
+  // Rule 3b. A generic own name (STRICT_NAME) is held to the same standard as
+  // a subsidiary search: the advertiser has to be the company.
+  const strict = STRICT_NAME[target.id];
+  if (strict) {
+    const isThem =
+      sameCompanyName(adv, target.name) || strict.some((alt) => sameCompanyName(adv, alt));
+    if (!isThem) {
+      return {
+        keep: false,
+        reason: `${JSON.stringify(adv)} is not ${target.name} (strict name for ${target.id})`,
+      };
     }
   }
 

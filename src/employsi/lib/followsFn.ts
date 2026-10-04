@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { roleForEmail, type Role } from "./roles";
 import { getRequest } from "@tanstack/react-start/server";
 import type { D1Like } from "./jobArchive";
-import { getAuth, authProviders, type AuthEnv } from "./auth";
+import { getAuth, authAvailable, authProviders, type AuthEnv } from "./auth";
+import { canonicalCompanyId } from "../data/mergedCompanies";
+import { effectiveRole, personaCookieSet, personaHostAllowed, type PersonaState } from "./persona";
 
 /**
  * Followed companies and skills, and the one-time claim of what was already in
@@ -35,6 +37,27 @@ function requestHeaders(): Headers {
   } catch {
     return new Headers();
   }
+}
+
+/**
+ * Is the "view as user" switch offered here, and is it on?
+ *
+ * `available` is about the DEPLOYMENT and the caller's TRUE role — an admin on
+ * a preview host. `viewingAsUser` is whether they have asked for it. Both are
+ * false everywhere else, so the control never renders on production.
+ */
+function personaFor(trueRole: Role): PersonaState {
+  let host: string | null = null;
+  try {
+    host = new URL(getRequest().url).host;
+  } catch {
+    host = null;
+  }
+  const allowed = personaHostAllowed(host) && trueRole === "admin";
+  return {
+    available: allowed,
+    viewingAsUser: allowed && personaCookieSet(requestHeaders().get("cookie")),
+  };
 }
 
 async function env(): Promise<AuthEnv | null> {
@@ -83,6 +106,16 @@ export interface SessionInfo {
    * use, but every privileged call re-checks server-side (see lib/roles.ts).
    */
   role: Role;
+  /**
+   * The admin "view as user" switch (lib/persona.ts), for previews only.
+   *
+   * `role` above is the EFFECTIVE role and already has the switch applied, so
+   * every existing consumer keeps working untouched. This block is what the
+   * account panel needs to draw the control at all — without it the client
+   * could not tell an admin viewing as a user from an actual user, and so
+   * could not offer the way back.
+   */
+  persona: PersonaState;
   /** Which sign-in buttons this deployment can actually offer. */
   providers: ("google" | "linkedin")[];
   followedIds: string[];
@@ -101,13 +134,25 @@ const SAFE_REF = /^[\w &+/'().-]{1,80}$/;
 export const getSession = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionInfo> => {
     const e = await env();
-    const providers = authProviders(e ?? undefined);
+    // Only when Better Auth can actually START: authProviders looks at the
+    // provider client id/secret alone, but /api/auth answers 503 unless
+    // BETTER_AUTH_SECRET and BETTER_AUTH_URL are set too (authAvailable). A
+    // Worker with the OAuth pair but not those — a half-configured preview —
+    // used to get buttons that failed on click, in the app's sign-in panel and
+    // on /login alike. Now both say sign-in is not set up, which is true.
+    const providers = authAvailable(e ?? undefined) ? authProviders(e ?? undefined) : [];
     const user = await currentUser(requestHeaders());
     const none = { followedIds: [], followedSkills: [], careerGoal: null };
-    if (!user) return { user: null, role: "user", providers, ...none };
-    const role = roleForEmail(e ?? undefined, user.email);
+    const noPersona: PersonaState = { available: false, viewingAsUser: false };
+    if (!user) return { user: null, role: "user", persona: noPersona, providers, ...none };
+    // The TRUE role decides whether the switch is offered; the EFFECTIVE one is
+    // what the rest of the app is told, so every existing reader of `role`
+    // behaves as though this admin really were an end user.
+    const trueRole = roleForEmail(e ?? undefined, user.email);
+    const persona = personaFor(trueRole);
+    const role = effectiveRole(trueRole, persona.viewingAsUser, true);
     const d = db(e);
-    if (!d) return { user, role, providers, ...none };
+    if (!d) return { user, role, persona, providers, ...none };
     try {
       const res = await d
         .prepare(`SELECT kind, ref FROM user_follow WHERE user_id = ?1`)
@@ -119,13 +164,25 @@ export const getSession = createServerFn({ method: "GET" }).handler(
       for (const r of res?.results ?? []) {
         const ref = String(r.ref || "");
         const kind = String(r.kind);
-        if (kind === "company") ids.push(ref);
-        else if (kind === "skill") skills.push(ref);
+        // A follow made under an id since folded into another company
+        // (data/mergedCompanies.ts) follows the company that is still drawn.
+        if (kind === "company") {
+          const id = canonicalCompanyId(ref);
+          if (!ids.includes(id)) ids.push(id);
+        } else if (kind === "skill") skills.push(ref);
         else if (kind === "goal") careerGoal = goalFromRef(ref);
       }
-      return { user, role, providers, followedIds: ids, followedSkills: skills, careerGoal };
+      return {
+        user,
+        role,
+        persona,
+        providers,
+        followedIds: ids,
+        followedSkills: skills,
+        careerGoal,
+      };
     } catch {
-      return { user, role, providers, ...none };
+      return { user, role, persona, providers, ...none };
     }
   },
 );
@@ -138,7 +195,8 @@ export const setFollow = createServerFn({ method: "POST" })
     const d = db(await env());
     if (!d) return { ok: false };
     const kind = data.kind === "skill" ? "skill" : "company";
-    const ref = String(data.ref || "").trim();
+    const raw = String(data.ref || "").trim();
+    const ref = kind === "company" ? canonicalCompanyId(raw) : raw;
     if (!SAFE_REF.test(ref)) return { ok: false };
     try {
       if (data.on) {
@@ -235,7 +293,7 @@ export const claimLocalFollows = createServerFn({ method: "POST" })
     if (!d) return { ok: false, claimed: 0 };
     const pairs: [string, string][] = [];
     for (const c of (data?.companies ?? []).slice(0, 500))
-      if (SAFE_REF.test(String(c))) pairs.push(["company", String(c)]);
+      if (SAFE_REF.test(String(c))) pairs.push(["company", canonicalCompanyId(String(c))]);
     for (const s of (data?.skills ?? []).slice(0, 500))
       if (SAFE_REF.test(String(s))) pairs.push(["skill", String(s)]);
     if (!pairs.length) return { ok: true, claimed: 0 };
@@ -250,6 +308,9 @@ export const claimLocalFollows = createServerFn({ method: "POST" })
       const stmts = [];
       for (const [kind, ref] of pairs) {
         if (have.has(`${kind}|${ref}`)) continue;
+        // Two retired ids can resolve to one company (both Charter Hall REITs
+        // are Charter Hall now), so a pair is only claimed once.
+        have.add(`${kind}|${ref}`);
         claimed++;
         stmts.push(
           d

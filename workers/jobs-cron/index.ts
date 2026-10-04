@@ -1316,14 +1316,179 @@ const PORTAL_TICKS: Record<string, number> = {
   "35 18 * * *": 84,
   "45 18 * * *": 85,
   "55 18 * * *": 86,
-  // Groups 87-88 — the nine boards added 2026-10-04 with the talent-flow
-  // roster batch. The 18 hour is full (5, 15, 25, 35, 45 and 55 all taken), so
-  // these open the 19 hour, which had no cron of any kind on it. A duplicate
-  // key here is SILENT — the later one just wins — while a duplicate in
-  // `crons` is rejected by Cloudflare at deploy, so the free minute was read
-  // off `crons` rather than assumed.
+  // Groups 87-114 — the 2026-09-29 batch; see PORTAL_GROUPS.
   "5 19 * * *": 87,
   "15 19 * * *": 88,
+  "25 19 * * *": 89,
+  "35 19 * * *": 90,
+  "45 19 * * *": 91,
+  "55 19 * * *": 92,
+  "5 20 * * *": 93,
+  "15 20 * * *": 94,
+  "25 20 * * *": 95,
+  "35 20 * * *": 96,
+  "45 20 * * *": 97,
+  "55 20 * * *": 98,
+  "5 21 * * *": 99,
+  "15 21 * * *": 100,
+  "25 21 * * *": 101,
+  "35 21 * * *": 102,
+  "45 21 * * *": 103,
+  "55 21 * * *": 104,
+  "5 22 * * *": 105,
+  "15 22 * * *": 106,
+  "25 22 * * *": 107,
+  "35 22 * * *": 108,
+  "45 22 * * *": 109,
+  "55 22 * * *": 110,
+  "5 23 * * *": 111,
+  "15 23 * * *": 112,
+  "25 23 * * *": 113,
+  "35 23 * * *": 114,
+  // Groups 115-149 — the 2026-09-29 second batch; see PORTAL_GROUPS.
+  "0 23 * * *": 115,
+  "10 23 * * *": 116,
+  "20 23 * * *": 117,
+  "30 23 * * *": 118,
+  "40 23 * * *": 119,
+  "45 23 * * *": 120,
+  "50 23 * * *": 121,
+  "55 23 * * *": 122,
+  "0 0 * * *": 123,
+  "5 0 * * *": 124,
+  "10 0 * * *": 125,
+  "15 0 * * *": 126,
+  "20 0 * * *": 127,
+  "25 0 * * *": 128,
+  "30 0 * * *": 129,
+  "35 0 * * *": 130,
+  "40 0 * * *": 131,
+  "45 0 * * *": 132,
+  "50 0 * * *": 133,
+  "55 0 * * *": 134,
+  "0 1 * * *": 135,
+  "5 1 * * *": 136,
+  "10 1 * * *": 137,
+  "15 1 * * *": 138,
+  "20 1 * * *": 139,
+  "25 1 * * *": 140,
+  "30 1 * * *": 141,
+  "35 1 * * *": 142,
+  "40 1 * * *": 143,
+  "45 1 * * *": 144,
+  "50 1 * * *": 145,
+  "55 1 * * *": 146,
+  "0 2 * * *": 147,
+  "5 2 * * *": 148,
+  "10 2 * * *": 149,
+  "15 2 * * *": 150,
+  "20 2 * * *": 151,
+  "25 2 * * *": 152,
+  "30 2 * * *": 153,
+  "35 2 * * *": 154,
+  "40 2 * * *": 155,
+  "45 2 * * *": 156,
+  "50 2 * * *": 157,
+  // The 2026-09-29 third batch (groups 158-201), in the free slots of the
+  // 03-17 UTC hours after checking every registered cron, */6 included.
+  "0 3 * * *": 158,
+  "5 3 * * *": 159,
+  "10 3 * * *": 160,
+  "15 3 * * *": 161,
+  "20 3 * * *": 162,
+  "25 3 * * *": 163,
+  "30 3 * * *": 164,
+  "35 3 * * *": 165,
+  "45 3 * * *": 166,
+  "55 3 * * *": 167,
+  "5 4 * * *": 168,
+  "15 4 * * *": 169,
+  "30 4 * * *": 170,
+  "40 4 * * *": 171,
+  "45 4 * * *": 172,
+  "50 4 * * *": 173,
+  "0 5 * * *": 174,
+  "10 5 * * *": 175,
+  "20 5 * * *": 176,
+  "30 5 * * *": 177,
+  "40 5 * * *": 178,
+  "50 5 * * *": 179,
+  "0 7 * * *": 180,
+  "10 7 * * *": 181,
+  "20 7 * * *": 182,
+  "30 7 * * *": 183,
+  "40 7 * * *": 184,
+  "50 7 * * *": 185,
+  "0 8 * * *": 186,
+  "10 8 * * *": 187,
+  "20 8 * * *": 188,
+  "25 8 * * *": 189,
+  "30 8 * * *": 190,
+  "40 8 * * *": 191,
+  "50 8 * * *": 192,
+  "0 9 * * *": 193,
+  "10 9 * * *": 194,
+  "20 9 * * *": 195,
+  "30 9 * * *": 196,
+  "40 9 * * *": 197,
+  "50 9 * * *": 198,
+  "0 10 * * *": 199,
+  "10 10 * * *": 200,
+  "20 10 * * *": 201,
+  // The 2026-09-29 fourth batch (groups 202-208), packed — see PORTAL_GROUPS.
+  "30 10 * * *": 202,
+  "40 10 * * *": 203,
+  "50 10 * * *": 204,
+  "0 11 * * *": 205,
+  "10 11 * * *": 206,
+  "20 11 * * *": 207,
+  "30 11 * * *": 208,
+  // The 2026-09-29 fifth batch (groups 209-214), packed — see PORTAL_GROUPS.
+  "40 11 * * *": 209,
+  "50 11 * * *": 210,
+  "0 13 * * *": 211,
+  "10 13 * * *": 212,
+  "20 13 * * *": 213,
+  "30 13 * * *": 214,
+  // The 2026-09-30 sixth batch (groups 215-217), packed — see PORTAL_GROUPS.
+  "40 13 * * *": 215,
+  "50 13 * * *": 216,
+  "0 14 * * *": 217,
+  // The 2026-09-30 seventh batch (groups 218-220), packed — see PORTAL_GROUPS.
+  "10 14 * * *": 218,
+  "20 14 * * *": 219,
+  "30 14 * * *": 220,
+  // The 2026-09-30 eighth batch (groups 221-224), packed — see PORTAL_GROUPS.
+  "40 14 * * *": 221,
+  "50 14 * * *": 222,
+  "0 15 * * *": 223,
+  "10 15 * * *": 224,
+  // The 2026-09-30 ninth batch (groups 225-226), packed — see PORTAL_GROUPS.
+  "20 15 * * *": 225,
+  "30 15 * * *": 226,
+  // The 2026-09-30 tenth batch (groups 227-229) — see PORTAL_GROUPS.
+  "40 15 * * *": 227,
+  "50 15 * * *": 228,
+  "0 16 * * *": 229,
+  // Batch 11 (group 230), Safran and L'Oréal — see PORTAL_GROUPS.
+  "10 16 * * *": 230,
+  // Batch 13 (group 231) — see PORTAL_GROUPS.
+  "20 16 * * *": 231,
+  // Groups 232-233 — the nine boards added 2026-10-04 with the talent-flow
+  // roster batch. They were written as 87-88 on their own branch and
+  // RENUMBERED on the merge: main had taken 87 through 231, and both the tick
+  // "5 19 * * *" and the group index. A duplicate key here is SILENT — the
+  // later one just wins — so a collision would have left two of main's groups
+  // never fetching, with nothing to show for it.
+  //
+  // :30 and :40 of the 16 hour because the 5/15/25/35/45/55 convention this
+  // map runs on is now FULL: of 144 such slots in the day only "55 2 * * *"
+  // was unclaimed, read off `crons` rather than assumed. These two sit
+  // directly after batch 13's :20 and collide with no shard run (processShard
+  // fires at :00/:10/:20/:25/:35/:40/:42 of hours divisible by 6, and 16 is
+  // not one).
+  "30 16 * * *": 232,
+  "40 16 * * *": 233,
 };
 
 const NEWS_TICKS: Record<string, number> = {
@@ -1413,6 +1578,81 @@ async function processCareerPathways(
   return out;
 }
 
+// ---- live skill trends cache ---------------------------------------------
+//
+// The "skills in demand" movers (src/employsi/lib/skillTrendsBuild.ts), the
+// same computation the app's getLiveSkillTrends runs, pre-computed once a
+// night for the WORLDWIDE, NON-ADMIN answer — the one the public landing
+// page's ticker and hero callouts ask for — and written to the KV key the app
+// reads first. Without it the first visitor to a cold isolate waited on a
+// 60-day archive scan: measured 2026-09-29 on employsi-site-preview, hero
+// callouts 8–13 s after the banner, 5–10 s of it this query.
+//
+// 00:12 UTC, AFTER THE DAY HAS LANDED AND AFTER MIDNIGHT. Every window ends on
+// the last COVERED day, never today, so the answer only changes when UTC
+// midnight moves "yesterday" — run just after it, and the entry is right for
+// the whole day. (23:52, the career-pathways minute, would compute the answer
+// for a day that ends eight minutes later.) The GitHub Actions feeds finish by
+// 23:30. "12 " is not a gov minute prefix (5, 15, 30, 45, 50), and the exact
+// match below runs before those anyway.
+//
+// Regional and admin answers are NOT pre-computed: the app still computes and
+// caches those for an hour on first request, as before.
+const TRENDS_CACHE_CRON = "12 0 * * *";
+
+async function processTrendsCache(
+  env: Env,
+  opts: { write?: boolean } = {},
+): Promise<Record<string, unknown>> {
+  const db = env.JOBS_ARCHIVE;
+  if (!db) return { skipped: "no JOBS_ARCHIVE binding" };
+  // Lazy for the same reason as the career-pathways build: the module pulls in
+  // the company roster (via markets.ts), which the other ticks never need.
+  const { buildLiveSkillTrends, trendsKvKey, TREND_WINDOWS, TRENDS_FRESH_MS } =
+    await import("../../src/employsi/lib/skillTrendsBuild");
+  const t0 = Date.now();
+  let rows = 0;
+  const value = await buildLiveSkillTrends(
+    async (sql, params) => {
+      const r = (
+        await db
+          .prepare(sql)
+          .bind(...params)
+          .all()
+      ).results as Record<string, string | number | null>[];
+      rows = r.length;
+      return r;
+    },
+    // Worldwide, as a visitor sees it — never the admin roll-up, which can
+    // include markets not yet released to the public.
+    { region: "", seesAll: false },
+  );
+  const counts = Object.fromEntries(TREND_WINDOWS.map((w) => [w.key, value[w.key].length]));
+  // An all-empty answer is not written: far likelier a failed read than a
+  // market with no movers, and yesterday's entry is better than a blank strip.
+  const empty = TREND_WINDOWS.every((w) => !value[w.key].length);
+  const write = (opts.write ?? true) && !empty;
+  const key = trendsKvKey(false, "");
+  if (write) {
+    await env.OPEN_ROLES_HISTORY.put(key, JSON.stringify({ at: Date.now(), src: "cron", value }), {
+      // Only garbage collection; the entry's `at` + `src` decide freshness.
+      expirationTtl: TRENDS_FRESH_MS.cron / 1000,
+    });
+  }
+  const out = {
+    key,
+    rows,
+    counts,
+    top24h: value["24h"].slice(0, 2).map((r) => `${r.name} ${r.v}`),
+    // Date.now() only advances on I/O inside a Worker: D1 + KV time, not CPU.
+    ioMs: Date.now() - t0,
+    written: write,
+  };
+  if (empty) console.error("trends: NOT written, every window empty", out);
+  else console.log("trends:", out);
+  return out;
+}
+
 export default {
   // Scheduled: the WA-gov scrape runs on its own cron minute (:30) so it gets a
   // clean subrequest budget for ~40 page fetches; every other tick advances the
@@ -1432,13 +1672,26 @@ export default {
       // cancelled run writes nothing. (The shard's "waitUntil() tasks did not
       // complete" cancellations above are that 30 s.)
       await processCareerPathways(env);
+    } else if (event.cron === TRENDS_CACHE_CRON) {
+      // AWAITED for the same reason as the career pathways: the 60-day read
+      // took 5–10 s from the app, and waitUntil would give it only 30 s.
+      await processTrendsCache(env);
     } else if (event.cron && PORTAL_TICKS[event.cron] !== undefined) {
-      ctx.waitUntil(
-        processPortals(
-          env,
-          (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
-          PORTAL_TICKS[event.cron],
-        ).then(() => undefined),
+      // AWAITED since 2026-09-29, like the two branches above, and for the
+      // same reason: waitUntil gives a portal group 30 s, which is why every
+      // board over ~20 s was split into page windows with a tick each — and
+      // why the ticks ran out. 202 portal groups had taken 220 of the
+      // account's 250 cron triggers when batch 4 (scraper-gap ranks 121-160)
+      // needed ~40 more. An awaited scheduled handler gets the cron's 15
+      // minutes of wall clock, so one tick can walk a group of several boards
+      // in turn. Every group written before this fits 30 s and is unaffected;
+      // the groups packed for batch 4 onward depend on it. CPU time is a
+      // separate limit that awaiting does not raise — a packed group is sized
+      // by its measured CPU, not only its wall clock (see PORTAL_GROUPS).
+      await processPortals(
+        env,
+        (rows, day) => archiveJobs(env.JOBS_ARCHIVE, rows, day),
+        PORTAL_TICKS[event.cron],
       );
     } else if (event.cron && NEWS_TICKS[event.cron] !== undefined) {
       // Every company every night, split over four ticks ten minutes apart so
@@ -1497,6 +1750,24 @@ export default {
       }
       try {
         const out = await processCareerPathways(env, {
+          write: url.searchParams.get("dry") !== "1",
+        });
+        return Response.json({ ok: true, ...out });
+      } catch (e) {
+        return Response.json(
+          { ok: false, error: (e as Error)?.message || String(e) },
+          { status: 500 },
+        );
+      }
+    }
+    // Build the trends cache on demand. ?dry=1 computes and reports without
+    // writing KV — the way to check the read still fits before trusting it.
+    if (url.pathname === "/run-trends") {
+      if (url.searchParams.get("token") !== env.CRON_TOKEN) {
+        return new Response("forbidden", { status: 403 });
+      }
+      try {
+        const out = await processTrendsCache(env, {
           write: url.searchParams.get("dry") !== "1",
         });
         return Response.json({ ok: true, ...out });

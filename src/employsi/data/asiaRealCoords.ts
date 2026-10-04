@@ -2,7 +2,7 @@
  * Hand-geocoded head offices for the Singapore and Hong Kong rosters.
  *
  * Every other pin in these two cities is a phyllotaxis position fanned around
- * a CBD anchor — deliberately approximate, and visibly so. These forty-four
+ * a CBD anchor — deliberately approximate, and visibly so. These forty-one
  * are not: each is a published street address, geocoded and accepted only when
  * what came back named the road the address named. That is the same gate
  * scripts/geocode-au.py uses, and for the same reason it gives: a near-miss
@@ -10,7 +10,12 @@
  *
  * The file was built in two passes with different sources, and each pass has
  * its own section below: twelve from company websites, then thirty-two Hong
- * Kong head offices from HKEX filings. Hong Kong is now 36 of 38 real.
+ * Kong head offices from HKEX filings. Hong Kong was 36 of 38 real, and is
+ * 33 of 35 since 2026-09-30: Tencent, Xiaomi and China Life left its roster
+ * for the mainland head offices they are plotted at (Shenzhen, Beijing,
+ * Beijing — see data/mergedCompanies.ts), and their three filed Hong Kong
+ * addresses went with them. The counts in the method notes below are the
+ * passes as they were run.
  *
  * ONLY ADDRESSES WERE EVER LOOKED UP. Searching Nominatim for a company NAME
  * was measured in the Australian pass at 35% matched, with "Macquarie Group"
@@ -133,7 +138,6 @@ export const ASIA_REAL_COORDS: Record<string, [number, number]> = {
   "hongkong-00388": [114.15816, 22.28385], // HKEX — 8/F Two Exchange Square, 8 Connaught Place, Central · registered office
   "hongkong-00669": [114.13282, 22.3621], // Techtronic Industries — 29/F Tower 2, Kowloon Commerce Centre, 51 Kwai Cheong Road, Kwai Chung · registered office
   "hongkong-00688": [114.16799, 22.27694], // China Overseas Land — 10/F Three Pacific Place, 1 Queen's Road East · Registered Office
-  "hongkong-00700": [114.16799, 22.27694], // Tencent — 29/F Three Pacific Place, 1 Queen's Road East, Wanchai · Principal Place of Business in Hong Kong
   "hongkong-00762": [114.15439, 22.28487], // China Unicom — 75/F The Center, 99 Queen's Road Central · Registered Office
   "hongkong-00883": [114.16149, 22.27906], // CNOOC — 65/F Bank of China Tower, 1 Garden Road · Registered Office
   "hongkong-00941": [114.15439, 22.28487], // China Mobile — 60/F The Center, 99 Queen's Road Central · Registered Office
@@ -141,13 +145,10 @@ export const ASIA_REAL_COORDS: Record<string, [number, number]> = {
   "hongkong-01038": [114.16008, 22.27922], // CK Infrastructure — 12/F Cheung Kong Center, 2 Queen's Road Central · Principal Place of Business
   "hongkong-01113": [114.16008, 22.27922], // CK Asset — 7/F Cheung Kong Center, 2 Queen's Road Central · Principal Place of Business
   "hongkong-01299": [114.16181, 22.28131], // AIA Group — 35/F AIA Central, 1 Connaught Road Central · Registered Office
-  "hongkong-01810": [114.1846, 22.27845], // Xiaomi — Room 1928, Lee Garden One, 33 Hysan Avenue, Causeway Bay · Principal Place of Business in Hong Kong
   "hongkong-01928": [114.1846, 22.27845], // Sands China — Room 1916, Lee Garden One, 33 Hysan Avenue, Causeway Bay · Principal Place of Business in Hong Kong
   "hongkong-01929": [114.15727, 22.28072], // Chow Tai Fook Jewellery — 33/F New World Tower, 16-18 Queen's Road Central · registered office
   "hongkong-02020": [114.21021, 22.31968], // Anta Sports — 16/F Manhattan Place, 23 Wang Tai Road, Kowloon Bay · Report of the Directors, Principal Place of Business
   "hongkong-02388": [114.16149, 22.27906], // BOC Hong Kong — 53/F Bank of China Tower, 1 Garden Road · Registered Office
-  "hongkong-02628": [114.18706, 22.30082], // China Life — 16/F Tower A, China Life Centre, 18 Hung Luen Road, Hung Hom · Hong Kong office address
-  "hongkong-03690": [114.1846, 22.27845], // Meituan — Room 1912, Lee Garden One, 33 Hysan Avenue, Causeway Bay · Principal Place of Business in Hong Kong
   "hongkong-03988": [114.16149, 22.27906], // Bank of China — Bank of China Tower, 1 Garden Road, Central · Place of Business in Hong Kong SAR
   "hongkong-06862": [114.17353, 22.27479], // Haidilao International — 40/F Dah Sing Financial Centre, 248 Queen's Road East, Wanchai · Principal Place of Business in Hong Kong
   "hongkong-09988": [114.18257, 22.27821], // Alibaba Group — 26/F Tower One, Times Square, 1 Matheson Street, Causeway Bay · business address of directors and executive officers

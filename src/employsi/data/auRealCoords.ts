@@ -87,7 +87,6 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "brisbane-dtl": [152.995711, -27.483162], // 555 Coronation Drive, Toowong QLD 4066
   "brisbane-elv": [153.029841, -27.469195], // Level 28, 10 Eagle Street, Brisbane QLD 4000
   "brisbane-nsr": [153.030409, -27.468234], // Level 23, 71 Eagle Street, Brisbane QLD 4000
-  "brisbane-smr": [153.029651, -27.468519], // Level 32, 12 Creek Street, Brisbane QLD 4000
   "brisbane-sul": [152.984644, -27.286832], // 751 Gympie Road, Lawnton QLD 4501
   "brisbane-tne": [153.038124, -27.4525], // 540 Wickham Street, Fortitude Valley QLD 4006
   "brisbane-vgn": [153.016263, -27.470922], // 275 Grey Street, South Brisbane QLD 4101
@@ -516,9 +515,7 @@ export const AU_REAL_COORDS: Record<string, [number, number]> = {
   "sydney-bga": [149.823064, -36.666859], // 23-45 Ridge Street, Bega NSW 2550
   "sydney-brg": [151.19614, -33.909712], // Ground Floor, Suite 2, 170-180 Bourke Road, Alexandria NSW 2015
   "sydney-bsl": [144.957842, -37.81548], // Level 24, 181 William Street, Melbourne VIC 3000
-  "sydney-clw": [151.207775, -33.867532], // Level 20, No.1 Martin Place, Sydney NSW 2000
   "sydney-coh": [151.118039, -33.777133], // 1 University Avenue, Macquarie University NSW 2109
-  "sydney-cqr": [151.207775, -33.867532], // Level 20, No.1 Martin Place, Sydney NSW 2000
   "sydney-dro": [151.211903, -33.86313], // 126 Phillip Street, Sydney NSW 2000
   "sydney-edv": [151.210557, -33.886178], // 26 Waterloo Street, Surry Hills NSW 2010
   "sydney-evt": [151.208847, -33.880595], // Level 20, 227 Elizabeth Street, Sydney NSW 2000

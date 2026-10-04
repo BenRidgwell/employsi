@@ -56,6 +56,8 @@ bun run scripts/check-analyst-scope.ts     # every analyst scope excludes the cl
 bun run scripts/check-skill-trends.ts      # the card's per-skill/per-area reconstruction
 bun run scripts/check-career-ladder.ts     # every title lands on the right rung
 bun run scripts/check-career-card.ts       # the career card's series, trend and model
+bun run scripts/check-onet-roles.ts        # every career rung's O*NET occupation is a reviewed decision
+bun run scripts/check-analyst-llm.ts        # the AI analyst only says figures a tool returned
 python scripts/test_skills_taxonomy.py
 python scripts/test_jobs_extract.py
 python scripts/test_rosters.py             # roster parsers still read their data files
@@ -124,6 +126,7 @@ Workers on the account, verified 2026-08-12:
 | --- | --- |
 | `benridgwell-globe-gazer-hr` | **PRODUCTION.** Carries `employsi.com.au` |
 | `employsi-preview` | Preview of the same app — deploy here to be looked at |
+| `employsi-site-preview` | Preview for the MARKETING SITE (`/`, `/product`, `/login`), added 2026-09-28 so website review does not redeploy over app review. Deployed by `deploy-preview.yml` with target `site` |
 | `benridgwell-globe-gazer-hr-mobile` | Mobile build |
 | `benridgwell-globe-gazer-hr-mapbox-trial` | Trial, last touched 2026-07-15 |
 | `employsi-jobs-cron` | The scraper. Separate config, separate deploy |
@@ -139,8 +142,11 @@ and the real `OPEN_ROLES_HISTORY` KV. Reads are the point — the preview shows 
 data — but nothing is isolated, so a change that writes needs thinking about before
 it runs there.
 
-**THE APP IS AT `/app`. `/` IS THE WAITLIST, ON EVERY HOST.** `src/routes/index.tsx`
-is the marketing page; `src/routes/app.tsx` is the product. Send a reviewer to
+**THE APP IS AT `/app`. `/` IS THE MARKETING LANDING PAGE, ON EVERY HOST.**
+`src/routes/index.tsx` is the landing page (with `/product` and `/login` beside it,
+all under `src/site/`); `src/routes/app.tsx` is the product. Until 2026-09-28 `/`
+was a waitlist page; the waitlist form now lives on `/login`, and shows there only
+where sign-in is gated (see below). Send a reviewer to
 `…workers.dev/app` — a link to `/` shows them the waitlist and nothing you built.
 
 This is easy to get backwards, and this file said the opposite until 2026-08-12.
@@ -149,11 +155,21 @@ This is easy to get backwards, and this file said the opposite until 2026-08-12.
 is not: the frame only wraps the app when the hostname matches `-mobile`, and
 the app itself is `lazy(() => import("@/employsi/App"))`, so it loads after
 hydration and never shows up in the SSR HTML. Read the `<title>` instead —
-"Employsi map — the live labour-market globe" is the app, "Employsi — Exploring
-the world of work" is the waitlist.
+exactly "Employsi" is the app (it was "Employsi map — the live labour-market
+globe" until 2026-10-03, and older notes here quote that), "employsi — Explore
+the world of work" is the landing page.
 
-The apex serves the waitlist ONLY: `employsi.com.au/app` 302s away (see
-`APP_ONLY_PATHS` in `src/server.ts`). So a production deploy of app work is
+**THE APP WAS RELEASED ON THE APEX ON 2026-10-03.** Until then the apex served
+the marketing pages ONLY: `employsi.com.au/app` and `/api/auth` 302'd away.
+`APP_ONLY_PATHS` in `src/lib/siteGate.ts` now holds only `/mobile-frame` (a
+build-time preview, still closed on the public domain), so `/app` and sign-in
+work on employsi.com.au behind the same sign-in + subscription gate as every
+other host. Everything below about the gated apex describes how it worked
+before, and how it works again if `/app` is put back in that list.
+The apex used to serve the marketing pages ONLY (see `APP_ONLY_PATHS`, which
+`src/server.ts` imports). `/login` reads the same module: on a gated host it shows the waitlist
+form instead of OAuth buttons that would 302. Releasing the app is emptying
+`APP_ONLY_PATHS`; the login page switches to real sign-in on the same deploy. So a production deploy of app work is
 reachable at `benridgwell-globe-gazer-hr.employsi.workers.dev/app` and nowhere
 else — checking `employsi.com.au` returns 200 proves the waitlist is up, not
 that the app deployed.
@@ -262,6 +278,31 @@ Until both halves of a provider exist, `authAvailable()` is false and the app
 says "Sign-in is not configured on this deployment" rather than offering a
 button that 500s. That message is the expected state of a half-set-up provider,
 not a bug to chase.
+
+**`employsi-site-preview` needs its own Better Auth setup**, because secrets
+are per-Worker and it was created with none. Measured 2026-09-29: its
+`/api/auth/get-session` answered 503 "Sign-in is not configured on this
+deployment." while `employsi-preview`'s answered 200. The code is the same
+Better Auth either way (`/login` uses `lib/authClient.ts`, like the app); what
+it needs is the six secrets listed at the top of `lib/auth.ts`, with
+`BETTER_AUTH_URL=https://employsi-site-preview.employsi.workers.dev`, and its
+two callback URLs registered with Google and LinkedIn:
+
+```
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/google
+https://employsi-site-preview.employsi.workers.dev/api/auth/callback/linkedin
+```
+
+**SET WORKER CONFIG AS SECRETS, NEVER AS PLAIN "VARIABLES".** A
+`wrangler deploy` keeps secrets but REPLACES plain-text variables with the ones
+the config declares — and this repo's config declares none, so every deploy
+deletes any variable added in the dashboard. Measured 2026-09-29 on
+`employsi-site-preview`: `STRIPE_PRICE_ID` had been added as a Variable (it is
+not sensitive, so that looked right), the next preview deploy removed it, and
+`/login` switched to "Subscriptions aren't set up on this deployment" while the
+Stripe key and webhook secret — both Secrets — carried on working. Re-added as
+a Secret, it survives. Non-sensitive values (`BETTER_AUTH_URL`, client ids,
+price ids) go in as Secrets too, for exactly this reason.
 
 **A SECRET IS NOT LIVE UNTIL ITS VERSION IS DEPLOYED**, and on this Worker
 `wrangler secret put` does NOT deploy it. It uploads a new version and leaves
@@ -525,6 +566,45 @@ deployed employsi-preview successfully at 12:37 the same day (version
 `1e83de7c`), verified afterwards: `/app` served the app's title, production's
 version ids were byte-identical before and after.
 
+**PRODUCTION HAS A WORKFLOW SINCE 2026-09-29: `.github/workflows/deploy-production.yml`.**
+Manual dispatch only, from `main` only, and it deploys nothing unless `confirm` is
+typed as `employsi.com.au`. It exists because the sandbox's Cloudflare token cannot
+see Workers at all ("No access to the specified resource" on every script), while
+the repo's Actions secrets carry both tokens. It records the serving version first
+(and refuses without one), deploys with `--name benridgwell-globe-gazer-hr` spelled
+out, then asserts the apex serves the landing page, `/product` and `/login` answer
+200, apex sign-in answers 200, `/mobile-frame` still 302s off the apex, and `/app`
+on both the apex and workers.dev redirects an anonymous request to `/login`
+(that redirect is the proof the app deployed AND its gate is live). The same "asked for in this conversation" rule applies to dispatching it.
+**Re-closing the app on the apex turns its checks red on purpose** — change the
+checks in the same PR that puts `/app` back in `APP_ONLY_PATHS`.
+
+**PRODUCTION MIRRORS A PREVIEW (since 2026-10-03).** The release flow is: deploy
+a preview (`deploy-preview.yml`), look at it, then dispatch `deploy-production.yml`
+with `from` = `app-preview` (default) or `site-preview`. Production then deploys
+**the exact commit that preview is serving** — not whatever `main` is by then.
+
+- Every preview deploy stamps its Worker version with `--message "commit <sha>"`
+  (passed through `npm run deploy:* -- …`, which lands on the wrangler command at
+  the end of the script) and fails if the stamp is missing afterwards.
+- Production reads that stamp from Cloudflare (`deployments list` → newest
+  version → `versions view`), refuses a version without one (a hand deploy, a
+  secret-only version: redeploy the preview through its workflow), and refuses a
+  commit that is not on `main` — a branch preview reaches production only once
+  merged.
+- The rollback point, live checks and summary are unchanged; the summary also
+  names the preview version and commit that were mirrored.
+
+**THE VERSION IN SETTINGS IS SET BY THE RELEASE, NOT BY HAND.** `version.ts`
+reads `VITE_APP_VERSION`, which the production workflow works out from the
+`v*` tags: `maintenance` reuses the newest tag's number, `significant` takes the
+next (`1.0.0-beta.3` → `beta.4`; after the betas a minor bump, `1.0.0` → `1.1.0`)
+and tags it once the live checks pass, and the optional `version` input sets an
+explicit number for a significant release — dropping "beta" for `1.0.0` is the
+case a counter cannot decide. Previews show the newest tag plus "(preview)"; a
+build with no number given shows "dev". Do not hard-code a number in
+`version.ts` again: the workflow's number would be silently ignored.
+
 Deploys, when actually asked for:
 
 ```bash
@@ -608,7 +688,46 @@ ON CONFLICT(job_key) DO UPDATE SET last_seen = ?, seen_count = seen_count + 1
 ```
 
 So the archive is append-only and self-deduping; "currently advertised" is
-`last_seen >= date('now','-1 day')`, and taken-down ads age out on their own.
+`last_seen` within the grace period of the FEED that wrote the row, and taken-down
+ads age out on their own.
+
+**THAT GRACE IS PER SOURCE SINCE 2026-10-03, AND THIS FILE SAID A FLAT
+`last_seen >= date('now','-1 day')` BEFORE IT.** One day is right for a nightly
+feed, because yesterday's sighting is the most recent one there can be. It is
+simply wrong for a weekly one: `linkedin-archive.yml` runs Mondays, so from
+Tuesday every LinkedIn-only ad read as closed while it was still up — six days
+in seven. Found 2026-10-03 on Edith Cowan University's Chief People Officer ad,
+which was in the archive, correctly mapped to Human Resources and in Perth, and
+invisible in every live figure in the app.
+
+`SOURCE_LIVE_DAYS` in `src/employsi/lib/jobArchive.ts` is the one definition —
+`{ linkedin: 8 }`, everything else `DEFAULT_LIVE_DAYS` = 1 — and every surface
+reads it from there rather than spelling the window out:
+
+| | |
+| --- | --- |
+| `LIVE_NOW_SQL` | currently advertised, binds nothing |
+| `LIVE_ON_DAY_SQL` / `liveOnDaySql(n)` | open on a bound day (`?` or `?n`) |
+| `liveSinceDaySql(n)` | just the trailing cut, for callers already scoped |
+| `LIVE_NOW_ON_DAY_SQL` | open on yesterday, binds nothing |
+| `isLiveOn(lastSeen, source, day)` | the same test for rows folded in JS |
+
+Every one of them is byte-identical to the old behaviour for a nightly feed, so
+the change moves LinkedIn's ads and nothing else: archive-wide live rows went
+396,580 → 404,171 (+1.9%), measured on production the day it landed.
+
+**ADDING A WEEKLY OR FORTNIGHTLY FEED MEANS ADDING IT TO THAT MAP**, or its ads
+flicker in and out of every live count, and its skills draw a sawtooth in the
+daily series — `skillTrendsBuild.ts` extends each ad's trailing edge by the same
+allowance for exactly that reason. The cost, which is real and stated in the
+code: an ad taken down the day after a weekly run keeps counting until the next
+one. The archive cannot tell that from one still open, and the error it replaces
+was much larger and ran the other way.
+
+It is deliberately TIGHTER than `scraper-health.py`'s staleness allowance for the
+same source (10 days for LinkedIn). Those answer different questions: "has this
+feed stopped working" tolerates one late Monday, where "is this ad still up"
+should expire as soon as a run that would have refreshed it has not happened.
 
 **IT DEDUPES ACROSS RUNS, NOT ACROSS BOARDS, and this file said the opposite until
 2026-09-24.** `source` is the FIRST field of the key, so the same role on SEEK and on
@@ -693,6 +812,136 @@ completed in under a second through 2026-09-24, which is far too fast for those 
 the evidence floor and the stale-`Principal` check were not running in CI, and two real
 drifts sat unreported until they were run by hand. A `·` in that output is not a pass.
 
+### The conversational analyst (Claude)
+
+"Ask an analyst" runs through Claude Haiku 4.5 when the Worker has an
+`ANTHROPIC_API_KEY` secret, and through the rule-based router exactly as before
+when it does not. `lib/analystLlmFn.ts` holds the model call and every cap;
+`lib/analystLlmClient.ts` runs the tools **in the browser**, through the same
+`resolveTurn` → `answerQuestion` path a typed question takes, because that path
+reads national-series data files the Worker bundle does not carry.
+
+- **The model never supplies a figure.** `untraced()` compares every number in
+  a reply with the tool results; a reply with a figure from nowhere is replaced
+  by the tool's own answer. `check-analyst-llm.ts` asserts it.
+- **Cost is capped server-side**: Haiku, `max_tokens` 700, two tool rounds per
+  question, and daily call allowances per visitor (hashed IP) and per site,
+  counted atomically in the `llm_usage` D1 table (created lazily). Over a cap,
+  the pane falls back to the free router. The Anthropic Console spend limit is
+  the backstop, and the only one code cannot get wrong.
+- The secret is per-Worker: setting it on `employsi-preview` does not turn it on
+  in production. Mind the secret-is-not-live trap above.
+
+### O*NET tasks and tools on the career card
+
+Each career rung shows the core tasks and in-demand software of an O*NET
+occupation (`src/employsi/data/onetRoles.ts`, from `scripts/gen-onet-roles.py`
+over the O*NET text database — download link in the script). Three rules:
+
+- **The reviewed `TABLE` in the generator IS the mapping.** The title matcher
+  only suggests (`--review`), and a third of what it found was wrong — "chief
+  people officer" matched Probation Officers. A rung the table has not decided
+  is left out, and `check-onet-roles.ts` fails until someone decides it, so a
+  regenerated `careerPathways.ts` with a new rung needs a table entry.
+- **None is an answer.** A rung whose titles span occupations (allied health
+  generalist) or have no US counterpart (workforce planning) maps to nothing,
+  and the card says so rather than borrowing the nearest-sounding occupation.
+- **It is described, not measured.** The card names the US occupation, links
+  to it and says it is not from our ads. Only O*NET's per-occupation
+  "In Demand" software is shown; "Hot Technology" is economy-wide and says
+  nothing about the job. The CC BY 4.0 credit is a licence condition.
+- **"Other directions" are O*NET's links, not observed moves.** A rung's
+  cross-ladder moves (`careerMoves` in `careerCard.ts`) are rungs whose
+  occupations O*NET lists as related (its Primary tiers). The archive holds ads,
+  not careers, so the card shows skill overlap and shared employers beside each
+  and never says anyone made the move. O*NET's link is necessary, not
+  sufficient: a move also needs a shared FIELD skill or `MOVE_MIN_SHARED` (2)
+  companies hiring both, which is what keeps Director of Social Work off the
+  HR executives' lists. Skills on over 30% of rungs ("Leadership &
+  Coordination") mark seniority, not a field, and do not count as shared.
+
+### Subscriptions (Stripe Managed Payments)
+
+"Create account" on `/login` is two steps: sign up through Better Auth, then a
+Payment step that sends the visitor to a hosted Stripe Checkout with
+`managed_payments[enabled]=true` (Stripe is merchant of record and handles
+tax). `lib/billingFn.ts` creates the session and reads the offer;
+`lib/billing.ts` handles `POST /api/billing/webhook` (mounted in `server.ts`,
+raw body, signature-verified) and keeps `billing_subscription` in D1, created
+lazily like `llm_usage`. `lib/stripeApi.ts` is a fetch client pinned to the
+blueprint's `Stripe-Version: 2026-02-25.preview` — there is no stripe SDK.
+
+- **The price on the page is read from Stripe** (`STRIPE_PRICE_ID`), never
+  typed in. Create it with `scripts/stripe-create-subscription-product.ts`
+  (once with a test key, once live — separate ids).
+- **Per-Worker secrets**: `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`,
+  `STRIPE_WEBHOOK_SECRET`. Without the first two the Payment step says payments
+  are not set up; without the third the webhook answers 503 and Stripe retries.
+- **Previews write the production D1**, so use TEST keys on them — and
+  **test and live subscriptions are separate rows** (`billing_subscriptions`,
+  keyed `user_id, livemode`). Each Worker reads only the mode of its own
+  `STRIPE_SECRET_KEY` (`stripeMode`), and webhook events in the other mode are
+  dropped. Until 2026-10-03 there was one row per user with no mode, so a
+  Stripe test-card payment on a public preview opened production's paid app.
+  The old `billing_subscription` table is left in place, unread; its one row
+  (the owner's test subscription) was copied across as test mode.
+- **Every response carries browser security headers** (`SECURITY_HEADERS` in
+  `server.ts`). Framing is `'self'`, not `'none'`, because the mobile preview
+  and the landing Showcase frame our own pages. There is no `script-src` yet:
+  Mapbox's blob workers and TanStack's inline hydration need listing, and a
+  wrong policy blanks the map, so it wants a report-only rollout first.
+- **`/app` HAS TWO GATES, configured independently.** The rule is `accessFor`
+  in `appAccess.ts`; the page applies it through `getAppAccess` (the route's
+  `beforeLoad`) and **the paid data applies the same rule** through the
+  `subscriberOnly` middleware on 32 server functions. Until 2026-10-03 only the
+  page was gated: an anonymous request to production returned the full skill
+  index (180 KB). Only `getLandingStats` and `getLiveSkillTrends` stay public,
+  because the marketing pages show them; a NEW data server function the app
+  calls needs `.middleware([subscriberOnly])` or it reopens the hole.
+  1. **Signed in — always.** Enforced wherever Better Auth is configured
+     (`authAvailable`). Signed-out visitors go to `/login`.
+  2. **Subscribed — where Stripe is configured.** Signed-in visitors without an
+     `active`/`trialing` subscription go to the Payment step. Skipped on a Worker
+     without Stripe keys; `ADMIN_EMAILS` always pass this one (not gate 1 —
+     nobody is an admin until they are signed in).
+- **The success URL carries `session_id`**, and the paywall confirms that
+  Checkout Session with Stripe directly (`recordCheckoutSession`), because the
+  customer arrives before the webhook and would otherwise be bounced back to
+  pay again.
+
+**THIS FILE SAID "A WORKER WITHOUT STRIPE KEYS STAYS OPEN" UNTIL 2026-09-30, AND
+IT WAS TRUE OF SIGN-IN TOO.** There was one gate, not two: the handler returned
+`allowed` outright when `paymentsConfigured` was false, so requiring a session was
+a side effect of having set up BILLING. Both live Workers had no Stripe keys, so
+**the app was fully usable signed out** — `employsi-preview` and production's
+workers.dev host included. Asking for sign-in and asking for money are now asked
+separately, and the app is signed-in-only on every deployment whether or not it
+can take money yet.
+
+**THE APP BEHIND THE GATE NO LONGER HAS A SIGNED-OUT STATE.** The in-app sign-in
+prompts were retired in the same change — the Follow/alerts/career-goal toasts,
+the feedback board's "Have a say in what gets built" panel, the account panels'
+Create account / Sign in control, and `Toast`'s hardcoded "Sign in" button. So
+the gate is not cosmetic: it is what makes those components' assumption true, and
+**re-opening the app to anonymous visitors means putting the prompts back**, not
+just editing `getAppAccess`. `components/SignInOptions.tsx` is deliberately kept
+and deliberately unimported for that reason; its header says so.
+
+The thing that makes this fiddly is that **`account === null` does NOT mean
+signed out** — the session is an httpOnly cookie read by a client query, so it
+is null for the first few hundred milliseconds of every load, for a signed-in
+user. Deleting the `!account` branches on their own would have flashed
+signed-out chrome on boot and crashed on `account.name`. The store carries
+`sessionKnown` to separate the two, `IntroLoader` waits on it (inside its
+existing 3800ms floor, so it costs nothing), and `useAuthSession` settles it even
+when the session read FAILS — with `retry: false`, a dropped request would
+otherwise leave every account-shaped control saying "Loading…" forever, which
+was harmless only while a missing account rendered a sign-in prompt.
+
+The retired prompts' CSS is still in `global.css` (`.fbsignedout`, `.toastact`,
+`.gsauthtip`, `.accpending` and four neighbours), unused. Left on purpose: the
+gate is "for now", and this is the file two sessions have already collided in.
+
 ### Map layers
 
 `src/employsi/state/store.ts` (zustand) owns the layer state; `WorldMapbox.tsx` handles
@@ -700,6 +949,14 @@ global + domestic, `PerthMapbox.tsx` the local 3D city. Layer crossings are driv
 thresholds (`CROSS_GLOBAL_TO_DOMESTIC` etc.) plus a `LAYER_COOLDOWN` barrier so one wheel
 gesture can't skip a layer. Those constants are **zoom levels, not pixels** — resizing the
 map frame does not invalidate them.
+
+**The local layer counts ONE CITY.** A company id is one employer everywhere
+(`melbourne-csl` is CSL in every city it hires), so a pin's ad count must be
+that city's, or a multinational shows its every office on each pin. A skill
+reads `byMonthCity` / `liveByCity` from `getSkillCompanyMonths` (the archive's
+`hub`); a career role reads its rung's `cityCompanies`. The live KV skill
+index has no per-city split and is only the fallback where D1 cannot answer.
+An ad whose location `hubFor` could not place has no hub and counts in no city.
 
 Company pin placement is `spreadCoordsCity()` in `data/rosters.ts`: a phyllotaxis fan around
 a verified CBD anchor, with per-city `CITY_PLACEMENT` arcs chosen to keep pins off water.

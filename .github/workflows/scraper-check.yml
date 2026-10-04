@@ -30,6 +30,11 @@ on:
       - 'scripts/test_rosters.py'
       - 'scripts/company_alias.py'
       - 'scripts/test_company_alias.py'
+      - 'scripts/test_zhaopin_parsers.py'
+      - 'scripts/source-overlap.py'
+      - 'scripts/check-overlap-key.py'
+      - 'src/employsi/lib/dataQualityFn.ts'
+      - 'tools/zhaopin-company-scraper/zhaopin_company_scraper.py'
       - 'scripts/talent_flows.py'
       - 'scripts/test_talent_flows.py'
       - 'scripts/collect-talent-flows.py'
@@ -123,10 +128,27 @@ jobs:
       - name: Employer attribution gate holds its measured pairs
         run: python scripts/test_company_alias.py
 
+      # The interstitial Zhaopin serves a refused address is an HTTP 200 with an
+      # ordinary body, so a parser that scraped one stray element out of it would
+      # file invented vacancies against a real Chinese company and the run would
+      # go GREEN — the red-on-zero-rows guard cannot catch that, because rows
+      # would exist. This asserts the challenge page yields nothing, and that a
+      # real page reads into the dict upsert() expects.
+      - name: Zhaopin parser reads its shape, and rejects a challenge page
+        run: python scripts/test_zhaopin_parsers.py
+
       # A company added to the roster appears on the map immediately, whether or
       # not any job board is searched for it — so without this, a new employer
       # can sit there showing zero open roles and read as one that is not
       # hiring. Fails on any rostered company with no keyword-feed target.
+      # The cross-board overlap key is written twice — once in the CLI report,
+      # once in the admin console's Data quality panel — and it is the
+      # measurement, not an implementation detail. Diverge them and both
+      # surfaces keep returning a plausible percentage while disagreeing about
+      # how duplicated the archive is.
+      - name: Overlap key is identical in both places that measure it
+        run: python scripts/check-overlap-key.py
+
       - name: Every rostered company reaches the keyword feeds
         run: python scripts/check-feed-coverage.py
 

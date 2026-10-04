@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+
+/** Half of the card's Supply/Demand cross-fade, in ms. Matches the action
+ *  rail's 150ms swap so the two controls feel like one gesture; see the
+ *  cardMarket comment and `.gscard.swapping` in global.css. */
+const CARD_SWAP_MS = 140;
 import { isReleasedCompany, isReleasedPlace } from "../lib/markets";
 import { useQuery } from "@tanstack/react-query";
 import { useAppStore } from "../state/store";
@@ -7,10 +12,10 @@ import { SKILL_PARENT, searchSkillMatches } from "../data/skillsTaxonomy";
 import {
   popularSkills as popularSkillsForLayer,
   demandLevel,
+  type DemandMode,
   type DemandTone,
 } from "../lib/skillHeat";
 import { employmentFor, vacancyRate } from "../lib/vacancyRate";
-import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { describeSkills } from "../lib/describeSkills";
 import { useOntologyReady } from "../hooks/useOntologyReady";
 import {
@@ -22,6 +27,8 @@ import {
   SKILL_ICONS,
   TIMELINE_LABEL,
   TIMELINE_SPAN,
+  TIMELINE_MONTHS,
+  monthAt,
 } from "../lib/skillCard";
 import { LABOUR_EVENTS } from "../data/labourEvents";
 import { getSkillPay, formatPay } from "../lib/analystFn";
@@ -112,7 +119,55 @@ function rankCompany(c: { name: string; ticker: string }, q: string): number {
 
 export function GlobalSearch() {
   const globalOut = useAppStore((s) => s.globalOut);
-  const demandMode = useAppStore((s) => s.demandMode);
+  const pickedMode = useAppStore((s) => s.demandMode);
+  const marketMode = useAppStore((s) => s.marketMode);
+  /**
+   * WHAT THE SKILL SEARCH MEASURES.
+   *
+   * The Supply/Demand switch decides the QUESTION; the Vacancies/Per-1,000
+   * toggle in the card decides how DEMAND is read. On the supply side the
+   * measure is employment — how many people do the work — and the demand
+   * toggle has nothing to say about it, so it is overridden rather than
+   * combined. Two controls that both claimed to set the measure would be a
+   * control the reader cannot predict.
+   *
+   * This reaches the three places the search ranks or bands a skill: the chip
+   * row, the suggestion badges and the result card. It does NOT touch the heat
+   * map, which still colours by the demand mode — changing the globe was not
+   * asked for, and doing it silently alongside this would make the switch mean
+   * two things at once.
+   */
+  const demandMode: DemandMode = marketMode === "supply" ? "employment" : pickedMode;
+
+  /**
+   * THE CARD'S MODE LAGS THE STORE'S BY ONE FADE, so an open skill survives the
+   * Supply/Demand switch instead of blinking its contents.
+   *
+   * The card stays mounted either way — setMarketMode never touched the search
+   * or the carded skill — but every figure in it changed on the same frame, and
+   * a card that swaps a workforce band, a series and four stat rows instantly
+   * reads as a different card rather than the same one answering a different
+   * question. The rail solved the same problem by cross-fading two mounted
+   * layers; the card cannot, because its body is one render of one built card.
+   *
+   * So the content waits: `swapping` fades the body out, the mode it was built
+   * from flips at the bottom of that fade, and it comes back in. Only the CARD
+   * lags — the map, the chips and the rail all switch on the click, because the
+   * card is the thing that had to stay open, not the app.
+   */
+  const [cardMarket, setCardMarket] = useState(marketMode);
+  const [swapping, setSwapping] = useState(false);
+  useEffect(() => {
+    if (cardMarket === marketMode) return;
+    setSwapping(true);
+    const t = setTimeout(() => {
+      setCardMarket(marketMode);
+      setSwapping(false);
+    }, CARD_SWAP_MS);
+    return () => clearTimeout(t);
+  }, [marketMode, cardMarket]);
+  /** What the card is built from: the lagged mode, never the live one. */
+  const cardMode: DemandMode = cardMarket === "supply" ? "employment" : pickedMode;
   const zoomedOut = useAppStore((s) => s.zoomedOut);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -267,9 +322,9 @@ export function GlobalSearch() {
   const card = useMemo(
     () =>
       cardSkill && !cardBlocked
-        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null)
+        ? buildSkillCard(cardSkill, heatMonth, skillIndex, archiveTrend ?? null, cardMode)
         : null,
-    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend],
+    [cardSkill, cardBlocked, heatMonth, skillIndex, archiveTrend, cardMode],
   );
   // The national rate for the skill on the card, AT THE SCRUBBED MONTH — not the
   // latest — so the figure beside the toggle always describes the same month the
@@ -277,11 +332,11 @@ export function GlobalSearch() {
   // the toggle rather than showing it next to a blank.
   const setDemandMode = useAppStore((s) => s.setDemandMode);
   const cardRate = useMemo(
-    () => (cardSkill ? vacancyRate(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    () => (cardSkill ? vacancyRate(cardSkill, "national", monthAt(heatMonth)) : null),
     [cardSkill, heatMonth],
   );
   const cardEmployed = useMemo(
-    () => (cardSkill ? employmentFor(cardSkill, "national", IVI_MONTHS[heatMonth]) : null),
+    () => (cardSkill ? employmentFor(cardSkill, "national", monthAt(heatMonth)) : null),
     [cardSkill, heatMonth],
   );
   /**
@@ -314,14 +369,16 @@ export function GlobalSearch() {
    * that looks uniformly scrubbable and silently is not.
    */
   const covered = useMemo(() => {
-    const idx = (skillMonths?.months ?? []).map((m) => IVI_MONTHS.indexOf(m)).filter((i) => i >= 0);
+    const idx = (skillMonths?.months ?? [])
+      .map((m) => TIMELINE_MONTHS.indexOf(m))
+      .filter((i) => i >= 0);
     if (!idx.length) return null;
     const lo = Math.min(...idx);
     const hi = Math.max(...idx);
     return {
       left: (lo / TIMELINE_SPAN) * 100,
       width: ((hi - lo) / TIMELINE_SPAN) * 100,
-      from: monthLabel(IVI_MONTHS[lo]),
+      from: monthLabel(TIMELINE_MONTHS[lo]),
       has: heatMonth >= lo && heatMonth <= hi,
     };
   }, [skillMonths, heatMonth]);
@@ -452,11 +509,25 @@ export function GlobalSearch() {
   };
 
   const showSuggest = focused && !!q && !cardSkill;
-  // Chips show on an empty focused field, and stay up while a skill is
-  // selected so the chosen one can carry its selected state and the rest stay
-  // one click away.
+  /**
+   * Chips show on an empty focused field, and stay up while one of THEM is the
+   * selected skill — so the chosen chip can carry its selected state and the
+   * other five stay one click away.
+   *
+   * THE SECOND HALF USED TO BE ANY ACTIVE SKILL, and that is what made them
+   * noise. Search something the row does not offer — Human Resources, say —
+   * and six unrelated chips stayed under the field, none of them lit, none of
+   * them what was asked for. They were a row of suggestions being shown after
+   * the moment for suggesting had passed.
+   *
+   * So the row survives a search only when the search landed ON it. Clearing
+   * the field brings it back (the effect above drops `carded`, so the empty
+   * focused branch takes over), which is the other way a reader asks for
+   * suggestions again.
+   */
   const skillActive = !!cardSkill && q === cardSkill.toLowerCase();
-  const showChips = (focused && !q && !cardSkill) || skillActive;
+  const chipSelected = skillActive && popularSkills.some((s) => s.toLowerCase() === q);
+  const showChips = (focused && !q && !cardSkill) || chipSelected;
   const noMatch = searched && !cardSkill && !!q;
 
   return (
@@ -570,7 +641,7 @@ export function GlobalSearch() {
       )}
 
       {card && (
-        <div className="gscard">
+        <div className={`gscard${swapping ? " swapping" : ""}`}>
           <div className="gscardhd">
             <span className="gscardname">
               <svg
@@ -638,21 +709,44 @@ export function GlobalSearch() {
               />
             </div>
             <div className="gsscalekeys">
-              <span className="gskey lo">Low</span>
-              <span className="gskey mid">Moderate</span>
-              <span className="gskey hi">High</span>
+              {/* The scale ranks workforces against workforces on the supply
+                  side, so Low/Moderate/High — which read as demand — become a
+                  size. */}
+              <span className="gskey lo">{cardMode === "employment" ? "Small" : "Low"}</span>
+              <span className="gskey mid">
+                {cardMode === "employment" ? "Mid-sized" : "Moderate"}
+              </span>
+              <span className="gskey hi">{cardMode === "employment" ? "Large" : "High"}</span>
             </div>
           </div>
 
           <div className="gsstats">
             <div className="gsstat">
-              <span className="gsstatk">Open roles</span>
+              {/* ONE COUNT, NEVER BOTH. On the supply side the card carries
+                  employed persons and `openRoles` is null; on the demand side
+                  the reverse. Showing the pair together would put ads and
+                  people side by side in identically-styled cells, which is the
+                  conflation the separate builders exist to prevent. */}
+              <span className="gsstatk">
+                {cardMode === "employment" ? "Employed" : "Open roles"}
+              </span>
               <span className="gsstatv">
-                {card.openRoles === null ? "—" : card.openRoles.toLocaleString("en-US")}
+                {cardMode === "employment"
+                  ? card.employed === null
+                    ? "—"
+                    : card.employed.toLocaleString("en-US")
+                  : card.openRoles === null
+                    ? "—"
+                    : card.openRoles.toLocaleString("en-US")}
               </span>
             </div>
             <div className="gsstat">
-              <span className="gsstatk">Median salary</span>
+              {/* Named as ADVERTISED on the supply side. It comes from the ad
+                  archive either way, and beside an ABS headcount an unqualified
+                  "Median salary" would read as a wage the ABS measured. */}
+              <span className="gsstatk">
+                {cardMode === "employment" ? "Median advertised" : "Median salary"}
+              </span>
               {/* Advertised pay comes from the live ad archive, so it only has a
                   value at the present end of the timeline. */}
               <span className="gsstatv">{card.atPresent && pay ? formatPay(pay) : "—"}</span>
@@ -705,24 +799,29 @@ export function GlobalSearch() {
               employment by occupation, which exists for Australia only, so
               offering the switch on a skill it cannot answer would be a control
               that silently does nothing. */}
-          {cardRate !== null && (
+          {/* NO MEASURE ROW ON THE SUPPLY SIDE. There is nothing to toggle —
+              Vacancies and Per-1,000 are both readings of demand — and the
+              employment figure is already in the stat row above with the
+              quarter named under it. A second copy in a control-shaped box
+              would read as a different measurement. */}
+          {cardMarket !== "supply" && cardRate !== null && (
             <div className="gsmode" role="group" aria-label="Demand measure">
               <button
                 type="button"
-                className={demandMode === "volume" ? "on" : ""}
+                className={cardMode === "volume" ? "on" : ""}
                 onClick={() => setDemandMode("volume")}
               >
                 Vacancies
               </button>
               <button
                 type="button"
-                className={demandMode === "rate" ? "on" : ""}
+                className={cardMode === "rate" ? "on" : ""}
                 onClick={() => setDemandMode("rate")}
               >
                 Per 1,000 employed
               </button>
               <span className="gsmodeval">
-                {demandMode === "rate"
+                {cardMode === "rate"
                   ? `${cardRate.toFixed(1)} per 1,000 · ${cardEmployed?.toLocaleString("en-AU")} employed`
                   : "AU only"}
               </span>
@@ -794,17 +893,6 @@ export function GlobalSearch() {
                   aria-label="Timeline month"
                 />
               </div>
-              {/* Said, not implied. The map's company pins follow this handle
-                  only over the months the archive can name employers for;
-                  before that they hold at today's, and a reader has no way to
-                  tell those apart from the map alone. */}
-              {covered && (
-                <p className="gstimecovnote">
-                  {covered.has
-                    ? `Employers on the map are the ones advertising this in ${monthLabel(IVI_MONTHS[heatMonth])}.`
-                    : `The archive names employers from ${covered.from}. Before that the map holds today's, and only the city shading follows the timeline.`}
-                </p>
-              )}
               {event && (
                 <div className="gsevent">
                   <span className="gseventdate">

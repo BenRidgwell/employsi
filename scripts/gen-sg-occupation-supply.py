@@ -13,6 +13,54 @@ M182081 gives EIGHT SSOC major groups:
     Craftsmen & Related Trades · Plant & Machine Operators · Cleaners &
     Labourers
 
+EIGHT IS ALL SINGAPORE PUBLISHES. Searched twice: once on 2026-09-29 against the
+SingStat catalogue, and again when that first pass turned out to have stopped at
+a blocked host and called it done. The second pass closed the three leads the
+first one left open — MOM's own data.gov.sg datasets, the Imperva block, and the
+Occupational Wage Survey. All three are below. Nothing finer exists to find:
+
+  · SingStat Table Builder returns 147 occupation tables. EVERY employment-by-
+    occupation table among them is 1-digit SSOC: M182081 (this one, occupation x
+    industry), M182171 (occupation x age), M182181/M182191 (the same split by
+    sex), and the census/GHS tables C020137, C020151, C020217. Searching the
+    catalogue for "SSOC" surfaces no additional table.
+  · General Household Survey 2025 (C020137) confirms it independently: nine
+    columns, the same eight groups plus "Others".
+  · MOM's OWN datasets, read directly from data.gov.sg rather than through the
+    Table Builder, are the same nine values. d_9392faa714d5e5809b07b10fbff2993e
+    (employed residents by occupation, age and sex, 2010-2025, SSOC 2024) has
+    3,456 rows and exactly 9 distinct occupations: the eight groups plus
+    "others". So this is not a Table Builder simplification of something richer
+    underneath — it is what MOM publishes.
+
+  · stats.mom.gov.sg is behind IMPERVA and answers 403 from this sandbox. That
+    was first recorded as "cannot be read from here, a limit of the environment".
+    It was then retried properly, with headless Chromium, the session's proxy CA
+    in the NSS store, a real browser UA and a settle for any JS challenge: still
+    403, 812 bytes, and NO challenge script in the body. Imperva is refusing the
+    exit IP outright rather than fingerprinting the client, so a more convincing
+    browser cannot help. A closed door, not an untried one.
+
+  · THE OCCUPATIONAL WAGE SURVEY IS REAL AND IS NOT THIS. It is on data.gov.sg
+    (d_9917e751f7498502f70052a940a3f312), it covers 523 occupations at genuine
+    SSOC detail — "accountant (excluding tax accountant)", "actuary" — and it was
+    the best remaining hypothesis for a fine-grained Singapore denominator. It
+    carries WAGES ONLY: 25th/50th/75th percentile gross and basic monthly wage,
+    and no headcount column. So MOM demonstrably collects at 523-occupation
+    detail and publishes only wages there. That is worth knowing for salary data;
+    it does nothing for supply.
+
+M182081 DOES cross occupation with 16 industries, which is 144 cells rather than
+8, and that was considered as a refinement and REJECTED. "Professionals in
+Information & Communications" sounds like a sharper denominator for Software
+Engineering than "Professionals", but it is not a subset relationship: it drops
+every software engineer in a bank (Financial & Insurance Services) while adding
+every non-software professional in InfoComm. A clean superset can be labelled
+honestly — every software engineer who is a professional is inside
+"Professionals" — whereas a cross-section that both omits and admits members
+cannot. Choosing one industry per skill would also be arbitrary for most of
+them: accountants, marketers and HR professionals sit in all sixteen.
+
 So a Singapore skill's denominator is the whole major group its work sits in.
 Software Engineering, Medical Practice and Legal all divide by "Professionals"
 — 624,400 people. WHAT THAT MEANS FOR THE RATE, stated plainly rather than
@@ -72,6 +120,10 @@ GROUP_SKILLS: dict[str, list[str]] = {
         'Real Estate & Property', 'Education Leadership',
     ],
     'Professionals': [
+        # SSOC 2421 Management and Organisation Analysts — the same place the NZ
+        # mapping sends Strategy (ANZSCO 2247). It was the one parent skill with
+        # no SSOC group at all, so Singapore had no rate for it.
+        'Strategy',
         'Software Engineering', 'Cloud & DevOps', 'Data Analytics', 'Data Engineering',
         'Data Science & Machine Learning', 'IT & Systems', 'Cybersecurity',
         'Telecommunications', 'Medical Practice', 'Pharmacy', 'Mental Health & Counselling',

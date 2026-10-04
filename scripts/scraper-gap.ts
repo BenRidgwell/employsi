@@ -70,7 +70,7 @@ import { join } from "node:path";
 import { COMPANIES } from "../src/employsi/data/companies";
 import { SITES } from "../workers/jobs-cron/careerSites";
 import { SEEK_ADVERTISERS } from "../src/employsi/data/seekAdvertisers";
-import { HISTORICAL_SOURCES } from "../src/employsi/lib/jobArchive";
+import { HISTORICAL_SOURCES, LIVE_NOW_SQL } from "../src/employsi/lib/jobArchive";
 
 const ACCOUNT = "080a66721e2d85950d9d7dc939e08b76";
 const DATABASE = "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1";
@@ -86,21 +86,38 @@ const DATABASE = "1c5f3ffb-b9d7-4233-b28b-0f1f8d193fe1";
  * which is the one output that must not be wrong.
  *
  * So it is parsed, and a parse that finds NOTHING throws rather than returning
- * an empty map: the declaration is small and hand-written, so the only way to
- * find no pairs is that it was renamed or restructured, and continuing then
+ * an empty map: the declarations are small and hand-written, so the only way to
+ * find no pairs is that one was renamed or restructured, and continuing then
  * would quietly reintroduce exactly the failure above.
+ *
+ * TWO FILES, because the map is two parts. COMPANY_ID_ALIAS spreads in
+ * MERGED_COMPANY_ID (data/mergedCompanies.ts) and may carry literal pairs of
+ * its own above it. It carried three until 2026-10-02 — HSBC, Rio Tinto and
+ * Chevron, each a second roster line reading the first's rows — and when they
+ * were folded into the merge map instead, the literal half became empty and
+ * this threw. Reading both and requiring only that the TOTAL is non-empty is
+ * what makes that a non-event: either half may legitimately be empty, and
+ * both being empty still means the declaration moved.
  */
 function companyIdAlias(root: string): Record<string, string> {
-  const src = readFileSync(join(root, "src/employsi/lib/openRolesFn.ts"), "utf8");
-  const block = /COMPANY_ID_ALIAS[^=]*=\s*\{([^}]*)\}/.exec(src);
   const out: Record<string, string> = {};
-  for (const m of (block?.[1] ?? "").matchAll(/["']([^"']+)["']\s*:\s*["']([^"']+)["']/g)) {
-    out[m[1]] = m[2];
-  }
+  const pairs = (src: string, decl: string) => {
+    const block = new RegExp(`${decl}[^=]*=\\s*\\{([^}]*)\\}`).exec(src);
+    for (const m of (block?.[1] ?? "").matchAll(/["']([^"']+)["']\s*:\s*["']([^"']+)["']/g)) {
+      out[m[1]] = m[2];
+    }
+  };
+  pairs(readFileSync(join(root, "src/employsi/lib/openRolesFn.ts"), "utf8"), "COMPANY_ID_ALIAS");
+  pairs(
+    readFileSync(join(root, "src/employsi/data/mergedCompanies.ts"), "utf8"),
+    "MERGED_COMPANY_ID",
+  );
   if (!Object.keys(out).length) {
     throw new Error(
-      "COMPANY_ID_ALIAS could not be read from src/employsi/lib/openRolesFn.ts — " +
-        "it was renamed or restructured. Fix companyIdAlias() before trusting this report.",
+      "No alias pairs could be read from src/employsi/lib/openRolesFn.ts " +
+        "(COMPANY_ID_ALIAS) or src/employsi/data/mergedCompanies.ts " +
+        "(MERGED_COMPANY_ID) — one was renamed or restructured. Fix " +
+        "companyIdAlias() before trusting this report.",
     );
   }
   return out;
@@ -165,8 +182,8 @@ const SQL = `
 SELECT company_id,
        COUNT(*)                                                   AS rows_all,
        COUNT(DISTINCT lower(title) || '|' || lower(COALESCE(location,''))) AS ads,
-       SUM(CASE WHEN last_seen >= date('now','-1 day') THEN 1 ELSE 0 END)  AS rows_live,
-       COUNT(DISTINCT CASE WHEN last_seen >= date('now','-1 day')
+       SUM(CASE WHEN ${LIVE_NOW_SQL} THEN 1 ELSE 0 END)  AS rows_live,
+       COUNT(DISTINCT CASE WHEN ${LIVE_NOW_SQL}
                            THEN lower(title) || '|' || lower(COALESCE(location,'')) END) AS ads_live,
        MIN(first_seen) AS first_seen,
        MAX(last_seen)  AS last_seen,

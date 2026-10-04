@@ -1,13 +1,5 @@
 import { ALL_SKILLS } from "../data/skillsTaxonomy";
-import { IVI_MONTHS, IVI_SOURCE } from "../data/iviSkillDemand";
-import { CA_SOURCE } from "../data/caVacancyDemand";
-import { SG_SOURCE } from "../data/sgVacancyDemand";
-import { NZ_SOURCE } from "../data/nzVacancyDemand";
-import { UK_SOURCE } from "../data/ukVacancyDemand";
-import { EU_SOURCE } from "../data/euVacancyDemand";
-import { US_SOURCE } from "../data/usVacancyDemand";
-import { HK_SOURCE } from "../data/hkVacancyDemand";
-import { PH_SOURCE } from "../data/phVacancyDemand";
+import { IVI_MONTHS } from "../data/iviSkillDemand";
 import { CITY_COUNTRY } from "../data/mapboxWorldGeo";
 import { CITY_LABEL, GLOBAL_HUB_LABEL } from "../data/geo";
 import { seriesFor, latestFor } from "./skillHeat";
@@ -67,31 +59,35 @@ const EU_COUNTRIES = new Set([
   "sk",
 ]);
 
-export function sourceForKey(key: string): string | null {
-  if (EU_COUNTRIES.has(key)) return EU_SOURCE;
+/**
+ * Whether a published vacancy series covers this area at all.
+ *
+ * IT USED TO RETURN THE PUBLISHER'S NAME, and the six `*_SOURCE` labels it
+ * returned were the last third-party attributions reaching the client bundle —
+ * they travelled through skillHistory().sources onto the skill card's model and
+ * into the analyst's source line. The app names only employsi as its source
+ * now, so the names stay where they belong: in the generated data modules that
+ * carry each series, which this no longer imports. Nothing here needed the name
+ * — both callers only ever asked whether there WAS one.
+ */
+export function hasSeriesForKey(key: string): boolean {
+  if (EU_COUNTRIES.has(key)) return true;
   const country = CITY_COUNTRY[key];
   switch (country) {
     case "au":
-      return IVI_SOURCE;
     case "ca":
-      return CA_SOURCE;
     case "sg":
-      return SG_SOURCE;
     case "nz":
-      return NZ_SOURCE;
     case "gb":
-      return UK_SOURCE;
     case "us":
-      return US_SOURCE;
     case "hk":
-      return HK_SOURCE;
     case "ph":
-      return PH_SOURCE;
+      return true;
     case "fr":
     case "ch":
-      return EU_COUNTRIES.has(country) ? EU_SOURCE : null;
+      return EU_COUNTRIES.has(country);
     default:
-      return null;
+      return false;
   }
 }
 
@@ -112,7 +108,6 @@ export interface SkillHistory {
   yoy: number | null;
   fiveYear: number | null;
   peak: { month: string; v: number } | null;
-  sources: string[];
   /** Per-key latest-month value, biggest first — "where the demand sits". */
   byKey: { key: string; label: string; v: number }[];
 }
@@ -160,8 +155,6 @@ export function skillHistory(skill: string, keys: string[]): SkillHistory | null
     .filter((r) => r.v > 0)
     .sort((a, b) => b.v - a.v);
 
-  const sources = [...new Set(covered.map(sourceForKey).filter(Boolean) as string[])];
-
   return {
     skill,
     covered,
@@ -172,7 +165,6 @@ export function skillHistory(skill: string, keys: string[]): SkillHistory | null
     yoy,
     fiveYear,
     peak: { month: IVI_MONTHS[peakIdx], v: series[peakIdx] },
-    sources,
     byKey,
   };
 }
@@ -225,7 +217,7 @@ export function moversInScope(keys: string[], n = 5, only?: Set<string>): ScopeS
  */
 export function hasCoverage(keys: string[]): boolean {
   if (!keys.length) return true;
-  return keys.some((k) => sourceForKey(k) !== null);
+  return keys.some((k) => hasSeriesForKey(k));
 }
 
 export const HISTORY_SPAN = `${IVI_MONTHS[0]} to ${IVI_MONTHS[IVI_MONTHS.length - 1]}`;

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { callerRole } from "./sessionRole";
 import type { D1Like } from "./jobArchive";
+import { roleForEmail, type RoleEnv } from "./roles";
 
 /**
  * The admin console's Engagement tab, read from app_event and the auth tables.
@@ -31,10 +32,23 @@ import type { D1Like } from "./jobArchive";
 
 const DAY_MS = 86_400_000;
 
-async function d1(): Promise<D1Like | null> {
+/**
+ * WHERE THE COUNT STARTS: the day the app was released on employsi.com.au.
+ *
+ * Everything before it was build-and-test traffic — the owner, previews and
+ * test accounts — and it made the console describe the developer rather than
+ * the market. app_event was emptied on release (events.ts now records only
+ * end users on the live site), but the `user` table cannot be: real accounts
+ * live there. So every figure here reads from this day forward, events and
+ * accounts alike, and the two can never disagree about where history begins.
+ */
+export const ENGAGEMENT_SINCE = "2026-10-03";
+const atLeastSince = (day: string): string => (day < ENGAGEMENT_SINCE ? ENGAGEMENT_SINCE : day);
+
+async function workerEnv(): Promise<Record<string, unknown> | null> {
   try {
     const m = await import("cloudflare:workers");
-    return (m?.env?.JOBS_ARCHIVE as D1Like) ?? null;
+    return (m?.env ?? null) as Record<string, unknown> | null;
   } catch {
     return null;
   }
@@ -65,7 +79,7 @@ export function weekStart(day: string): string {
   return new Date(t - back * DAY_MS).toISOString().slice(0, 10);
 }
 
-function dayString(offsetDays: number): string {
+function dayStringRaw(offsetDays: number): string {
   return new Date(Date.now() - offsetDays * DAY_MS).toISOString().slice(0, 10);
 }
 
@@ -76,8 +90,9 @@ export interface Leading {
   value: number;
   /** Change on the week before, in whole units. Null when there is no prior week. */
   delta: number | null;
-  /** Eight weeks, oldest first, for the sparkline. */
-  series: number[];
+  /** Eight weeks, oldest first, for the sparkline. Null for a week before
+   *  ENGAGEMENT_SINCE: not measured, which is not the same as zero. */
+  series: (number | null)[];
   note: string;
 }
 
@@ -104,6 +119,36 @@ export interface TimeBand {
   pct: number;
 }
 
+/** One main feature, as the console ranks them. */
+export interface FeatureUse {
+  id: string;
+  label: string;
+  /** panel_open rows: complete, because an open always fires. */
+  opens: number;
+  /** Summed panel_close ms: best effort — a closed TAB fires no close. */
+  ms: number;
+  /** ms / closes, or null when nothing closed cleanly. */
+  avgMs: number | null;
+  /** opens as a share of the busiest feature's, for the bar. */
+  pct: number;
+}
+
+/** A searched-for thing, by how many times it was opened. */
+export interface TopTerm {
+  ref: string;
+  label: string;
+  n: number;
+  pct: number;
+}
+
+/** How the app's time divides between the two sides. */
+export interface ModeSplit {
+  supplyMs: number;
+  demandMs: number;
+  /** Supply's share of the two, 0-100; null when neither side has time yet. */
+  supplyPct: number | null;
+}
+
 export interface Engagement {
   ok: boolean;
   error?: string;
@@ -119,6 +164,12 @@ export interface Engagement {
   lagging: Lagging[];
   timeBands: TimeBand[];
   medianSessionMs: number | null;
+  features: FeatureUse[];
+  topSkills: TopTerm[];
+  topCompanies: TopTerm[];
+  /** `search` events in the window: how much the bar is used at all. */
+  searches: number;
+  modeSplit: ModeSplit;
 }
 
 const EMPTY = (error?: string, days = 30): Engagement => ({
@@ -133,7 +184,21 @@ const EMPTY = (error?: string, days = 30): Engagement => ({
   lagging: [],
   timeBands: [],
   medianSessionMs: null,
+  features: [],
+  topSkills: [],
+  topCompanies: [],
+  searches: 0,
+  modeSplit: { supplyMs: 0, demandMs: 0, supplyPct: null },
 });
+
+/** The features the console tracks, and what to call them. The id is what the
+ *  client sends as panel_open/panel_close detail (hooks/useFeatureTracking). */
+const FEATURE_LABEL: Record<string, string> = {
+  trending: "What's trending",
+  analyst: "Ask an analyst",
+  flows: "Talent flows",
+  career: "Career pathways",
+};
 
 /** Session-length buckets. Fixed edges so the shape is comparable week to week. */
 const BANDS: { band: string; lo: number; hi: number }[] = [
@@ -156,11 +221,22 @@ export const getEngagement = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<Engagement> => {
     const days = [1, 7, 30].includes(Number(data?.days)) ? Number(data.days) : 30;
     if ((await callerRole()) !== "admin") return EMPTY("Not permitted.", days);
-    const db = await d1();
+    const env = await workerEnv();
+    const db = (env?.JOBS_ARCHIVE as D1Like) ?? null;
     if (!db) return EMPTY("The archive isn't reachable from here.", days);
+    // Administrators are not users of the product for these purposes. Their
+    // events are no longer recorded (events.ts); their ACCOUNTS still sit in
+    // the user table, so the signup and cohort figures leave them out here.
+    const isAdmin = (email: string) => roleForEmail(env as RoleEnv, email) === "admin";
+    // Every trailing window starts no earlier than the release.
+    const dayString = (offsetDays: number) => atLeastSince(dayStringRaw(offsetDays));
 
     try {
-      const meta = await all(db, "SELECT COUNT(*) AS n, MIN(day) AS since FROM app_event");
+      const meta = await all(
+        db,
+        "SELECT COUNT(*) AS n, MIN(day) AS since FROM app_event WHERE day >= ?",
+        ENGAGEMENT_SINCE,
+      );
       const events = n(meta[0]?.n);
       const since = s(meta[0]?.since);
 
@@ -206,14 +282,20 @@ export const getEngagement = createServerFn({ method: "GET" })
       }
 
       const last = weeks.length - 1;
-      const lead = (key: string, label: string, series: number[], note: string): Leading => ({
-        key,
-        label,
-        value: series[last] ?? 0,
-        delta: series.length > 1 ? (series[last] ?? 0) - (series[last - 1] ?? 0) : null,
-        series,
-        note,
-      });
+      const releaseWeek = weekStart(ENGAGEMENT_SINCE);
+      const lead = (key: string, label: string, raw: number[], note: string): Leading => {
+        const series = raw.map((v, i) => (weeks[i] < releaseWeek ? null : v));
+        const prev = series[last - 1];
+        return {
+          key,
+          label,
+          value: series[last] ?? 0,
+          // No change figure against a week that was not measured.
+          delta: prev === null || prev === undefined ? null : (series[last] ?? 0) - prev,
+          series,
+          note,
+        };
+      };
 
       const leading: Leading[] = [
         lead(
@@ -250,6 +332,7 @@ export const getEngagement = createServerFn({ method: "GET" })
       const cohortSize = new Map<string, number>();
       for (const u of users) {
         const k = s(u.k);
+        if (isAdmin(k)) continue;
         const w = weekStart(s(u.d));
         if (!k || !w) continue;
         cohortOf.set(k, w);
@@ -323,18 +406,20 @@ export const getEngagement = createServerFn({ method: "GET" })
       };
       const cur = await win(dayString(days), dayString(-1));
       const prev = await win(dayString(days * 2), dayString(days));
-      const signups = await all(
-        db,
-        'SELECT COUNT(*) AS n FROM "user" WHERE substr("createdAt", 1, 10) >= ?',
-        dayString(days),
-      );
-      const signupsPrev = await all(
-        db,
-        'SELECT COUNT(*) AS n FROM "user"' +
-          ' WHERE substr("createdAt", 1, 10) >= ? AND substr("createdAt", 1, 10) < ?',
-        dayString(days * 2),
-        dayString(days),
-      );
+      // Read as rows and counted here, not COUNT(*), so administrators can be
+      // left out by the same rule as everywhere else in this pane.
+      const signupCount = async (fromDay: string, toDay: string) =>
+        (
+          await all(
+            db,
+            'SELECT lower("email") AS k FROM "user"' +
+              ' WHERE substr("createdAt", 1, 10) >= ? AND substr("createdAt", 1, 10) < ?',
+            fromDay,
+            toDay,
+          )
+        ).filter((r) => !isAdmin(s(r.k))).length;
+      const signupsNow = await signupCount(dayString(days), dayString(-1));
+      const signupsBefore = await signupCount(dayString(days * 2), dayString(days));
 
       const lag = (key: string, label: string, v: number, p: number, note: string): Lagging => ({
         key,
@@ -344,7 +429,7 @@ export const getEngagement = createServerFn({ method: "GET" })
         note,
       });
       const lagging: Lagging[] = [
-        lag("signups", "New accounts", n(signups[0]?.n), n(signupsPrev[0]?.n), "Signed up."),
+        lag("signups", "New accounts", signupsNow, signupsBefore, "Signed up."),
         lag("users", "Signed-in users", cur.users, prev.users, "Distinct accounts seen."),
         lag("sessions", "Sessions", cur.sessions, prev.sessions, "Including signed-out."),
         lag("follows", "Follows added", cur.follows, prev.follows, "Companies and skills."),
@@ -369,6 +454,97 @@ export const getEngagement = createServerFn({ method: "GET" })
       // enough to make a typical session look twice as long as it is.
       const medianSessionMs = total ? lens[Math.floor((total - 1) / 2)] : null;
 
+      // ── Most-used features ──────────────────────────────────────────────────
+      // Opens and durations come from DIFFERENT rows and are counted
+      // separately on purpose: panel_open always fires, panel_close does not
+      // when the tab is closed outright. Dividing the summed ms by the OPENS
+      // would therefore divide real time by a larger number and under-report
+      // every average, so the average is per CLOSE and the card says so.
+      const featRows = await all(
+        db,
+        "SELECT detail, name, COUNT(*) AS n, SUM(ms) AS ms FROM app_event" +
+          " WHERE name IN ('panel_open','panel_close') AND day >= ? AND detail <> ''" +
+          " GROUP BY detail, name",
+        dayString(days),
+      );
+      const featAcc = new Map<string, { opens: number; closes: number; ms: number }>();
+      for (const r of featRows) {
+        const id = String(r.detail || "");
+        if (!FEATURE_LABEL[id]) continue; // an id the console does not show
+        const acc = featAcc.get(id) ?? { opens: 0, closes: 0, ms: 0 };
+        if (String(r.name) === "panel_open") acc.opens += n(r.n);
+        else {
+          acc.closes += n(r.n);
+          acc.ms += n(r.ms);
+        }
+        featAcc.set(id, acc);
+      }
+      const maxOpens = Math.max(0, ...[...featAcc.values()].map((v) => v.opens));
+      const features: FeatureUse[] = Object.keys(FEATURE_LABEL)
+        .map((id) => {
+          const a = featAcc.get(id) ?? { opens: 0, closes: 0, ms: 0 };
+          return {
+            id,
+            label: FEATURE_LABEL[id],
+            opens: a.opens,
+            ms: a.ms,
+            avgMs: a.closes ? Math.round(a.ms / a.closes) : null,
+            pct: maxOpens ? Math.round((a.opens / maxOpens) * 100) : 0,
+          };
+        })
+        .sort((x, y) => y.opens - x.opens || y.ms - x.ms);
+
+      // ── What the search bar is used for ─────────────────────────────────────
+      // From skill_open / company_open, NOT from search text, which this app
+      // deliberately never stores (lib/analytics.ts). Those two fire when a
+      // query resolves to a canonical skill or a company card opens, so they
+      // answer "what are people looking for" in the app's own vocabulary
+      // rather than in whatever was typed.
+      const topOf = async (name: string): Promise<TopTerm[]> => {
+        const rows = await all(
+          db,
+          "SELECT detail AS ref, COUNT(*) AS n FROM app_event" +
+            " WHERE name = ? AND day >= ? AND detail <> ''" +
+            " GROUP BY detail ORDER BY n DESC LIMIT 8",
+          name,
+          dayString(days),
+        );
+        const top = rows.length ? n(rows[0].n) : 0;
+        return rows.map((r) => ({
+          ref: String(r.ref),
+          label: String(r.ref),
+          n: n(r.n),
+          pct: top ? Math.round((n(r.n) / top) * 100) : 0,
+        }));
+      };
+      const topSkills = await topOf("skill_open");
+      const topCompanies = await topOf("company_open");
+      const searches = n(
+        (
+          await all(
+            db,
+            "SELECT COUNT(*) AS n FROM app_event WHERE name = 'search' AND day >= ?",
+            dayString(days),
+          )
+        )[0]?.n,
+      );
+
+      // ── Supply vs demand ────────────────────────────────────────────────────
+      const modeRows = await all(
+        db,
+        "SELECT detail, SUM(ms) AS ms FROM app_event" +
+          " WHERE name = 'mode_use' AND day >= ? AND ms > 0 GROUP BY detail",
+        dayString(days),
+      );
+      const supplyMs = n(modeRows.find((r) => String(r.detail) === "supply")?.ms);
+      const demandMs = n(modeRows.find((r) => String(r.detail) === "demand")?.ms);
+      const modeTotal = supplyMs + demandMs;
+      const modeSplit: ModeSplit = {
+        supplyMs,
+        demandMs,
+        supplyPct: modeTotal ? Math.round((supplyMs / modeTotal) * 100) : null,
+      };
+
       return {
         ok: true,
         days,
@@ -380,6 +556,11 @@ export const getEngagement = createServerFn({ method: "GET" })
         lagging,
         timeBands,
         medianSessionMs,
+        features,
+        topSkills,
+        topCompanies,
+        searches,
+        modeSplit,
       };
     } catch (e) {
       return EMPTY(String((e as Error)?.message || e), days);

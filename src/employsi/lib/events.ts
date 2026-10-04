@@ -1,5 +1,7 @@
 import { getAuth, type AuthEnv } from "./auth";
 import type { D1Like } from "./jobArchive";
+import { roleForEmail } from "./roles";
+import { MARKETING_APEX } from "@/lib/siteGate";
 
 /**
  * Where product events land (migrations/0005_app_event.sql).
@@ -40,6 +42,8 @@ export const ALLOWED_EVENTS = [
   "follow_add",
   "follow_remove",
   "panel_open",
+  "panel_close",
+  "mode_use",
 ] as const;
 
 export type EventName = (typeof ALLOWED_EVENTS)[number];
@@ -50,13 +54,16 @@ const MAX_BATCH = 40;
 const MAX_DETAIL = 64;
 /** Longer than this is a tab left open overnight, not a session. */
 const MAX_SESSION_MS = 4 * 60 * 60 * 1000;
+/** The events whose `ms` is a real duration rather than 0. */
+const DURATION_EVENTS = new Set<string>(["session_end", "panel_close", "mode_use"]);
 
 export interface ClientEvent {
   name: string;
   detail?: string;
   sessionId?: string;
   anonKey?: string;
-  /** session_end only. Clamped; a browser can report anything. */
+  /** DURATION_EVENTS only; 0 everywhere else. Clamped, because a browser can
+   *  report anything and one forgotten tab would otherwise own the total. */
   ms?: number;
 }
 
@@ -92,9 +99,26 @@ export async function writeEvents(
 ): Promise<number> {
   if (!db || !Array.isArray(events) || !events.length) return 0;
 
+  // ONLY THE LIVE SITE, AND ONLY ITS END USERS, ARE RECORDED (2026-10-03).
+  // Every preview Worker binds this same database, so without the host check
+  // the owner's testing on a preview landed in production's Engagement tab;
+  // and an administrator's own use of the product is not user behaviour. Both
+  // were measured in the console the day the app was released — one "weekly
+  // user" and 84 sessions, all of them the owner. Dropped here, before
+  // anything is stored, rather than filtered at read time, so the table only
+  // ever holds what the console is meant to describe.
+  let host = "";
+  try {
+    host = new URL(request.url).hostname.toLowerCase();
+  } catch {
+    return 0;
+  }
+  if (host !== MARKETING_APEX) return 0;
+
   const at = new Date().toISOString();
   const day = at.slice(0, 10);
   const userKey = await callerKey(request, env);
+  if (userKey && roleForEmail(env as AuthEnv, userKey) === "admin") return 0;
 
   const rows = events
     .slice(0, MAX_BATCH)
@@ -106,10 +130,17 @@ export async function writeEvents(
       // dropped so the two cannot be joined back together afterwards.
       anonKey: userKey ? "" : clean(e.anonKey, 40),
       sessionId: clean(e.sessionId, 40),
-      ms:
-        e.name === "session_end"
-          ? Math.max(0, Math.min(MAX_SESSION_MS, Math.round(Number(e.ms) || 0)))
-          : 0,
+      // `ms` is a DURATION and three events carry one now: how long a session
+      // ran, how long a feature panel was open, and how long the app sat on the
+      // supply or the demand side. Everything else stores 0.
+      //
+      // Clamped to the same ceiling for all three, because they fail the same
+      // way: a tab left open overnight. A browser can report anything, and an
+      // unclamped sum is one forgotten tab away from claiming a feature was
+      // used for nine hours.
+      ms: DURATION_EVENTS.has(e.name)
+        ? Math.max(0, Math.min(MAX_SESSION_MS, Math.round(Number(e.ms) || 0)))
+        : 0,
     }));
   if (!rows.length) return 0;
 

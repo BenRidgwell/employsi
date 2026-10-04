@@ -5,31 +5,34 @@ import { Avatar } from "./Avatar";
 import { COMPANIES, type Company } from "../data/companies";
 import { searchCityFor } from "../data/mapboxGeo";
 import { logoFor } from "../lib/companyLogo";
-import { SignInOptions } from "./SignInOptions";
 import { signOut as authSignOut } from "../lib/authClient";
 import { CareerGoalBlock } from "./CareerGoalBlock";
+import { PersonaSwitch } from "./PersonaSwitch";
 
 /**
  * The account control inside the search pill, from `Employsi Skill Search.html`.
  *
- * The design puts sign-in at the right-hand end of the search bar as a 34px
- * avatar button with a 288px panel below it: a Create account / Sign in
- * segmented control, the fields for whichever is chosen, one primary action and
- * a line to switch between them.
+ * The design puts it at the right-hand end of the search bar as a 34px avatar
+ * button with a 288px panel below it.
  *
- * Sign-in is Google or LinkedIn (see SignInOptions) — the email/password form
- * that used to sit here accepted any password and created no user, so it is
- * gone rather than restyled.
+ * IT IS NO LONGER A SIGN-IN CONTROL. The design's panel was a Create account /
+ * Sign in segmented control with the fields for whichever was chosen, and this
+ * component carried it (as Google / LinkedIn buttons — the email+password form
+ * accepted any password and created no user, so it was removed rather than
+ * restyled). The app is signed-in-only as of 2026-09-30 (see getAppAccess), so
+ * nobody who can render this panel needs to sign in, and the whole branch is
+ * retired: the button is always the account's avatar and the panel is always
+ * what a signed-in user needs — their career goal, what they follow, and a way
+ * out.
  *
- * It is wired to the store's auth, which is also what gates following:
- * tapping Follow while signed out sets `authOpen` and remembers what was
- * tapped, so opening THIS panel is what completes that flow, and the followed
- * company or skill is saved the moment the account exists. Using the store's
- * flag rather than local state is what makes that work.
+ * The one accountless state left is the few hundred milliseconds before the
+ * session query answers, and the panel says it is loading. That is NOT the same
+ * as signed out, which is why the store carries `sessionKnown` separately — see
+ * the note on it in state/store.ts.
  *
- * The design has no signed-in state — its mock is always logged out. Signed in,
- * the button becomes the account's initials and the panel becomes what the user
- * then needs: what they follow, and a way out.
+ * `authOpen` survives the change and still lives in the store rather than in
+ * local state, because other surfaces open this panel (the mobile menu's
+ * Account row, the account card's Alerts row).
  */
 
 /** Two full rows of five in the 288px panel. Anything beyond is counted, not
@@ -92,7 +95,6 @@ export function SearchAuth() {
   const zoomInCity = useAppStore((s) => s.zoomInCity);
   const toggleSkillQuery = useAppStore((s) => s.toggleSkillQuery);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
-  const pendingCareerGoal = useAppStore((s) => s.pendingCareerGoal);
 
   // A follow made before a market was gated -- or before the gate existed --
   // would otherwise keep offering a card the product refuses to fill. The
@@ -109,18 +111,20 @@ export function SearchAuth() {
         className={`gsauthbtn${authOpen ? " on" : ""}${account ? " signedin" : ""}`}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => (authOpen ? closeAuth() : openAuth())}
-        aria-label={account ? `Account: ${account.name}` : "Sign in"}
+        aria-label={account ? `Account: ${account.name}` : "Your account"}
         aria-expanded={authOpen}
       >
         {account ? (
           <Avatar name={account.name} image={account.image} className="gsauthinitials" />
         ) : (
+          // Before the session lands. The generic person glyph stands in for the
+          // avatar rather than advertising sign-in, and the tooltip that read
+          // "Sign in" beside it is gone.
           <svg viewBox="0 0 24 24" width={19} height={19} fill="none" stroke="currentColor">
             <circle cx="12" cy="8.6" r="3.6" />
             <path d="M5.4 19.4a6.8 6.8 0 0 1 13.2 0" />
           </svg>
         )}
-        {!account && <span className="gsauthtip">Sign in</span>}
       </button>
 
       {authOpen && (
@@ -194,6 +198,7 @@ export function SearchAuth() {
                     Follow a skill or a company and it will be saved here.
                   </p>
                 )}
+                <PersonaSwitch />
                 <button
                   className="gsauthcta gsauthout"
                   onClick={() => {
@@ -207,14 +212,12 @@ export function SearchAuth() {
                 </button>
               </>
             ) : (
-              <>
-                {pendingCareerGoal && (
-                  <p className="gsauthhint gsauthpending">
-                    Sign in to save <b>{pendingCareerGoal.title}</b> as your career goal.
-                  </p>
-                )}
-                <SignInOptions />
-              </>
+              // The session query has not answered yet. There is no signed-out
+              // branch any more: the route gate (getAppAccess) means anyone
+              // rendering this panel is signed in, so the Create account / Sign
+              // in control that used to live here has nobody to serve. Saying
+              // "loading" is honest about the only state left.
+              <p className="gsauthhint">Loading your account…</p>
             )}
           </div>
         </>
