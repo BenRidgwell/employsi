@@ -34,9 +34,6 @@ import { SkillDemand } from "./SkillDemand";
 import { TalentFlow } from "./TalentFlow";
 import { useTalentFlows } from "../../hooks/useTalentFlows";
 
-/** How an estimate's stored `src` key is written on the card. */
-const PAY_EST_SOURCE: Record<string, string> = { glassdoor: "Glassdoor" };
-
 type CardTab = "Overview" | "Skills" | "Hiring";
 
 /** Hiring bars shown before the list names what it left out. */
@@ -672,7 +669,7 @@ export function CompanyPanel() {
    * like", which is the question a reader with no disclosed figure is asking.
    *
    * NULL IS THE ORDINARY CASE TODAY. The only feed writing pay_estimate is
-   * refused (the Glassdoor note in workers/jobs-cron/ARCHIVE.md), so this is
+   * refused (see the feed note in workers/jobs-cron/ARCHIVE.md), so this is
    * null on every card until that changes — which is why the fact row is added
    * rather than a tile being changed: a row that is simply absent costs
    * nothing, where an empty tile would need a placeholder.
@@ -685,16 +682,13 @@ export function CompanyPanel() {
     const hi = Math.max(...ests.map((e) => e.hi));
     if (!(lo > 0) || !(hi > 0)) return null;
     const k = (n: number) => (n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${Math.round(n)}`);
-    // Sources are listed, not assumed: a second estimate provider added later
-    // must not be able to arrive silently under the first one's name. Named for
-    // a reader rather than echoing the stored key — the label is where the
-    // attribution lives on this row, so "glassdoor" is not good enough; an
-    // unknown key still shows, capitalised, rather than being hidden.
-    const src = [...new Set(ests.map((e) => e.src))]
-      .sort()
-      .map((x) => PAY_EST_SOURCE[x] ?? x.charAt(0).toUpperCase() + x.slice(1))
-      .join(", ");
-    return { text: `${k(lo)}–${k(hi)}`, n: ests.length, src };
+    // THE PROVIDER'S NAME IS NOT CARRIED, and the row's shape is what enforces
+    // it: no `src` goes into the returned object, so nothing downstream can
+    // render one. Each row still STORES which model produced it — the archive
+    // refuses an estimate that cannot say (parsePayEstimate in openRolesFn),
+    // which is a data rule and not a display one. Putting the credit back on
+    // screen means adding the field here deliberately.
+    return { text: `${k(lo)}–${k(hi)}`, n: ests.length };
   }, [jobSample]);
 
   // Company-wide median advertised salary across the live roles that state one.
