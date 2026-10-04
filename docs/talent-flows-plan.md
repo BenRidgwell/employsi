@@ -534,13 +534,54 @@ ROSTER name, not the delivery's, because `flowRows` already prefers
 `COMPANY_BY_ID[id].name` — so the row reads "Hancock Prospecting" and "WSP
 Global" rather than "Roy Hill" and "Calibre".
 
+**Newmont, applied the same day on request.** Six more `flow_company_map`
+rows to `denver-nem`: three Newcrest refs (`name:newcrest mining`,
+`li:newcrest-mining-limited`, `name:newcrest mining lihir png`) and three
+Newmont ones (`li:newmont`, `li:newmont-australia`,
+`li:newmont-boddington-gold-pty-ltd.`) — 170 moves, not the 157 first counted,
+because Boddington and Lihir were missed. Newmont is now a named source on all
+three cards (BHP 19, Rio Tinto 31, Fortescue 27) and named sources reached
+384/518/370.
+
+It attributes Newcrest's pre-2023 history to Newmont, which is the cost of the
+merge and is stated here rather than hidden: a 2021 Newcrest hire was not a
+Newmont hire. The alternative was Newmont at 87 itemised and Newcrest at 80
+invisible, since Newcrest is not on the roster and cannot be itemised either
+way.
+
+**Merging refs makes a company hire from ITSELF, and that is a parser job, not
+a mapping one.** The Newmont rows created 12 such pairs, the WSP rows 6, and
+Hancock 1. They are inert — `buildFlowView` only reads pairs touching the
+focus, and none of these ids is a sampled company, so no card can reach them —
+but they should not be in the table. Three rules were added to
+`scripts/talent_flows.py` so the next export drops them at source, and
+`_counted()` applies them per move rather than per seed, so NEITHER END HAS TO
+BE A SEED — which is new, and is what makes this possible at all:
+
+- `ACQUISITIONS`: the three Newcrest refs to `li:newmont` from 2023-11,
+  `li:calibre-global` to `li:wsp` from 2023-06, `li:golder` to `li:wsp` from
+  2021-04. Dated, so the split is kept: of the 12 Newmont pairs, 7 are on or
+  after completion and drop as transfers, and the rest are from when the two
+  were independent gold miners and stay as the real job changes they were.
+- `SAME_EMPLOYER`: `li:newmont` over Newmont Australia and Boddington (their
+  two 2022 moves are internal whatever the Newcrest deal did), `li:wsp` over
+  its AU/NZ page, and `li:hancockprospecting` over the Hancock Iron Ore and
+  Roy Hill refs.
+
+Replayed against the live pairs: 11 of 11 drop, and a Roy Hill, Calibre,
+Newcrest or Newmont hire INTO one of the seeds still counts in every case.
+
+The Hancock entry is worth flagging: Roy Hill Holdings is 70% Hancock with
+Marubeni, POSCO and China Steel holding the rest, and it employs its own staff
+— the test that keeps Oyu Tolgoi, Queensland Alumina and Tomago out of Rio
+Tinto's alias set. It is in because the roster carries this group under the
+parent and nothing advertises under that name, so the alternative is not "Roy
+Hill, separately" but "Roy Hill, invisible". A product decision, not an
+application of the JV rule.
+
 Still unresolved and deliberately left: **MACA Ltd (104 moves)**, which Thiess
-acquired in October 2022 and which still trades under its own name, and the
-**Newmont family (157 across `name:newcrest mining`, `li:newmont-australia`,
-`li:newmont` and `li:newcrest-mining-limited`)**, Newmont having completed its
-Newcrest acquisition on 6 November 2023. Both are sound and both attribute one
-company's history to another, which is a different class of decision from
-mapping a rename — they need saying out loud before they are applied.
+acquired in October 2022 and which still trades under its own name. Sound, and
+the same class of decision as Newmont — it needs saying out loud first.
 
 The rest of this document is the original plan. The open questions at the end
 are still open.

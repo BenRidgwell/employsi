@@ -544,6 +544,33 @@ ACQUISITIONS = (
                 '000162828025016021/ex04d06arcadiumcomplete.htm'),
     Acquisition('li:allkemltd', 'li:rio-tinto', '2025-03',
                 'as Arcadium: Allkem and Livent merged as Arcadium Lithium in January 2024'),
+    # NEITHER END IS A SEED, which is new here and works because _counted()
+    # applies these rules per move rather than per seed. Newmont and Newcrest
+    # are both SOURCES into the three iron-ore seeds, and both were sitting in
+    # the `other` bucket for having no roster id — 170 moves between the six
+    # refs they use. Mapped onto Newmont (denver-nem) in flow_company_map
+    # 2026-10-04, which made 12 of those moves a company hiring from ITSELF.
+    #
+    # Measured on that import: 7 of the 12 are dated on or after completion
+    # and are the transfers this drops; the other 5 are before it, when the
+    # two were independent gold miners, and stay as the real job changes they
+    # were. That split is the whole reason this mechanism carries a date.
+    Acquisition('name:newcrest mining', 'li:newmont', '2023-11',
+                'Newmont press release "Newmont Completes Acquisition of Newcrest", '
+                '6 November 2023: https://www.newmont.com/investor-relations/'
+                'news-release/news-details/2023/Newmont-Completes-Acquisition-of-Newcrest/'),
+    Acquisition('li:newcrest-mining-limited', 'li:newmont', '2023-11',
+                'the same company, under its own LinkedIn page'),
+    Acquisition('name:newcrest mining lihir png', 'li:newmont', '2023-11',
+                'as Newcrest: Lihir is the PNG mine, Newmont’s since completion'),
+    # WSP, for the same reason and from the same day's mapping: Calibre and
+    # Golder are both WSP, so six moves between the three refs became WSP
+    # hiring from itself. calibregroup.com 301s to wsp.com.
+    Acquisition('li:calibre-global', 'li:wsp', '2023-06',
+                'WSP "WSP Completes the Acquisition of Calibre", 5 June 2023: '
+                'https://www.wsp.com/en-au/news/2023/calibre-acquisition'),
+    Acquisition('li:golder', 'li:wsp', '2021-04',
+                'WSP completed its acquisition of Golder Associates on 7 April 2021'),
 )
 
 
@@ -684,6 +711,45 @@ SAME_EMPLOYER: dict[str, tuple[str, frozenset[str]]] = {
         'name:rio tinto growth innovation',
         'name:robe river iron associates', 'name:dampier salt limited',
         'name:comalco', 'name:comalco aluminium ltd',
+    ))),
+    # NEWMONT IS NOT A SEED, and this map does not require one — _ALIAS is
+    # built from every key here and employer_of() is called on both ends of
+    # every move. It is in because Newmont went onto the talent-flow cards on
+    # 2026-10-04 as a SOURCE (170 moves into BHP, Rio Tinto and Fortescue
+    # across six refs) and two of those refs are its own wholly-owned
+    # businesses, so without this it hires from itself: measured on that
+    # import, li:newmont -> li:newmont-australia twice, in 2022-07 and
+    # 2022-12, more than a year before the Newcrest deal and so nothing to do
+    # with it.
+    #
+    # The three Newcrest refs are NOT here. They are a separate company until
+    # 6 November 2023, which is a date, and a date is what ACQUISITIONS
+    # carries and this does not.
+    'li:newmont': ('Newmont', frozenset((
+        'li:newmont-australia',
+        'li:newmont-boddington-gold-pty-ltd.',   # Boddington, WA, wholly owned
+    ))),
+    # WSP's own regional page, so that the ACQUISITIONS entries below reach it:
+    # a Golder -> WSP-AU/NZ move has to become Golder -> WSP before the pair
+    # test can see it as a transfer. Same reason Rio Tinto's business units are
+    # listed above.
+    'li:wsp': ('WSP', frozenset(('li:wspaustralia-newzealand',))),
+    # Hancock Prospecting's iron-ore businesses. Roy Hill and Atlas Iron merged
+    # into Hancock Iron Ore in 2025; royhill.com.au 301s to
+    # hancockironore.com.au and mycareer.royhill.com.au redirects to that
+    # board's ATS.
+    #
+    # WORTH SAYING WHAT THIS GLOSSES OVER. Roy Hill Holdings is 70% Hancock,
+    # with Marubeni, POSCO and China Steel holding the rest, and it employs its
+    # own staff — which is the test that keeps Oyu Tolgoi, Queensland Alumina
+    # and Tomago OUT of Rio Tinto above. It is in here because the roster
+    # carries this group under the parent and nothing advertises under that
+    # name, so the alternative is not "Roy Hill, separately" but "Roy Hill,
+    # invisible": 144 moves, the largest single off-roster source these seeds
+    # had. A deliberate product decision, not an application of the JV rule.
+    'li:hancockprospecting': ('Hancock Prospecting', frozenset((
+        'li:hancockironore', 'li:roy-hill', 'name:roy hill',
+        'name:hancock prospecting pty ltd',
     ))),
 }
 _ALIAS = {a: (canon, name) for canon, (name, aliases) in SAME_EMPLOYER.items() for a in aliases}
