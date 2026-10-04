@@ -1489,6 +1489,22 @@ const PORTAL_TICKS: Record<string, number> = {
   // not one).
   "30 16 * * *": 232,
   "40 16 * * *": 233,
+  // Groups 234-235 — the two universities split off group 70, which held all
+  // three of its PageUp boards on one tick. See PORTAL_GROUPS for why that is
+  // worth two cron slots: PageUp rations per address and answers an exhausted
+  // allowance with a 202 and an empty body, which parses to zero rows and
+  // reads as an employer with no vacancies.
+  //
+  // :50 of the 16 hour and :00 of the 17th. The 5/15/25/35/45/55 convention
+  // this map runs on is full, but the :00/:10/:20/:30/:40/:50 minutes of hours
+  // 17-22 are almost entirely free, so there is room here. Neither lands on a
+  // shard run (processShard fires at :00/:10/:20/:25/:35/:40/:42 of hours
+  // divisible by 6; 16 and 17 are not).
+  "50 16 * * *": 234,
+  "0 17 * * *": 235,
+  // Group 236 — Mater, off group 53 for the same reason: repairing its feed
+  // took it from 0 roles to 168 and made that tick three PageUp boards deep.
+  "10 17 * * *": 236,
 };
 
 const NEWS_TICKS: Record<string, number> = {

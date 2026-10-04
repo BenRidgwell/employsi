@@ -106,6 +106,8 @@
       // 2026-09-30 batch 13 — group 231.
       "20 16 * * *",
       // Groups 232-233, the 2026-10-04 talent-flow roster batch.
-      "30 16 * * *", "40 16 * * *"]
+      "30 16 * * *", "40 16 * * *",
+      // Groups 234-235, the universities split off group 70.
+      "50 16 * * *", "0 17 * * *", "10 17 * * *"]
   }
 }

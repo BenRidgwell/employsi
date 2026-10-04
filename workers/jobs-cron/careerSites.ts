@@ -2833,12 +2833,35 @@ export const SITES: SiteDef[] = [
     id: "priv-mater",
     name: "Mater",
     sector: "Hospitals & aged care",
-    platform: "pageupclassic",
-    endpoint: "https://careers.mater.org.au/en/listing/",
+    // MIGRATED OFF THE CLASSIC THEME, AND WAS RETURNING ZERO. This was
+    // `pageupclassic` at `/en/listing/` until 2026-10-04, and that path now
+    // 307s to the site root, so fetchPageUpClassic got zero bytes and reported
+    // an employer with no vacancies — no error, nothing in the log, and an
+    // empty pull is never written, so yesterday's rows just sat there. Found
+    // by walking every PageUp feed in the file; Mater was the only one of the
+    // 26 genuinely broken.
+    //
+    // It is the Sites theme's TABLE layout rather than its cards — see the
+    // note in fetchPageUpSites, which this is the reason for. Measured
+    // 2026-10-04: "Displaying 1 - 30 of 168 in total", 30 rows a page.
+    platform: "pageupsites",
+    endpoint: "https://careers.mater.org.au/jobs/search",
     origin: "https://careers.mater.org.au",
     // Mater's Brisbane campuses, published as their suburb. Gold Coast,
     // Mackay, Bundaberg and Rockhampton are deliberately absent: they are real
     // Mater sites and real Queensland cities, and none of them is Brisbane.
+    //
+    // THAT DECISION NOW HAS A VISIBLE PRICE, worth stating since the feed is
+    // reading again. Measured 2026-10-04 on the restored 168 roles: 103 place
+    // on Brisbane and 65 place nowhere — Mackay 21, Rockhampton 17, Gold Coast
+    // 17, Bundaberg 10 — so they archive and never appear on the map. That is
+    // the intended outcome of the line above and not a gap to close here.
+    //
+    // It does sit oddly beside HUB_MATCH, which sends Townsville, Gladstone
+    // and Weipa to Brisbane globally and so places Mater's Townsville roles
+    // while refusing its Mackay ones. Both are deliberate and neither is
+    // changed from here: a global needle is a claim about every employer, and
+    // reopening it belongs with HUB_MATCH rather than in one SiteDef.
     hubHints: [
       ["newstead", "brisbane"],
       ["springfield", "brisbane"],
@@ -4587,14 +4610,19 @@ export const SITES: SiteDef[] = [
     id: "uni-university-of-tasmania",
     name: "University of Tasmania",
     sector: "Education",
-    platform: "pageupclassic",
-    // PageUp classic at careers.utas.edu.au, in SERVED html, same theme as
-    // Deakin's.
-    endpoint: "https://careers.utas.edu.au/en/listing/",
-    origin: "https://careers.utas.edu.au",
-    // Measured 2026-09-20: 23 roles over 2 pages — page 1 carries 20, page 2
-    // carries 3, page 3 is empty, so the walk reaches the end.
+    // MIGRATED OFF THE CLASSIC THEME, AND WAS RETURNING ZERO, exactly as
+    // Mater had — `/en/listing/` 307s to the site root now, so the classic
+    // reader got zero bytes and this read as a university that had stopped
+    // advertising. It was `pageupclassic` at that path, "in SERVED html, same
+    // theme as Deakin's", until 2026-10-04. Deakin is still on the classic
+    // theme and still works, so the two are no longer the same board.
     //
+    // This one is the Sites theme's CARD layout, which the reader already
+    // handled: measured 2026-10-04, 30 <article> cards, "Displaying all 30
+    // entries" and no pager, locations like "Hobart, TAS".
+    platform: "pageupsites",
+    endpoint: "https://careers.utas.edu.au/jobs/search",
+    origin: "https://careers.utas.edu.au",
     // BURNIE WITHOUT ITS STATE. HUB_MATCH carries "burnie, tas" and this board
     // prints a bare "Burnie", so 2 roles resolved to nothing. Safe to scope
     // here: for this employer Burnie is the Cradle Coast campus and nowhere
@@ -26536,14 +26564,21 @@ export const PORTAL_GROUPS: string[][] = [
   //
   // PageUp is the other expensive one, for a different reason — it spends a
   // rationed facet budget on top of its listing (see fetchPageUpClassic) — so
-  // Mater and the two Linfox boards sit with the SHORTER SF walk rather than
-  // with Goodstart.
+  // the two Linfox boards sit with the SHORTER SF walk rather than with
+  // Goodstart.
+  //
+  // MATER LEFT THIS GROUP 2026-10-04, for group 236. It had been the cheapest
+  // board here — it was returning ZERO, because its PageUp tenant had migrated
+  // theme and the classic reader got a 307 to the site root. Fixing that took
+  // it to 168 roles over 6 pages and made this the heaviest PageUp tick in the
+  // file, three boards deep, which is exactly the concentration group 70 was
+  // split to remove. A fix that quietly moves the problem somewhere else is
+  // not a fix.
   ["priv-goodstart-early-learning", "priv-salvation-army-australia", "priv-hammondcare"],
   [
     "priv-brisbane-catholic-education",
     "priv-mecca-brands",
     "priv-aurecon",
-    "priv-mater",
     "priv-linfox-au",
     "priv-linfox-nz",
   ],
@@ -26662,7 +26697,21 @@ export const PORTAL_GROUPS: string[][] = [
   // (two Workday walks of 3 pages and 1, plus one SmartRecruiters call), 70 is
   // three PageUp boards walked as HTML. 165 roles between the six.
   ["uni-university-of-melbourne", "uni-rmit-university", "uni-western-sydney-university"],
-  ["uni-deakin-university", "uni-university-of-tasmania", "uni-university-of-the-sunshine-coast"],
+  // SPLIT 2026-10-04. This held all three of these universities, and all three
+  // are PageUp boards — the heaviest concentration of one platform on any tick
+  // in the file. PageUp RATIONS requests per address and answers an exhausted
+  // allowance with a 202 and an empty body, which `res.ok` calls success and
+  // this file's readers parse to zero rows (see the note in getText, and
+  // fetchPageUpSites' MISS_BUDGET). Measured 2026-10-04 while walking all 26
+  // PageUp feeds back to back: four of them returned the 202 stub and read as
+  // employers with no vacancies, including University of Tasmania — and a
+  // board that reads empty is never written, so the symptom is yesterday's
+  // rows sitting unchanged rather than anything in a log.
+  //
+  // One board a tick costs two more cron slots and removes the only tick where
+  // that could plausibly happen from a scheduled run. Deakin stays here; the
+  // other two are groups 234 and 235.
+  ["uni-deakin-university"],
   // Group 71 — the 2026-09-20 tenth batch. One tick: two Workday walks of 3
   // pages and 2, and one PageUp walk of 2. 136 roles between them. CMV, the
   // fourth hit of that sweep, is not here — it is a Dayforce board and runs
@@ -27367,6 +27416,17 @@ export const PORTAL_GROUPS: string[][] = [
     "priv-linkforce",
     "paris-sw",
   ],
+  // Groups 234-235 — the two universities moved off group 70, one board a tick.
+  // See the note there. University of Tasmania moved to the PageUp SITES theme
+  // on 2026-10-04 (its classic path now 307s away), so it is also the feed most
+  // worth keeping on an uncontended tick until the new endpoint has a few runs
+  // behind it.
+  ["uni-university-of-tasmania"],
+  ["uni-university-of-the-sunshine-coast"],
+  // Group 236 — Mater, moved off group 53 the day its feed was repaired. Its
+  // board went from 0 roles to 168 over 6 pages, which made that tick three
+  // PageUp boards deep; see the note there.
+  ["priv-mater"],
 ];
 
 const UA =
@@ -30485,7 +30545,20 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
     // already in the list below; only <article> cards are the result set, so
     // splitting on <article> both parses the list and skips the duplicates.
     const cards = html.split(/<article\b/i).slice(1);
-    if (!cards.length) {
+    // TWO LAYOUTS IN THIS ONE THEME, and the second returned ZERO for months.
+    // Most Sites tenants render result CARDS (<article>); Mater renders a
+    // TABLE — `<table class="table" data-controller="jobs--table-results">`,
+    // one `<tr role="link">` a role. Measured 2026-10-04: its board said
+    // "Displaying 1 - 30 of 168 in total" and carried 31 job links, and this
+    // reader found no <article> at all and reported an employer with no
+    // vacancies. Mater had ALSO just migrated off the classic theme, so
+    // `/en/listing/` 307s to the root and fetchPageUpClassic was returning
+    // nothing either — the feed was dead from both directions.
+    //
+    // Only read when there are no cards, so the card path above is untouched
+    // for the eight tenants already on it.
+    const trs = cards.length ? [] : html.split(/<tr\b[^>]*\brole="link"/i).slice(1);
+    if (!cards.length && !trs.length) {
       if (stillWalking(out.length, advertised, page, lastPage) && ++misses <= MISS_BUDGET) continue;
       break;
     }
@@ -30510,6 +30583,42 @@ async function fetchPageUpSites(site: SiteDef): Promise<PortalJob[]> {
       const cat = [field("category"), field("employment-type")].filter(Boolean).join(" — ");
       const opening = field("opening-on").replace(/^Opening on:\s*/i, "");
       out.push(job(site, title, field("location"), url, opening ? isoDay(opening) : "", cat));
+    }
+    for (const tr of trs) {
+      // The cells are CLASS-NAMED, not positional, so no column arithmetic is
+      // needed here — and must not be used. fetchPageUpClassic has to read a
+      // <thead> to find its location column precisely because that theme
+      // positions them, and getting it wrong there stored a closing DATE as
+      // the location on two tenants. This layout names every cell, so the
+      // name is what is matched.
+      const a = tr.match(
+        /class="job-search-results-title"[\s\S]*?<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i,
+      );
+      if (!a) continue;
+      const url = clean(a[1]);
+      if (seen.has(url)) continue;
+      const title = clean(a[2]);
+      if (!title) continue;
+      seen.add(url);
+      added++;
+      // A cell holds a <ul> of one or more <li>, because a role can be
+      // advertised at several sites at once. Every value is kept and joined,
+      // so hubFor sees the same comma-separated string the card theme gives
+      // it and places the role on the first site it recognises.
+      const cell = (name: string): string => {
+        const m = tr.match(new RegExp(`class="job-search-results-${name}"([\\s\\S]*?)</td>`, "i"));
+        if (!m) return "";
+        const items = [...m[1].matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map((x) => clean(x[1]));
+        return (items.length ? items : [clean(m[1])]).filter(Boolean).join(", ");
+      };
+      const cat = [cell("category"), cell("employment-type")].filter(Boolean).join(" — ");
+      // NO POSTED DATE ON THIS LAYOUT — its only date column is "Closing
+      // date", which is in the FUTURE. Storing that as the ad's own date would
+      // be simply false, so it is left empty, exactly as the card path leaves
+      // it when a tenant publishes no "Opening on". upsert() then writes
+      // `posted` as NULL rather than inventing one, and the row is still
+      // placed in time by `first_seen`, which is the day we saw it.
+      out.push(job(site, title, cell("location"), url, "", cat || "Career portal"));
     }
     // Bounded by the board's own count rather than by a short page: a fetch
     // failure also returns zero rows, and stopping on that would be
